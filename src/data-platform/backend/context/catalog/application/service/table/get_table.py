@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.catalog.application.exceptions import NotFoundError
 from context.catalog.application.port.inbound.table import (
     GetTableUseCase,
     GetTableUseCaseInput,
     GetTableUseCaseOutput,
 )
+from context.catalog.application.service.table.load_table import load_table
 from context.catalog.application.service.table.table_id_from_parts import table_id_from_parts
 from context.catalog.application.service.table.table_output_fields import table_output_fields
 
@@ -26,9 +26,5 @@ class GetTableService(GetTableUseCase):
 
     def execute(self, request: GetTableUseCaseInput) -> GetTableUseCaseOutput:
         """Return the table or raise NotFoundError."""
-        table = self._tables_repo.get(table_id_from_parts(request.catalog, request.namespace, request.name))
-        if table is None:
-            raise NotFoundError(
-                f"table {request.name} not found in namespace {list(request.namespace)} of catalog {request.catalog}"
-            )
+        table = load_table(self._tables_repo, table_id_from_parts(request.catalog, request.namespace, request.name))
         return GetTableUseCaseOutput(**table_output_fields(table))

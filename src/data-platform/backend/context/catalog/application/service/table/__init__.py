@@ -5,10 +5,23 @@ from __future__ import annotations
 from context.catalog.application.service.table.create_table import CreateTableService
 from context.catalog.application.service.table.delete_table import DeleteTableService
 from context.catalog.application.service.table.get_table import GetTableService
+from context.catalog.application.service.table.get_table_partition_spec_comparison import (
+    GetTablePartitionSpecComparisonService,
+)
+from context.catalog.application.service.table.get_table_schema_comparison import (
+    GetTableSchemaComparisonService,
+)
+from context.catalog.application.service.table.list_table_partition_spec_versions import (
+    ListTablePartitionSpecVersionsService,
+)
 from context.catalog.application.service.table.list_table_properties import (
     ListTablePropertiesService,
 )
+from context.catalog.application.service.table.list_table_schema_versions import (
+    ListTableSchemaVersionsService,
+)
 from context.catalog.application.service.table.list_tables import ListTablesService
+from context.catalog.application.service.table.load_table import load_table
 from context.catalog.application.service.table.load_table_and_catalog import load_table_and_catalog
 from context.catalog.application.service.table.partition_spec_from_request import (
     partition_spec_from_request,
@@ -29,12 +42,17 @@ from context.catalog.application.service.table.update_table_properties import (
 __all__ = [
     "CreateTableService",
     "DeleteTableService",
+    "GetTablePartitionSpecComparisonService",
+    "GetTableSchemaComparisonService",
     "GetTableService",
+    "ListTablePartitionSpecVersionsService",
     "ListTablePropertiesService",
+    "ListTableSchemaVersionsService",
     "ListTablesService",
     "RenameTableService",
     "ResetTablePropertiesService",
     "UpdateTablePropertiesService",
+    "load_table",
     "load_table_and_catalog",
     "partition_spec_from_request",
     "table_id_from_parts",

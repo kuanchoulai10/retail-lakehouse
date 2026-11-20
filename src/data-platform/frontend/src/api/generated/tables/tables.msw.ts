@@ -19,7 +19,11 @@ import type {
 
 import type {
   CatalogTableApiResponse,
+  CatalogTablePartitionSpecComparisonApiResponse,
+  CatalogTablePartitionSpecVersionsApiResponse,
   CatalogTablePropertiesApiResponse,
+  CatalogTableSchemaComparisonApiResponse,
+  CatalogTableSchemaVersionsApiResponse,
   CreateTableApiRequest,
   RenameTableApiRequest,
   ResetTablePropertiesApiRequest,
@@ -50,6 +54,10 @@ export const getGetCatalogTableResponseMock = (overrideResponse: Partial<Extract
         [faker.string.alphanumeric(5)]: faker.string.alpha({length: {min: 10, max: 20}})
       }, timestamp_ms: faker.number.int()})), sort_order: {fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({direction: faker.string.alpha({length: {min: 10, max: 20}}), null_order: faker.string.alpha({length: {min: 10, max: 20}}), source_id: faker.number.int(), transform: faker.string.alpha({length: {min: 10, max: 20}})})), order_id: faker.number.int()}, summary: {total_data_files: faker.helpers.arrayElement([faker.number.int(),null,]), total_files_size: faker.helpers.arrayElement([faker.number.int(),null,]), total_records: faker.helpers.arrayElement([faker.number.int(),null,])}, uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
+export const getListCatalogTablePartitionSpecVersionsResponseMock = (overrideResponse: Partial<Extract<CatalogTablePartitionSpecVersionsApiResponse, object>> = {}): CatalogTablePartitionSpecVersionsApiResponse => ({default_spec_id: faker.number.int(), versions: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({changes: faker.helpers.arrayElement([{added: faker.number.int(), removed: faker.number.int(), renamed: faker.number.int(), transform_changed: faker.number.int()},null,]), default: faker.datatype.boolean(), field_count: faker.number.int(), previous_spec_id: faker.helpers.arrayElement([faker.number.int(),null,]), spec_id: faker.number.int()})), ...overrideResponse})
+
+export const getGetCatalogTablePartitionSpecComparisonResponseMock = (overrideResponse: Partial<Extract<CatalogTablePartitionSpecComparisonApiResponse, object>> = {}): CatalogTablePartitionSpecComparisonApiResponse => ({base_spec_id: faker.helpers.arrayElement([faker.number.int(),null,]), fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({changes: faker.helpers.arrayElements(['added','removed','renamed','transform_changed'] as const), expression: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), field_id: faker.helpers.arrayElement([faker.number.int(),null,]), name: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), previous_expression: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), previous_field_id: faker.helpers.arrayElement([faker.number.int(),null,]), previous_name: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), previous_source_path: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))),null,]), previous_transform: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), source_path: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))),null,]), transform: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,])})), spec_id: faker.number.int(), ...overrideResponse})
+
 export const getListCatalogTablePropertiesResponseMock = (overrideResponse: Partial<Extract<CatalogTablePropertiesApiResponse, object>> = {}): CatalogTablePropertiesApiResponse => ({iceberg_version: faker.string.alpha({length: {min: 10, max: 20}}), properties: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({current_value: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), custom: faker.datatype.boolean(), default_source: faker.helpers.arrayElement([faker.helpers.arrayElement(['iceberg','catalog','catalog_override'] as const),null,]), default_value: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), description: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), key: faker.string.alpha({length: {min: 10, max: 20}}), modified: faker.datatype.boolean(), resettable: faker.datatype.boolean()})), uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
 export const getUpdateTablePropertiesResponseMock = (overrideResponse: Partial<Extract<CatalogTableApiResponse, object>> = {}): CatalogTableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), current_snapshot_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), format_version: faker.number.int(), last_updated_ms: faker.number.int(), location: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), namespace: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), partition_spec: {fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({field_id: faker.number.int(), name: faker.string.alpha({length: {min: 10, max: 20}}), source_id: faker.number.int(), transform: faker.string.alpha({length: {min: 10, max: 20}})})), spec_id: faker.number.int()}, properties: {
@@ -61,6 +69,10 @@ export const getUpdateTablePropertiesResponseMock = (overrideResponse: Partial<E
 export const getResetCatalogTablePropertiesResponseMock = (overrideResponse: Partial<Extract<CatalogTablePropertiesApiResponse, object>> = {}): CatalogTablePropertiesApiResponse => ({iceberg_version: faker.string.alpha({length: {min: 10, max: 20}}), properties: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({current_value: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), custom: faker.datatype.boolean(), default_source: faker.helpers.arrayElement([faker.helpers.arrayElement(['iceberg','catalog','catalog_override'] as const),null,]), default_value: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), description: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), key: faker.string.alpha({length: {min: 10, max: 20}}), modified: faker.datatype.boolean(), resettable: faker.datatype.boolean()})), uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
 export const getRenameTableResponseMock = (overrideResponse: Partial<Extract<TableIdentifierApiResponse, object>> = {}): TableIdentifierApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), namespace: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
+
+export const getListCatalogTableSchemaVersionsResponseMock = (overrideResponse: Partial<Extract<CatalogTableSchemaVersionsApiResponse, object>> = {}): CatalogTableSchemaVersionsApiResponse => ({current_schema_id: faker.number.int(), versions: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({changes: faker.helpers.arrayElement([{added: faker.number.int(), doc_changed: faker.number.int(), nullability_changed: faker.number.int(), removed: faker.number.int(), renamed: faker.number.int(), type_changed: faker.number.int()},null,]), column_count: faker.number.int(), current: faker.datatype.boolean(), previous_schema_id: faker.helpers.arrayElement([faker.number.int(),null,]), schema_id: faker.number.int()})), ...overrideResponse})
+
+export const getGetCatalogTableSchemaComparisonResponseMock = (overrideResponse: Partial<Extract<CatalogTableSchemaComparisonApiResponse, object>> = {}): CatalogTableSchemaComparisonApiResponse => ({base_schema_id: faker.helpers.arrayElement([faker.number.int(),null,]), fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({changes: faker.helpers.arrayElements(['added','removed','renamed','type_changed','nullability_changed','doc_changed'] as const), depth: faker.number.int(), doc: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), field_id: faker.number.int(), path: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))),null,]), previous_doc: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), previous_path: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))),null,]), previous_required: faker.helpers.arrayElement([faker.datatype.boolean(),null,]), previous_type: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), required: faker.helpers.arrayElement([faker.datatype.boolean(),null,]), type: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,])})), schema_id: faker.number.int(), ...overrideResponse})
 
 export const getListTablesResponseMock = (): TableApiResponse[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), last_committed_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), last_discovered_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
         [faker.string.alphanumeric(5)]: {}
@@ -135,6 +147,30 @@ export const getGetCatalogTableMockHandler = (overrideResponse?: CatalogTableApi
   }, options)
 }
 
+export const getListCatalogTablePartitionSpecVersionsMockHandler = (overrideResponse?: CatalogTablePartitionSpecVersionsApiResponse | ((info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string }>>[0]) => Promise<CatalogTablePartitionSpecVersionsApiResponse> | CatalogTablePartitionSpecVersionsApiResponse), options?: RequestHandlerOptions) => {
+  return http.get<{ catalog: string; namespace: string; table: string }>('*/v1/catalogs/:catalog/namespaces/:namespace/tables/:table/partition-spec-versions', async (info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListCatalogTablePartitionSpecVersionsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetCatalogTablePartitionSpecComparisonMockHandler = (overrideResponse?: CatalogTablePartitionSpecComparisonApiResponse | ((info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string; specId: string }>>[0]) => Promise<CatalogTablePartitionSpecComparisonApiResponse> | CatalogTablePartitionSpecComparisonApiResponse), options?: RequestHandlerOptions) => {
+  return http.get<{ catalog: string; namespace: string; table: string; specId: string }>('*/v1/catalogs/:catalog/namespaces/:namespace/tables/:table/partition-spec-versions/:specId/comparison', async (info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string; specId: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetCatalogTablePartitionSpecComparisonResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getListCatalogTablePropertiesMockHandler = (overrideResponse?: CatalogTablePropertiesApiResponse | ((info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string }>>[0]) => Promise<CatalogTablePropertiesApiResponse> | CatalogTablePropertiesApiResponse), options?: RequestHandlerOptions) => {
   return http.get<{ catalog: string; namespace: string; table: string }>('*/v1/catalogs/:catalog/namespaces/:namespace/tables/:table/properties', async (info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string }>>[0]) => {
 
@@ -178,6 +214,30 @@ export const getRenameTableMockHandler = (overrideResponse?: TableIdentifierApiR
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getRenameTableResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getListCatalogTableSchemaVersionsMockHandler = (overrideResponse?: CatalogTableSchemaVersionsApiResponse | ((info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string }>>[0]) => Promise<CatalogTableSchemaVersionsApiResponse> | CatalogTableSchemaVersionsApiResponse), options?: RequestHandlerOptions) => {
+  return http.get<{ catalog: string; namespace: string; table: string }>('*/v1/catalogs/:catalog/namespaces/:namespace/tables/:table/schema-versions', async (info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListCatalogTableSchemaVersionsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetCatalogTableSchemaComparisonMockHandler = (overrideResponse?: CatalogTableSchemaComparisonApiResponse | ((info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string; schemaId: string }>>[0]) => Promise<CatalogTableSchemaComparisonApiResponse> | CatalogTableSchemaComparisonApiResponse), options?: RequestHandlerOptions) => {
+  return http.get<{ catalog: string; namespace: string; table: string; schemaId: string }>('*/v1/catalogs/:catalog/namespaces/:namespace/tables/:table/schema-versions/:schemaId/comparison', async (info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string; schemaId: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetCatalogTableSchemaComparisonResponseMock(),
       { status: 200
       })
   }, options)
@@ -283,10 +343,14 @@ export const getTablesMock = () => [
   getCreateTableMockHandler(),
   getDeleteTableMockHandler(),
   getGetCatalogTableMockHandler(),
+  getListCatalogTablePartitionSpecVersionsMockHandler(),
+  getGetCatalogTablePartitionSpecComparisonMockHandler(),
   getListCatalogTablePropertiesMockHandler(),
   getUpdateTablePropertiesMockHandler(),
   getResetCatalogTablePropertiesMockHandler(),
   getRenameTableMockHandler(),
+  getListCatalogTableSchemaVersionsMockHandler(),
+  getGetCatalogTableSchemaComparisonMockHandler(),
   getListTablesMockHandler(),
   getGetTableMockHandler(),
   getListTableCommitsMockHandler(),

@@ -556,6 +556,109 @@
         "title": "CatalogTableApiResponse",
         "type": "object"
       },
+      "CatalogTablePartitionSpecComparisonApiResponse": {
+        "description": "A partition spec version set against a base version, one row per field; the base is null for the first one.",
+        "properties": {
+          "base_spec_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Spec Id"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/PartitionFieldComparisonApiResponse"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "spec_id": {
+            "title": "Spec Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "base_spec_id",
+          "spec_id",
+          "fields"
+        ],
+        "title": "CatalogTablePartitionSpecComparisonApiResponse",
+        "type": "object"
+      },
+      "CatalogTablePartitionSpecVersionApiResponse": {
+        "description": "One partition spec version: its id, the version below it, whether it is the default, its field count and changes.\n\n``changes`` is null for the first version, which has nothing to compare with.",
+        "properties": {
+          "changes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartitionChangeCountsApiResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "default": {
+            "title": "Default",
+            "type": "boolean"
+          },
+          "field_count": {
+            "title": "Field Count",
+            "type": "integer"
+          },
+          "previous_spec_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Spec Id"
+          },
+          "spec_id": {
+            "title": "Spec Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "spec_id",
+          "previous_spec_id",
+          "default",
+          "field_count",
+          "changes"
+        ],
+        "title": "CatalogTablePartitionSpecVersionApiResponse",
+        "type": "object"
+      },
+      "CatalogTablePartitionSpecVersionsApiResponse": {
+        "description": "Every partition spec version of a table, newest id first, and the id of the default one.",
+        "properties": {
+          "default_spec_id": {
+            "title": "Default Spec Id",
+            "type": "integer"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogTablePartitionSpecVersionApiResponse"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "default_spec_id",
+          "versions"
+        ],
+        "title": "CatalogTablePartitionSpecVersionsApiResponse",
+        "type": "object"
+      },
       "CatalogTablePropertiesApiResponse": {
         "description": "Every property of a table next to its default, ordered by key, and the Iceberg version of the defaults.",
         "properties": {
@@ -663,6 +766,109 @@
           "description"
         ],
         "title": "CatalogTablePropertyApiResponse",
+        "type": "object"
+      },
+      "CatalogTableSchemaComparisonApiResponse": {
+        "description": "A schema version set against a base version, one row per field; the base is null for the first version.",
+        "properties": {
+          "base_schema_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Schema Id"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/SchemaFieldComparisonApiResponse"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "schema_id": {
+            "title": "Schema Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "base_schema_id",
+          "schema_id",
+          "fields"
+        ],
+        "title": "CatalogTableSchemaComparisonApiResponse",
+        "type": "object"
+      },
+      "CatalogTableSchemaVersionApiResponse": {
+        "description": "One schema version: its id, the version below it, whether it is current, its column count and what it changed.\n\n``changes`` is null for the first version, which has nothing to compare with.",
+        "properties": {
+          "changes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchemaChangeCountsApiResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "column_count": {
+            "title": "Column Count",
+            "type": "integer"
+          },
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "previous_schema_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Schema Id"
+          },
+          "schema_id": {
+            "title": "Schema Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_id",
+          "previous_schema_id",
+          "current",
+          "column_count",
+          "changes"
+        ],
+        "title": "CatalogTableSchemaVersionApiResponse",
+        "type": "object"
+      },
+      "CatalogTableSchemaVersionsApiResponse": {
+        "description": "Every schema version of a table, newest id first, and the id of the current one (not always the highest).",
+        "properties": {
+          "current_schema_id": {
+            "title": "Current Schema Id",
+            "type": "integer"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogTableSchemaVersionApiResponse"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "current_schema_id",
+          "versions"
+        ],
+        "title": "CatalogTableSchemaVersionsApiResponse",
         "type": "object"
       },
       "ConnectionConfigApiRequest": {
@@ -1479,6 +1685,35 @@
         "title": "NamespaceSummaryApiResponse",
         "type": "object"
       },
+      "PartitionChangeCountsApiResponse": {
+        "description": "How many partition fields of a spec version were added, removed, renamed or given another transform.",
+        "properties": {
+          "added": {
+            "title": "Added",
+            "type": "integer"
+          },
+          "removed": {
+            "title": "Removed",
+            "type": "integer"
+          },
+          "renamed": {
+            "title": "Renamed",
+            "type": "integer"
+          },
+          "transform_changed": {
+            "title": "Transform Changed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "added",
+          "removed",
+          "renamed",
+          "transform_changed"
+        ],
+        "title": "PartitionChangeCountsApiResponse",
+        "type": "object"
+      },
       "PartitionFieldApiRequest": {
         "additionalProperties": false,
         "description": "One partition field of the create table form: the top-level column and its transform.",
@@ -1526,6 +1761,155 @@
           "transform"
         ],
         "title": "PartitionFieldApiResponse",
+        "type": "object"
+      },
+      "PartitionFieldComparisonApiResponse": {
+        "description": "One partition field of a spec comparison, with its current and previous state and ``transform(column)`` text.\n\nThe current side is null for a removed field and the previous side null for an added one;\na field whose transform changed carries its new field id and the old one in ``previous_field_id``.\n``changes`` is empty for an unchanged field.",
+        "properties": {
+          "changes": {
+            "items": {
+              "enum": [
+                "added",
+                "removed",
+                "renamed",
+                "transform_changed"
+              ],
+              "type": "string"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "expression": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expression"
+          },
+          "field_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "previous_expression": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Expression"
+          },
+          "previous_field_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Field Id"
+          },
+          "previous_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Name"
+          },
+          "previous_source_path": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Source Path"
+          },
+          "previous_transform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Transform"
+          },
+          "source_path": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Path"
+          },
+          "transform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transform"
+          }
+        },
+        "required": [
+          "field_id",
+          "previous_field_id",
+          "name",
+          "previous_name",
+          "source_path",
+          "previous_source_path",
+          "transform",
+          "previous_transform",
+          "changes",
+          "expression",
+          "previous_expression"
+        ],
+        "title": "PartitionFieldComparisonApiResponse",
         "type": "object"
       },
       "PartitionSpecApiResponse": {
@@ -2308,6 +2692,45 @@
         "title": "SchemaApiResponse",
         "type": "object"
       },
+      "SchemaChangeCountsApiResponse": {
+        "description": "How many fields a schema version added, removed, renamed, retyped, made required or optional, or redocumented.",
+        "properties": {
+          "added": {
+            "title": "Added",
+            "type": "integer"
+          },
+          "doc_changed": {
+            "title": "Doc Changed",
+            "type": "integer"
+          },
+          "nullability_changed": {
+            "title": "Nullability Changed",
+            "type": "integer"
+          },
+          "removed": {
+            "title": "Removed",
+            "type": "integer"
+          },
+          "renamed": {
+            "title": "Renamed",
+            "type": "integer"
+          },
+          "type_changed": {
+            "title": "Type Changed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "added",
+          "removed",
+          "renamed",
+          "type_changed",
+          "nullability_changed",
+          "doc_changed"
+        ],
+        "title": "SchemaChangeCountsApiResponse",
+        "type": "object"
+      },
       "SchemaFieldApiRequest": {
         "additionalProperties": false,
         "description": "One column of the create table form; ``type`` is an Iceberg primitive or the nested type syntax.",
@@ -2383,6 +2806,143 @@
           "doc"
         ],
         "title": "SchemaFieldApiResponse",
+        "type": "object"
+      },
+      "SchemaFieldComparisonApiResponse": {
+        "description": "One field of a schema comparison matched by field id, with its current and previous state.\n\nThe current side is null for a removed field and the previous side null for an added one;\na path lists the names from the top-level column down, and ``type`` is the outer type\n(``struct``, ``list``, ``map`` or the primitive). ``changes`` is empty for an unchanged field.",
+        "properties": {
+          "changes": {
+            "items": {
+              "enum": [
+                "added",
+                "removed",
+                "renamed",
+                "type_changed",
+                "nullability_changed",
+                "doc_changed"
+              ],
+              "type": "string"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "doc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc"
+          },
+          "field_id": {
+            "title": "Field Id",
+            "type": "integer"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "previous_doc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Doc"
+          },
+          "previous_path": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Path"
+          },
+          "previous_required": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Required"
+          },
+          "previous_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Type"
+          },
+          "required": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "required": [
+          "field_id",
+          "depth",
+          "path",
+          "previous_path",
+          "type",
+          "previous_type",
+          "required",
+          "previous_required",
+          "doc",
+          "previous_doc",
+          "changes"
+        ],
+        "title": "SchemaFieldComparisonApiResponse",
         "type": "object"
       },
       "SetTablePriorityApiRequest": {
@@ -5583,6 +6143,153 @@
         ]
       }
     },
+    "/v1/catalogs/{catalog}/namespaces/{namespace}/tables/{table}/partition-spec-versions": {
+      "get": {
+        "description": "Return every partition spec version of the table, newest id first, each with what it changed.",
+        "operationId": "list_catalog_table_partition_spec_versions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogTablePartitionSpecVersionsApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Catalog Table Partition Spec Versions",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/catalogs/{catalog}/namespaces/{namespace}/tables/{table}/partition-spec-versions/{spec_id}/comparison": {
+      "get": {
+        "description": "Return every field of a partition spec version set against ``base``, else the previous version.",
+        "operationId": "get_catalog_table_partition_spec_comparison",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spec_id",
+            "required": true,
+            "schema": {
+              "title": "Spec Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "base",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Base"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogTablePartitionSpecComparisonApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Catalog Table Partition Spec Comparison",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
     "/v1/catalogs/{catalog}/namespaces/{namespace}/tables/{table}/properties": {
       "get": {
         "description": "Return every property of the table next to its default (Iceberg's or the catalog's), ordered by key.",
@@ -5850,6 +6557,153 @@
           }
         },
         "summary": "Rename Table",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/catalogs/{catalog}/namespaces/{namespace}/tables/{table}/schema-versions": {
+      "get": {
+        "description": "Return every schema version of the table, newest id first, each with what it changed against the one below.",
+        "operationId": "list_catalog_table_schema_versions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogTableSchemaVersionsApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Catalog Table Schema Versions",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/catalogs/{catalog}/namespaces/{namespace}/tables/{table}/schema-versions/{schema_id}/comparison": {
+      "get": {
+        "description": "Return every field of a schema version set against ``base``, else the previous version, matched by field id.",
+        "operationId": "get_catalog_table_schema_comparison",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "schema_id",
+            "required": true,
+            "schema": {
+              "title": "Schema Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "base",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Base"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogTableSchemaComparisonApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Catalog Table Schema Comparison",
         "tags": [
           "tables"
         ]

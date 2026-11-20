@@ -25,8 +25,14 @@ import type {
 
 import type {
   CatalogTableApiResponse,
+  CatalogTablePartitionSpecComparisonApiResponse,
+  CatalogTablePartitionSpecVersionsApiResponse,
   CatalogTablePropertiesApiResponse,
+  CatalogTableSchemaComparisonApiResponse,
+  CatalogTableSchemaVersionsApiResponse,
   CreateTableApiRequest,
+  GetCatalogTablePartitionSpecComparisonParams,
+  GetCatalogTableSchemaComparisonParams,
   GetTableMetricTrendsParams,
   HTTPValidationError,
   ListTableCommitsParams,
@@ -462,6 +468,263 @@ export function useGetCatalogTable<TData = Awaited<ReturnType<typeof getCatalogT
 
 
 
+export const getListCatalogTablePartitionSpecVersionsUrl = (catalog: string,
+    namespace: string,
+    table: string,) => {
+
+
+
+
+  return `/v1/catalogs/${encodeURIComponent(String(catalog))}/namespaces/${encodeURIComponent(String(namespace))}/tables/${encodeURIComponent(String(table))}/partition-spec-versions`
+}
+
+/**
+ * Return every partition spec version of the table, newest id first, each with what it changed.
+ * @summary List Catalog Table Partition Spec Versions
+ */
+export const listCatalogTablePartitionSpecVersions = async (catalog: string,
+    namespace: string,
+    table: string, options?: Parameters<typeof apiFetch>[1]): Promise<CatalogTablePartitionSpecVersionsApiResponse> => {
+
+  return apiFetch<CatalogTablePartitionSpecVersionsApiResponse>(getListCatalogTablePartitionSpecVersionsUrl(catalog,namespace,table),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCatalogTablePartitionSpecVersionsQueryKey = (catalog: string,
+    namespace: string,
+    table: string,) => {
+    return [
+    `/v1/catalogs/${catalog}/namespaces/${namespace}/tables/${table}/partition-spec-versions`
+    ] as const;
+    }
+
+
+export const getListCatalogTablePartitionSpecVersionsQueryOptions = <TData = Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>, TError = HTTPValidationError>(catalog: string,
+    namespace: string,
+    table: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCatalogTablePartitionSpecVersionsQueryKey(catalog,namespace,table);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>> = ({ signal }) => listCatalogTablePartitionSpecVersions(catalog,namespace,table, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: catalog !== null && catalog !== undefined && namespace !== null && namespace !== undefined && table !== null && table !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListCatalogTablePartitionSpecVersionsQueryResult = NonNullable<Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>>
+export type ListCatalogTablePartitionSpecVersionsQueryError = HTTPValidationError
+
+
+export function useListCatalogTablePartitionSpecVersions<TData = Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>,
+          TError,
+          Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCatalogTablePartitionSpecVersions<TData = Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>,
+          TError,
+          Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCatalogTablePartitionSpecVersions<TData = Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Catalog Table Partition Spec Versions
+ */
+
+export function useListCatalogTablePartitionSpecVersions<TData = Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogTablePartitionSpecVersions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListCatalogTablePartitionSpecVersionsQueryOptions(catalog,namespace,table,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetCatalogTablePartitionSpecComparisonUrl = (catalog: string,
+    namespace: string,
+    table: string,
+    specId: number,
+    params?: GetCatalogTablePartitionSpecComparisonParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/catalogs/${encodeURIComponent(String(catalog))}/namespaces/${encodeURIComponent(String(namespace))}/tables/${encodeURIComponent(String(table))}/partition-spec-versions/${encodeURIComponent(String(specId))}/comparison?${stringifiedParams}` : `/v1/catalogs/${encodeURIComponent(String(catalog))}/namespaces/${encodeURIComponent(String(namespace))}/tables/${encodeURIComponent(String(table))}/partition-spec-versions/${encodeURIComponent(String(specId))}/comparison`
+}
+
+/**
+ * Return every field of a partition spec version set against ``base``, else the previous version.
+ * @summary Get Catalog Table Partition Spec Comparison
+ */
+export const getCatalogTablePartitionSpecComparison = async (catalog: string,
+    namespace: string,
+    table: string,
+    specId: number,
+    params?: GetCatalogTablePartitionSpecComparisonParams, options?: Parameters<typeof apiFetch>[1]): Promise<CatalogTablePartitionSpecComparisonApiResponse> => {
+
+  return apiFetch<CatalogTablePartitionSpecComparisonApiResponse>(getGetCatalogTablePartitionSpecComparisonUrl(catalog,namespace,table,specId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCatalogTablePartitionSpecComparisonQueryKey = (catalog: string,
+    namespace: string,
+    table: string,
+    specId: number,
+    params?: GetCatalogTablePartitionSpecComparisonParams,) => {
+    return [
+    `/v1/catalogs/${catalog}/namespaces/${namespace}/tables/${table}/partition-spec-versions/${specId}/comparison`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCatalogTablePartitionSpecComparisonQueryOptions = <TData = Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>, TError = HTTPValidationError>(catalog: string,
+    namespace: string,
+    table: string,
+    specId: number,
+    params?: GetCatalogTablePartitionSpecComparisonParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCatalogTablePartitionSpecComparisonQueryKey(catalog,namespace,table,specId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>> = ({ signal }) => getCatalogTablePartitionSpecComparison(catalog,namespace,table,specId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: catalog !== null && catalog !== undefined && namespace !== null && namespace !== undefined && table !== null && table !== undefined && specId !== null && specId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCatalogTablePartitionSpecComparisonQueryResult = NonNullable<Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>>
+export type GetCatalogTablePartitionSpecComparisonQueryError = HTTPValidationError
+
+
+export function useGetCatalogTablePartitionSpecComparison<TData = Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string,
+    specId: number,
+    params: undefined |  GetCatalogTablePartitionSpecComparisonParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>,
+          TError,
+          Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCatalogTablePartitionSpecComparison<TData = Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string,
+    specId: number,
+    params?: GetCatalogTablePartitionSpecComparisonParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>,
+          TError,
+          Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCatalogTablePartitionSpecComparison<TData = Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string,
+    specId: number,
+    params?: GetCatalogTablePartitionSpecComparisonParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Catalog Table Partition Spec Comparison
+ */
+
+export function useGetCatalogTablePartitionSpecComparison<TData = Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string,
+    specId: number,
+    params?: GetCatalogTablePartitionSpecComparisonParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalogTablePartitionSpecComparison>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCatalogTablePartitionSpecComparisonQueryOptions(catalog,namespace,table,specId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 export const getListCatalogTablePropertiesUrl = (catalog: string,
     namespace: string,
     table: string,) => {
@@ -858,7 +1121,264 @@ export const useRenameTable = <TError = HTTPValidationError,
       > => {
       return useMutation(getRenameTableMutationOptions(options), queryClient);
     }
-    export const getListTablesUrl = (params?: ListTablesParams,) => {
+    export const getListCatalogTableSchemaVersionsUrl = (catalog: string,
+    namespace: string,
+    table: string,) => {
+
+
+
+
+  return `/v1/catalogs/${encodeURIComponent(String(catalog))}/namespaces/${encodeURIComponent(String(namespace))}/tables/${encodeURIComponent(String(table))}/schema-versions`
+}
+
+/**
+ * Return every schema version of the table, newest id first, each with what it changed against the one below.
+ * @summary List Catalog Table Schema Versions
+ */
+export const listCatalogTableSchemaVersions = async (catalog: string,
+    namespace: string,
+    table: string, options?: Parameters<typeof apiFetch>[1]): Promise<CatalogTableSchemaVersionsApiResponse> => {
+
+  return apiFetch<CatalogTableSchemaVersionsApiResponse>(getListCatalogTableSchemaVersionsUrl(catalog,namespace,table),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCatalogTableSchemaVersionsQueryKey = (catalog: string,
+    namespace: string,
+    table: string,) => {
+    return [
+    `/v1/catalogs/${catalog}/namespaces/${namespace}/tables/${table}/schema-versions`
+    ] as const;
+    }
+
+
+export const getListCatalogTableSchemaVersionsQueryOptions = <TData = Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>, TError = HTTPValidationError>(catalog: string,
+    namespace: string,
+    table: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCatalogTableSchemaVersionsQueryKey(catalog,namespace,table);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>> = ({ signal }) => listCatalogTableSchemaVersions(catalog,namespace,table, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: catalog !== null && catalog !== undefined && namespace !== null && namespace !== undefined && table !== null && table !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListCatalogTableSchemaVersionsQueryResult = NonNullable<Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>>
+export type ListCatalogTableSchemaVersionsQueryError = HTTPValidationError
+
+
+export function useListCatalogTableSchemaVersions<TData = Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>,
+          TError,
+          Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCatalogTableSchemaVersions<TData = Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>,
+          TError,
+          Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCatalogTableSchemaVersions<TData = Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Catalog Table Schema Versions
+ */
+
+export function useListCatalogTableSchemaVersions<TData = Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogTableSchemaVersions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListCatalogTableSchemaVersionsQueryOptions(catalog,namespace,table,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetCatalogTableSchemaComparisonUrl = (catalog: string,
+    namespace: string,
+    table: string,
+    schemaId: number,
+    params?: GetCatalogTableSchemaComparisonParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/catalogs/${encodeURIComponent(String(catalog))}/namespaces/${encodeURIComponent(String(namespace))}/tables/${encodeURIComponent(String(table))}/schema-versions/${encodeURIComponent(String(schemaId))}/comparison?${stringifiedParams}` : `/v1/catalogs/${encodeURIComponent(String(catalog))}/namespaces/${encodeURIComponent(String(namespace))}/tables/${encodeURIComponent(String(table))}/schema-versions/${encodeURIComponent(String(schemaId))}/comparison`
+}
+
+/**
+ * Return every field of a schema version set against ``base``, else the previous version, matched by field id.
+ * @summary Get Catalog Table Schema Comparison
+ */
+export const getCatalogTableSchemaComparison = async (catalog: string,
+    namespace: string,
+    table: string,
+    schemaId: number,
+    params?: GetCatalogTableSchemaComparisonParams, options?: Parameters<typeof apiFetch>[1]): Promise<CatalogTableSchemaComparisonApiResponse> => {
+
+  return apiFetch<CatalogTableSchemaComparisonApiResponse>(getGetCatalogTableSchemaComparisonUrl(catalog,namespace,table,schemaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCatalogTableSchemaComparisonQueryKey = (catalog: string,
+    namespace: string,
+    table: string,
+    schemaId: number,
+    params?: GetCatalogTableSchemaComparisonParams,) => {
+    return [
+    `/v1/catalogs/${catalog}/namespaces/${namespace}/tables/${table}/schema-versions/${schemaId}/comparison`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCatalogTableSchemaComparisonQueryOptions = <TData = Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>, TError = HTTPValidationError>(catalog: string,
+    namespace: string,
+    table: string,
+    schemaId: number,
+    params?: GetCatalogTableSchemaComparisonParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCatalogTableSchemaComparisonQueryKey(catalog,namespace,table,schemaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>> = ({ signal }) => getCatalogTableSchemaComparison(catalog,namespace,table,schemaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: catalog !== null && catalog !== undefined && namespace !== null && namespace !== undefined && table !== null && table !== undefined && schemaId !== null && schemaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCatalogTableSchemaComparisonQueryResult = NonNullable<Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>>
+export type GetCatalogTableSchemaComparisonQueryError = HTTPValidationError
+
+
+export function useGetCatalogTableSchemaComparison<TData = Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string,
+    schemaId: number,
+    params: undefined |  GetCatalogTableSchemaComparisonParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>,
+          TError,
+          Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCatalogTableSchemaComparison<TData = Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string,
+    schemaId: number,
+    params?: GetCatalogTableSchemaComparisonParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>,
+          TError,
+          Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCatalogTableSchemaComparison<TData = Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string,
+    schemaId: number,
+    params?: GetCatalogTableSchemaComparisonParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Catalog Table Schema Comparison
+ */
+
+export function useGetCatalogTableSchemaComparison<TData = Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string,
+    schemaId: number,
+    params?: GetCatalogTableSchemaComparisonParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalogTableSchemaComparison>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCatalogTableSchemaComparisonQueryOptions(catalog,namespace,table,schemaId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getListTablesUrl = (params?: ListTablesParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {

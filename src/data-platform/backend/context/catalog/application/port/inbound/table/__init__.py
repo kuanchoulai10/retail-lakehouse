@@ -29,6 +29,33 @@ from context.catalog.application.port.inbound.table.get_table.output import (
 from context.catalog.application.port.inbound.table.get_table.use_case import (
     GetTableUseCase,
 )
+from context.catalog.application.port.inbound.table.get_table_partition_spec_comparison.input import (
+    GetTablePartitionSpecComparisonUseCaseInput,
+)
+from context.catalog.application.port.inbound.table.get_table_partition_spec_comparison.output import (
+    GetTablePartitionSpecComparisonUseCaseOutput,
+)
+from context.catalog.application.port.inbound.table.get_table_partition_spec_comparison.use_case import (
+    GetTablePartitionSpecComparisonUseCase,
+)
+from context.catalog.application.port.inbound.table.get_table_schema_comparison.input import (
+    GetTableSchemaComparisonUseCaseInput,
+)
+from context.catalog.application.port.inbound.table.get_table_schema_comparison.output import (
+    GetTableSchemaComparisonUseCaseOutput,
+)
+from context.catalog.application.port.inbound.table.get_table_schema_comparison.use_case import (
+    GetTableSchemaComparisonUseCase,
+)
+from context.catalog.application.port.inbound.table.list_table_partition_spec_versions.input import (
+    ListTablePartitionSpecVersionsUseCaseInput,
+)
+from context.catalog.application.port.inbound.table.list_table_partition_spec_versions.output import (
+    ListTablePartitionSpecVersionsUseCaseOutput,
+)
+from context.catalog.application.port.inbound.table.list_table_partition_spec_versions.use_case import (
+    ListTablePartitionSpecVersionsUseCase,
+)
 from context.catalog.application.port.inbound.table.list_table_properties.input import (
     ListTablePropertiesUseCaseInput,
 )
@@ -37,6 +64,15 @@ from context.catalog.application.port.inbound.table.list_table_properties.output
 )
 from context.catalog.application.port.inbound.table.list_table_properties.use_case import (
     ListTablePropertiesUseCase,
+)
+from context.catalog.application.port.inbound.table.list_table_schema_versions.input import (
+    ListTableSchemaVersionsUseCaseInput,
+)
+from context.catalog.application.port.inbound.table.list_table_schema_versions.output import (
+    ListTableSchemaVersionsUseCaseOutput,
+)
+from context.catalog.application.port.inbound.table.list_table_schema_versions.use_case import (
+    ListTableSchemaVersionsUseCase,
 )
 from context.catalog.application.port.inbound.table.list_tables.input import (
     ListTablesUseCaseInput,
@@ -82,12 +118,24 @@ __all__ = [
     "DeleteTableUseCase",
     "DeleteTableUseCaseInput",
     "DeleteTableUseCaseOutput",
+    "GetTablePartitionSpecComparisonUseCase",
+    "GetTablePartitionSpecComparisonUseCaseInput",
+    "GetTablePartitionSpecComparisonUseCaseOutput",
+    "GetTableSchemaComparisonUseCase",
+    "GetTableSchemaComparisonUseCaseInput",
+    "GetTableSchemaComparisonUseCaseOutput",
     "GetTableUseCase",
     "GetTableUseCaseInput",
     "GetTableUseCaseOutput",
+    "ListTablePartitionSpecVersionsUseCase",
+    "ListTablePartitionSpecVersionsUseCaseInput",
+    "ListTablePartitionSpecVersionsUseCaseOutput",
     "ListTablePropertiesUseCase",
     "ListTablePropertiesUseCaseInput",
     "ListTablePropertiesUseCaseOutput",
+    "ListTableSchemaVersionsUseCase",
+    "ListTableSchemaVersionsUseCaseInput",
+    "ListTableSchemaVersionsUseCaseOutput",
     "ListTablesUseCase",
     "ListTablesUseCaseInput",
     "ListTablesUseCaseOutput",

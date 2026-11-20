@@ -12,19 +12,31 @@ from context.catalog.adapter.inbound.web.shared import (
 )
 from context.catalog.adapter.inbound.web.table.dto import (
     CatalogTableApiResponse,
+    CatalogTablePartitionSpecComparisonApiResponse,
+    CatalogTablePartitionSpecVersionApiResponse,
+    CatalogTablePartitionSpecVersionsApiResponse,
     CatalogTablePropertiesApiResponse,
     CatalogTablePropertyApiResponse,
+    CatalogTableSchemaComparisonApiResponse,
+    CatalogTableSchemaVersionApiResponse,
+    CatalogTableSchemaVersionsApiResponse,
     CreateTableApiRequest,
+    PartitionFieldComparisonApiResponse,
     RenameTableApiRequest,
     ResetTablePropertiesApiRequest,
+    SchemaFieldComparisonApiResponse,
     TableIdentifierApiResponse,
     UpdateTablePropertiesApiRequest,
 )
 from context.catalog.application.port.inbound.table import (
     CreateTableUseCaseInput,
     DeleteTableUseCaseInput,
+    GetTablePartitionSpecComparisonUseCaseInput,
+    GetTableSchemaComparisonUseCaseInput,
     GetTableUseCaseInput,
+    ListTablePartitionSpecVersionsUseCaseInput,
     ListTablePropertiesUseCaseInput,
+    ListTableSchemaVersionsUseCaseInput,
     ListTablesUseCaseInput,
     RenameTableUseCaseInput,
     ResetTablePropertiesUseCaseInput,
@@ -166,3 +178,65 @@ def reset_table_properties(
         )
     )
     return _properties_response(output)
+
+
+@router.get("/{table}/schema-versions", name="list_catalog_table_schema_versions")
+def list_table_schema_versions(
+    catalog: str, namespace: str, table: str, use_cases: UseCases
+) -> CatalogTableSchemaVersionsApiResponse:
+    """Return every schema version of the table, newest id first, each with what it changed against the one below."""
+    output = use_cases.list_table_schema_versions.execute(
+        ListTableSchemaVersionsUseCaseInput(catalog=catalog, namespace=_parts(namespace), name=table)
+    )
+    return CatalogTableSchemaVersionsApiResponse(
+        current_schema_id=output.current_schema_id,
+        versions=[CatalogTableSchemaVersionApiResponse.model_validate(item) for item in output.items],
+    )
+
+
+@router.get("/{table}/schema-versions/{schema_id}/comparison", name="get_catalog_table_schema_comparison")
+def get_table_schema_comparison(
+    catalog: str, namespace: str, table: str, schema_id: int, use_cases: UseCases, base: int | None = None
+) -> CatalogTableSchemaComparisonApiResponse:
+    """Return every field of a schema version set against ``base``, else the previous version, matched by field id."""
+    output = use_cases.get_table_schema_comparison.execute(
+        GetTableSchemaComparisonUseCaseInput(
+            catalog=catalog, namespace=_parts(namespace), name=table, schema_id=schema_id, base_schema_id=base
+        )
+    )
+    return CatalogTableSchemaComparisonApiResponse(
+        base_schema_id=output.base_schema_id,
+        schema_id=output.schema_id,
+        fields=[SchemaFieldComparisonApiResponse.model_validate(item) for item in output.items],
+    )
+
+
+@router.get("/{table}/partition-spec-versions", name="list_catalog_table_partition_spec_versions")
+def list_table_partition_spec_versions(
+    catalog: str, namespace: str, table: str, use_cases: UseCases
+) -> CatalogTablePartitionSpecVersionsApiResponse:
+    """Return every partition spec version of the table, newest id first, each with what it changed."""
+    output = use_cases.list_table_partition_spec_versions.execute(
+        ListTablePartitionSpecVersionsUseCaseInput(catalog=catalog, namespace=_parts(namespace), name=table)
+    )
+    return CatalogTablePartitionSpecVersionsApiResponse(
+        default_spec_id=output.default_spec_id,
+        versions=[CatalogTablePartitionSpecVersionApiResponse.model_validate(item) for item in output.items],
+    )
+
+
+@router.get("/{table}/partition-spec-versions/{spec_id}/comparison", name="get_catalog_table_partition_spec_comparison")
+def get_table_partition_spec_comparison(
+    catalog: str, namespace: str, table: str, spec_id: int, use_cases: UseCases, base: int | None = None
+) -> CatalogTablePartitionSpecComparisonApiResponse:
+    """Return every field of a partition spec version set against ``base``, else the previous version."""
+    output = use_cases.get_table_partition_spec_comparison.execute(
+        GetTablePartitionSpecComparisonUseCaseInput(
+            catalog=catalog, namespace=_parts(namespace), name=table, spec_id=spec_id, base_spec_id=base
+        )
+    )
+    return CatalogTablePartitionSpecComparisonApiResponse(
+        base_spec_id=output.base_spec_id,
+        spec_id=output.spec_id,
+        fields=[PartitionFieldComparisonApiResponse.model_validate(item) for item in output.items],
+    )

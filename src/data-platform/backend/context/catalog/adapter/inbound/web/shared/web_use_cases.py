@@ -29,8 +29,12 @@ if TYPE_CHECKING:
     from context.catalog.application.port.inbound.table import (
         CreateTableUseCase,
         DeleteTableUseCase,
+        GetTablePartitionSpecComparisonUseCase,
+        GetTableSchemaComparisonUseCase,
         GetTableUseCase,
+        ListTablePartitionSpecVersionsUseCase,
         ListTablePropertiesUseCase,
+        ListTableSchemaVersionsUseCase,
         ListTablesUseCase,
         RenameTableUseCase,
         ResetTablePropertiesUseCase,
@@ -66,6 +70,10 @@ class WebUseCases:
     update_table_properties: UpdateTablePropertiesUseCase
     list_table_properties: ListTablePropertiesUseCase
     reset_table_properties: ResetTablePropertiesUseCase
+    list_table_schema_versions: ListTableSchemaVersionsUseCase
+    get_table_schema_comparison: GetTableSchemaComparisonUseCase
+    list_table_partition_spec_versions: ListTablePartitionSpecVersionsUseCase
+    get_table_partition_spec_comparison: GetTablePartitionSpecComparisonUseCase
     list_generic_tables: ListGenericTablesUseCase
     get_generic_table: GetGenericTableUseCase
     create_generic_table: CreateGenericTableUseCase

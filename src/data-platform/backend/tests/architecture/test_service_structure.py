@@ -64,6 +64,7 @@ UTILITY_FILES = {
     "last_commit_of.py",
     "table_property_output_fields.py",
     "load_table_and_catalog.py",
+    "load_table.py",
 }
 
 # Known verbs for service naming. This is a pre-defined allowlist, not an
