@@ -103,6 +103,30 @@ export const OnlyChanges: Story = {
     await expect(rows[2]).toHaveTextContent("Added");
     await expect(rows[3]).toHaveTextContent("Removed");
     await expect(canvas.queryByText("order_id")).toBeNull();
+    await expect(canvas.getByText("legacy_flag")).toHaveClass("line-through");
+    await expect(canvas.getByText("coupon_code")).not.toHaveClass("line-through");
+    await expect(canvas.getByText("customer")).not.toHaveClass("line-through");
+    await expect(rows[1]).toHaveTextContent("shipping.postcode");
+    await expect(rows[1]?.style.paddingInlineStart).toBe("1rem");
+    await expect(rows[0]?.style.paddingInlineStart).toBe("0rem");
+    for (const [index, sign] of ["~", "~", "+", "\u2212"].entries()) {
+      const hidden = rows[index]?.querySelector("[aria-hidden='true']");
+      await expect(hidden).toHaveTextContent(sign as string);
+    }
+    const arrow = [...(rows[0]?.querySelectorAll("[aria-hidden='true']") ?? [])].find((node) =>
+      node.textContent?.includes("\u2192"),
+    );
+    await expect(arrow).toBeDefined();
+  },
+};
+
+export const ChangedWithoutTags: Story = {
+  args: {
+    items: [{ id: "1", change: "changed", label: "owner", before: "ana", after: "bo" }],
+  },
+  play: async ({ canvasElement }) => {
+    const row = within(canvasElement).getByRole("listitem");
+    await expect(within(row).getByText("Changed")).toBeVisible();
   },
 };
 
@@ -160,7 +184,7 @@ export const Phone: Story = {
         id: "1",
         change: "added",
         label: `payload.${"a_nested_field_with_a_very_long_name.".repeat(3)}x`.slice(0, 120),
-        after: "string",
+        after: `map<string,struct<${"a_nested_value_type_".repeat(8)}>>`,
       },
       ...SCHEMA_ITEMS,
     ],

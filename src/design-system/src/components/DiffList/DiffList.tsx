@@ -48,7 +48,10 @@ function badgesOf(item: DiffListItem): string[] {
   if (item.change === "removed") {
     return ["Removed"];
   }
-  return item.change === "changed" ? (item.tags ?? []) : [];
+  if (item.change === "changed") {
+    return item.tags?.length ? item.tags : ["Changed"];
+  }
+  return [];
 }
 
 function valueOf(item: DiffListItem): ReactNode {
@@ -86,7 +89,7 @@ export function DiffList({
     <div className={cn("type-body-medium flex min-w-0 flex-col", className)}>
       <div className="flex flex-wrap items-center justify-between gap-x-4">
         <Switch label={onlyChangesLabel} checked={onlyChanges} onCheckedChange={onOnlyChangesChange} />
-        <p className="text-on-surface-variant" aria-live="polite">
+        <p className="text-on-surface-variant">
           {countText(changes)}
         </p>
       </div>
