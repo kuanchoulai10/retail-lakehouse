@@ -20,9 +20,11 @@ def make_request():
             "table": "orders",
             "where": [],
             "procedure_args": {
-                "target-file-size-bytes": 536870912,
-                "min-input-files": 2,
-                "partial-progress.enabled": True,
+                "options": {
+                    "target-file-size-bytes": 536870912,
+                    "min-input-files": 2,
+                    "partial-progress.enabled": True,
+                },
             },
             "callback_url": "http://cb/result",
         }

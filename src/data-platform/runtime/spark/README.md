@@ -19,6 +19,18 @@ The runtime runs one `CALL \`{catalog}\`.system.{operation}(...)` per entry of `
 other value fails the job. String arguments are embedded with Spark escaping (backslash
 doubled, then quote backslash-escaped). The session time zone is UTC.
 
+`procedure_args` holds only the keys below for each operation, rendered in this order after
+`table => ...` and before `where`; a key outside them, a `strategy` outside `binpack` / `sort`, a
+`prefix_mismatch_mode` outside `ERROR` / `IGNORE` / `DELETE`, a non-boolean where a boolean belongs
+or a non-positive integer fails the job (`ValueError`), so a renamed argument is never dropped silently.
+
+| Operation | `procedure_args` keys |
+|---|---|
+| `rewrite_data_files` | `strategy` (`binpack` / `sort`), `sort_order` (free text, embedded as a string literal), `options` (an object of Iceberg option names to values, rendered as `options => map(...)`; left out when empty) |
+| `rewrite_manifests` | `use_caching` |
+| `expire_snapshots` | `older_than` (ISO-8601), `retain_last`, `max_concurrent_deletes`, `stream_results` |
+| `remove_orphan_files` | `older_than` (ISO-8601), `max_concurrent_deletes`, `prefix_mismatch_mode`; `prefix_listing => true` is always added |
+
 Integer result columns are summed by name across the CALLs and reported as `metrics`.
 
 ## Callback

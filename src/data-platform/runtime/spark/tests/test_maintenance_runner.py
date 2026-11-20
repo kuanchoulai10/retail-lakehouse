@@ -138,7 +138,7 @@ def test_failed_files_count_of_other_operations_is_not_checked(make_request):
     posted = []
     rows = [_Row(rewritten_data_files_count=0, failed_data_files_count=1)]
     code = run_maintenance(
-        make_request(operation="rewrite_manifests"),
+        make_request(operation="rewrite_manifests", procedure_args={}),
         lambda _sql: _Result(rows),
         post=lambda url, body: posted.append(body) or True,
     )
