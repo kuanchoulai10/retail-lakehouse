@@ -679,6 +679,35 @@ def test_plan_of_a_policy_without_compaction_still_saves_reducible_files(
     assert _saved_metrics(metrics_store).reducible_files == 18
 
 
+def _database_down(_metrics):
+    raise RuntimeError("metrics database is down")
+
+
+@pytest.mark.parametrize("failure", ["save", "measure"])
+def test_a_metrics_failure_leaves_the_plan_alone(
+    failure, tables_repo, catalog, resolve_applicable_policy, policies, metrics_store, monkeypatch, caplog, now
+):
+    """A metrics store that fails or an observation that cannot be measured costs only a warning, not the plan."""
+    planner = plan_service_on_fakes(tables_repo, catalog, resolve_applicable_policy, metrics_store)
+    table = _table(tables_repo, now)
+    if failure == "save":
+        _observe(catalog, now)
+        monkeypatch.setattr(metrics_store, "save", _database_down)
+    else:
+        # more deletion vectors than position delete files: measuring gives a negative count
+        _observe(catalog, now, partitions=[{**_partition(0, ["eu"]), "deletion_vector_count": 3}])
+    _mark_under_current_policy(planner, table, tables_repo, now)
+    _use_policy(policies, now, DEFAULT)
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        plan = _plan(planner, now)
+    assert plan.status == "planned"
+    assert _checks(plan)["rewrite_data_files"].verdict == "due"
+    assert tables_repo.get(TableId("u-1")).operation_state(OPS.REWRITE_DATA_FILES).attention is None
+    assert _saved_metrics(metrics_store) is None
+    assert any("u-1" in record.getMessage() for record in caplog.records if record.levelname == "WARNING")
+
+
 def test_unmanaged_table_loses_its_metrics(planner, tables_repo, metrics_store, now):
     """A plan of an unmanaged table forgets its metrics."""
     _table(tables_repo, now).unmanage(now)

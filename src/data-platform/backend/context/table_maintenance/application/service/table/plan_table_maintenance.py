@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
@@ -55,6 +56,8 @@ if TYPE_CHECKING:
         TableMetricsStore,
         TablesRepo,
     )
+
+logger = logging.getLogger(__name__)
 
 _SKIP_REASONS = {
     TableStatus.DROPPED: "dropped",
@@ -123,7 +126,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                 self._forget_metrics(request.table_uuid)
                 return _skip("not_found", applied, policy, table, manual_priority)
             self._record_last_commit(table, observation.last_committed_at)
-            self._metrics_store.save(measure_table(table.id, observation, request.now))
+            self._save_metrics(table, observation, request.now)
             self._lift_stale_marks(table, applied, request.now)
             if manual is not None:
                 plan = plan_manual_maintenance(manual)
@@ -161,8 +164,18 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         if at is not None and table.record_last_commit(at):
             self._tables_repo.record_last_commit(table.id, at)
 
+    def _save_metrics(self, table: Table, observation: TableObservation, at: datetime) -> None:
+        """Save the metrics ``observation`` shows; a failure to measure or save them is logged and nothing more.
+
+        The metrics only show the table's state, so a metrics problem never stops its maintenance.
+        """
+        try:
+            self._metrics_store.save(measure_table(table.id, observation, at))
+        except Exception as exc:
+            logger.warning("could not save the metrics of table %s: %s", table.id.value, exc)
+
     def _forget_metrics(self, table_uuid: str) -> None:
-        """Delete the metrics kept for ``table_uuid``, since a table that cannot be observed has none to show."""
+        """Delete the metrics kept for ``table_uuid``, since a table maintenance no longer observes has none to show."""
         self._metrics_store.delete(TableId(table_uuid))
 
     def _resolve(self, table: Table) -> ResolveApplicableTableMaintenancePolicyUseCaseOutput:
