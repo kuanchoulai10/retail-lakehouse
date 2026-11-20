@@ -510,7 +510,7 @@ wait_for_quiet_table() {
   deadline=$(( $(date +%s) + RUN_TIMEOUT_SECONDS ))
   while (( $(date +%s) < deadline )); do
     active="$(api GET "/v1/tables/${uuid}/table-maintenance-runs?limit=500" \
-      | jq '[.[] | select(.status == "pending" or .status == "running")] | length')"
+      | jq '[.[] | select(.status == "pending" or .status == "queued" or .status == "running")] | length')"
     (( active == 0 )) && return 0
     sleep 15
   done
@@ -524,8 +524,8 @@ wait_for_new_run() {
   while (( $(date +%s) < deadline )); do
     runs="$(api GET "/v1/tables/${uuid}/table-maintenance-runs?limit=500" \
       | jq -c --argjson before "${before}" '[.[] | select(.run_id as $id | $before | index($id) | not)]')"
-    found="$(jq -r "[.[] | select(${selector}) | select(.status != \"pending\" and .status != \"running\")] | .[0].run_id // empty" <<<"${runs}")"
-    active="$(jq '[.[] | select(.status == "pending" or .status == "running")] | length' <<<"${runs}")"
+    found="$(jq -r "[.[] | select(${selector}) | select(.status != \"pending\" and .status != \"queued\" and .status != \"running\")] | .[0].run_id // empty" <<<"${runs}")"
+    active="$(jq '[.[] | select(.status == "pending" or .status == "queued" or .status == "running")] | length' <<<"${runs}")"
     if [[ -n "${found}" ]] && (( active == 0 )); then
       echo "${runs}"
       return 0
@@ -533,19 +533,6 @@ wait_for_new_run() {
     sleep 15
   done
   echo "no terminal run matching ${selector} for ${uuid} within ${RUN_TIMEOUT_SECONDS}s" >&2
-  return 1
-}
-
-wait_for_compacted_partitions() {
-  local table="$1" deadline crowded
-  deadline=$(( $(date +%s) + RUN_TIMEOUT_SECONDS ))
-  while (( $(date +%s) < deadline )); do
-    crowded="$(trino_sql "SELECT count(*) FROM (SELECT partition FROM ${CATALOG}.${SCHEMA}.\"${table}\$files\"
-      GROUP BY partition HAVING count(*) >= 2)" | tail -n 1)"
-    (( crowded == 0 )) && return 0
-    sleep 15
-  done
-  echo "${table} still has partitions with several files after ${RUN_TIMEOUT_SECONDS}s" >&2
   return 1
 }
 
@@ -600,18 +587,22 @@ assert_reconcile_running() {
 }
 
 assert_workflows_found_by_table() {
-  local uuid="$1" run_id="$2" ids="" deadline=$((SECONDS + 60))
+  local uuid="$1" run_id="$2" ids="" execution_ref=""
+  local maintenance="table-maintenance:table-uuid=${uuid}"
+  local deadline=$((SECONDS + 60))
+  execution_ref="$(api GET "/v1/table-maintenance-runs/${run_id}" | jq -r '.execution_ref')"
   while ((SECONDS < deadline)); do
     ids="$(temporal_cli workflow list --namespace default \
       --query "TableUuid = \"${uuid}\"" --output json | jq -r '.[].execution.workflowId')"
     if grep -qxF "table-reconciliation:table-uuid=${uuid}" <<<"${ids}" \
-      && grep -q ":run=${run_id}\$" <<<"${ids}"; then
-      progress "TableUuid = \"${uuid}\" finds its reconciliation and the run ${run_id}"
+      && grep -qxF "${maintenance}" <<<"${ids}" \
+      && [[ "${execution_ref}" == "${maintenance}" ]]; then
+      progress "TableUuid = \"${uuid}\" finds its reconciliation and ${maintenance}, the execution of run ${run_id}"
       return 0
     fi
     sleep 5
   done
-  echo "TableUuid = \"${uuid}\" does not find its reconciliation and run ${run_id}: ${ids}" >&2
+  echo "TableUuid = \"${uuid}\" does not find its reconciliation and ${maintenance} (run ${run_id} has execution_ref ${execution_ref}): ${ids}" >&2
   return 1
 }
 
@@ -632,24 +623,12 @@ assert_prefixed_ids() {
   local uuid="$1" run_id="$2" rule_id="$3" policy="$4" ids
   ids="$(jq -cn --arg mr "${run_id}" --arg dr "${rule_id}" \
     --arg rc "$(reconciliation_ids "${uuid}" | jq -r '.[0] // ""')" \
-    --arg cr "$(api GET "/v1/compaction-rounds?limit=1" | jq -r '.[0].round_id // ""')" \
     --arg mp "$(api GET "/v1/maintenance-policies/${policy}" | jq -r '.id')" \
-    '{mr: $mr, rc: $rc, cr: $cr, dr: $dr, mp: $mp}')"
+    '{mr: $mr, rc: $rc, dr: $dr, mp: $mp}')"
   # shellcheck disable=SC2016
   check 'to_entries | all(.[]; . as $e | $e.value | test("^" + $e.key + "-[0-7][0-9a-hjkmnp-tv-z]{25}$"))' \
     "${ids}" "an id the API returned is not <prefix>-<26 base32 characters> (ADR 0011)"
-  progress "run, reconciliation, round, discovery rule and policy ids are prefixed: $(jq -c . <<<"${ids}")"
-}
-
-assert_no_failed_candidates() {
-  local uuid="$1" candidates failed
-  candidates="$(api GET "/v1/tables/${uuid}/compaction-candidates")"
-  failed="$(jq -c '[.candidates[] | select(.state == "failed") | .partition_label]' <<<"${candidates}")"
-  if [[ "${failed}" != "[]" ]]; then
-    echo "${uuid}: compaction candidates failed: ${failed}" >&2
-    return 1
-  fi
-  progress "compaction candidates of ${uuid}: $(jq -c '[.candidates[] | "\(.partition_label) \(.state)"]' <<<"${candidates}")"
+  progress "run, reconciliation, discovery rule and policy ids are prefixed: $(jq -c . <<<"${ids}")"
 }
 
 reconciliation_ids() {
@@ -671,44 +650,44 @@ wait_for_reconcile_now_record() {
   return 1
 }
 
-assert_partition_filter() {
-  local run_id execution_ref filter escaped=""
-  for run_id in "$@"; do
-    execution_ref="$(api GET "/v1/table-maintenance-runs/${run_id}" | jq -r '.execution_ref')"
-    filter="$(temporal_cli workflow show --workflow-id "${execution_ref}" --output json \
-      | jq -r '.events[0].workflowExecutionStartedEventAttributes.input.payloads[0].data
-        | @base64d | fromjson
-        | [.plan.operations[] | select(.operation == "rewrite_data_files") | .filters[]?.where]
-        | map(select(. != null and . != "")) | .[0] // empty')"
-    [[ -n "${filter}" ]] || { echo "run ${run_id} compacted without a where filter" >&2; return 1; }
-    progress "regions where filter of run ${run_id}: ${filter}"
-    grep -qF "'o\\'neil'" <<<"${filter}" && escaped=1
+maintenance_workflow_input() {
+  local run_id="$1" execution_ref run
+  execution_ref="$(api GET "/v1/table-maintenance-runs/${run_id}" | jq -r '.execution_ref')"
+  for run in $(temporal_cli workflow list --namespace default \
+      --query "WorkflowId = \"${execution_ref}\"" --output json | jq -r '.[].execution.runId'); do
+    temporal_cli workflow show --workflow-id "${execution_ref}" --run-id "${run}" --output json \
+      | jq -c --arg run "${run_id}" '.events[0].workflowExecutionStartedEventAttributes.input.payloads[0].data
+        | @base64d | fromjson | select(.run_id == $run)' \
+      | grep . && return 0
   done
-  [[ -n "${escaped}" ]] || { echo "no regions where filter holds the escaped quote" >&2; return 1; }
+  echo "no execution of ${execution_ref} was started for run ${run_id}" >&2
+  return 1
 }
 
-assert_compaction_granted_by_round() {
-  local uuid="$1" run_id records rounds
-  shift
-  records="$(api GET "/v1/tables/${uuid}/reconciliations")"
+assert_whole_table_compaction() {
+  local run_id input wheres
   for run_id in "$@"; do
-    jq -e --arg run "${run_id}" '[.[] | select((.wake_reasons.compaction_granted // 0) >= 1
-        and .run_id == $run)] | length >= 1' <<<"${records}" >/dev/null || {
-      echo "no compaction_granted reconciliation of ${uuid} started run ${run_id}: $(jq -c '[.[]
-        | {wake_reasons, run_id}]' <<<"${records}")" >&2
-      return 1
-    }
+    input="$(maintenance_workflow_input "${run_id}")"
+    check '[.plan.operations[] | select(.operation == "rewrite_data_files")] | length == 1' "${input}" \
+      "run ${run_id} does not plan one rewrite_data_files"
+    wheres="$(jq -c '[.plan.operations[] | select(.operation == "rewrite_data_files") | .filters[]?.where
+      | select(. != null and . != "")]' <<<"${input}")"
+    [[ "${wheres}" == "[]" ]] || { echo "run ${run_id} compacted with a where filter: ${wheres}" >&2; return 1; }
+    progress "run ${run_id} compacts the whole table (no where filter)"
   done
-  rounds="$(api GET "/v1/compaction-rounds?limit=50" \
-    | jq -c --arg uuid "${uuid}" '[.[] | select(any(.picks[]; .table_uuid == $uuid)) | .round_id]')"
-  [[ "${rounds}" != "[]" ]] || { echo "no compaction round picked ${uuid}" >&2; return 1; }
-  temporal_cli workflow list --namespace default \
-    --query "GrantedTableUuids = \"${uuid}\"" --output json \
-    | jq -e '[.[] | select(.type.name == "CompactionRoundWorkflow")] | length >= 1' >/dev/null || {
-    echo "GrantedTableUuids = \"${uuid}\" finds no compaction round" >&2
-    return 1
-  }
-  progress "compaction rounds ${rounds} granted ${uuid}; its runs started on compaction_granted"
+}
+
+assert_attempts_timed() {
+  local label="$1" runs="$2"
+  # shellcheck disable=SC2016
+  check 'def seconds: sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | fromdateiso8601;
+    [.[] | .operations[] | .attempt_history[] | select(.status == "succeeded")] as $done
+    | ($done | length) > 0
+      and all($done[]; .started_running_at != null and .finished_at != null
+        and (.started_at | seconds) <= (.started_running_at | seconds)
+        and (.started_running_at | seconds) <= (.finished_at | seconds))' \
+    "${runs}" "${label}: a succeeded attempt lacks started_running_at between started_at and finished_at"
+  progress "${label}: every succeeded attempt ran between its submit and its end"
 }
 
 progress "listing the namespaces of ${CATALOG} through the catalog API"
@@ -756,9 +735,8 @@ ensure_policy tm-e2e-orders "e2e: manual runs only, lowered execution values" "$
 | .operations.remove_orphan_files.execution_policy.older_than_seconds = 86400
 JQ
 )"
-ensure_policy tm-e2e-regions "e2e: per-partition compaction" "$(cat <<JQ
+ensure_policy tm-e2e-regions "e2e: scheduled whole-table compaction" "$(cat <<JQ
 .reconcile_interval_seconds = 300
-| .operations.rewrite_data_files.scope.unit = "partition"
 | .operations.rewrite_data_files.trigger_policy.conditions.reducible_files = {at_least: 2}
 | .operations.rewrite_data_files.trigger_policy.cooldown_seconds = 60
 | .operations.rewrite_manifests.enabled = false
@@ -812,23 +790,18 @@ progress "waiting for event-driven runs to settle"
 wait_for_quiet_table "${ORDERS_UUID}"
 wait_for_quiet_table "${REGIONS_UUID}"
 
-progress "waiting for the ${REGIONS} scheduled compaction of every partition before any ${ORDERS} run, so one Spark job runs at a time"
+progress "waiting for the ${REGIONS} scheduled compaction run to finish before any ${ORDERS} run, so one Spark job runs at a time"
 wait_for_new_run "${REGIONS_UUID}" "${REGIONS_BEFORE_RUNS}" \
   '.trigger == "scheduled" and any(.operations[]; .operation == "rewrite_data_files")' >/dev/null
-wait_for_compacted_partitions "${REGIONS}"
 wait_for_quiet_table "${REGIONS_UUID}"
 REGIONS_RUNS="$(wait_for_new_run "${REGIONS_UUID}" "${REGIONS_BEFORE_RUNS}" \
   '.trigger == "scheduled" and any(.operations[]; .operation == "rewrite_data_files")')"
 report_runs "${REGIONS}" "${REGIONS_RUNS}"
 assert_runs_succeeded "${REGIONS}" "${REGIONS_RUNS}"
+assert_attempts_timed "${REGIONS}" "${REGIONS_RUNS}"
 # shellcheck disable=SC2046
-assert_partition_filter $(jq -r '.[] | select(any(.operations[]; .operation == "rewrite_data_files"))
+assert_whole_table_compaction $(jq -r '.[] | select(any(.operations[]; .operation == "rewrite_data_files"))
   | .run_id' <<<"${REGIONS_RUNS}")
-# shellcheck disable=SC2046
-assert_compaction_granted_by_round "${REGIONS_UUID}" $(jq -r '.[]
-  | select(any(.operations[]; .operation == "rewrite_data_files")) | .run_id' <<<"${REGIONS_RUNS}")
-assert_no_failed_candidates "${REGIONS_UUID}"
-assert_no_failed_candidates "${ORDERS_UUID}"
 
 WAIT_SECONDS=$(( LAST_WRITE_AT + EXPIRE_AGE_SECONDS + 5 - $(date +%s) ))
 if (( WAIT_SECONDS > 0 )); then
@@ -856,10 +829,12 @@ progress "waiting for the ${ORDERS} manual run (up to ${RUN_TIMEOUT_SECONDS}s)"
 ORDERS_RUNS="$(wait_for_new_run "${ORDERS_UUID}" "${ORDERS_BEFORE_RUNS}" '.trigger == "manual"')"
 report_runs "${ORDERS}" "${ORDERS_RUNS}"
 assert_runs_succeeded "${ORDERS}" "${ORDERS_RUNS}"
+assert_attempts_timed "${ORDERS}" "${ORDERS_RUNS}"
 jq -e '[.[] | select(.trigger == "manual") | .operations[].operation] | unique | length == 4' \
   <<<"${ORDERS_RUNS}" >/dev/null || { echo "manual run lacks an operation" >&2; exit 1; }
 
 ORDERS_MANUAL_RUN_ID="$(jq -r '[.[] | select(.trigger == "manual")] | .[0].run_id' <<<"${ORDERS_RUNS}")"
+assert_whole_table_compaction "${ORDERS_MANUAL_RUN_ID}"
 assert_manual_run_recorded "${ORDERS_UUID}" "${ORDERS_MANUAL_RUN_ID}"
 
 wait_for_quiet_table "${ORDERS_UUID}"
