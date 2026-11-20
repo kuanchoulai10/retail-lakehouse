@@ -5,9 +5,6 @@ from __future__ import annotations
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.activity_payload import (
     activity_payload,
 )
-from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.compaction_round_activities import (
-    CompactionRoundActivities,
-)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.table_discovery_activities import (
     TableDiscoveryActivities,
 )
@@ -22,7 +19,6 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.transl
 )
 
 __all__ = [
-    "CompactionRoundActivities",
     "TableDiscoveryActivities",
     "TableMaintenanceActivities",
     "TableReconciliationActivities",

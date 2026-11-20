@@ -31,8 +31,6 @@ EXPECTED_PREFIXES: dict[str, str] = {
     "TableDiscoveryRuleId": "dr",
     "TableMaintenanceRunId": "mr",
     "TableReconciliationId": "rc",
-    "CompactionRoundId": "cr",
-    "CompactionCandidateId": "cc",
     "TableMaintenancePolicyAttachmentId": "pa",
     "TableMaintenancePolicyId": "mp",
 }

@@ -93,13 +93,6 @@ def test_the_route_is_read_only():
     assert client.patch("/v1/platform-settings").status_code == 405
 
 
-def test_the_scheduler_settings_route_stays():
-    """The earlier scheduler settings route is still served beside the platform settings."""
-    paths = {getattr(route, "path", None) for route in _app().routes}
-
-    assert {"/v1/scheduler-settings", "/v1/platform-settings"} <= paths
-
-
 def test_the_response_schema_has_no_secret_looking_field():
     """No property of the response schema is named like a secret; ``key`` is a setting's stable identifier."""
     schema = _app().openapi()
@@ -116,7 +109,7 @@ def test_the_response_schema_has_no_secret_looking_field():
 
 
 def test_the_route_has_its_own_openapi_tag():
-    """The route is tagged platform-settings alone, so the generated client files it apart from the rounds."""
+    """The route is tagged platform-settings alone, so the generated client files it apart from the runs."""
     operation = _app().openapi()["paths"]["/v1/platform-settings"]["get"]
 
     assert operation["tags"] == ["platform-settings"]

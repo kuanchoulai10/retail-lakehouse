@@ -9,11 +9,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.adapter.hybrid.temporal.contracts.compaction_round import (
-    COMPACTION_ROUND_SCHEDULE_ID,
-    COMPACTION_ROUND_WORKFLOW,
-    CompactionRoundActivity,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
     TableSearchAttribute,
@@ -57,14 +52,12 @@ def test_workflow_type_names():
     assert TABLE_DISCOVERY_WORKFLOW == "TableDiscoveryWorkflow"
     assert TABLE_RECONCILIATION_WORKFLOW == "TableReconciliationWorkflow"
     assert TABLE_MAINTENANCE_WORKFLOW == "TableMaintenanceWorkflow"
-    assert COMPACTION_ROUND_WORKFLOW == "CompactionRoundWorkflow"
 
 
 def test_task_queue_and_fixed_ids():
     """The task queue name and the fixed workflow and schedule ids are the stable wire values."""
     assert TASK_QUEUE == "table-maintenance"
     assert TABLE_DISCOVERY_SCHEDULE_ID_PREFIX == "table-discovery:catalog="
-    assert COMPACTION_ROUND_SCHEDULE_ID == "compaction-rounds"
 
 
 def test_table_reconciliation_signals():
@@ -77,7 +70,6 @@ def test_table_reconciliation_signals():
         "MAINTENANCE_FINISHED": "maintenance_finished",
         "RECONCILE_NOW": "reconcile_now",
         "TABLE_SEEN": "table_seen",
-        "COMPACTION_GRANTED": "compaction_granted",
     }
 
 
@@ -120,13 +112,6 @@ def test_table_discovery_activities():
     }
 
 
-def test_compaction_round_activities():
-    """The compaction round activity names are the stable wire names."""
-    assert _values(CompactionRoundActivity) == {
-        "SCHEDULE_COMPACTION_ROUND": "schedule_compaction_round",
-    }
-
-
 def test_table_search_attribute_names():
     """The table search attribute names are the names registered on the Temporal namespace."""
     assert _values(TableSearchAttribute) == {
@@ -134,7 +119,6 @@ def test_table_search_attribute_names():
         "TABLE_NAME": "TableName",
         "MAINTENANCE_OPERATIONS": "MaintenanceOperations",
         "MAINTENANCE_TRIGGER": "MaintenanceTrigger",
-        "GRANTED_TABLE_UUIDS": "GrantedTableUuids",
     }
 
 

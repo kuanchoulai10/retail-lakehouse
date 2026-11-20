@@ -58,11 +58,9 @@ _REASON_POLICY_CHANGED = "policy_changed"
 _REASON_MANUAL_RUN = "manual_run"
 _REASON_RECONCILE_NOW = "reconcile_now"
 _REASON_PREVIOUS_RUN_FINISHED = "previous_run_finished"
-_REASON_COMPACTION_GRANTED = "compaction_granted"
 _SEARCH_ATTRIBUTES_PATCH = "table-search-attributes"
 _FENCED_BOUND_PATCH = "fencing-in-flight-bound"
 _AWAIT_CLOSE_PATCH = "await-cancelled-run-close"
-_COMPACTION_GRANTED_PATCH = "compaction-granted-signal"
 _PREFIXED_IDS_PATCH = "prefixed-run-and-reconciliation-ids"
 _CLOSING_BOUND = TableMaintenanceActivityPolicy().worst_case()
 _CLOSING_POLL = timedelta(seconds=5)
@@ -226,20 +224,6 @@ class TableReconciliationWorkflow:
     def table_seen(self, payload: dict | None = None) -> None:
         """Wake the loop because a discovery scan saw the table."""
         self._wake(_REASON_DISCOVERY_SCAN, cancels_stop=True)
-
-    @workflow.signal(name=TableReconciliationSignal.COMPACTION_GRANTED)
-    def compaction_granted(self, payload: dict | None = None) -> None:
-        """Wake the loop because a compaction round granted some of the table's candidates, after any run in flight.
-
-        A history recorded before this handler existed may hold the signal (a
-        round signalled the table while an older worker ran it, and that worker
-        ignored it); its replay has no ``compaction-granted-signal`` marker, so
-        the signal stays ignored and the replay matches.
-        """
-        if not workflow.patched(_COMPACTION_GRANTED_PATCH):
-            workflow.logger.info("ignoring compaction_granted recorded before the handler existed")
-            return
-        self._wake(_REASON_COMPACTION_GRANTED, cancels_stop=True)
 
     @workflow.signal(name=TableReconciliationSignal.TRIGGER_NOW)
     def trigger_now(self, payload: dict | None = None) -> None:
@@ -580,11 +564,6 @@ class TableReconciliationWorkflow:
             if is_cancelled_exception(error):
                 raise asyncio.CancelledError from error
             workflow.logger.error("planning table %s failed: %s", self._table_uuid, error)
-            if _REASON_COMPACTION_GRANTED in reasons:
-                workflow.logger.warning(
-                    "table %s did not claim its compaction grant: the plan failed; the grant runs out unused",
-                    self._table_uuid,
-                )
             self._consume_manual(manual, "the plan failed")
             self._next_plan_at = workflow.now() + self._interval
             return False

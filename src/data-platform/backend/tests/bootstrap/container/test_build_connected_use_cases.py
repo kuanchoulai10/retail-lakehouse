@@ -20,7 +20,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     ListTableMaintenancePoliciesUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import GetPlatformSettingsUseCaseInput
-from context.table_maintenance.application.service.compaction_candidate import ListCompactionCandidatesService
 from context.table_maintenance.application.service.table import GetTableHealthService, PlanTableMaintenanceService
 from context.table_maintenance.application.service.table_maintenance_run import (
     RecordTableMaintenanceOperationResultService,
@@ -118,23 +117,3 @@ def test_the_platform_settings_page_reads_the_settings_the_components_run_on(tmp
     values = {item.key: item.value for group in output.groups for item in group.items}
     assert values["maintenance_max_attempts"] == 4
     assert values["maintenance_failure_backoff_cap_seconds"] == 7200
-
-
-def test_the_candidate_list_uses_the_compaction_settings(tmp_path):
-    """The candidate list counts partitions per run as the settings say."""
-    settings = sqlite_settings()
-    settings.sqlite.path = str(tmp_path / "tm.db")
-    settings.compaction.partitions_per_run = 3
-
-    async def connect(_temporal: TemporalSettings):
-        return MagicMock(name="client")
-
-    bridge = AsyncLoopBridge()
-    try:
-        use_cases = build_connected_use_cases(settings, bridge, connect=connect, k8s_api_factory=MagicMock)
-    finally:
-        bridge.close()
-
-    candidates = use_cases.list_compaction_candidates
-    assert isinstance(candidates, ListCompactionCandidatesService)
-    assert candidates._partitions_per_run == 3  # noqa: SLF001

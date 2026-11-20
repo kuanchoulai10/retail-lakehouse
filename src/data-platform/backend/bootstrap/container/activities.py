@@ -9,7 +9,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
-        CompactionRoundActivities,
         TableDiscoveryActivities,
         TableMaintenanceActivities,
         TableReconciliationActivities,
@@ -23,7 +22,6 @@ class Activities:
     reconciliation: TableReconciliationActivities
     maintenance: TableMaintenanceActivities
     discovery: TableDiscoveryActivities
-    compaction_round: CompactionRoundActivities
 
     def callables(self) -> list[Callable[..., object]]:
         """Return every activity method, bound to its instance."""
@@ -42,5 +40,4 @@ class Activities:
             maintenance.raise_table_maintenance_run_priority,
             maintenance.signal_parent,
             self.discovery.sync_discovered_tables,
-            self.compaction_round.schedule_compaction_round,
         ]

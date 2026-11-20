@@ -82,11 +82,9 @@ class SharedThing(AggregateRoot[SharedId]):
 
 
 def test_table_maintenance_aggregates_are_derived():
-    """The table maintenance context derives its nine aggregates from the domain model."""
+    """The table maintenance context derives its seven aggregates from the domain model."""
     assert aggregates("table_maintenance") == {
         "catalog_discovery",
-        "compaction_candidate",
-        "compaction_round",
         "table",
         "table_maintenance_run",
         "table_reconciliation",

@@ -9,12 +9,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.catalog_discovery import (
         CatalogDiscoveriesRepo,
     )
-    from context.table_maintenance.application.port.outbound.compaction_candidate import (
-        CompactionCandidatesRepo,
-    )
-    from context.table_maintenance.application.port.outbound.compaction_round import (
-        CompactionRoundsRepo,
-    )
     from context.table_maintenance.application.port.outbound.table import TablesRepo
     from context.table_maintenance.application.port.outbound.table_discovery_rules import (
         TableDiscoveryRulesRepo,
@@ -43,6 +37,4 @@ class Repositories:
     table_maintenance_policies: TableMaintenancePoliciesRepo
     table_maintenance_policy_attachments: TableMaintenancePolicyAttachmentsRepo
     table_reconciliations: TableReconciliationsRepo
-    compaction_candidates: CompactionCandidatesRepo
-    compaction_rounds: CompactionRoundsRepo
     catalog_discoveries: CatalogDiscoveriesRepo

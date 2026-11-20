@@ -5,22 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from bootstrap.configs import SchedulerSettings
-from bootstrap.container.build_priority_sla import build_priority_sla
-from bootstrap.container.build_priority_weights import build_priority_weights
 from bootstrap.container.use_cases import UseCases
-from context.table_maintenance.application.domain.model.compaction_candidate import CandidateSelection
 from context.table_maintenance.application.domain.model.table import DEFAULT_FAILURE_BACKOFF_CAP
-from context.table_maintenance.application.service.compaction_candidate import (
-    ListCompactionCandidatesService,
-    ReleaseCompactionCandidatesService,
-)
-from context.table_maintenance.application.service.compaction_round import (
-    GetCompactionRoundService,
-    GetSchedulerSettingsService,
-    ListCompactionRoundsService,
-    ScheduleCompactionRoundService,
-)
 from context.table_maintenance.application.service.table import (
     GetTableHealthService,
     GetTableService,
@@ -92,20 +78,15 @@ def build_use_cases(
     clock: Callable[[], datetime] = _utc_now,
     catalog_names: Sequence[str] = (),
     size_memory: Mapping[ComputeSize, SizeMemory] | None = None,
-    candidate_selection: CandidateSelection | None = None,
-    scheduler: SchedulerSettings | None = None,
     failure_backoff_cap: timedelta = DEFAULT_FAILURE_BACKOFF_CAP,
 ) -> UseCases:
     """Build every application service on the given repositories and gateways.
 
     ``size_memory`` is the memory each compute size runs with; without it no
-    operation is ever stepped down to a smaller size. ``candidate_selection``
-    says how many candidates a compaction round counts per run (the defaults
-    without it). ``scheduler`` says how compaction
-    rounds share compaction across tables (the defaults without it).
-    ``failure_backoff_cap`` is where the doubling of a failing operation's
-    cooldown stops. ``platform_settings`` are the values the platform settings
-    page lists; every caller gives them, so none shows defaults by accident.
+    operation is ever stepped down to a smaller size. ``failure_backoff_cap``
+    is where the doubling of a failing operation's cooldown stops.
+    ``platform_settings`` are the values the platform settings page lists;
+    every caller gives them, so none shows defaults by accident.
     """
     tables = repos.tables
     rules = repos.table_discovery_rules
@@ -113,10 +94,7 @@ def build_use_cases(
     attachments = repos.table_maintenance_policy_attachments
     runs = repos.table_maintenance_runs
     reconciliations = repos.table_reconciliations
-    candidates = repos.compaction_candidates
     discoveries = repos.catalog_discoveries
-    selection = candidate_selection or CandidateSelection()
-    rounds = scheduler or SchedulerSettings()
     catalog = gateways.read_table_metadata
     table_changes = gateways.send_table_change
     resolve_applicable_policy = ResolveApplicableTableMaintenancePolicyService(policies, attachments, catalog, tables)
@@ -192,36 +170,7 @@ def build_use_cases(
             resolve_applicable_policy,
             failure_backoff_cap=failure_backoff_cap,
         ),
-        release_compaction_candidates=ReleaseCompactionCandidatesService(candidates),
-        schedule_compaction_round=ScheduleCompactionRoundService(
-            candidates,
-            repos.compaction_rounds,
-            tables,
-            weights=build_priority_weights(rounds),
-            budget_gb_hours=rounds.budget_gb_hours,
-            partitions_per_run=selection.partitions_per_run,
-            sla=build_priority_sla(rounds),
-            grant_lease=timedelta(seconds=rounds.grant_lease_seconds),
-            rounds_kept=rounds.rounds_kept,
-        ),
-        list_compaction_rounds=ListCompactionRoundsService(repos.compaction_rounds, tables),
-        get_compaction_round=GetCompactionRoundService(repos.compaction_rounds, tables),
-        get_scheduler_settings=GetSchedulerSettingsService(
-            weights=build_priority_weights(rounds),
-            sla=build_priority_sla(rounds),
-            round_seconds=rounds.round_seconds,
-            budget_gb_hours=rounds.budget_gb_hours,
-            grant_lease=timedelta(seconds=rounds.grant_lease_seconds),
-        ),
         get_platform_settings=GetPlatformSettingsService(platform_settings),
-        list_compaction_candidates=ListCompactionCandidatesService(
-            candidates,
-            tables,
-            repos.compaction_rounds,
-            partitions_per_run=selection.partitions_per_run,
-            sla=build_priority_sla(rounds),
-            clock=clock,
-        ),
         list_table_reconciliations=ListTableReconciliationsService(reconciliations, policies),
         record_table_reconciliation=RecordTableReconciliationService(reconciliations),
         submit_maintenance_operation=SubmitMaintenanceOperationService(runs, tables, gateways.submit_maintenance_job),

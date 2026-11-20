@@ -9,11 +9,10 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from bootstrap.configs import CatalogSettings, SchedulerSettings
+from bootstrap.configs import CatalogSettings
 from bootstrap.container import apply_worker_startup
 from context.table_maintenance.adapter.hybrid.temporal.inbound import (
     MissingTableSearchAttributes,
-    ensure_compaction_round_schedule,
     ensure_table_discovery_schedule,
     require_table_search_attributes,
 )
@@ -35,29 +34,27 @@ class Recorder:
         self.calls.append((args, kwargs))
 
 
-def _run(require: Recorder | None = None) -> tuple[Recorder, object, Recorder]:
-    schedule, client, rounds = Recorder(), object(), Recorder()
+def _run(require: Recorder | None = None) -> tuple[Recorder, object]:
+    schedule, client = Recorder(), object()
     settings = sqlite_settings(
         catalog=CatalogSettings(names=["a", "b"]),
         discovery_interval_seconds=120,
         maintenance_attempt_deadline_seconds=600,
-        scheduler=SchedulerSettings(round_seconds=60, budget_gb_hours=0.2),
     )
     asyncio.run(
         apply_worker_startup(
             cast("Client", client),
             settings,
             ensure_schedule=schedule,
-            ensure_rounds=rounds,
             require_attributes=Recorder() if require is None else require,
         )
     )
-    return schedule, client, rounds
+    return schedule, client
 
 
 def test_worker_startup_never_pauses_schedule():
     """The discovery schedules are ensured for every covered catalog with no paused flag: they always run."""
-    schedule, client, _ = _run()
+    schedule, client = _run()
 
     assert schedule.calls == [((client, ["a", "b"]), {"interval": timedelta(seconds=120)})]
     assert "paused" not in inspect.signature(ensure_table_discovery_schedule).parameters
@@ -68,34 +65,29 @@ def test_no_admission_workflow_is_ensured():
     assert "ensure_admission" not in inspect.signature(apply_worker_startup).parameters
 
 
-def test_the_compaction_round_schedule_is_ensured_with_the_scheduler_settings():
-    """One round schedule is ensured, every round_seconds, with the budget for its summary."""
-    _, client, rounds = _run()
+def test_only_the_discovery_schedules_are_ensured():
+    """The worker ensures the discovery schedules and no other: there is no round schedule any more."""
+    parameters = inspect.signature(apply_worker_startup).parameters
 
-    assert rounds.calls == [((client,), {"interval": timedelta(seconds=60), "budget_gb_hours": 0.2})]
+    assert [name for name in parameters if name.startswith("ensure_")] == ["ensure_schedule"]
 
 
 def test_defaults_are_the_real_functions_and_the_kwargs_bind_to_them():
     """The default ensure functions are the real ones and the keyword arguments bind to their signatures."""
     parameters = inspect.signature(apply_worker_startup).parameters
     assert parameters["ensure_schedule"].default is ensure_table_discovery_schedule
-    assert parameters["ensure_rounds"].default is ensure_compaction_round_schedule
     assert parameters["require_attributes"].default is require_table_search_attributes
 
-    schedule, _, rounds = _run()
+    schedule, _ = _run()
 
-    for real, recorder in (
-        (ensure_table_discovery_schedule, schedule),
-        (ensure_compaction_round_schedule, rounds),
-    ):
-        ((args, kwargs),) = recorder.calls
-        inspect.signature(real).bind(*args, **kwargs)
+    ((args, kwargs),) = schedule.calls
+    inspect.signature(ensure_table_discovery_schedule).bind(*args, **kwargs)
 
 
 def test_the_search_attributes_are_checked_first():
     """The worker checks the namespace's search attributes before it ensures any schedule."""
     require = Recorder()
-    _, client, _ = _run(require)
+    _, client = _run(require)
 
     assert require.calls == [((client,), {})]
     inspect.signature(require_table_search_attributes).bind(client)
@@ -103,7 +95,7 @@ def test_the_search_attributes_are_checked_first():
 
 def test_missing_search_attributes_stop_the_start_before_any_schedule():
     """A namespace without the attributes fails the start, and no schedule is created."""
-    schedule, rounds = Recorder(), Recorder()
+    schedule = Recorder()
 
     async def missing(_client: object) -> None:
         raise MissingTableSearchAttributes("run platform/21-temporal/bootstrap.sh")
@@ -114,8 +106,7 @@ def test_missing_search_attributes_stop_the_start_before_any_schedule():
                 cast("Client", object()),
                 sqlite_settings(),
                 ensure_schedule=schedule,
-                ensure_rounds=rounds,
                 require_attributes=missing,
             )
         )
-    assert (schedule.calls, rounds.calls) == ([], [])
+    assert schedule.calls == []

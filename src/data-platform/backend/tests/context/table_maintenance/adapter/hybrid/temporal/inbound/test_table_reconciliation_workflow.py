@@ -41,9 +41,6 @@ from shared_kernel import prefixed_id_pattern
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.eventually import (
     eventually,
 )
-from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.insert_signal_into_history import (
-    insert_signal_into_history,
-)
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.register_table_search_attributes import (
     register_table_search_attributes,
 )
@@ -67,8 +64,6 @@ if TYPE_CHECKING:
     from temporalio.common import TypedSearchAttributes
     from temporalio.worker import WorkflowRunner
 
-OLDER_WORKER_ROUND = "cr-00000000000000000000000098"
-ROUND_1 = "cr-00000000000000000000000001"
 GHOST_RUN_ID = "mr-00000000000000000000000009"
 OTHER_RUN_ID = "mr-00000000000000000000000008"
 GONE_CHILD_ID = "table-maintenance:table-uuid=gone"
@@ -1349,50 +1344,6 @@ def test_give_up_before_the_plan_timer_plans_once_as_previous_run_finished():
     _run(scenario, script=lambda _: _planned(COMPACTION, interval=10**6))
 
 
-def test_reconciliation_plans_on_compaction_granted():
-    """A grant from a compaction round wakes the loop, which plans by the normal rules and records the grant."""
-
-    async def scenario(h: Harness) -> None:
-        await h.start(start_signal=None)
-        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": ROUND_1})
-        assert (await h.plan_count(1))[0]["manual_operations"] is None
-        record = (await h.records(1))[0]
-        assert record["wake_reasons"] == {"compaction_granted": 1}
-
-    _run(scenario, script=lambda _: _planned(COMPACTION))
-
-
-def test_compaction_granted_during_a_run_plans_after_it_finishes():
-    """A grant that arrives while a run is in flight is planned once the run ends."""
-
-    async def scenario(h: Harness) -> None:
-        await h.start()
-        run_id = await h.in_flight()
-        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": ROUND_1})
-        await h.settle()
-        assert len(h.plans.requests) == 1
-        await h.complete_child(run_id)
-        second = (await h.records(2))[1]
-        assert second["wake_reasons"] == {"compaction_granted": 1, "previous_run_finished": 1}
-
-    _run(scenario, script=lambda _: _planned(COMPACTION))
-
-
-def test_compaction_granted_after_stop_cancels_the_stop():
-    """A grant is a decision signal: like a discovery scan it supersedes a pending stop."""
-
-    async def scenario(h: Harness) -> None:
-        await h.start()
-        run_id = await h.in_flight()
-        await h.signal(TableReconciliationSignal.STOP)
-        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": ROUND_1})
-        assert (await h.settle())["stopping"] is False
-        await h.complete_child(run_id)
-        await h.plan_count(2)
-
-    _run(scenario, script=lambda _: _planned(COMPACTION))
-
-
 def test_discovery_scan_is_recorded_as_its_own_wake_reason():
     """A discovery scan that sees the table wakes the loop and is recorded as a discovery scan."""
 
@@ -1797,7 +1748,7 @@ def test_a_long_run_in_flight_still_blocks_planning():
     _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE))
 
 
-def test_history_from_before_compaction_candidates_replays():
+def test_history_from_before_whole_table_compaction_replays():
     """A history whose plans already carried candidates and a next check, under the code before, replays unchanged.
 
     Its first plan held every candidate until a next check, its second started a
@@ -1807,50 +1758,11 @@ def test_history_from_before_compaction_candidates_replays():
 
     async def go() -> None:
         history = WorkflowHistory.from_json(
-            WORKFLOW_ID, (FIXTURES / "reconciliation_before_compaction_candidates.json").read_text()
+            WORKFLOW_ID, (FIXTURES / "reconciliation_before_whole_table_compaction.json").read_text()
         )
         await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
 
     asyncio.run(go())
-
-
-def test_a_compaction_grant_an_older_worker_ignored_replays():
-    """A grant signalled while an older worker ran the table (no handler, so ignored) replays without waking.
-
-    During a rollout the first rounds can signal tables whose workflow task is
-    still taken by the old worker; when the new worker replays that history the
-    signal must stay ignored, or the timer it cut short would not match.
-    """
-
-    async def go() -> None:
-        recorded = (FIXTURES / "reconciliation_before_compaction_candidates.json").read_text()
-        history = WorkflowHistory.from_json(
-            WORKFLOW_ID,
-            insert_signal_into_history(
-                recorded,
-                after_event_id=22,
-                signal=TableReconciliationSignal.COMPACTION_GRANTED.value,
-                arg={"round_id": OLDER_WORKER_ROUND},
-            ),
-        )
-        await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
-
-    asyncio.run(go())
-
-
-def test_a_compaction_grant_records_its_patch_marker_and_its_history_replays():
-    """A grant on the new code records the compaction-granted-signal marker, wakes the loop, and replays."""
-
-    async def scenario(h: Harness) -> None:
-        await h.start(start_signal=None)
-        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": ROUND_1})
-        await h.records(1)
-        history = await h.client.get_workflow_handle(WORKFLOW_ID).fetch_history()
-        markers = [e.SerializeToString() for e in history.events if e.HasField("marker_recorded_event_attributes")]
-        assert any(b"compaction-granted-signal" in m for m in markers)
-        await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
-
-    _run(scenario, script=lambda _: _planned(COMPACTION))
 
 
 def _first_plan_with(flag: str, **stub: Any) -> Callable[[dict[str, Any]], dict[str, Any]]:

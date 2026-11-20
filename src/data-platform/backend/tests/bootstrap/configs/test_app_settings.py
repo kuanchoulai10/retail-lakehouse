@@ -220,64 +220,9 @@ def test_size_reads_env(monkeypatch: pytest.MonkeyPatch):
     assert spark.size_m.executor_instances == 2
 
 
-def test_compaction_defaults_pick_ten_partitions_and_hold_none_for_size():
-    """Without an environment a run compacts ten partitions and only the quiet period holds one back."""
-    compaction = AppSettings().compaction
-
-    assert (compaction.partitions_per_run, compaction.min_partition_bytes) == (10, 0)
-    assert (compaction.quiet_seconds, compaction.max_quiet_wait_seconds) == (120, 3600)
-    assert (compaction.benefit_weight, compaction.cost_weight) == (0.7, 0.3)
-    assert (compaction.benefit_reference_files, compaction.cost_reference_gb_hours) == (100, 1.0)
-    assert compaction.default_throughput_bytes_per_hour == 2 * 1024**3
-    assert compaction.min_throughput_sample_bytes == 64 * 1024**2
-    assert (compaction.size_s_max_bytes, compaction.size_m_max_bytes) == (256 * 1024**2, 1024**3)
-
-
-def test_compaction_reads_env(monkeypatch: pytest.MonkeyPatch):
-    """Each compaction setting is read from GLAC_COMPACTION__<NAME>."""
-    monkeypatch.setenv("GLAC_COMPACTION__PARTITIONS_PER_RUN", "3")
-    monkeypatch.setenv("GLAC_COMPACTION__MIN_PARTITION_BYTES", "1048576")
-    monkeypatch.setenv("GLAC_COMPACTION__QUIET_SECONDS", "30")
-    monkeypatch.setenv("GLAC_COMPACTION__MAX_QUIET_WAIT_SECONDS", "600")
-    monkeypatch.setenv("GLAC_COMPACTION__COST_WEIGHT", "0.5")
-    monkeypatch.setenv("GLAC_COMPACTION__MIN_THROUGHPUT_SAMPLE_BYTES", "1024")
-
-    compaction = AppSettings().compaction
-
-    assert (compaction.partitions_per_run, compaction.min_partition_bytes) == (3, 1048576)
-    assert (compaction.quiet_seconds, compaction.max_quiet_wait_seconds, compaction.cost_weight) == (30, 600, 0.5)
-    assert compaction.min_throughput_sample_bytes == 1024
-
-
-def test_scheduler_defaults_run_a_round_every_two_minutes_within_a_small_budget():
-    """Without an environment a round runs every 120 s, grants up to 0.05 GB·h and keeps 500 rounds."""
-    scheduler = AppSettings().scheduler
-
-    assert (scheduler.round_seconds, scheduler.budget_gb_hours) == (120, 0.05)
-    assert (scheduler.priority_weights.p0, scheduler.priority_weights.p1, scheduler.priority_weights.p2) == (
-        4.0,
-        2.0,
-        1.0,
-    )
-    assert (scheduler.sla_seconds.p0, scheduler.sla_seconds.p1, scheduler.sla_seconds.p2) == (3600, 14400, 28800)
-    assert (scheduler.grant_lease_seconds, scheduler.rounds_kept) == (600, 500)
-
-
-def test_scheduler_reads_env(monkeypatch: pytest.MonkeyPatch):
-    """Each scheduler setting is read from GLAC_SCHEDULER__<NAME>; a priority given alone keeps the others."""
-    monkeypatch.setenv("GLAC_SCHEDULER__ROUND_SECONDS", "60")
-    monkeypatch.setenv("GLAC_SCHEDULER__BUDGET_GB_HOURS", "0.2")
-    monkeypatch.setenv("GLAC_SCHEDULER__PRIORITY_WEIGHTS__P0", "8")
-    monkeypatch.setenv("GLAC_SCHEDULER__SLA_SECONDS__P2", "120")
-    monkeypatch.setenv("GLAC_SCHEDULER__GRANT_LEASE_SECONDS", "900")
-    monkeypatch.setenv("GLAC_SCHEDULER__ROUNDS_KEPT", "10")
-
-    scheduler = AppSettings().scheduler
-
-    assert (scheduler.round_seconds, scheduler.budget_gb_hours) == (60, 0.2)
-    assert (scheduler.priority_weights.p0, scheduler.priority_weights.p1) == (8.0, 2.0)
-    assert (scheduler.sla_seconds.p0, scheduler.sla_seconds.p2) == (3600, 120)
-    assert (scheduler.grant_lease_seconds, scheduler.rounds_kept) == (900, 10)
+def test_settings_hold_no_round_scheduling_or_candidate_selection_group():
+    """Compaction rounds and candidate selection are gone, so neither has settings to read."""
+    assert {"scheduler", "compaction"}.isdisjoint(AppSettings.model_fields)
 
 
 def test_attempt_and_backoff_defaults_match_the_domain_defaults():

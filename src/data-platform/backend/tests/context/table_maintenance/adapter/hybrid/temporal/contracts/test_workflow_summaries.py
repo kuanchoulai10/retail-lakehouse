@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.adapter.hybrid.temporal.contracts.compaction_round import (
-    compaction_round_details,
-    compaction_round_summary,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
     table_discovery_summary,
 )
@@ -31,16 +27,3 @@ def test_table_discovery_summary_names_the_namespace_and_an_adhoc_trigger():
     """The discovery summary adds the namespace and an ad hoc marker when present."""
     assert table_discovery_summary("iceberg", "sales", adhoc=True) == "iceberg.sales · ad hoc"
     assert table_discovery_summary("iceberg", None, adhoc=True) == "iceberg · ad hoc"
-
-
-def test_compaction_round_summary_names_the_budget():
-    """A scheduled round's summary says what it may grant."""
-    assert compaction_round_summary(0.05) == "compaction round · budget 0.05 GB·h"
-
-
-def test_compaction_round_details_count_partitions_and_tables():
-    """A round's details name its round id, so the console's round is found in Temporal, then what it granted."""
-    round_id = "cr-00000000000000000000000001"
-    assert compaction_round_details(round_id, 3, 2) == f"round {round_id} · granted 3 partitions of 2 tables"
-    assert compaction_round_details(round_id, 1, 1) == f"round {round_id} · granted 1 partition of 1 table"
-    assert compaction_round_details(round_id, 0, 0) == f"round {round_id} · granted 0 partitions of 0 tables"

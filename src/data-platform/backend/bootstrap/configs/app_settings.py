@@ -7,12 +7,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from bootstrap.configs.api_settings import ApiSettings
 from bootstrap.configs.catalog_settings import CatalogSettings
-from bootstrap.configs.compaction_settings import CompactionSettings
 from bootstrap.configs.component import Component
 from bootstrap.configs.database_backend import DatabaseBackend
 from bootstrap.configs.kafka_settings import KafkaSettings
 from bootstrap.configs.postgres_settings import PostgresSettings
-from bootstrap.configs.scheduler_settings import SchedulerSettings
 from bootstrap.configs.spark_settings import SparkSettings
 from bootstrap.configs.sqlite_settings import SqliteSettings
 from bootstrap.configs.temporal_settings import TemporalSettings
@@ -39,8 +37,6 @@ class AppSettings(BaseSettings):
     catalog: CatalogSettings = Field(default_factory=CatalogSettings)
     kafka: KafkaSettings = Field(default_factory=KafkaSettings)
     spark: SparkSettings = Field(default_factory=SparkSettings)
-    compaction: CompactionSettings = Field(default_factory=CompactionSettings)
-    scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
     api: ApiSettings = Field(default_factory=ApiSettings)
     callback_base_url: str = "http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000"
     discovery_interval_seconds: int = 600

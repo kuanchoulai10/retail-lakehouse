@@ -14,9 +14,6 @@ from bootstrap.container import (
     build_use_cases,
     build_worker,
 )
-from context.table_maintenance.adapter.hybrid.temporal.contracts.compaction_round import (
-    CompactionRoundActivity,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
@@ -30,13 +27,11 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationActivity,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
-    CompactionRoundActivities,
     TableDiscoveryActivities,
     TableMaintenanceActivities,
     TableReconciliationActivities,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
-    CompactionRoundWorkflow,
     TableDiscoveryWorkflow,
     TableMaintenanceWorkflow,
     TableReconciliationWorkflow,
@@ -56,7 +51,6 @@ if TYPE_CHECKING:
 ALL_ACTIVITY_NAMES = {
     str(member)
     for enum in (
-        CompactionRoundActivity,
         TableDiscoveryActivity,
         TableMaintenanceActivity,
         TableReconciliationActivity,
@@ -98,7 +92,6 @@ def test_activities_carry_the_callback_url_and_the_attempt_settings():
     assert isinstance(activities.reconciliation, TableReconciliationActivities)
     assert isinstance(activities.maintenance, TableMaintenanceActivities)
     assert isinstance(activities.discovery, TableDiscoveryActivities)
-    assert isinstance(activities.compaction_round, CompactionRoundActivities)
     assert activities.maintenance._callback_base_url == "http://api:8000"  # noqa: SLF001
     assert activities.reconciliation._attempt_deadline_seconds == 120  # noqa: SLF001
     assert activities.reconciliation._max_attempts == 4  # noqa: SLF001
@@ -139,7 +132,6 @@ def test_worker_registers_all_workflows_and_activities():
         TableReconciliationWorkflow,
         TableDiscoveryWorkflow,
         TableMaintenanceWorkflow,
-        CompactionRoundWorkflow,
     }
     names = {_activity_name(fn) for fn in factory.kwargs["activities"]}
     assert names == ALL_ACTIVITY_NAMES

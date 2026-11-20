@@ -13,7 +13,6 @@ import pytest
 
 import context.table_maintenance.application.service
 from base import UseCase
-from bootstrap.configs import SchedulerSettings
 from bootstrap.container import (
     build_gateways,
     build_platform_settings,
@@ -43,10 +42,6 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
 from context.table_maintenance.adapter.outbound.table_maintenance_run.s3 import (
     ReadMaintenanceEventLogS3Gateway,
 )
-from context.table_maintenance.application.port.inbound.compaction_round import (
-    GetSchedulerSettingsUseCaseInput,
-    ScheduleCompactionRoundUseCaseInput,
-)
 from context.table_maintenance.application.port.inbound.table_discovery_rules import (
     GetTableDiscoveryRulesUseCaseInput,
 )
@@ -64,8 +59,6 @@ from tests.bootstrap.container.container_support import (
 
 if TYPE_CHECKING:
     from pyiceberg.catalog import Catalog
-
-ROUND_1 = "cr-00000000000000000000000001"
 
 
 MIGRATION_ONLY_SERVICES: set[type] = {EnsureDefaultTableMaintenancePolicyService}
@@ -154,37 +147,6 @@ def test_use_cases_work_against_the_sql_repos():
     rules = use_cases.get_table_discovery_rules.execute(GetTableDiscoveryRulesUseCaseInput())
 
     assert (rules.version, rules.rules) == (0, ())
-
-
-def test_the_compaction_round_takes_the_scheduler_budget():
-    """The round use case is built with the scheduler settings' budget and records its rounds."""
-    use_cases = build_use_cases(
-        build_repositories(sqlite_engine()),
-        fake_gateways(),
-        platform_settings=platform_settings(),
-        clock=lambda: NOW,
-        scheduler=SchedulerSettings(budget_gb_hours=0.3),
-    )
-
-    result = use_cases.schedule_compaction_round.execute(ScheduleCompactionRoundUseCaseInput(round_id=ROUND_1, now=NOW))
-
-    assert (result.round_id, result.budget_gb_hours, result.picked) == (ROUND_1, 0.3, 0)
-
-
-def test_the_scheduler_settings_report_what_the_rounds_run_under():
-    """The settings use case reads the same scheduler settings the round is built with."""
-    use_cases = build_use_cases(
-        build_repositories(sqlite_engine()),
-        fake_gateways(),
-        platform_settings=platform_settings(),
-        clock=lambda: NOW,
-        scheduler=SchedulerSettings(round_seconds=60, budget_gb_hours=0.3),
-    )
-
-    output = use_cases.get_scheduler_settings.execute(GetSchedulerSettingsUseCaseInput())
-
-    assert (output.round_seconds, output.budget_gb_hours) == (60, 0.3)
-    assert [(p.priority, p.sla_seconds) for p in output.priorities] == [("P0", 3600), ("P1", 14400), ("P2", 28800)]
 
 
 def test_the_platform_settings_report_the_values_they_are_given():

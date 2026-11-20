@@ -2,12 +2,6 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.compaction_round_activity_policy import (
-    CompactionRoundActivityPolicy,
-)
-from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.compaction_round_workflow import (
-    CompactionRoundWorkflow,
-)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.mint_workflow_prefixed_id import (
     mint_workflow_prefixed_id,
 )
@@ -34,8 +28,6 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_s
 )
 
 __all__ = [
-    "CompactionRoundActivityPolicy",
-    "CompactionRoundWorkflow",
     "TableDiscoveryWorkflow",
     "TableMaintenanceActivityPolicy",
     "TableMaintenanceAttemptPolicy",

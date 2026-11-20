@@ -25,9 +25,6 @@ from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway impo
 from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import (
     InMemoryCatalogDiscoveriesRepo,
 )
-from tests.context.table_maintenance.fakes.in_memory_compaction_candidates_repo import (
-    InMemoryCompactionCandidatesRepo,
-)
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_rules_repo import (
     InMemoryTableDiscoveryRulesRepo,
 )
@@ -118,12 +115,6 @@ def catalog() -> FakeReadTableMetadataGateway:
 def runs_repo() -> InMemoryTableMaintenanceRunsRepo:
     """Provide an in-memory maintenance runs repository."""
     return InMemoryTableMaintenanceRunsRepo()
-
-
-@pytest.fixture
-def candidates_repo() -> InMemoryCompactionCandidatesRepo:
-    """Provide an empty in-memory compaction candidates repo."""
-    return InMemoryCompactionCandidatesRepo()
 
 
 @pytest.fixture

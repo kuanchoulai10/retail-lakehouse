@@ -143,30 +143,6 @@ def test_other_verdicts_map_by_name_and_next_eligible_is_parsed(
     assert by_op["rewrite_data_files"].result is OperationResult.NOT_CHECKED
 
 
-@pytest.mark.parametrize(
-    ("verdict", "result"),
-    [
-        ("all_held", OperationResult.ALL_HELD),
-        ("all_claimed", OperationResult.ALL_CLAIMED),
-        ("awaiting_schedule", OperationResult.AWAITING_SCHEDULE),
-    ],
-)
-def test_compaction_without_a_free_candidate_records_why(
-    service: RecordTableReconciliationService,
-    repo: InMemoryTableReconciliationsRepo,
-    verdict: str,
-    result: OperationResult,
-) -> None:
-    """A due compaction that found every candidate held or claimed is recorded as such, with no run."""
-    check = {**_due_check(), "verdict": verdict, "next_eligible_at": "2026-11-10T12:02:00+00:00"}
-    service.execute(_input(checks=(check,), run_id=None))
-
-    saved = repo.get(TableReconciliationId(REC_1))
-    assert saved is not None
-    assert saved.operations[0].result is result
-    assert saved.operations[0].next_eligible_at == datetime(2026, 11, 10, 12, 2, tzinfo=UTC)
-
-
 def test_skip_is_recorded_with_reason(
     service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
 ) -> None:

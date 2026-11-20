@@ -1111,11 +1111,10 @@ def test_failed_attempt_is_recorded_before_its_job_is_deleted():
 
 
 PLANNED_FILTERS = [{"spec_id": 0, "where": "region IN ('eu', 'us', 'ap', 'sa')"}]
-TOP_HALF = [{"spec_id": 0, "where": "region IN ('eu', 'us')"}]
 
 
 def test_oom_retry_keeps_the_planned_filters():
-    """Every attempt, also after running out of memory, submits the operation's filters; filter sets are ignored."""
+    """Every attempt, also after running out of memory, submits the operation's filters."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, a): [(a, False, OOM_ERROR)] for a in (1, 2)}
@@ -1127,7 +1126,6 @@ def test_oom_retry_keeps_the_planned_filters():
         plan["operations"][0] = {
             **plan["operations"][0],
             "filters": PLANNED_FILTERS,
-            "filter_sets": [PLANNED_FILTERS, TOP_HALF],
         }
         await h.run_maintenance(plan=plan)
         assert [s["filters"] for s in h.fakes.submits] == [PLANNED_FILTERS] * 3

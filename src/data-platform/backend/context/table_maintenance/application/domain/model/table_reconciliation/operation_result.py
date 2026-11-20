@@ -6,12 +6,7 @@ from enum import StrEnum
 
 
 class OperationResult(StrEnum):
-    """Enumerate what a reconciliation did about one operation.
-
-    ``all_held``, ``all_claimed`` and ``awaiting_schedule`` are a due compaction
-    that started nothing because every candidate was held by a filter, claimed
-    by another run, or not granted by a compaction round yet.
-    """
+    """Enumerate what a reconciliation did about one operation."""
 
     STARTED = "started"
     WOULD_START = "would_start"
@@ -21,6 +16,3 @@ class OperationResult(StrEnum):
     OFF = "off"
     NOT_CHECKED = "not_checked"
     NEEDS_ATTENTION = "needs_attention"
-    ALL_HELD = "all_held"
-    ALL_CLAIMED = "all_claimed"
-    AWAITING_SCHEDULE = "awaiting_schedule"

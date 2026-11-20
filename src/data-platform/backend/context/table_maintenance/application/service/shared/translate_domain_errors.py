@@ -5,9 +5,6 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.compaction_candidate import (
-    InvalidCandidateTransition,
-)
 from context.table_maintenance.application.domain.model.table import (
     InvalidTableTransition,
 )
@@ -34,18 +31,17 @@ if TYPE_CHECKING:
 def translate_domain_errors() -> Iterator[None]:
     """Translate domain and repo errors into application exceptions.
 
-    InvalidTableTransition, InvalidRunTransition, InvalidCandidateTransition,
-    StalePolicyVersion and StaleDiscoveryRulesVersion become ConflictError, any
-    other ValueError (which covers a broken invariant, an InvariantViolation
-    whose text is one line) becomes ValidationError with its message, and a repo
-    LookupError becomes NotFoundError. Application exceptions pass through.
+    InvalidTableTransition, InvalidRunTransition, StalePolicyVersion and
+    StaleDiscoveryRulesVersion become ConflictError, any other ValueError (which
+    covers a broken invariant, an InvariantViolation whose text is one line)
+    becomes ValidationError with its message, and a repo LookupError becomes
+    NotFoundError. Application exceptions pass through.
     """
     try:
         yield
     except (
         InvalidTableTransition,
         InvalidRunTransition,
-        InvalidCandidateTransition,
         StalePolicyVersion,
         StaleDiscoveryRulesVersion,
     ) as exc:

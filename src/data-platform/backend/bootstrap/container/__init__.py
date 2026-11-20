@@ -6,7 +6,6 @@ from bootstrap.container.activities import Activities
 from bootstrap.container.apply_worker_startup import apply_worker_startup
 from bootstrap.container.build_activities import build_activities
 from bootstrap.container.build_api_app import build_api_app
-from bootstrap.container.build_candidate_selection import build_candidate_selection
 from bootstrap.container.build_catalog_factory import build_catalog_factory
 from bootstrap.container.build_catalog_web_use_cases import build_catalog_web_use_cases
 from bootstrap.container.build_connected_use_cases import build_connected_use_cases
@@ -20,8 +19,6 @@ from bootstrap.container.build_k8s_core_api import build_k8s_core_api
 from bootstrap.container.build_openapi_document import build_openapi_document
 from bootstrap.container.build_platform_settings import build_platform_settings
 from bootstrap.container.build_polaris_http_client import build_polaris_http_client
-from bootstrap.container.build_priority_sla import build_priority_sla
-from bootstrap.container.build_priority_weights import build_priority_weights
 from bootstrap.container.build_repositories import build_repositories
 from bootstrap.container.build_size_memory import build_size_memory
 from bootstrap.container.build_spark_config import build_spark_config
@@ -52,7 +49,6 @@ __all__ = [
     "apply_worker_startup",
     "build_activities",
     "build_api_app",
-    "build_candidate_selection",
     "build_catalog_factory",
     "build_catalog_web_use_cases",
     "build_connected_use_cases",
@@ -64,8 +60,6 @@ __all__ = [
     "build_openapi_document",
     "build_platform_settings",
     "build_polaris_http_client",
-    "build_priority_sla",
-    "build_priority_weights",
     "build_repositories",
     "build_size_memory",
     "build_spark_config",

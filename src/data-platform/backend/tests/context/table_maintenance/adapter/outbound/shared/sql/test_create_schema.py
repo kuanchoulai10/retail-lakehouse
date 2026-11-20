@@ -47,9 +47,17 @@ def test_create_schema_includes_the_reconciliations_package():
     assert "context.table_maintenance.adapter.outbound.table_reconciliation.sql" in AGGREGATE_SQL_PACKAGES
 
 
-def test_create_schema_includes_the_compaction_candidates_package():
-    """The compaction candidates table is created with the control-plane schema."""
-    assert "context.table_maintenance.adapter.outbound.compaction_candidate.sql" in AGGREGATE_SQL_PACKAGES
+def test_create_schema_creates_the_tables_of_the_seven_aggregates():
+    """Compaction rounds and candidates are gone, so the schema holds the tables of the seven aggregates left."""
+    assert {package.split(".")[-2] for package in AGGREGATE_SQL_PACKAGES} == {
+        "catalog_discovery",
+        "table",
+        "table_discovery_rules",
+        "table_maintenance_policy",
+        "table_maintenance_policy_attachment",
+        "table_maintenance_run",
+        "table_reconciliation",
+    }
 
 
 def test_create_schema_adds_columns_an_older_release_did_not_create(tmp_path: Path) -> None:
@@ -57,6 +65,6 @@ def test_create_schema_adds_columns_an_older_release_did_not_create(tmp_path: Pa
     engine = create_engine(f"sqlite:///{tmp_path / 'db.sqlite'}")
     create_schema(engine)
     with engine.begin() as connection:
-        connection.execute(text("ALTER TABLE compaction_candidates DROP COLUMN waiting_since"))
+        connection.execute(text("ALTER TABLE table_maintenance_runs DROP COLUMN priority"))
     create_schema(engine)
-    assert "waiting_since" in {c["name"] for c in inspect(engine).get_columns("compaction_candidates")}
+    assert "priority" in {c["name"] for c in inspect(engine).get_columns("table_maintenance_runs")}

@@ -99,16 +99,18 @@ DEFAULT_POLICY="$(kubectl exec deployment/table-maintenance-api \
   -- python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/v1/maintenance-policies/default', timeout=10).read().decode())")"
 grep -q '"name":"default"' <<<"${DEFAULT_POLICY}" || { echo "policy default is missing" >&2; exit 1; }
 
-OLD_ROUTE_STATUS="$(kubectl exec deployment/table-maintenance-api \
-  --namespace "${NAMESPACE}" \
-  --context "${KUBE_CONTEXT}" \
-  -- python -c "
+for old_route in /v1/policy-templates /v1/compaction-rounds; do
+  OLD_ROUTE_STATUS="$(kubectl exec deployment/table-maintenance-api \
+    --namespace "${NAMESPACE}" \
+    --context "${KUBE_CONTEXT}" \
+    -- python -c "
 import urllib.error, urllib.request
 try:
-    print(urllib.request.urlopen('http://localhost:8000/v1/policy-templates', timeout=10).status)
+    print(urllib.request.urlopen('http://localhost:8000${old_route}', timeout=10).status)
 except urllib.error.HTTPError as e:
     print(e.code)")"
-[[ "${OLD_ROUTE_STATUS}" == "404" ]] || { echo "/v1/policy-templates returned ${OLD_ROUTE_STATUS}, expected 404" >&2; exit 1; }
+  [[ "${OLD_ROUTE_STATUS}" == "404" ]] || { echo "${old_route} returned ${OLD_ROUTE_STATUS}, expected 404" >&2; exit 1; }
+done
 
 ADMIN_TOOLS="deployment/temporal-admintools"
 
@@ -132,6 +134,18 @@ if RETIRED_WORKFLOW="$(kubectl exec "${ADMIN_TOOLS}" \
 fi
 grep -qi 'not found' <<<"${RETIRED_WORKFLOW}" \
   || { echo "describing workflow table-maintenance-admission failed for another reason: ${RETIRED_WORKFLOW}" >&2; exit 1; }
+
+if RETIRED_SCHEDULE="$(kubectl exec "${ADMIN_TOOLS}" \
+  --namespace temporal \
+  --context "${KUBE_CONTEXT}" \
+  -- temporal schedule describe \
+  --address temporal-frontend.temporal.svc.cluster.local:7233 \
+  --schedule-id compaction-rounds 2>&1)"; then
+  echo "schedule compaction-rounds exists, expected it to be gone" >&2
+  exit 1
+fi
+grep -qi 'not found' <<<"${RETIRED_SCHEDULE}" \
+  || { echo "describing schedule compaction-rounds failed for another reason: ${RETIRED_SCHEDULE}" >&2; exit 1; }
 
 CONSUMER_GROUP="$(kubectl exec kafka-cluster-dual-role-0 \
   --namespace kafka \

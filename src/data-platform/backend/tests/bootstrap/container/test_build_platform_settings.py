@@ -13,14 +13,6 @@ WHITELIST = {
     "max_attempts",
     "queue_wait_limit_seconds",
     "compute_sizes",
-    "round_seconds",
-    "budget_gb_hours",
-    "priorities",
-    "grant_lease_seconds",
-    "partitions_per_run",
-    "quiet_seconds",
-    "max_quiet_wait_seconds",
-    "min_partition_bytes",
     "failure_backoff_cap_seconds",
     "discovery_interval_seconds",
 }
@@ -40,14 +32,6 @@ def test_defaults_are_the_values_the_platform_ran_with_before_they_had_names():
     assert settings.queue_wait_limit_seconds == 86400
     assert settings.failure_backoff_cap_seconds == 86400
     assert settings.discovery_interval_seconds == 600
-    assert (settings.round_seconds, settings.budget_gb_hours, settings.grant_lease_seconds) == (120, 0.05, 600)
-    assert [(p.priority, p.weight, p.sla_seconds) for p in settings.priorities] == [
-        ("P0", 4.0, 3600),
-        ("P1", 2.0, 14400),
-        ("P2", 1.0, 28800),
-    ]
-    assert (settings.partitions_per_run, settings.quiet_seconds, settings.max_quiet_wait_seconds) == (10, 120, 3600)
-    assert settings.min_partition_bytes == 0
     assert [(s.size, s.driver_memory, s.executor_memory, s.executor_instances) for s in settings.compute_sizes] == [
         (ComputeSize.S, "768m", "768m", 1),
         (ComputeSize.M, "1g", "1536m", 1),
@@ -64,19 +48,6 @@ def test_values_follow_the_application_settings():
             maintenance_queue_wait_limit_seconds=1800,
             maintenance_failure_backoff_cap_seconds=7200,
             discovery_interval_seconds=60,
-            scheduler={
-                "round_seconds": 30,
-                "budget_gb_hours": 0.4,
-                "priority_weights": {"p0": 8.0},
-                "sla_seconds": {"p1": 60},
-                "grant_lease_seconds": 90,
-            },
-            compaction={
-                "partitions_per_run": 3,
-                "quiet_seconds": 5,
-                "max_quiet_wait_seconds": 50,
-                "min_partition_bytes": 1024,
-            },
             spark={"size_m": {"executor_instances": 3}},
         )
     )
@@ -84,10 +55,6 @@ def test_values_follow_the_application_settings():
     assert (settings.attempt_deadline_seconds, settings.max_attempts) == (900, 5)
     assert settings.queue_wait_limit_seconds == 1800
     assert (settings.failure_backoff_cap_seconds, settings.discovery_interval_seconds) == (7200, 60)
-    assert (settings.round_seconds, settings.budget_gb_hours, settings.grant_lease_seconds) == (30, 0.4, 90)
-    assert (settings.priorities[0].weight, settings.priorities[1].sla_seconds) == (8.0, 60)
-    assert (settings.partitions_per_run, settings.quiet_seconds) == (3, 5)
-    assert (settings.max_quiet_wait_seconds, settings.min_partition_bytes) == (50, 1024)
     assert settings.compute_sizes[1].executor_instances == 3
 
 

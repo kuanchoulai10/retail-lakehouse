@@ -11,7 +11,6 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
-    CompactionRoundWorkflow,
     TableDiscoveryWorkflow,
     TableMaintenanceWorkflow,
     TableReconciliationWorkflow,
@@ -29,7 +28,6 @@ WORKFLOWS = (
     TableReconciliationWorkflow,
     TableDiscoveryWorkflow,
     TableMaintenanceWorkflow,
-    CompactionRoundWorkflow,
 )
 GRACEFUL_SHUTDOWN = timedelta(seconds=30)
 

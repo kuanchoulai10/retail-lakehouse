@@ -48,12 +48,13 @@ def test_skips_a_table_that_does_not_exist(engine: Engine) -> None:
     assert add_missing_indexes(engine, schema=_schema()) == []
 
 
-def test_create_schema_adds_the_candidate_state_index_to_an_older_database(engine: Engine) -> None:
-    """A candidates table stored before its state index existed gets the index the rounds read by."""
+def test_create_schema_adds_the_run_table_index_to_an_older_database(engine: Engine) -> None:
+    """A runs table stored without its table-and-created index gets it when the schema is created again."""
     create_schema(engine)
     with engine.begin() as connection:
-        connection.execute(text("DROP INDEX ix_compaction_candidates_state"))
+        connection.execute(text("DROP INDEX ix_table_maintenance_runs_table_created"))
 
     create_schema(engine)
 
-    assert "ix_compaction_candidates_state" in {i["name"] for i in inspect(engine).get_indexes("compaction_candidates")}
+    index = "ix_table_maintenance_runs_table_created"
+    assert index in {i["name"] for i in inspect(engine).get_indexes("table_maintenance_runs")}

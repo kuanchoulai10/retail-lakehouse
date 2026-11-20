@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from bootstrap.container.activities import Activities
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
-    CompactionRoundActivities,
     TableDiscoveryActivities,
     TableMaintenanceActivities,
     TableReconciliationActivities,
@@ -43,5 +42,4 @@ def build_activities(use_cases: UseCases, client: Client, settings: AppSettings)
             callback_base_url=settings.callback_base_url,
         ),
         discovery=TableDiscoveryActivities(sync=use_cases.sync_discovered_tables),
-        compaction_round=CompactionRoundActivities(schedule=use_cases.schedule_compaction_round),
     )

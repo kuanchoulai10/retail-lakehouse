@@ -8,12 +8,6 @@ from bootstrap.container.repositories import Repositories
 from context.table_maintenance.adapter.outbound.catalog_discovery.sql import (
     CatalogDiscoveriesSqlRepo,
 )
-from context.table_maintenance.adapter.outbound.compaction_candidate.sql import (
-    CompactionCandidatesSqlRepo,
-)
-from context.table_maintenance.adapter.outbound.compaction_round.sql import (
-    CompactionRoundsSqlRepo,
-)
 from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo
 from context.table_maintenance.adapter.outbound.table_discovery_rules.sql import (
     TableDiscoveryRulesSqlRepo,
@@ -44,7 +38,5 @@ def build_repositories(engine: Engine) -> Repositories:
         table_maintenance_policies=TableMaintenancePoliciesSqlRepo(engine),
         table_maintenance_policy_attachments=TableMaintenancePolicyAttachmentsSqlRepo(engine),
         table_reconciliations=TableReconciliationsSqlRepo(engine),
-        compaction_candidates=CompactionCandidatesSqlRepo(engine),
-        compaction_rounds=CompactionRoundsSqlRepo(engine),
         catalog_discoveries=CatalogDiscoveriesSqlRepo(engine),
     )

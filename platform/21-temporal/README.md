@@ -36,7 +36,7 @@ Wave 21 — after `20-temporal-db`.
 
 `createDatabase` and `manageSchema` are enabled for both stores, so the chart's hook Job creates the databases and schemas (idempotent). The `default` Temporal namespace (retention 3 days) is created by the chart's namespace hook Job. `numHistoryShards` is 4 and cannot be changed after the first deployment.
 
-`bootstrap.sh` registers five custom search attributes on `default` (skipping any that exist): `TableUuid`, `TableName`, `MaintenanceTrigger` (Keyword), `MaintenanceOperations` and `GrantedTableUuids` (KeywordList). Table maintenance tags its workflows with them so the Web UI and the console can find a table's workflows; a compaction round carries `GrantedTableUuids`, the tables it granted compaction to, so `GrantedTableUuids = "<uuid>"` lists the rounds that picked a table. Temporal refuses to start a workflow that carries an unregistered attribute, and fails the workflow task of one that upserts it.
+`bootstrap.sh` registers four custom search attributes on `default` (skipping any that exist): `TableUuid`, `TableName`, `MaintenanceTrigger` (Keyword) and `MaintenanceOperations` (KeywordList). Table maintenance tags its workflows with them so the Web UI and the console can find a table's workflows. Temporal refuses to start a workflow that carries an unregistered attribute, and fails the workflow task of one that upserts it.
 
 ## Installation
 
@@ -50,7 +50,7 @@ KUBE_CONTEXT=retail-lakehouse bash platform/21-temporal/bootstrap.sh
 KUBE_CONTEXT=retail-lakehouse bash platform/21-temporal/validate.sh
 ```
 
-Checks that every Deployment is rolled out, `temporal operator cluster health` reports `SERVING`, `temporal operator namespace describe default` succeeds, and the five search attributes exist with their types.
+Checks that every Deployment is rolled out, `temporal operator cluster health` reports `SERVING`, `temporal operator namespace describe default` succeeds, and the four search attributes exist with their types.
 
 ## Smoke Test
 
