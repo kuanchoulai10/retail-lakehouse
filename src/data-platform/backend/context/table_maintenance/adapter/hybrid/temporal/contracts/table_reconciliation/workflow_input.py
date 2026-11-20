@@ -26,6 +26,9 @@ class TableReconciliationWorkflowInput:
     manual trigger not yet planned: ``None`` means none, ``[]`` means a manual run
     of every due operation, a non-empty list names the requested operations.
     ``pending_manual_priority`` is the priority that trigger asked for (``None``: the table's own).
+    ``raised_manual`` and ``raised_manual_priority`` keep, in the same shape, the manual trigger
+    the run in flight was asked to raise its priority for (``None``: none), so it can be planned
+    after the run should the run report the raise unapplied.
     ``next_plan_at`` (ISO-8601) is when the timer plans next; ``None`` means one
     ``reconcile_interval_seconds`` after start. That interval comes from the last
     plan and is also used after a failed plan. ``continue_as_new_after`` bounds
@@ -48,3 +51,5 @@ class TableReconciliationWorkflowInput:
     in_flight_max_attempts: int = DEFAULT_MAX_ATTEMPTS
     in_flight_queue_wait_limit_seconds: int = DEFAULT_QUEUE_WAIT_LIMIT_SECONDS
     pending_manual_priority: str | None = None
+    raised_manual: list[str] | None = None
+    raised_manual_priority: str | None = None

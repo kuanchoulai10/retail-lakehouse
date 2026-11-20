@@ -99,11 +99,14 @@ class TableMaintenanceWorkflow:
     priority, only upward, through ``raise_maintenance_run_priority``; a failed raise is logged and
     dropped. Raises are applied before every submit, so a later operation is submitted at the new
     priority, and as soon as they arrive while an attempt is awaited. An attempt that is running keeps
-    going; one still queued is replaced: a status read that finds its driver started makes it running
-    instead, otherwise its job is deleted, polled every 30 s until it reads ``NOT_FOUND`` and has no
+    going; one still queued is polled at once, and only a job that reads ``PENDING`` without a driver
+    start is replaced: its job is deleted, polled every 30 s until it reads ``NOT_FOUND`` and has no
     live pods, and submitted again under the same attempt number, keeping its submit time and queue
-    deadline. A job not gone within the fencing confirm bound fails the attempt like an unconfirmed
-    fence (ended ``missing``, possibly still running), and the operation waits until it is gone.
+    deadline (a status that cannot be read leaves the replacement to the next poll). A job not gone
+    within the fencing confirm bound fails the attempt like an unconfirmed fence (ended ``missing``,
+    possibly still running), and the operation waits until it is gone. The parent is told, with the
+    run's end, whether a raise arrived too late to be applied (``unapplied_raise``), so the manual run
+    behind it can still be planned.
     """
 
     @workflow.init
@@ -227,8 +230,12 @@ class TableMaintenanceWorkflow:
     ) -> OperationResultSignal:
         """Wait for the attempt to end: queued until its driver starts, then bounded by its deadline from that start.
 
-        A raise that arrives meanwhile is applied at once; a queued attempt it raised is replaced
-        (see ``_requeue``), keeping its submit time, its queue deadline and its next poll.
+        A raise that arrives meanwhile is applied at once. One that raised the run while the attempt
+        is queued polls the job at once: a job that reads ``PENDING`` without a driver start is
+        replaced (see ``_requeue``), keeping its submit time and its queue deadline; a driver start
+        makes the attempt running; ``RUNNING`` without a start is left alone; and a failed, missing or
+        completed job ends the attempt as any poll would. A poll that cannot read the status keeps the
+        replacement wanted for the next poll.
         """
         name = operation["operation"]
         key = (name, attempt)
@@ -237,6 +244,7 @@ class TableMaintenanceWorkflow:
         deadline = submitted_at + self._policy.queue_wait_limit
         completed_since: datetime | None = None
         poll_at: datetime | None = None
+        requeue_wanted = False
         while True:
             if key in self._results:
                 return self._results[key]
@@ -257,13 +265,9 @@ class TableMaintenanceWorkflow:
             if key in self._results:
                 return self._results[key]
             if self._raise_requests:
-                started, replaced = await self._raise_attempt(operation, attempt, size, queued=running_since is None)
-                if replaced is not None:
-                    return replaced
-                if started is not None:
-                    running_since = await self._started_running(name, attempt, started, submitted_at)
-                    deadline = running_since + self._policy.attempt_deadline
-                    poll_at = None
+                if await self._apply_raises() and running_since is None:
+                    requeue_wanted = True
+                    poll_at = workflow.now()
                 continue
             if workflow.now() >= deadline or workflow.now() < poll_at:
                 continue
@@ -274,13 +278,17 @@ class TableMaintenanceWorkflow:
             if running_since is None and status.get("driver_started_at"):
                 running_since = await self._started_running(name, attempt, status["driver_started_at"], submitted_at)
                 deadline = running_since + self._policy.attempt_deadline
-            if status["state"] != "COMPLETED":
-                completed_since = None
-            else:
-                completed_since = completed_since or workflow.now()
+            completed_since = (completed_since or workflow.now()) if status["state"] == "COMPLETED" else None
             ended = await self._ended_by_status(name, attempt, job_name, status, completed_since)
             if ended is not None:
                 return ended
+            if requeue_wanted:
+                requeue_wanted = False
+                replaced = await self._requeue_if_pending(
+                    operation, attempt, size, status, queued=running_since is None
+                )
+                if replaced is not None:
+                    return replaced
 
     async def _ended_by_status(
         self, name: str, attempt: int, job_name: str, status: dict[str, Any], completed_since: datetime | None
@@ -329,39 +337,41 @@ class TableMaintenanceWorkflow:
                 continue
             self._priority = reply["priority"]
             raised = raised or bool(reply["raised"])
+            workflow.logger.info(
+                "raise to %s %s run %s, now at %s",
+                request.priority or "the table's priority",
+                "raised" if reply["raised"] else "left",
+                self._run_id,
+                self._priority,
+            )
         return raised
 
-    async def _raise_attempt(
-        self, operation: dict[str, Any], attempt: int, size: str, *, queued: bool
-    ) -> tuple[str | None, OperationResultSignal | None]:
-        """Apply the raises that arrived and replace the attempt if it is ``queued`` and the run was raised.
+    async def _requeue_if_pending(
+        self, operation: dict[str, Any], attempt: int, size: str, status: dict[str, Any], *, queued: bool
+    ) -> OperationResultSignal | None:
+        """Replace the attempt when it is still ``queued`` and its job reads ``PENDING``; see ``_requeue``.
 
-        Returns what ``_requeue`` returns, or ``(None, None)`` when nothing is replaced.
+        A job in any other state is not replaced: ``RUNNING`` without a driver start keeps running (a
+        later poll reads the start), and a failed, missing or completed job was already handled as a
+        poll handles it.
         """
-        if not await self._apply_raises() or not queued:
-            return None, None
+        if not queued or status["state"] != "PENDING":
+            return None
         return await self._requeue(operation, attempt, size)
 
-    async def _requeue(
-        self, operation: dict[str, Any], attempt: int, size: str
-    ) -> tuple[str | None, OperationResultSignal | None]:
-        """Replace a queued attempt's job so it is queued again at the raised priority.
+    async def _requeue(self, operation: dict[str, Any], attempt: int, size: str) -> OperationResultSignal | None:
+        """Replace a pending attempt's job so it is queued again at the raised priority.
 
-        Returns ``(driver_started_at, None)`` when a status read finds the driver already started, so
-        the attempt is running and is left alone; ``(None, failure)`` when the old job was not gone within
-        the fencing confirm bound, or the new submit failed; ``(None, None)`` once the attempt is
-        queued again (or a status read failed, so nothing was replaced). The job is deleted, polled
-        every fencing poll until it reads ``NOT_FOUND`` and has no live pods, then submitted again
-        under the same attempt number. A job still there at the bound is recorded as an unconfirmed
-        fence is, and polled slowly until gone.
+        The job is deleted, polled every fencing poll until it reads ``NOT_FOUND`` and has no live
+        pods, then submitted again under the same attempt number. Returns None once it is queued
+        again; a failure when the old job was not gone within the fencing confirm bound (recorded
+        as an unconfirmed fence is, then polled slowly until gone) or the new submit failed.
+
+        A driver that starts between the status read that found the job pending and the delete is
+        killed with it; the attempt is then simply run again, which the maintenance procedures
+        allow since they are idempotent.
         """
         name = operation["operation"]
-        status = await self._job_status(name, attempt)
-        if status is None:
-            workflow.logger.warning("not requeueing %s attempt %s: its status is unknown", name, attempt)
-            return None, None
-        if status.get("driver_started_at"):
-            return status["driver_started_at"], None
         minutes = int(self._policy.fencing.confirm_bound.total_seconds() // 60)
         unconfirmed = await self._await_gone(
             name,
@@ -371,13 +381,13 @@ class TableMaintenanceWorkflow:
             unconfirmed_error=lambda still: f"{_NOT_REPLACED}: {still} {minutes} minutes after the priority raise",
         )
         if unconfirmed is not None:
-            return None, unconfirmed
+            return unconfirmed
         try:
             await self._submit(operation, attempt, size)
         except ActivityError as error:
             _raise_if_cancelled(error)
-            return None, self._submit_failed(name, attempt, error)
-        return None, None
+            return self._submit_failed(name, attempt, error)
+        return None
 
     async def _started_running(
         self, name: str, attempt: int, driver_started_at: str, submitted_at: datetime
@@ -602,6 +612,7 @@ class TableMaintenanceWorkflow:
                     "arg": {
                         "run_id": self._run_id,
                         "record_failures": self._record_failures,
+                        "unapplied_raise": bool(self._raise_requests),
                     },
                 },
             )

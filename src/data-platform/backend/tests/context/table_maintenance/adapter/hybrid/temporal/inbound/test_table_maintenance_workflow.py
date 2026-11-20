@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from temporalio.client import WorkflowFailureError
-from temporalio.exceptions import CancelledError
+from temporalio.exceptions import ApplicationError, CancelledError
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
@@ -238,7 +238,7 @@ def test_operations_run_in_order_and_parent_signalled():
             f"{RUN_ID}-{COMPACTION}-1",
             f"{RUN_ID}-{EXPIRE}-1",
         ]
-        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
+        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0, "unapplied_raise": False}]
 
     _run(scenario)
 
@@ -267,7 +267,7 @@ def test_failed_operation_retried_three_attempts_total_then_next_operation_runs(
         assert times[2] - times[1] >= timedelta(seconds=120)
         assert times[2] - times[1] < timedelta(seconds=180)
         assert len(h.fakes.deletes) == 4
-        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
+        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0, "unapplied_raise": False}]
 
     _run(scenario)
 
@@ -481,7 +481,7 @@ def test_cancelled_workflow_records_deletes_and_notifies():
 
         assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
         assert set(h.fakes.deletes) == {f"{RUN_ID}-{COMPACTION}-1"}
-        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
+        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0, "unapplied_raise": False}]
 
     _run(scenario)
 
@@ -501,7 +501,7 @@ def test_record_failures_are_counted_in_the_parent_payload():
             (COMPACTION, 1),
             (EXPIRE, 1),
         ]
-        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 1}]
+        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 1, "unapplied_raise": False}]
 
     _run(scenario)
 
@@ -531,7 +531,7 @@ async def _cancel_while_blocked(
     assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
     assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1)]
     assert set(h.fakes.deletes) == {f"{RUN_ID}-{COMPACTION}-1"}
-    assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
+    assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0, "unapplied_raise": False}]
 
 
 def test_cancel_during_status_poll_activity_cancels_the_workflow():
@@ -772,7 +772,7 @@ def test_cancelled_run_fences_its_live_attempt_before_it_reports():
         assert h.fakes.pods_times[-1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=10)
         assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
         assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1)]
-        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
+        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0, "unapplied_raise": False}]
 
     _run(scenario)
 
@@ -956,7 +956,7 @@ def test_needs_attention_stops_the_operation_without_another_attempt():
         ]
         times = h.submit_times()
         assert times[2] - times[1] < timedelta(seconds=60)
-        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
+        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0, "unapplied_raise": False}]
 
     _run(scenario)
 
@@ -1433,6 +1433,10 @@ def test_raise_leaves_a_running_attempt_alone():
         assert len(h.fakes.submits) == 1
         assert h.fakes.deletes == [FIRST_APP]
         assert h.recorded() == [(COMPACTION, 1, True, None)]
+        assert [r["attempt"] for r in h.fakes.running_records] == [1]
+        names = _names(await h.commands())
+        assert "get_maintenance_job_status" not in names[names.index("raise_maintenance_run_priority") :]
+        assert (await h.parent_payloads())[0]["unapplied_raise"] is False
 
     _run(scenario)
 
@@ -1554,5 +1558,125 @@ def test_queued_job_that_cannot_be_replaced_fails_still_running():
         assert h.submit_times()[1] - deleted_at >= timedelta(minutes=20)
         slow = [t for t in h.fakes.status_times if t - deleted_at >= timedelta(minutes=15)]
         assert all(b - a >= timedelta(minutes=5) for a, b in itertools.pairwise(slow))
+
+    _run(scenario)
+
+
+def _succeed_on_the_status_read_after_the_raise(h: Harness) -> None:
+    """Send the attempt's success result from the first status read after a raise, once that read answered."""
+    sent: list[bool] = []
+
+    async def hook(_: str, __: datetime) -> None:
+        if h.fakes.raises and not sent:
+            sent.append(True)
+            await h.client.get_workflow_handle(WORKFLOW_ID).signal(
+                TableMaintenanceSignal.OPERATION_RESULT,
+                OperationResultSignal(
+                    run_id=RUN_ID, operation=COMPACTION, attempt=1, succeeded=True, metrics={}, error=None
+                ),
+            )
+
+    h.fakes.status_hook = hook
+
+
+def test_raise_while_running_without_a_driver_start_is_not_requeued():
+    """A job that reads RUNNING is not replaced even when its driver start could not be read."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.states[FIRST_APP] = {"state": "RUNNING", "error": None}
+        _succeed_on_the_status_read_after_the_raise(h)
+        handle = await h.start_maintenance(COMPACTION)
+        await _raise_after(h, handle, timedelta(minutes=1))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert len(h.fakes.raises) == 1
+        assert len(h.fakes.submits) == 1
+        assert h.fakes.deletes == [FIRST_APP]
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+
+    _run(scenario)
+
+
+def test_raise_while_the_job_failed_records_the_failure():
+    """A raise that finds the queued job failed ends the attempt as job_failed; nothing is submitted again."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.record_replies[(COMPACTION, 1)] = {"next_step": "not_retried"}
+
+        async def hook(_: dict) -> None:
+            h.fakes.states[FIRST_APP] = {"state": "FAILED", "error": "driver could not be scheduled"}
+
+        h.fakes.raise_hook = hook
+        handle = await h.start_maintenance(COMPACTION)
+        await _raise_after(h, handle, timedelta(minutes=1))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert h.recorded() == [(COMPACTION, 1, False, "driver could not be scheduled")]
+        assert h.fakes.records[0]["ended_by"] == "job_failed"
+        assert len(h.fakes.submits) == 1
+        assert h.fakes.deletes == [FIRST_APP]
+
+    _run(scenario)
+
+
+def test_requeue_waits_for_the_next_poll_when_the_status_is_unknown():
+    """A raise whose status read fails is requeued at the next poll that reads the job still pending."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.vanish_after_delete[FIRST_APP] = timedelta(0)
+        failed: list[bool] = []
+
+        async def on_status(_: str, __: datetime) -> None:
+            if h.fakes.raises and not failed:
+                failed.append(True)
+                raise ApplicationError("apiserver unavailable", type="RuntimeError", non_retryable=True)
+
+        async def on_raise(_: dict) -> None:
+            h.fakes.callbacks[(COMPACTION, 1)] = [(1, True, None)]
+
+        h.fakes.status_hook = on_status
+        h.fakes.raise_hook = on_raise
+        handle = await h.start_maintenance(COMPACTION)
+        await _raise_after(h, handle, timedelta(minutes=15))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        commands = await h.commands()
+        names = _names(commands)
+        raised = names.index("raise_maintenance_run_priority")
+        assert names[raised : raised + 7] == [
+            "raise_maintenance_run_priority",
+            "get_maintenance_job_status",
+            "get_maintenance_job_status",
+            "delete_maintenance_job",
+            "get_maintenance_job_status",
+            "get_maintenance_job_pods",
+            "submit_maintenance_operation",
+        ]
+        unknown_at, next_poll_at = commands[raised + 1][1], commands[raised + 2][1]
+        assert next_poll_at - unknown_at >= timedelta(minutes=4)
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1), (COMPACTION, 1)]
+
+    _run(scenario)
+
+
+def test_finish_reports_a_raise_left_unapplied():
+    """A raise that arrives after the last operation was awaited is reported to the parent as unapplied."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
+
+        async def hook(_: dict) -> None:
+            await h.client.get_workflow_handle(WORKFLOW_ID).signal(
+                TableMaintenanceSignal.RAISE_PRIORITY, RaisePrioritySignal("P0")
+            )
+
+        h.fakes.record_hook = hook
+        await h.run_maintenance(COMPACTION)
+
+        assert h.fakes.raises == []
+        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0, "unapplied_raise": True}]
 
     _run(scenario)

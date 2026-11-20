@@ -22,6 +22,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     TABLE_MAINTENANCE_WORKFLOW,
+    TableMaintenanceSignal,
     TableMaintenanceWorkflowInput,
     table_maintenance_workflow_id,
 )
@@ -204,10 +205,11 @@ class Harness:
             **fields,
         )
 
-    async def report_gone_child(self) -> None:
+    async def report_gone_child(self, *, unapplied_raise: bool = False) -> None:
         """Report the carried run in flight finished, as its child would have."""
         await self.signal(
-            TableReconciliationSignal.MAINTENANCE_FINISHED, {"run_id": GHOST_RUN_ID, "record_failures": 0}
+            TableReconciliationSignal.MAINTENANCE_FINISHED,
+            {"run_id": GHOST_RUN_ID, "record_failures": 0, "unapplied_raise": unapplied_raise},
         )
 
     async def signal(self, name: str, payload: dict | None = None) -> None:
@@ -600,7 +602,8 @@ def test_trigger_now_priority_survives_continue_as_new():
         await eventually(run_id_now, lambda r: r != first_run)
         assert (await h.state())["pending_manual_priority"] == "P1"
         await h.report_gone_child()
-        assert (await h.plan_count(1))[0]["manual_priority"] == "P1"
+        plan = (await h.plan_count(1))[0]
+        assert (plan["manual_operations"], plan["manual_priority"]) == ([EXPIRE], "P1")
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -1880,3 +1883,125 @@ def test_a_compaction_grant_records_its_patch_marker_and_its_history_replays():
         await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def _first_plan_with(flag: str) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    """Plan a compaction carrying the stub flag ``flag`` first, then the manual operations asked for."""
+
+    def answer(request: dict[str, Any]) -> dict[str, Any]:
+        if request["manual_operations"]:
+            return _planned(*request["manual_operations"])
+        return {**_planned(COMPACTION), flag: True}
+
+    return answer
+
+
+def test_manual_trigger_raised_on_a_run_that_reports_meanwhile_is_planned_after_it(monkeypatch: pytest.MonkeyPatch):
+    """A run that reports while its raise is on the way keeps the manual trigger pending, to be planned next.
+
+    The raise's delivery is held, inside the workflow, until the run's report was handled, so the
+    report always lands while the signal is awaited.
+    """
+    import temporalio.workflow
+
+    real_handle = temporalio.workflow.get_external_workflow_handle
+
+    class HeldRaiseHandle:
+        def __init__(self, workflow_id: str) -> None:
+            self._handle = real_handle(workflow_id)
+
+        async def signal(self, name: str, arg: Any = None) -> None:  # noqa: ANN401
+            await self._handle.signal(name, arg)
+            if name == TableMaintenanceSignal.RAISE_PRIORITY:
+                reconciliation = temporalio.workflow.instance()
+                await temporalio.workflow.wait_condition(lambda: reconciliation.state()["in_flight_run_id"] is None)
+
+        async def cancel(self) -> None:
+            await self._handle.cancel()
+
+    monkeypatch.setattr(temporalio.workflow, "get_external_workflow_handle", HeldRaiseHandle)
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P1"})
+        child = await h.child_handle(first)
+
+        async def raises() -> list[str | None]:
+            return await child.query("raises")
+
+        await eventually(raises, lambda r: r == ["P1"])
+        await h.complete_child(first)
+        plan = (await h.plan_count(2))[1]
+        assert (plan["manual_operations"], plan["manual_priority"]) == ([EXPIRE], "P1")
+        assert (await h.records(2))[1]["wake_reasons"] == {"manual_run": 1, "previous_run_finished": 1}
+
+    _run(
+        scenario,
+        script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])),
+        runner=UnsandboxedWorkflowRunner(),
+    )
+
+
+def test_manual_trigger_whose_raise_the_run_left_unapplied_is_planned_after_it():
+    """A raise the run received but never applied gives the manual trigger back once the run reports."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P0"})
+        child = await h.child_handle(first)
+
+        async def raises() -> list[str | None]:
+            return await child.query("raises")
+
+        await eventually(raises, lambda r: r == ["P0"])
+        state = await eventually(h.state, lambda s: s["pending_manual"] is None)
+        assert (state["raised_manual"], state["raised_manual_priority"]) == ([EXPIRE], "P0")
+        await h.complete_child(first)
+        plan = (await h.plan_count(2))[1]
+        assert (plan["manual_operations"], plan["manual_priority"]) == ([EXPIRE], "P0")
+        assert (await h.records(2))[1]["wake_reasons"] == {"manual_run": 1, "previous_run_finished": 1}
+        run = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
+        assert run["raised_manual"] is None
+
+    _run(scenario, script=_first_plan_with("stub_leaves_raises_unapplied"))
+
+
+def test_an_applied_raise_plans_no_manual_run_after_the_run():
+    """A raise the run applied leaves nothing to plan for the trigger once the run reports."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start_with_a_gone_child(raised_manual=[EXPIRE], raised_manual_priority="P0")
+        await h.report_gone_child(unapplied_raise=False)
+        plan = (await h.plan_count(1))[0]
+        assert (plan["manual_operations"], plan["manual_priority"]) == (None, None)
+        assert (await h.records(1))[0]["wake_reasons"] == {"previous_run_finished": 1}
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_continue_as_new_carries_the_raised_manual_trigger():
+    """The trigger a raise consumed is carried through continue as new and given back if the raise went unapplied."""
+
+    async def scenario(h: Harness) -> None:
+        handle = await h.start_with_a_gone_child(
+            continue_as_new_after=2, raised_manual=[EXPIRE], raised_manual_priority="P1"
+        )
+        first_run = handle.result_run_id
+        await h.signal(TableReconciliationSignal.POLICY_CHANGED)
+        await h.settle()
+        for _ in range(2):
+            await h.signal(TableReconciliationSignal.POLICY_CHANGED)
+
+        async def run_id_now() -> str | None:
+            return (await h.client.get_workflow_handle(WORKFLOW_ID).describe()).run_id
+
+        await eventually(run_id_now, lambda r: r != first_run)
+        state = await h.state()
+        assert (state["raised_manual"], state["raised_manual_priority"]) == ([EXPIRE], "P1")
+        await h.report_gone_child(unapplied_raise=True)
+        plan = (await h.plan_count(1))[0]
+        assert (plan["manual_operations"], plan["manual_priority"]) == ([EXPIRE], "P1")
+
+    _run(scenario, script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])))

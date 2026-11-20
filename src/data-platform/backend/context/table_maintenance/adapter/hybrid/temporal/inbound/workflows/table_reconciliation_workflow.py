@@ -83,9 +83,12 @@ class TableReconciliationWorkflow:
     nothing is planned. A ``trigger_now`` then raises the priority of the run in
     flight instead of starting another: the child is signalled ``raise_priority``
     with the trigger's priority (none means the table's), and a delivered signal
-    consumes the trigger and takes its ``manual_run`` off the wake reasons. A
-    trigger whose signal cannot be delivered (the child is gone) is kept and
-    planned once the run finishes. A
+    consumes the trigger and takes its ``manual_run`` off the wake reasons. The
+    consumed trigger is kept with the run in flight (through continue-as-new), and
+    given back, counted ``manual_run`` again, when the run reports the raise
+    arrived too late to be applied (``unapplied_raise``). A trigger whose signal
+    cannot be delivered (the child is gone), or whose run reported while the
+    signal was on its way, is kept and planned once the run finishes. A
     run that never reports back is given up once the child's worst case has passed
     (per planned operation: every attempt waiting out the queue wait limit the plan
     carried, 24 hours for a plan without one, then timing out after the attempt
@@ -159,6 +162,8 @@ class TableReconciliationWorkflow:
         self._in_flight_queue_wait_limit_seconds = input.in_flight_queue_wait_limit_seconds
         self._pending_manual = None if input.pending_manual is None else list(input.pending_manual)
         self._pending_manual_priority = input.pending_manual_priority
+        self._raised_manual = None if input.raised_manual is None else list(input.raised_manual)
+        self._raised_manual_priority = input.raised_manual_priority
         self._next_plan_at = datetime.fromisoformat(input.next_plan_at) if input.next_plan_at else None
         self._continue_as_new_after = input.continue_as_new_after
         self._interval = timedelta(seconds=input.reconcile_interval_seconds)
@@ -253,6 +258,8 @@ class TableReconciliationWorkflow:
         if run_id is None or run_id != self._in_flight_run_id:
             workflow.logger.warning("ignoring maintenance_finished of run %s", run_id)
             return
+        if (payload or {}).get("unapplied_raise", False):
+            self._give_back_raised_manual(run_id)
         self._clear_in_flight()
         self._count(_REASON_PREVIOUS_RUN_FINISHED)
         self._woken = True
@@ -266,6 +273,8 @@ class TableReconciliationWorkflow:
             "in_flight_started_at": _iso(self._in_flight_started_at),
             "pending_manual": self._pending_manual,
             "pending_manual_priority": self._pending_manual_priority,
+            "raised_manual": self._raised_manual,
+            "raised_manual_priority": self._raised_manual_priority,
             "stopping": self._stopping,
             "next_plan_at": _iso(self._next_plan_at),
             "reconcile_interval_seconds": int(self._interval.total_seconds()),
@@ -332,6 +341,8 @@ class TableReconciliationWorkflow:
             in_flight_attempt_deadline_seconds=self._in_flight_attempt_deadline_seconds,
             in_flight_max_attempts=self._in_flight_max_attempts,
             in_flight_queue_wait_limit_seconds=self._in_flight_queue_wait_limit_seconds,
+            raised_manual=self._raised_manual,
+            raised_manual_priority=self._raised_manual_priority,
         )
 
     async def _wait(self) -> None:
@@ -437,12 +448,14 @@ class TableReconciliationWorkflow:
     async def _raise_in_flight(self) -> None:
         """Ask the run in flight to raise its priority for the pending manual trigger.
 
-        A delivered signal consumes the trigger (unless another replaced it meanwhile) and takes
-        one ``manual_run`` off the wake reasons, since no plan follows it. A signal that fails (the
-        child is gone or no workflow ID was recorded) leaves the trigger pending, to be planned once
-        the run reports.
+        A delivered signal consumes the trigger (unless another replaced it meanwhile), keeps it
+        with the run in flight in case the run reports the raise unapplied, and takes one
+        ``manual_run`` off the wake reasons, since no plan follows it. A signal that fails (the
+        child is gone or no workflow ID was recorded), or one delivered to a run that reported
+        meanwhile, leaves the trigger pending, to be planned once the run reports (or at once).
         """
         manual = self._pending_manual
+        priority = self._pending_manual_priority
         run_id = self._in_flight_run_id
         workflow_id = self._in_flight_workflow_id
         if workflow_id is None:
@@ -450,17 +463,32 @@ class TableReconciliationWorkflow:
             return
         handle = workflow.get_external_workflow_handle(workflow_id)
         try:
-            await handle.signal(
-                TableMaintenanceSignal.RAISE_PRIORITY, RaisePrioritySignal(self._pending_manual_priority)
-            )
+            await handle.signal(TableMaintenanceSignal.RAISE_PRIORITY, RaisePrioritySignal(priority))
         except FailureError as error:
             if is_cancelled_exception(error):
                 raise asyncio.CancelledError from error
             workflow.logger.info("raising the priority of run %s failed: %s; keeping the manual trigger", run_id, error)
             return
+        if self._in_flight_run_id != run_id:
+            workflow.logger.info("run %s reported while its raise was on the way; keeping the manual trigger", run_id)
+            return
         workflow.logger.info("raised the priority of run %s for manual trigger %s", run_id, manual)
+        if self._pending_manual is manual:
+            self._raised_manual, self._raised_manual_priority = manual, priority
         self._consume_manual(manual, None)
         self._uncount(_REASON_MANUAL_RUN)
+
+    def _give_back_raised_manual(self, run_id: str) -> None:
+        """Make the manual trigger a raise of ``run_id`` consumed pending again, unless a newer one is."""
+        if self._raised_manual is None:
+            return
+        if self._pending_manual is not None:
+            workflow.logger.info("run %s left a raise unapplied; a newer manual trigger is pending", run_id)
+            return
+        workflow.logger.info("run %s left its raise unapplied; planning manual trigger %s", run_id, self._raised_manual)
+        self._pending_manual = self._raised_manual
+        self._pending_manual_priority = self._raised_manual_priority
+        self._count(_REASON_MANUAL_RUN)
 
     def _uncount(self, reason: str) -> None:
         count = self._wake_reasons.get(reason, 0) - 1
@@ -477,6 +505,8 @@ class TableReconciliationWorkflow:
         self._in_flight_attempt_deadline_seconds = DEFAULT_ATTEMPT_DEADLINE_SECONDS
         self._in_flight_max_attempts = DEFAULT_MAX_ATTEMPTS
         self._in_flight_queue_wait_limit_seconds = DEFAULT_QUEUE_WAIT_LIMIT_SECONDS
+        self._raised_manual = None
+        self._raised_manual_priority = None
 
     async def _plan_and_start(self) -> bool:
         """Plan once and start a run if anything is planned; True ends the workflow."""

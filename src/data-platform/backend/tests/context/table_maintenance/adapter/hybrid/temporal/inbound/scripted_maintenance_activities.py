@@ -27,11 +27,13 @@ class ScriptedMaintenanceActivities:
     ``callbacks[(operation, attempt)]`` lists the results the fake Spark job sends
     while that attempt is submitted, as ``(attempt, succeeded, error)`` tuples, so a
     script can also send a stale result for another attempt. ``states[app_name]``
-    is the job state the status activity reports (RUNNING by default); a list plays
+    is the job state the status activity reports (RUNNING once the driver started, PENDING before,
+    by default); a list plays
     its states in order and then repeats the last one. ``record_errors`` lists the
     ``(operation, attempt)`` outcomes whose recording fails non-retryably,
     ``record_replies[(operation, attempt)]`` is merged into that record's reply
     (the decision the record use case would return), and
+    ``record_hook``, when set, runs inside each record with the request;
     ``create_gate``, ``submit_gate`` and ``status_gate``, when set, hold that
     activity until the test opens them; ``status_hook`` runs inside each status
     call with the app name and the call's scheduled time.
@@ -71,6 +73,7 @@ class ScriptedMaintenanceActivities:
         self.submit_gate: asyncio.Event | None = None
         self.status_gate: asyncio.Event | None = None
         self.status_hook: Callable[[str, datetime], Awaitable[None]] | None = None
+        self.record_hook: Callable[[dict], Awaitable[None]] | None = None
         self.status_times: list[datetime] = []
         self.created: list[dict] = []
         self.submits: list[dict] = []
@@ -153,11 +156,13 @@ class ScriptedMaintenanceActivities:
             await self.status_hook(app_name, activity.info().scheduled_time)
         if self._vanished(app_name, activity.info().scheduled_time):
             return {"state": "NOT_FOUND", "error": None, "driver_started_at": None}
-        state = self.states.get(app_name, {"state": "RUNNING", "error": None})
+        driver_started_at = self._driver_started_at(app_name, activity.info().scheduled_time)
+        unscripted = {"state": "RUNNING" if driver_started_at else "PENDING", "error": None}
+        state = self.states.get(app_name, unscripted)
         if isinstance(state, list):
             calls = self.status_calls.count(app_name)
             state = state[min(calls, len(state)) - 1]
-        return {"driver_started_at": self._driver_started_at(app_name, activity.info().scheduled_time), **state}
+        return {"driver_started_at": driver_started_at, **state}
 
     def _vanished(self, app_name: str, polled_at: datetime) -> bool:
         deleted_at = self.delete_times.get(app_name)
@@ -198,6 +203,8 @@ class ScriptedMaintenanceActivities:
     async def record_table_maintenance_operation_result(self, request: dict) -> dict:
         """Record the operation result, or fail when the script says the database is down."""
         self.records.append(request)
+        if self.record_hook is not None:
+            await self.record_hook(request)
         key = (request["operation"], request["attempt"])
         if key in self.record_errors:
             raise ApplicationError("db down", type="ConflictError", non_retryable=True)

@@ -58,6 +58,23 @@ def run(runs_repo, now) -> TableMaintenanceRun:
 
 
 @pytest.fixture
+def run_at_p1(runs_repo, now) -> TableMaintenanceRun:
+    """Provide a stored run at P1 whose first attempt is queued."""
+    r = TableMaintenanceRun.create(
+        TableMaintenanceRunId(RUN_1),
+        TableId("u-1"),
+        TriggerType.SCHEDULED,
+        [RDF],
+        now,
+        execution_ref="wf-1",
+        priority=TablePriority.P1,
+    )
+    r.start_attempt(RDF, 1, None, now)
+    runs_repo.create(r)
+    return r
+
+
+@pytest.fixture
 def service(runs_repo, tables_repo) -> RaiseTableMaintenanceRunPriorityService:
     """Provide the service over the in-memory repos."""
     return RaiseTableMaintenanceRunPriorityService(runs_repo, tables_repo)
@@ -87,9 +104,8 @@ def test_service_raises_to_the_tables_priority_when_none_given(service, runs_rep
     assert runs_repo.get(TableMaintenanceRunId(RUN_1)).priority is TablePriority.P1
 
 
-def test_service_does_not_lower_or_save(service, runs_repo, run, now):
+def test_service_does_not_lower_or_save(service, runs_repo, run_at_p1, now):
     """An equal or lower priority leaves the run alone and saves nothing."""
-    runs_repo.get(TableMaintenanceRunId(RUN_1)).raise_priority(TablePriority.P1)
     saved: list[tuple[str, str]] = []
     track_calls(runs_repo, "update", "runs.update", saved, lambda r: r.id.value)
 
