@@ -651,14 +651,19 @@ wait_for_reconcile_now_record() {
 }
 
 maintenance_workflow_input() {
-  local run_id="$1" execution_ref run
-  execution_ref="$(api GET "/v1/table-maintenance-runs/${run_id}" | jq -r '.execution_ref')"
-  for run in $(temporal_cli workflow list --namespace default \
-      --query "WorkflowId = \"${execution_ref}\"" --output json | jq -r '.[].execution.runId'); do
-    temporal_cli workflow show --workflow-id "${execution_ref}" --run-id "${run}" --output json \
-      | jq -c --arg run "${run_id}" '.events[0].workflowExecutionStartedEventAttributes.input.payloads[0].data
-        | @base64d | fromjson | select(.run_id == $run)' \
-      | grep . && return 0
+  local run_id="$1" execution_ref runs run
+  local deadline=$((SECONDS + 60))
+  execution_ref="$(api GET "/v1/table-maintenance-runs/${run_id}" | jq -r '.execution_ref')" || return 1
+  while ((SECONDS < deadline)); do
+    runs="$(temporal_cli workflow list --namespace default \
+      --query "WorkflowId = \"${execution_ref}\"" --output json | jq -r '.[].execution.runId')" || return 1
+    for run in ${runs}; do
+      temporal_cli workflow show --workflow-id "${execution_ref}" --run-id "${run}" --output json \
+        | jq -c --arg run "${run_id}" '.events[0].workflowExecutionStartedEventAttributes.input.payloads[0].data
+          | @base64d | fromjson | select(.run_id == $run)' \
+        | grep . && return 0
+    done
+    sleep 5
   done
   echo "no execution of ${execution_ref} was started for run ${run_id}" >&2
   return 1
@@ -666,8 +671,9 @@ maintenance_workflow_input() {
 
 assert_whole_table_compaction() {
   local run_id input wheres
+  (($# > 0)) || { echo "no run to check for whole-table compaction" >&2; return 1; }
   for run_id in "$@"; do
-    input="$(maintenance_workflow_input "${run_id}")"
+    input="$(maintenance_workflow_input "${run_id}")" || return 1
     check '[.plan.operations[] | select(.operation == "rewrite_data_files")] | length == 1' "${input}" \
       "run ${run_id} does not plan one rewrite_data_files"
     wheres="$(jq -c '[.plan.operations[] | select(.operation == "rewrite_data_files") | .filters[]?.where

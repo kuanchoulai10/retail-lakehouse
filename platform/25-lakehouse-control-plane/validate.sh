@@ -132,7 +132,7 @@ if RETIRED_WORKFLOW="$(kubectl exec "${ADMIN_TOOLS}" \
   echo "workflow table-maintenance-admission exists, expected it to be gone" >&2
   exit 1
 fi
-grep -qi 'not found' <<<"${RETIRED_WORKFLOW}" \
+grep -qiE 'workflow not found' <<<"${RETIRED_WORKFLOW}" \
   || { echo "describing workflow table-maintenance-admission failed for another reason: ${RETIRED_WORKFLOW}" >&2; exit 1; }
 
 if RETIRED_SCHEDULE="$(kubectl exec "${ADMIN_TOOLS}" \
@@ -144,7 +144,7 @@ if RETIRED_SCHEDULE="$(kubectl exec "${ADMIN_TOOLS}" \
   echo "schedule compaction-rounds exists, expected it to be gone" >&2
   exit 1
 fi
-grep -qi 'not found' <<<"${RETIRED_SCHEDULE}" \
+grep -qiE '(schedule|workflow) not found' <<<"${RETIRED_SCHEDULE}" \
   || { echo "describing schedule compaction-rounds failed for another reason: ${RETIRED_SCHEDULE}" >&2; exit 1; }
 
 CONSUMER_GROUP="$(kubectl exec kafka-cluster-dual-role-0 \
