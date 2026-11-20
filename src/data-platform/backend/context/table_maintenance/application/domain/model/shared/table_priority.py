@@ -17,3 +17,8 @@ class TablePriority(StrEnum):
     def default(cls) -> TablePriority:
         """Return the priority a table starts at, P3."""
         return cls.P3
+
+    def outranks(self, other: TablePriority) -> bool:
+        """Tell whether this priority is more urgent than ``other``; P0 outranks P1, and none outranks itself."""
+        order = list(TablePriority)
+        return order.index(self) < order.index(other)

@@ -20,6 +20,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     TABLE_MAINTENANCE_WORKFLOW,
     OperationResultSignal,
+    RaisePrioritySignal,
     TableMaintenanceSignal,
     TableMaintenanceWorkflowInput,
     table_maintenance_workflow_id,
@@ -1333,5 +1334,225 @@ def test_driver_start_without_a_time_zone_is_read_as_utc():
         first, second = h.submit_times()
         assert datetime.fromisoformat(h.fakes.running_records[0]["started_running_at"]) == first + QUEUED_FOR
         assert QUEUED_FOR + SHORT_DEADLINE <= second - first < QUEUED_FOR + SHORT_DEADLINE + timedelta(minutes=3)
+
+    _run(scenario)
+
+
+REPLACE_ERROR = "queued job could not be replaced: its job was still there 15 minutes after the priority raise"
+
+
+async def _raise_after(h: Harness, handle: WorkflowHandle, wait: timedelta, priority: str | None = "P0") -> None:
+    """Let the first attempt be submitted and ``wait`` pass, then signal a priority raise."""
+    await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n >= 1)
+    await h.env.sleep(wait)
+    await handle.signal(TableMaintenanceSignal.RAISE_PRIORITY, RaisePrioritySignal(priority))
+
+
+def _succeed_on_raise(h: Harness, operation: str = COMPACTION) -> None:
+    """Make a raise send the attempt's success result, as Spark would once the job finished."""
+
+    async def hook(request: dict) -> None:
+        await h.client.get_workflow_handle(WORKFLOW_ID).signal(
+            TableMaintenanceSignal.OPERATION_RESULT,
+            OperationResultSignal(
+                run_id=request["run_id"], operation=operation, attempt=1, succeeded=True, metrics={}, error=None
+            ),
+        )
+
+    h.fakes.raise_hook = hook
+
+
+def test_raise_requeues_a_queued_attempt():
+    """A raise while the attempt is queued deletes its job and, once gone, submits it again under the same attempt.
+
+    The raise comes 15 minutes in, while a queued attempt polls every 10 minutes, and is handled at once.
+    """
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.vanish_after_delete[FIRST_APP] = timedelta(0)
+
+        async def hook(_: dict) -> None:
+            h.fakes.callbacks[(COMPACTION, 1)] = [(1, True, None)]
+
+        h.fakes.raise_hook = hook
+        handle = await h.start_maintenance(COMPACTION)
+        await _raise_after(h, handle, timedelta(minutes=15))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert [r["priority"] for r in h.fakes.raises] == ["P0"]
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1), (COMPACTION, 1)]
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+        commands = await h.commands()
+        raised_at = next(at for name, at in commands if name == "raise_maintenance_run_priority")
+        assert raised_at - h.submit_times()[0] < timedelta(minutes=16)
+        names = _names(commands)
+        raised = names.index("raise_maintenance_run_priority")
+        assert names[raised : raised + 6] == [
+            "raise_maintenance_run_priority",
+            "get_maintenance_job_status",
+            "delete_maintenance_job",
+            "get_maintenance_job_status",
+            "get_maintenance_job_pods",
+            "submit_maintenance_operation",
+        ]
+
+    _run(scenario)
+
+
+def test_requeued_attempt_keeps_its_queue_deadline():
+    """A requeued attempt is still timed out at the queue wait limit counted from its first submit."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.vanish_after_delete[FIRST_APP] = timedelta(0)
+        h.fakes.record_replies[(COMPACTION, 1)] = {"next_step": "not_retried"}
+        handle = await h.start_maintenance(COMPACTION, queue_wait_limit_seconds=3600)
+        await _raise_after(h, handle, timedelta(minutes=30))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert [r["ended_by"] for r in h.fakes.records] == ["queue_timed_out"]
+        first, second = h.submit_times()
+        timed_out_at = datetime.fromisoformat(h.fakes.records[0]["now"])
+        assert timedelta(hours=1) <= timed_out_at - first < timedelta(hours=1, minutes=1)
+        assert second - first >= timedelta(minutes=30)
+
+    _run(scenario)
+
+
+def test_raise_leaves_a_running_attempt_alone():
+    """A raise while the attempt's driver runs records the priority and touches nothing else."""
+
+    async def scenario(h: Harness) -> None:
+        _succeed_on_raise(h)
+        handle = await h.start_maintenance(COMPACTION)
+        await _raise_after(h, handle, timedelta(minutes=1))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert len(h.fakes.raises) == 1
+        assert len(h.fakes.submits) == 1
+        assert h.fakes.deletes == [FIRST_APP]
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+
+    _run(scenario)
+
+
+def test_raise_found_running_at_requeue_time_is_not_requeued():
+    """A queued attempt whose driver started by the time of the raise is recorded running, not replaced."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+
+        async def hook(_: dict) -> None:
+            h.fakes.driver_starts[FIRST_APP] = (timedelta(0), timedelta(seconds=45))
+            h.fakes.states[FIRST_APP] = {"state": "COMPLETED", "error": None}
+
+        h.fakes.raise_hook = hook
+        handle = await h.start_maintenance(COMPACTION)
+        await _raise_after(h, handle, timedelta(minutes=1))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert len(h.fakes.submits) == 1
+        assert h.fakes.deletes == [FIRST_APP]
+        assert [r["attempt"] for r in h.fakes.running_records] == [1]
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+        assert h.fakes.records[0]["metrics"] == {"completed_without_callback": 1}
+
+    _run(scenario)
+
+
+def test_next_operation_after_a_raise_submits_after_the_record():
+    """A raise is recorded as soon as it arrives, so the next operation is submitted under the raised priority."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
+        _succeed_on_raise(h)
+        handle = await h.start_maintenance(COMPACTION, EXPIRE)
+        await _raise_after(h, handle, timedelta(minutes=1))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        names = _names(await h.commands())
+        raised = names.index("raise_maintenance_run_priority")
+        submits = [i for i, name in enumerate(names) if name == "submit_maintenance_operation"]
+        assert submits[0] < raised < submits[1]
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1), (EXPIRE, 1)]
+
+    _run(scenario)
+
+
+def test_raise_before_the_first_submit_is_recorded_before_it():
+    """A raise that arrives while the run is being created is recorded before the first submit."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
+        gate = h.fakes.create_gate = asyncio.Event()
+        handle = await h.start_maintenance(COMPACTION)
+        await eventually(lambda: _value(len(h.fakes.created)), lambda n: n == 1)
+        await handle.signal(TableMaintenanceSignal.RAISE_PRIORITY, RaisePrioritySignal(None))
+        gate.set()
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        names = _names(await h.commands())
+        assert names.index("raise_maintenance_run_priority") < names.index("submit_maintenance_operation")
+        assert h.fakes.raises[0]["priority"] is None
+        assert len(h.fakes.submits) == 1
+
+    _run(scenario)
+
+
+def test_lower_raise_changes_nothing():
+    """A raise the run refuses (not above its priority) leaves a queued attempt where it is."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.raise_reply = {"priority": "P1", "raised": False}
+        _succeed_on_raise(h)
+        handle = await h.start_maintenance(COMPACTION)
+        await _raise_after(h, handle, timedelta(minutes=1), priority="P3")
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert len(h.fakes.submits) == 1
+        assert h.fakes.deletes == [FIRST_APP]
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+
+    _run(scenario)
+
+
+def test_failed_raise_is_dropped():
+    """A raise whose record fails is logged and dropped; the queued attempt is left alone."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.raise_errors = {0}
+        _succeed_on_raise(h)
+        handle = await h.start_maintenance(COMPACTION)
+        await _raise_after(h, handle, timedelta(minutes=1))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert len(h.fakes.raises) == 1
+        assert len(h.fakes.submits) == 1
+        assert h.fakes.deletes == [FIRST_APP]
+
+    _run(scenario)
+
+
+def test_queued_job_that_cannot_be_replaced_fails_still_running():
+    """A queued job still there 15 minutes after the raise fails the operation as possibly still running."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.vanish_after_delete[FIRST_APP] = timedelta(minutes=20)
+        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
+        handle = await h.start_maintenance(COMPACTION, EXPIRE)
+        await _raise_after(h, handle, timedelta(minutes=1))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert h.recorded() == [(COMPACTION, 1, False, REPLACE_ERROR), (EXPIRE, 1, True, None)]
+        assert [(r["ended_by"], r["still_running"]) for r in h.fakes.records[:1]] == [("missing", True)]
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1), (EXPIRE, 1)]
+        deleted_at = h.fakes.delete_times[FIRST_APP]
+        assert h.submit_times()[1] - deleted_at >= timedelta(minutes=20)
+        slow = [t for t in h.fakes.status_times if t - deleted_at >= timedelta(minutes=15)]
+        assert all(b - a >= timedelta(minutes=5) for a, b in itertools.pairwise(slow))
 
     _run(scenario)

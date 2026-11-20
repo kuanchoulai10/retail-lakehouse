@@ -85,6 +85,7 @@ def test_table_maintenance_signals():
     """The table maintenance signal names are the stable wire names."""
     assert _values(TableMaintenanceSignal) == {
         "OPERATION_RESULT": "operation_result",
+        "RAISE_PRIORITY": "raise_priority",
     }
 
 
@@ -108,6 +109,7 @@ def test_table_maintenance_activities():
         "DELETE_MAINTENANCE_JOB": "delete_maintenance_job",
         "GET_MAINTENANCE_JOB_PODS": "get_maintenance_job_pods",
         "RECORD_MAINTENANCE_ATTEMPT_RUNNING": "record_maintenance_attempt_running",
+        "RAISE_MAINTENANCE_RUN_PRIORITY": "raise_maintenance_run_priority",
         "SIGNAL_PARENT": "signal_parent",
     }
 

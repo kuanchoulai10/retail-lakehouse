@@ -45,6 +45,7 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fa
     FakeCreateRun,
     FakeDelete,
     FakePlan,
+    FakeRaisePriority,
     FakeRecordReconciliation,
     FakeRecordResult,
     FakeRecordRunning,
@@ -100,6 +101,7 @@ def _maintain(submit: FakeSubmit | None = None) -> tuple[TableMaintenanceActivit
         "delete": FakeDelete(),
         "pods_gateway": ScriptedReadMaintenanceJobPodsGateway(),
         "record_running": FakeRecordRunning(),
+        "raise_priority": FakeRaisePriority(),
     }
     activities = table_maintenance_activities_with_fakes(
         submit=fakes["submit"],
@@ -107,6 +109,7 @@ def _maintain(submit: FakeSubmit | None = None) -> tuple[TableMaintenanceActivit
         delete=fakes["delete"],
         pods=GetMaintenanceJobPodsService(fakes["pods_gateway"]),
         record_running=fakes["record_running"],
+        raise_priority=fakes["raise_priority"],
         callback_base_url="http://cp:8000",
     )
     return activities, fakes
@@ -939,3 +942,23 @@ def test_record_maintenance_attempt_running_activity_passes_the_driver_start():
     assert request.started_running_at == datetime(2026, 10, 24, 1, 0, 0, tzinfo=UTC)
     assert request.now == NOW_DT
     assert result == {"status": "running", "started_running_at": "2026-10-24T01:00:00+00:00"}
+
+
+def test_raise_table_maintenance_run_priority_activity_passes_the_priority():
+    """The raise priority activity builds its input from the payload and returns the run's priority."""
+    activities, fakes = _maintain()
+
+    result = activities.raise_table_maintenance_run_priority({"run_id": RUN_1, "priority": "P1", "now": NOW})
+
+    request = fakes["raise_priority"].requests[0]
+    assert (request.run_id, request.priority, request.now) == (RUN_1, "P1", NOW_DT)
+    assert result == {"priority": "P1", "raised": True}
+
+
+def test_raise_table_maintenance_run_priority_activity_passes_no_priority():
+    """A payload without a priority asks for the table's current priority."""
+    activities, fakes = _maintain()
+
+    activities.raise_table_maintenance_run_priority({"run_id": RUN_1, "priority": None, "now": NOW})
+
+    assert fakes["raise_priority"].requests[0].priority is None

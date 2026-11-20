@@ -72,6 +72,7 @@ OLDER_WORKER_ROUND = "cr-00000000000000000000000098"
 ROUND_1 = "cr-00000000000000000000000001"
 GHOST_RUN_ID = "mr-00000000000000000000000009"
 OTHER_RUN_ID = "mr-00000000000000000000000008"
+GONE_CHILD_ID = "table-maintenance:table-uuid=gone"
 
 UUID = "u1"
 TABLE = "iceberg.e2e.t"
@@ -192,6 +193,22 @@ class Harness:
             **options,
         )
         return self.handle
+
+    async def start_with_a_gone_child(self, **fields: Any) -> WorkflowHandle:
+        """Start the workflow carrying a run in flight whose child workflow does not exist, so no signal reaches it."""
+        return await self.start(
+            start_signal=None,
+            in_flight_run_id=GHOST_RUN_ID,
+            in_flight_workflow_id=GONE_CHILD_ID,
+            in_flight_operation_count=1,
+            **fields,
+        )
+
+    async def report_gone_child(self) -> None:
+        """Report the carried run in flight finished, as its child would have."""
+        await self.signal(
+            TableReconciliationSignal.MAINTENANCE_FINISHED, {"run_id": GHOST_RUN_ID, "record_failures": 0}
+        )
 
     async def signal(self, name: str, payload: dict | None = None) -> None:
         """Send a signal with an optional payload to the workflow."""
@@ -513,42 +530,40 @@ def test_reconciliation_follows_a_renamed_table():
 
 
 def test_trigger_now_while_in_flight_runs_after_finish():
-    """A manual trigger during a run is kept and planned after the run finishes."""
+    """A manual trigger during a run whose child cannot be signalled is kept and planned after the run finishes."""
 
     async def scenario(h: Harness) -> None:
-        await h.start()
-        first = await h.in_flight()
+        await h.start_with_a_gone_child()
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [COMPACTION]})
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE]})
         await h.settle()
-        assert len(h.plans.requests) == 1
+        assert h.plans.requests == []
         assert (await h.state())["pending_manual"] == [EXPIRE]
-        await h.complete_child(first)
-        second_plan = (await h.plan_count(2))[1]
-        assert second_plan["manual_operations"] == [EXPIRE]
-        second = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
-        assert second["pending_manual"] is None
-        child = await h.child(second["in_flight_run_id"])
+        await h.report_gone_child()
+        plan = (await h.plan_count(1))[0]
+        assert plan["manual_operations"] == [EXPIRE]
+        run = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, GHOST_RUN_ID))
+        assert run["pending_manual"] is None
+        child = await h.child(run["in_flight_run_id"])
         assert child["trigger"] == "manual"
 
     _run(scenario, script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])))
 
 
 def test_trigger_now_priority_reaches_the_manual_plan_only():
-    """A manual trigger's priority goes to its plan; the scheduled plan before it carries none."""
+    """A kept manual trigger's priority goes to its plan; the plan after its run carries none."""
 
     async def scenario(h: Harness) -> None:
-        await h.start()
-        first = await h.in_flight()
+        await h.start_with_a_gone_child()
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P0"})
         await h.settle()
         assert (await h.state())["pending_manual_priority"] == "P0"
-        await h.complete_child(first)
-        requests = await h.plan_count(2)
-        assert requests[0]["manual_priority"] is None
-        assert requests[1]["manual_priority"] == "P0"
-        second = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
-        assert second["pending_manual_priority"] is None
+        await h.report_gone_child()
+        assert (await h.plan_count(1))[0]["manual_priority"] == "P0"
+        run = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, GHOST_RUN_ID))
+        assert run["pending_manual_priority"] is None
+        await h.complete_child(run["in_flight_run_id"])
+        assert (await h.plan_count(2))[1]["manual_priority"] is None
 
     _run(scenario, script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])))
 
@@ -557,14 +572,13 @@ def test_a_later_trigger_without_priority_clears_the_pending_priority():
     """A second manual trigger replaces the first, so one that names no priority clears it."""
 
     async def scenario(h: Harness) -> None:
-        await h.start()
-        first = await h.in_flight()
+        await h.start_with_a_gone_child()
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P0"})
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE]})
         await h.settle()
         assert (await h.state())["pending_manual_priority"] is None
-        await h.complete_child(first)
-        assert (await h.plan_count(2))[1]["manual_priority"] is None
+        await h.report_gone_child()
+        assert (await h.plan_count(1))[0]["manual_priority"] is None
 
     _run(scenario, script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])))
 
@@ -573,10 +587,10 @@ def test_trigger_now_priority_survives_continue_as_new():
     """A pending manual priority is carried through continue as new."""
 
     async def scenario(h: Harness) -> None:
-        handle = await h.start(continue_as_new_after=2)
+        handle = await h.start_with_a_gone_child(continue_as_new_after=2)
         first_run = handle.result_run_id
-        run_id = await h.in_flight()
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P1"})
+        await h.settle()
         for _ in range(3):
             await h.signal(TableReconciliationSignal.POLICY_CHANGED)
 
@@ -585,10 +599,69 @@ def test_trigger_now_priority_survives_continue_as_new():
 
         await eventually(run_id_now, lambda r: r != first_run)
         assert (await h.state())["pending_manual_priority"] == "P1"
-        await h.complete_child(run_id)
-        assert (await h.plan_count(2))[1]["manual_priority"] == "P1"
+        await h.report_gone_child()
+        assert (await h.plan_count(1))[0]["manual_priority"] == "P1"
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_manual_trigger_in_flight_signals_the_child():
+    """A manual trigger while a run is in flight raises that run's priority instead of planning another."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P0"})
+        child = await h.child_handle(run_id)
+
+        async def raises() -> list[str | None]:
+            return await child.query("raises")
+
+        await eventually(raises, lambda r: r == ["P0"])
+        state = await eventually(h.state, lambda s: s["pending_manual"] is None)
+        assert state["pending_manual_priority"] is None
+        assert "manual_run" not in state["wake_reasons"]
+        await h.complete_child(run_id)
+        plan = (await h.plan_count(2))[1]
+        assert (plan["manual_operations"], plan["manual_priority"]) == (None, None)
+        assert (await h.records(2))[1]["wake_reasons"] == {"previous_run_finished": 1}
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_manual_trigger_without_priority_raises_to_the_table_priority():
+    """A manual trigger that names no priority asks the run in flight for the table's priority."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE]})
+        child = await h.child_handle(run_id)
+
+        async def raises() -> list[str | None]:
+            return await child.query("raises")
+
+        await eventually(raises, lambda r: r == [None])
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_manual_trigger_to_a_gone_child_is_planned_after_the_report():
+    """A manual trigger whose raise cannot reach the run in flight stays pending and is planned once it reports."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start_with_a_gone_child()
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P1"})
+        await h.settle()
+        state = await h.state()
+        assert (state["pending_manual"], state["pending_manual_priority"]) == ([EXPIRE], "P1")
+        assert state["wake_reasons"] == {"manual_run": 1}
+        await h.report_gone_child()
+        plan = (await h.plan_count(1))[0]
+        assert (plan["manual_operations"], plan["manual_priority"]) == ([EXPIRE], "P1")
+        assert (await h.records(1))[0]["wake_reasons"] == {"manual_run": 1, "previous_run_finished": 1}
+
+    _run(scenario, script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])))
 
 
 def test_trigger_now_without_operations_plans_all_due_as_manual():
@@ -613,8 +686,7 @@ def test_child_result_received_after_continue_as_new():
         handle = await h.start(continue_as_new_after=2)
         first_run = handle.result_run_id
         run_id = await h.in_flight()
-        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE]})
-        for _ in range(3):
+        for _ in range(4):
             await h.signal(TableReconciliationSignal.POLICY_CHANGED)
 
         async def run_id_now() -> str | None:
@@ -624,11 +696,9 @@ def test_child_result_received_after_continue_as_new():
         state = await h.state()
         assert state["in_flight_run_id"] == run_id
         assert state["in_flight_workflow_id"] == CHILD_ID
-        assert state["pending_manual"] == [EXPIRE]
         assert len(h.plans.requests) == 1
         await h.complete_child(run_id)
-        second_plan = (await h.plan_count(2))[1]
-        assert second_plan["manual_operations"] == [EXPIRE]
+        await h.plan_count(2)
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 

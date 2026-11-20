@@ -642,3 +642,37 @@ def test_a_running_operation_outranks_a_queued_one_for_the_run_status():
     run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(2), _now(3))
     assert _op(run, Op.EXPIRE_SNAPSHOTS).status is OperationRunStatus.QUEUED
     assert run.status is RunStatus.RUNNING
+
+
+def _run_at(priority: TablePriority) -> TableMaintenanceRun:
+    return TableMaintenanceRun.create(
+        TableMaintenanceRunId(RUN_1),
+        TableId("t-1"),
+        TriggerType.SCHEDULED,
+        [Op.EXPIRE_SNAPSHOTS],
+        _now(),
+        execution_ref="wf-run-1",
+        priority=priority,
+    )
+
+
+def test_raise_only_upward():
+    """A run's priority is raised only by a priority that outranks it."""
+    run = _run_at(TablePriority.P2)
+
+    assert run.raise_priority(TablePriority.P3) is False
+    assert run.raise_priority(TablePriority.P2) is False
+    assert run.priority is TablePriority.P2
+    assert run.raise_priority(TablePriority.P0) is True
+    assert run.priority is TablePriority.P0
+
+
+def test_finished_run_is_not_raised():
+    """A finished run keeps its priority."""
+    run = _run_at(TablePriority.P3)
+    run.start_attempt(Op.EXPIRE_SNAPSHOTS, 1, "job-1", _now(1))
+    run.succeed(Op.EXPIRE_SNAPSHOTS, 1, {}, _now(2))
+    assert run.finished_at is not None
+
+    assert run.raise_priority(TablePriority.P0) is False
+    assert run.priority is TablePriority.P3

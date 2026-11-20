@@ -19,6 +19,8 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     DEFAULT_MAX_ATTEMPTS,
     DEFAULT_QUEUE_WAIT_LIMIT_SECONDS,
     TABLE_MAINTENANCE_WORKFLOW,
+    RaisePrioritySignal,
+    TableMaintenanceSignal,
     TableMaintenanceWorkflowInput,
     table_maintenance_summary,
     table_maintenance_workflow_id,
@@ -78,7 +80,12 @@ class TableReconciliationWorkflow:
     A non-empty plan starts a ``TableMaintenanceWorkflow`` child that outlives this run
     (``ABANDON``) and reports back only through ``maintenance_finished``, which is
     why the run in flight survives continue-as-new. While a run is in flight
-    nothing is planned; a ``trigger_now`` is kept and planned once it finishes. A
+    nothing is planned. A ``trigger_now`` then raises the priority of the run in
+    flight instead of starting another: the child is signalled ``raise_priority``
+    with the trigger's priority (none means the table's), and a delivered signal
+    consumes the trigger and takes its ``manual_run`` off the wake reasons. A
+    trigger whose signal cannot be delivered (the child is gone) is kept and
+    planned once the run finishes. A
     run that never reports back is given up once the child's worst case has passed
     (per planned operation: every attempt waiting out the queue wait limit the plan
     carried, 24 hours for a plan without one, then timing out after the attempt
@@ -183,6 +190,8 @@ class TableReconciliationWorkflow:
             iterations += 1
             if self._in_flight_run_id is not None:
                 await self._give_up_stuck_run()
+            if self._in_flight_run_id is not None and self._pending_manual is not None:
+                await self._raise_in_flight()
             if self._in_flight_run_id is None and not self._stopping and self._has_reason_to_plan():
                 ends = await self._plan_and_start()
                 if ends and not self._woken:
@@ -424,6 +433,41 @@ class TableReconciliationWorkflow:
             workflow.logger.info("run %s could not be cancelled: %s", run_id, error)
             if self._in_flight_run_id == run_id:
                 self._cancel_failed = True
+
+    async def _raise_in_flight(self) -> None:
+        """Ask the run in flight to raise its priority for the pending manual trigger.
+
+        A delivered signal consumes the trigger (unless another replaced it meanwhile) and takes
+        one ``manual_run`` off the wake reasons, since no plan follows it. A signal that fails (the
+        child is gone or no workflow ID was recorded) leaves the trigger pending, to be planned once
+        the run reports.
+        """
+        manual = self._pending_manual
+        run_id = self._in_flight_run_id
+        workflow_id = self._in_flight_workflow_id
+        if workflow_id is None:
+            workflow.logger.info("run %s has no recorded workflow to raise; keeping the manual trigger", run_id)
+            return
+        handle = workflow.get_external_workflow_handle(workflow_id)
+        try:
+            await handle.signal(
+                TableMaintenanceSignal.RAISE_PRIORITY, RaisePrioritySignal(self._pending_manual_priority)
+            )
+        except FailureError as error:
+            if is_cancelled_exception(error):
+                raise asyncio.CancelledError from error
+            workflow.logger.info("raising the priority of run %s failed: %s; keeping the manual trigger", run_id, error)
+            return
+        workflow.logger.info("raised the priority of run %s for manual trigger %s", run_id, manual)
+        self._consume_manual(manual, None)
+        self._uncount(_REASON_MANUAL_RUN)
+
+    def _uncount(self, reason: str) -> None:
+        count = self._wake_reasons.get(reason, 0) - 1
+        if count > 0:
+            self._wake_reasons[reason] = count
+        else:
+            self._wake_reasons.pop(reason, None)
 
     def _clear_in_flight(self) -> None:
         self._in_flight_run_id = None

@@ -90,6 +90,7 @@ KNOWN_VERBS = {
     "Resume",
     "Pause",
     "Archive",
+    "Raise",
     # Process
     "Schedule",
     "Publish",

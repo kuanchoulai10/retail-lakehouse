@@ -22,6 +22,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     DeleteMaintenanceJobUseCaseInput,
     GetMaintenanceJobPodsUseCaseInput,
     GetMaintenanceJobStatusUseCaseInput,
+    RaiseTableMaintenanceRunPriorityUseCaseInput,
     RecordMaintenanceAttemptRunningUseCaseInput,
     RecordTableMaintenanceOperationResultUseCaseInput,
     SubmitMaintenanceOperationUseCaseInput,
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
         DeleteMaintenanceJobUseCase,
         GetMaintenanceJobPodsUseCase,
         GetMaintenanceJobStatusUseCase,
+        RaiseTableMaintenanceRunPriorityUseCase,
         RecordMaintenanceAttemptRunningUseCase,
         RecordTableMaintenanceOperationResultUseCase,
         SubmitMaintenanceOperationUseCase,
@@ -58,6 +60,7 @@ class TableMaintenanceActivities:
         delete: DeleteMaintenanceJobUseCase,
         pods: GetMaintenanceJobPodsUseCase,
         record_running: RecordMaintenanceAttemptRunningUseCase,
+        raise_priority: RaiseTableMaintenanceRunPriorityUseCase,
         client: Client,
         callback_base_url: str,
     ) -> None:
@@ -69,6 +72,7 @@ class TableMaintenanceActivities:
         self._delete = delete
         self._pods = pods
         self._record_running = record_running
+        self._raise_priority = raise_priority
         self._client = client
         self._callback_base_url = callback_base_url
 
@@ -125,6 +129,13 @@ class TableMaintenanceActivities:
         """Record when the driver of one ``(run_id, operation, attempt)`` started running."""
         with translate_application_errors():
             output = self._record_running.execute(RecordMaintenanceAttemptRunningUseCaseInput.from_primitives(request))
+        return activity_payload(output)
+
+    @activity.defn(name=TableMaintenanceActivity.RAISE_MAINTENANCE_RUN_PRIORITY)
+    def raise_table_maintenance_run_priority(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Raise the priority of a run in flight, only upward, and return its priority and whether it rose."""
+        with translate_application_errors():
+            output = self._raise_priority.execute(RaiseTableMaintenanceRunPriorityUseCaseInput.from_primitives(request))
         return activity_payload(output)
 
     @activity.defn(name=TableMaintenanceActivity.SIGNAL_PARENT)

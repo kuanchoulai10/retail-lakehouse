@@ -16,6 +16,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     MaintenanceAttemptEnding,
     MaintenanceNextStep,
     OperationResultSignal,
+    RaisePrioritySignal,
     TableMaintenanceActivity,
     TableMaintenanceSignal,
     TableMaintenanceWorkflowInput,
@@ -28,7 +29,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_m
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Coroutine
+    from collections.abc import Callable, Coroutine
 
 _ACTIVITY_TIMEOUT = timedelta(minutes=2)
 _ACTIVITY_RETRY = RetryPolicy(maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0)
@@ -40,6 +41,7 @@ _CALLBACK_GRACE = timedelta(seconds=120)
 _TIMED_OUT = "spark job timed out"
 _MISSING = "spark job missing"
 _QUEUE_TIMED_OUT = "spark job waited in the queue longer than the queue wait limit"
+_NOT_REPLACED = "queued job could not be replaced"
 _FENCE_PATCH = "fence-timed-out-attempt"
 _FENCE_MISSING_PATCH = "fence-missing-job"
 _FENCE_CANCELLED_PATCH = "fence-cancelled-attempt"
@@ -92,6 +94,16 @@ class TableMaintenanceWorkflow:
     cancellation, the Spark job of every started attempt is deleted and the parent
     reconciliation workflow is told the run finished and how many results could not be
     recorded.
+
+    A ``raise_priority`` signal (a manual run asked for while this one runs) raises the run's
+    priority, only upward, through ``raise_maintenance_run_priority``; a failed raise is logged and
+    dropped. Raises are applied before every submit, so a later operation is submitted at the new
+    priority, and as soon as they arrive while an attempt is awaited. An attempt that is running keeps
+    going; one still queued is replaced: a status read that finds its driver started makes it running
+    instead, otherwise its job is deleted, polled every 30 s until it reads ``NOT_FOUND`` and has no
+    live pods, and submitted again under the same attempt number, keeping its submit time and queue
+    deadline. A job not gone within the fencing confirm bound fails the attempt like an unconfirmed
+    fence (ended ``missing``, possibly still running), and the operation waits until it is gone.
     """
 
     @workflow.init
@@ -108,6 +120,8 @@ class TableMaintenanceWorkflow:
         self._started_attempts: list[tuple[str, int]] = []
         self._settled_attempts: set[tuple[str, int]] = set()
         self._record_failures = 0
+        self._priority: str = input.plan.get("priority", "P3")
+        self._raise_requests: list[RaisePrioritySignal] = []
 
     @workflow.run
     async def run(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
@@ -138,6 +152,11 @@ class TableMaintenanceWorkflow:
             workflow.logger.warning("ignoring result for other run %s", result.run_id)
             return
         self._results.setdefault((result.operation, result.attempt), result)
+
+    @workflow.signal(name=TableMaintenanceSignal.RAISE_PRIORITY)
+    def raise_priority(self, request: RaisePrioritySignal) -> None:
+        """Keep a priority raise until the workflow applies it."""
+        self._raise_requests.append(request)
 
     async def _run_operation(self, operation: dict[str, Any]) -> None:
         size: str = operation.get("start_size") or DEFAULT_START_SIZE
@@ -180,74 +199,185 @@ class TableMaintenanceWorkflow:
         name = operation["operation"]
         self._started_attempts.append((name, attempt))
         try:
-            submitted = await self._activity(
-                TableMaintenanceActivity.SUBMIT_MAINTENANCE_OPERATION,
-                {
-                    "run_id": self._run_id,
-                    "operation": name,
-                    "attempt": attempt,
-                    "filters": operation["filters"],
-                    "procedure_args": operation["procedure_args"],
-                    "size": size,
-                    "now": _now(),
-                },
-            )
+            job_name = await self._submit(operation, attempt, size)
         except ActivityError as error:
             _raise_if_cancelled(error)
-            return self._failure(
-                name, attempt, f"submit failed: {_message(error)}", MaintenanceAttemptEnding.SUBMIT_FAILED
-            )
-        return await self._await_outcome(name, attempt, submitted["job_name"])
+            return self._submit_failed(name, attempt, error)
+        return await self._await_outcome(operation, attempt, size, job_name)
 
-    async def _await_outcome(self, name: str, attempt: int, job_name: str) -> OperationResultSignal:
-        """Wait for the attempt to end: queued until its driver starts, then bounded by its deadline from that start."""
+    async def _submit(self, operation: dict[str, Any], attempt: int, size: str) -> str:
+        """Apply the raises that arrived, then submit the attempt's job and return its name."""
+        await self._apply_raises()
+        submitted = await self._activity(
+            TableMaintenanceActivity.SUBMIT_MAINTENANCE_OPERATION,
+            {
+                "run_id": self._run_id,
+                "operation": operation["operation"],
+                "attempt": attempt,
+                "filters": operation["filters"],
+                "procedure_args": operation["procedure_args"],
+                "size": size,
+                "now": _now(),
+            },
+        )
+        return submitted["job_name"]
+
+    async def _await_outcome(
+        self, operation: dict[str, Any], attempt: int, size: str, job_name: str
+    ) -> OperationResultSignal:
+        """Wait for the attempt to end: queued until its driver starts, then bounded by its deadline from that start.
+
+        A raise that arrives meanwhile is applied at once; a queued attempt it raised is replaced
+        (see ``_requeue``), keeping its submit time, its queue deadline and its next poll.
+        """
+        name = operation["operation"]
         key = (name, attempt)
         submitted_at = workflow.now()
         running_since: datetime | None = None
         deadline = submitted_at + self._policy.queue_wait_limit
         completed_since: datetime | None = None
+        poll_at: datetime | None = None
         while True:
             if key in self._results:
                 return self._results[key]
             now = workflow.now()
             if now >= deadline:
                 return await self._past_deadline(name, attempt, running=running_since is not None)
-            in_fast_window = now - (running_since or submitted_at) < FAST_POLL_WINDOW
-            interval = _poll_interval(in_fast_window=in_fast_window, running=running_since is not None)
-            try:
-                await workflow.wait_condition(lambda: key in self._results, timeout=min(interval, deadline - now))
+            if poll_at is None:
+                in_fast_window = now - (running_since or submitted_at) < FAST_POLL_WINDOW
+                poll_at = now + _poll_interval(in_fast_window=in_fast_window, running=running_since is not None)
+            wait = min(poll_at, deadline) - now
+            if wait > timedelta(0):
+                try:
+                    await workflow.wait_condition(
+                        lambda: key in self._results or bool(self._raise_requests), timeout=wait
+                    )
+                except TimeoutError:
+                    pass
+            if key in self._results:
                 return self._results[key]
-            except TimeoutError:
-                pass
-            if workflow.now() >= deadline:
+            if self._raise_requests:
+                started, replaced = await self._raise_attempt(operation, attempt, size, queued=running_since is None)
+                if replaced is not None:
+                    return replaced
+                if started is not None:
+                    running_since = await self._started_running(name, attempt, started, submitted_at)
+                    deadline = running_since + self._policy.attempt_deadline
+                    poll_at = None
                 continue
+            if workflow.now() >= deadline or workflow.now() < poll_at:
+                continue
+            poll_at = None
             status = await self._job_status(name, attempt)
             if status is None:
                 continue
             if running_since is None and status.get("driver_started_at"):
                 running_since = await self._started_running(name, attempt, status["driver_started_at"], submitted_at)
                 deadline = running_since + self._policy.attempt_deadline
-            state = status["state"]
-            if state == "FAILED":
-                return self._failure(
-                    name, attempt, status["error"] or "spark job failed", MaintenanceAttemptEnding.JOB_FAILED
-                )
-            if state == "NOT_FOUND":
-                return await self._missing(name, attempt)
-            if state != "COMPLETED":
+            if status["state"] != "COMPLETED":
                 completed_since = None
-                continue
-            completed_since = completed_since or workflow.now()
-            if workflow.now() - completed_since >= _CALLBACK_GRACE:
-                workflow.logger.warning("%s completed without callback; recording success", job_name)
-                return OperationResultSignal(
-                    run_id=self._run_id,
-                    operation=name,
-                    attempt=attempt,
-                    succeeded=True,
-                    metrics={"completed_without_callback": 1},
-                    error=None,
+            else:
+                completed_since = completed_since or workflow.now()
+            ended = await self._ended_by_status(name, attempt, job_name, status, completed_since)
+            if ended is not None:
+                return ended
+
+    async def _ended_by_status(
+        self, name: str, attempt: int, job_name: str, status: dict[str, Any], completed_since: datetime | None
+    ) -> OperationResultSignal | None:
+        """Return how the job's status ends the attempt, or None while it goes on.
+
+        A failed job fails it, a missing one is fenced, and a job completed for the callback grace
+        without its callback succeeds.
+        """
+        state = status["state"]
+        if state == "FAILED":
+            return self._failure(
+                name, attempt, status["error"] or "spark job failed", MaintenanceAttemptEnding.JOB_FAILED
+            )
+        if state == "NOT_FOUND":
+            return await self._missing(name, attempt)
+        if completed_since is None or workflow.now() - completed_since < _CALLBACK_GRACE:
+            return None
+        workflow.logger.warning("%s completed without callback; recording success", job_name)
+        return OperationResultSignal(
+            run_id=self._run_id,
+            operation=name,
+            attempt=attempt,
+            succeeded=True,
+            metrics={"completed_without_callback": 1},
+            error=None,
+        )
+
+    async def _apply_raises(self) -> bool:
+        """Apply the raises that arrived, in order, and tell whether any raised the run.
+
+        Each raise is recorded on the run, which keeps the higher priority; a raise that fails to
+        record is logged and dropped.
+        """
+        raised = False
+        while self._raise_requests:
+            request = self._raise_requests.pop(0)
+            try:
+                reply = await self._activity(
+                    TableMaintenanceActivity.RAISE_MAINTENANCE_RUN_PRIORITY,
+                    {"run_id": self._run_id, "priority": request.priority, "now": _now()},
                 )
+            except ActivityError as error:
+                _raise_if_cancelled(error)
+                workflow.logger.warning("raising the priority of run %s failed: %s", self._run_id, error)
+                continue
+            self._priority = reply["priority"]
+            raised = raised or bool(reply["raised"])
+        return raised
+
+    async def _raise_attempt(
+        self, operation: dict[str, Any], attempt: int, size: str, *, queued: bool
+    ) -> tuple[str | None, OperationResultSignal | None]:
+        """Apply the raises that arrived and replace the attempt if it is ``queued`` and the run was raised.
+
+        Returns what ``_requeue`` returns, or ``(None, None)`` when nothing is replaced.
+        """
+        if not await self._apply_raises() or not queued:
+            return None, None
+        return await self._requeue(operation, attempt, size)
+
+    async def _requeue(
+        self, operation: dict[str, Any], attempt: int, size: str
+    ) -> tuple[str | None, OperationResultSignal | None]:
+        """Replace a queued attempt's job so it is queued again at the raised priority.
+
+        Returns ``(driver_started_at, None)`` when a status read finds the driver already started, so
+        the attempt is running and is left alone; ``(None, failure)`` when the old job was not gone within
+        the fencing confirm bound, or the new submit failed; ``(None, None)`` once the attempt is
+        queued again (or a status read failed, so nothing was replaced). The job is deleted, polled
+        every fencing poll until it reads ``NOT_FOUND`` and has no live pods, then submitted again
+        under the same attempt number. A job still there at the bound is recorded as an unconfirmed
+        fence is, and polled slowly until gone.
+        """
+        name = operation["operation"]
+        status = await self._job_status(name, attempt)
+        if status is None:
+            workflow.logger.warning("not requeueing %s attempt %s: its status is unknown", name, attempt)
+            return None, None
+        if status.get("driver_started_at"):
+            return status["driver_started_at"], None
+        minutes = int(self._policy.fencing.confirm_bound.total_seconds() // 60)
+        unconfirmed = await self._await_gone(
+            name,
+            attempt,
+            MaintenanceAttemptEnding.MISSING,
+            job_gone=True,
+            unconfirmed_error=lambda still: f"{_NOT_REPLACED}: {still} {minutes} minutes after the priority raise",
+        )
+        if unconfirmed is not None:
+            return None, unconfirmed
+        try:
+            await self._submit(operation, attempt, size)
+        except ActivityError as error:
+            _raise_if_cancelled(error)
+            return None, self._submit_failed(name, attempt, error)
+        return None, None
 
     async def _started_running(
         self, name: str, attempt: int, driver_started_at: str, submitted_at: datetime
@@ -334,24 +464,60 @@ class TableMaintenanceWorkflow:
         recorded at once, then polling goes on, slower, until the pods are
         gone, and only then does the caller go on.
         """
+        minutes = int(self._policy.fencing.confirm_bound.total_seconds() // 60)
+        unconfirmed = await self._await_gone(
+            name,
+            attempt,
+            ending,
+            bounded=bounded,
+            unconfirmed_error=lambda still: f"{reason}; {still} {minutes} minutes after {since}",
+        )
+        return unconfirmed or self._failure(name, attempt, reason, ending)
+
+    async def _await_gone(  # noqa: PLR0913
+        self,
+        name: str,
+        attempt: int,
+        ending: MaintenanceAttemptEnding,
+        *,
+        unconfirmed_error: Callable[[str], str],
+        bounded: bool = True,
+        job_gone: bool = False,
+    ) -> OperationResultSignal | None:
+        """Delete an attempt's job and poll until its pods (and, with ``job_gone``, the job) are gone.
+
+        Returns None when they were gone within the confirm bound. Otherwise, when ``bounded``, the
+        attempt is recorded at the bound as failed with ``unconfirmed_error`` of what was still there
+        and possibly still running, polling goes on slower until they are gone, and that failure is
+        returned.
+        """
         fencing = self._policy.fencing
         key = (name, attempt)
         confirm_by = workflow.now() + fencing.confirm_bound
         deleted = False
-        outcome = self._failure(name, attempt, reason, ending)
+        outcome: OperationResultSignal | None = None
         while True:
             deleted = deleted or await self._delete_job(name, attempt)
-            if deleted and await self._pods_gone(name, attempt):
+            job_absent = deleted and (not job_gone or await self._job_absent(name, attempt))
+            if job_absent and await self._pods_gone(name, attempt):
                 return outcome
             if bounded and key not in self._settled_attempts and workflow.now() >= confirm_by:
-                minutes = int(fencing.confirm_bound.total_seconds() // 60)
-                still = "its pods were still running" if deleted else "its job could still not be deleted"
-                error = f"{reason}; {still} {minutes} minutes after {since}"
-                outcome = self._failure(name, attempt, error, ending, still_running=True)
+                if not deleted:
+                    still = "its job could still not be deleted"
+                elif not job_absent:
+                    still = "its job was still there"
+                else:
+                    still = "its pods were still running"
+                outcome = self._failure(name, attempt, unconfirmed_error(still), ending, still_running=True)
                 await self._record(outcome)
                 self._settled_attempts.add(key)
             slow = key in self._settled_attempts or workflow.now() >= confirm_by
             await workflow.sleep(fencing.slow_poll_interval if slow else fencing.poll_interval)
+
+    async def _job_absent(self, name: str, attempt: int) -> bool:
+        """Tell whether the attempt's job reads ``NOT_FOUND``; an unknown status counts as present."""
+        status = await self._job_status(name, attempt)
+        return status is not None and status["state"] == "NOT_FOUND"
 
     async def _delete_job(self, name: str, attempt: int) -> bool:
         try:
@@ -442,6 +608,9 @@ class TableMaintenanceWorkflow:
         except ActivityError as error:
             workflow.logger.warning("signalling the parent failed: %s", error)
         await workflow.wait_condition(workflow.all_handlers_finished)
+
+    def _submit_failed(self, name: str, attempt: int, error: ActivityError) -> OperationResultSignal:
+        return self._failure(name, attempt, f"submit failed: {_message(error)}", MaintenanceAttemptEnding.SUBMIT_FAILED)
 
     def _failure(
         self,

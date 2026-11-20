@@ -8,6 +8,8 @@ from temporalio import workflow
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     TABLE_MAINTENANCE_WORKFLOW,
+    RaisePrioritySignal,
+    TableMaintenanceSignal,
     TableMaintenanceWorkflowInput,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
@@ -21,6 +23,7 @@ class TableMaintenanceStubWorkflow:
 
     A cancellation is reported to the parent like the real child's cleanup does,
     unless the plan carries ``stub_ignores_cancel``: then the stub keeps waiting.
+    The priority raises it receives are kept for the ``raises`` query.
     """
 
     @workflow.init
@@ -28,6 +31,7 @@ class TableMaintenanceStubWorkflow:
         """Keep the workflow input for the started_with query."""
         self._input = input
         self._complete = False
+        self._raises: list[str | None] = []
 
     @workflow.run
     async def run(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
@@ -53,6 +57,16 @@ class TableMaintenanceStubWorkflow:
     def complete(self) -> None:
         """Signal that lets the stub finish."""
         self._complete = True
+
+    @workflow.signal(name=TableMaintenanceSignal.RAISE_PRIORITY)
+    def raise_priority(self, request: RaisePrioritySignal) -> None:
+        """Keep the priority of a raise."""
+        self._raises.append(request.priority)
+
+    @workflow.query
+    def raises(self) -> list[str | None]:
+        """Query returning the priorities of the raises received, in order."""
+        return list(self._raises)
 
     @workflow.query
     def started_with(self) -> dict:

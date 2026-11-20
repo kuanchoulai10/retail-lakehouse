@@ -159,6 +159,17 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             now,
         )
 
+    def raise_priority(self, priority: TablePriority) -> bool:
+        """Raise the run to ``priority`` and tell whether it was raised.
+
+        Only a priority that outranks the run's raises it, and only while the run is not finished; an equal
+        or lower one, or a finished run, changes nothing.
+        """
+        if self.finished_at is not None or not priority.outranks(self.priority):
+            return False
+        self.priority = priority
+        return True
+
     def attempt_record(self, operation: MaintenanceOperation, attempt: int) -> OperationAttempt | None:
         """Return the history entry of one attempt of an operation, or None when it has none."""
         return next((a for a in self._get(operation).attempt_history if a.attempt == attempt), None)

@@ -51,6 +51,12 @@ class ScriptedMaintenanceActivities:
     An app in ``naive_driver_starts`` reports its start without a time zone.
     ``running_records`` keeps each record of a running attempt, and the attempts in
     ``running_record_errors`` fail that record non-retryably.
+
+    ``raises`` keeps each priority raise request; its reply is ``raise_reply`` when set, else the run
+    raised to the requested priority (P0 when none is named), and the requests in
+    ``raise_errors`` (by position, from 0) fail non-retryably. ``raise_hook``, when set, runs inside
+    each raise with the request. A job in ``vanish_after_delete[app_name]`` reads ``NOT_FOUND`` once
+    that long has passed since its first delete, until it is submitted again.
     """
 
     def __init__(self, client: Client) -> None:
@@ -83,6 +89,11 @@ class ScriptedMaintenanceActivities:
         self.naive_driver_starts: set[str] = set()
         self.running_records: list[dict] = []
         self.running_record_errors: set[tuple[str, int]] = set()
+        self.raises: list[dict] = []
+        self.raise_reply: dict[str, Any] | None = None
+        self.raise_errors: set[int] = set()
+        self.raise_hook: Callable[[dict], Awaitable[None]] | None = None
+        self.vanish_after_delete: dict[str, timedelta] = {}
 
     @staticmethod
     def app_name(run_id: str, operation: str, attempt: int) -> str:
@@ -140,11 +151,21 @@ class ScriptedMaintenanceActivities:
             await self.status_gate.wait()
         if self.status_hook is not None:
             await self.status_hook(app_name, activity.info().scheduled_time)
+        if self._vanished(app_name, activity.info().scheduled_time):
+            return {"state": "NOT_FOUND", "error": None, "driver_started_at": None}
         state = self.states.get(app_name, {"state": "RUNNING", "error": None})
         if isinstance(state, list):
             calls = self.status_calls.count(app_name)
             state = state[min(calls, len(state)) - 1]
         return {"driver_started_at": self._driver_started_at(app_name, activity.info().scheduled_time), **state}
+
+    def _vanished(self, app_name: str, polled_at: datetime) -> bool:
+        deleted_at = self.delete_times.get(app_name)
+        if app_name not in self.vanish_after_delete or deleted_at is None:
+            return False
+        if self.submitted_at[app_name] > deleted_at:
+            return False
+        return polled_at - deleted_at >= self.vanish_after_delete[app_name]
 
     def _driver_started_at(self, app_name: str, polled_at: datetime) -> str | None:
         submitted_at = self.submitted_at[app_name]
@@ -161,6 +182,17 @@ class ScriptedMaintenanceActivities:
         if (request["operation"], request["attempt"]) in self.running_record_errors:
             raise ApplicationError("db down", type="ConflictError", non_retryable=True)
         return {"status": "running", "started_running_at": request["started_running_at"]}
+
+    @activity.defn(name=TableMaintenanceActivity.RAISE_MAINTENANCE_RUN_PRIORITY)
+    async def raise_table_maintenance_run_priority(self, request: dict) -> dict:
+        """Record the raise and reply with the scripted priority, or fail when the script says so."""
+        position = len(self.raises)
+        self.raises.append(request)
+        if self.raise_hook is not None:
+            await self.raise_hook(request)
+        if position in self.raise_errors:
+            raise ApplicationError("db down", type="ConflictError", non_retryable=True)
+        return self.raise_reply or {"priority": request["priority"] or "P0", "raised": True}
 
     @activity.defn(name=TableMaintenanceActivity.RECORD_MAINTENANCE_OPERATION_RESULT)
     async def record_table_maintenance_operation_result(self, request: dict) -> dict:
@@ -210,4 +242,5 @@ class ScriptedMaintenanceActivities:
             self.delete_maintenance_job,
             self.get_maintenance_job_pods,
             self.record_maintenance_attempt_running,
+            self.raise_table_maintenance_run_priority,
         ]

@@ -29,6 +29,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.operation_result_signal import (
     OperationResultSignal,
 )
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.raise_priority_signal import (
+    RaisePrioritySignal,
+)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.signal import (
     TableMaintenanceSignal,
 )
@@ -54,6 +57,7 @@ __all__ = [
     "DEFAULT_MAX_ATTEMPTS",
     "DEFAULT_QUEUE_WAIT_LIMIT_SECONDS",
     "OperationResultSignal",
+    "RaisePrioritySignal",
     "TABLE_MAINTENANCE_WORKFLOW",
     "TableMaintenanceActivity",
     "TableMaintenanceSignal",

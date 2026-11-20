@@ -27,6 +27,9 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     GetMaintenanceJobStatusUseCase,
     GetMaintenanceJobStatusUseCaseInput,
     GetMaintenanceJobStatusUseCaseOutput,
+    RaiseTableMaintenanceRunPriorityUseCase,
+    RaiseTableMaintenanceRunPriorityUseCaseInput,
+    RaiseTableMaintenanceRunPriorityUseCaseOutput,
     RecordMaintenanceAttemptRunningUseCase,
     RecordMaintenanceAttemptRunningUseCaseInput,
     RecordMaintenanceAttemptRunningUseCaseOutput,
@@ -223,3 +226,18 @@ class FakeRecordRunning(RecordMaintenanceAttemptRunningUseCase):
         return RecordMaintenanceAttemptRunningUseCaseOutput(
             status="running", started_running_at=request.started_running_at
         )
+
+
+class FakeRaisePriority(RaiseTableMaintenanceRunPriorityUseCase):
+    """Raise priority use case fake that records its requests."""
+
+    def __init__(self) -> None:
+        """Start with no recorded requests."""
+        self.requests: list[RaiseTableMaintenanceRunPriorityUseCaseInput] = []
+
+    def execute(
+        self, request: RaiseTableMaintenanceRunPriorityUseCaseInput
+    ) -> RaiseTableMaintenanceRunPriorityUseCaseOutput:
+        """Record the request and return the run as raised to the priority it was given, P0 when none."""
+        self.requests.append(request)
+        return RaiseTableMaintenanceRunPriorityUseCaseOutput(priority=request.priority or "P0", raised=True)
