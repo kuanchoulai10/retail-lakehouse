@@ -21,6 +21,8 @@ from context.catalog.application.port.outbound.table import (
     NullOrder,
     PartitionField,
     PartitionSpec,
+    PartitionTransform,
+    PartitionTransformKind,
     Schema,
     SchemaField,
     SortDirection,
@@ -35,6 +37,8 @@ TABLES = "/api/catalog/v1/sales/namespaces/retail/tables"
 ORDERS = f"{TABLES}/orders"
 ORDERS_ID = TableId.of("sales", ("retail",), "orders")
 UUID = "9c12d441-03fe-4693-9a96-a0705ddf69c1"
+DAY = PartitionTransform(kind=PartitionTransformKind.DAY)
+BUCKET_16 = PartitionTransform(kind=PartitionTransformKind.BUCKET, argument=16)
 
 
 def _load_result() -> dict[str, Any]:
@@ -93,11 +97,11 @@ def test_load_maps_schema_partition_sort_snapshots_and_summary():
         (5, "tags", "list<string>", False, None),
         (7, "shipping", "struct<city: required string>", False, None),
     ]
-    assert table.partition_spec == PartitionSpec(
+    assert table.default_partition_spec == PartitionSpec(
         spec_id=1,
         fields=(
-            PartitionField(source_id=3, field_id=1000, name="order_ts_day", transform="day"),
-            PartitionField(source_id=2, field_id=1001, name="customer_id_bucket", transform="bucket[16]"),
+            PartitionField(source_id=3, field_id=1000, name="order_ts_day", transform=DAY),
+            PartitionField(source_id=2, field_id=1001, name="customer_id_bucket", transform=BUCKET_16),
         ),
     )
     assert table.sort_order.order_id == 1
@@ -308,7 +312,7 @@ def test_create_table_sends_schema_and_partition_spec():
     stub = PolarisStub()
     stub.on("POST", TABLES, httpx.Response(200, json=_load_result()))
     spec = PartitionSpec(
-        spec_id=0, fields=(PartitionField(source_id=2, field_id=1000, name="order_ts_day", transform="day"),)
+        spec_id=0, fields=(PartitionField(source_id=2, field_id=1000, name="order_ts_day", transform=DAY),)
     )
 
     saved = TablesPolarisRepo(stub.client()).create(_new_orders(spec, location="s3://lakehouse/custom/orders"))
@@ -563,13 +567,56 @@ def test_v1_metadata_without_schemas_or_specs_uses_the_single_schema_and_spec():
 
     assert table is not None
     assert [f.name for f in table.current_schema.fields] == ["order_id", "customer_id", "order_ts"]
-    assert table.partition_spec == PartitionSpec(
-        spec_id=0, fields=(PartitionField(source_id=3, field_id=1000, name="order_ts_day", transform="day"),)
+    assert table.default_partition_spec == PartitionSpec(
+        spec_id=0, fields=(PartitionField(source_id=3, field_id=1000, name="order_ts_day", transform=DAY),)
     )
     assert table.sort_order == SortOrder.unsorted()
     assert [s.schema_id for s in table.schemas] == [0] and table.current_schema_id == 0
     assert [s.spec_id for s in table.partition_specs] == [0] and table.default_spec_id == 0
     assert [s.schema_id for s in table.snapshots] == [None, None]
+
+
+def test_v1_schema_without_a_schema_id_is_schema_0():
+    """A v1 ``schema`` with no ``schema-id`` is schema 0, and it is the current one."""
+    body = _load_result()
+    metadata = body["metadata"]
+    metadata["format-version"] = 1
+    schema = metadata.pop("schemas")[0]
+    schema.pop("schema-id")
+    metadata["schema"] = schema
+    metadata.pop("current-schema-id")
+
+    table = _load_orders(body)
+
+    assert [s.schema_id for s in table.schemas] == [0] and table.current_schema_id == 0
+    assert [f.name for f in table.current_schema.fields] == ["order_id", "customer_id", "order_ts"]
+
+
+def test_schemas_and_specs_listed_out_of_order_are_kept_in_id_order():
+    """Polaris may list schemas and specs in any order; the table holds them by ascending id."""
+    body = _load_result()
+    metadata = body["metadata"]
+    metadata["schemas"].reverse()
+    metadata["partition-specs"].reverse()
+
+    table = _load_orders(body)
+
+    assert [s.schema_id for s in table.schemas] == [0, 1]
+    assert [s.spec_id for s in table.partition_specs] == [0, 1]
+    assert (table.current_schema_id, table.default_spec_id) == (1, 1)
+
+
+def test_load_reads_each_partition_transform_as_its_kind_and_keeps_an_unknown_one():
+    """A known transform is typed, an unknown one keeps its text, and both write back to the same text."""
+    body = _load_result()
+    _partition_field(body["metadata"])["transform"] = "zorder[a]"
+
+    table = _load_orders(body)
+
+    first, second = table.default_partition_spec.fields
+    assert first.transform == PartitionTransform(kind=PartitionTransformKind.UNKNOWN, raw="zorder[a]")
+    assert second.transform == BUCKET_16
+    assert [f.transform.text() for f in table.default_partition_spec.fields] == ["zorder[a]", "bucket[16]"]
 
 
 def _snapshot(metadata: dict[str, Any]) -> dict[str, Any]:
@@ -666,7 +713,7 @@ def test_a_loaded_table_holds_real_tuples_and_enums():
     table = TablesPolarisRepo(stub.client()).get(ORDERS_ID)
 
     assert table is not None
-    assert type(table.partition_spec.fields) is tuple
+    assert type(table.default_partition_spec.fields) is tuple
     assert type(table.sort_order.fields) is tuple
     assert type(table.sort_order.fields[0].direction) is SortDirection
     assert type(table.sort_order.fields[0].null_order) is NullOrder
@@ -688,7 +735,7 @@ def test_create_request_bytes_are_unchanged():
     stub = PolarisStub()
     stub.on("POST", TABLES, httpx.Response(200, json=_load_result()))
     spec = PartitionSpec(
-        spec_id=0, fields=(PartitionField(source_id=2, field_id=1000, name="order_ts_day", transform="day"),)
+        spec_id=0, fields=(PartitionField(source_id=2, field_id=1000, name="order_ts_day", transform=DAY),)
     )
 
     TablesPolarisRepo(stub.client()).create(_new_orders(spec, location="s3://lakehouse/custom/orders"))

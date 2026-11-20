@@ -9,10 +9,12 @@ from context.catalog.adapter.outbound.shared.polaris.iceberg_type_from_polaris i
 )
 from context.catalog.adapter.outbound.shared.polaris.polaris_integer import polaris_integer
 from context.catalog.adapter.outbound.shared.polaris.polaris_text import polaris_text
-from context.catalog.application.port.outbound.shared import Schema, SchemaField
+from context.catalog.application.port.outbound.shared import Schema, SchemaField, SchemaFieldKind
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+_NESTED_KINDS = {"struct": SchemaFieldKind.STRUCT, "list": SchemaFieldKind.LIST, "map": SchemaFieldKind.MAP}
 
 
 def _required(value: object) -> bool:
@@ -23,6 +25,12 @@ def _required(value: object) -> bool:
     return value
 
 
+def _kind(iceberg_type: str | dict[str, Any]) -> SchemaFieldKind:
+    if isinstance(iceberg_type, str):
+        return SchemaFieldKind.PRIMITIVE
+    return _NESTED_KINDS.get(str(iceberg_type.get("type")), SchemaFieldKind.PRIMITIVE)
+
+
 def _child(field_id: object, name: str, iceberg_type: str | dict[str, Any], required: object) -> SchemaField:
     return SchemaField(
         id=polaris_integer(field_id, f"schema {name} id"),
@@ -30,6 +38,7 @@ def _child(field_id: object, name: str, iceberg_type: str | dict[str, Any], requ
         type=iceberg_type_from_polaris(iceberg_type),
         required=_required(required),
         doc=None,
+        kind=_kind(iceberg_type),
         children=_children(iceberg_type),
     )
 
@@ -61,6 +70,7 @@ def _field(field: Mapping[str, Any]) -> SchemaField:
         type=iceberg_type_from_polaris(field["type"]),
         required=_required(field.get("required")),
         doc=field.get("doc"),
+        kind=_kind(field["type"]),
         children=_children(field["type"]),
     )
 
@@ -70,8 +80,10 @@ def iceberg_schema_from_polaris(schema: Mapping[str, Any]) -> Schema:
 
     A missing ``schema-id`` is 0 and a missing or null ``required`` is false. Nothing is coerced:
     an id that is not an integer, a name that is not text or a ``required`` that is not a bool
-    raises TypeError. Types are rendered as text by ``iceberg_type_from_polaris``; a nested type's
-    fields, a list's element and a map's key and value become ``children`` with their own ids.
+    raises TypeError. Types are rendered as text by ``iceberg_type_from_polaris``, and each field's
+    ``kind`` is its JSON type object's ``struct``, ``list`` or ``map`` (``primitive`` for a type
+    name); a nested type's fields, a list's element and a map's key and value become ``children``
+    with their own ids.
     """
     fields = schema["fields"]
     if not isinstance(fields, list):

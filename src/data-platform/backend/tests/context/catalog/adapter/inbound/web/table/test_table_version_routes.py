@@ -98,26 +98,27 @@ def _schema_comparison() -> GetTableSchemaComparisonUseCaseOutput:
     )
 
 
-def _spec_comparison() -> GetTablePartitionSpecComparisonUseCaseOutput:
-    return GetTablePartitionSpecComparisonUseCaseOutput(
-        base_spec_id=0,
-        spec_id=1,
-        items=(
-            GetTablePartitionSpecComparisonUseCaseOutput.Field(
-                field_id=1001,
-                previous_field_id=1000,
-                name="order_ts_hour",
-                previous_name="order_ts_day",
-                source_path=("order_ts",),
-                previous_source_path=("order_ts",),
-                transform="hour",
-                previous_transform="day",
-                changes=("transform_changed",),
-                expression="hour(order_ts)",
-                previous_expression="day(order_ts)",
-            ),
-        ),
-    )
+def _spec_field(**changes: object) -> GetTablePartitionSpecComparisonUseCaseOutput.Field:
+    fields: dict[str, object] = {
+        "field_id": 1001,
+        "previous_field_id": 1000,
+        "name": "order_ts_hour",
+        "previous_name": "order_ts_day",
+        "source_id": 3,
+        "previous_source_id": 3,
+        "source_path": ("order_ts",),
+        "previous_source_path": ("order_ts",),
+        "transform": "hour",
+        "previous_transform": "day",
+        "changes": ("transform_changed",),
+    }
+    return GetTablePartitionSpecComparisonUseCaseOutput.Field(**fields | changes)  # ty: ignore[invalid-argument-type]
+
+
+def _spec_comparison(
+    *items: GetTablePartitionSpecComparisonUseCaseOutput.Field,
+) -> GetTablePartitionSpecComparisonUseCaseOutput:
+    return GetTablePartitionSpecComparisonUseCaseOutput(base_spec_id=0, spec_id=1, items=items or (_spec_field(),))
 
 
 def test_list_schema_versions_returns_the_versions_with_their_counts():
@@ -270,6 +271,77 @@ def test_partition_spec_comparison_returns_each_field_with_its_expression():
         GetTablePartitionSpecComparisonUseCaseInput(
             catalog="sales", namespace=("retail",), name="orders", spec_id=1, base_spec_id=0
         )
+    ]
+
+
+def test_partition_spec_comparison_writes_a_nested_source_column_as_its_dotted_path():
+    """A nested source column's path is joined with dots in the expression and kept as segments in the path."""
+    nested = _spec_field(source_path=("address", "zip"), previous_source_path=("address", "zip"))
+    stub = StubUseCase(_spec_comparison(nested))
+
+    (field,) = (
+        build_client(get_table_partition_spec_comparison=stub)
+        .get(f"{BASE}/partition-spec-versions/1/comparison")
+        .json()["fields"]
+    )
+
+    assert (field["source_path"], field["expression"], field["previous_expression"]) == (
+        ["address", "zip"],
+        "hour(address.zip)",
+        "day(address.zip)",
+    )
+
+
+def test_partition_spec_comparison_writes_a_column_no_schema_holds_as_its_id():
+    """A source column with no path reads ``#<id>`` in the expression, and its path is null."""
+    unknown = _spec_field(
+        source_id=7,
+        previous_source_id=7,
+        source_path=None,
+        previous_source_path=None,
+        transform="bucket[16]",
+        previous_transform="bucket[16]",
+        changes=(),
+    )
+    stub = StubUseCase(_spec_comparison(unknown))
+
+    (field,) = (
+        build_client(get_table_partition_spec_comparison=stub)
+        .get(f"{BASE}/partition-spec-versions/1/comparison")
+        .json()["fields"]
+    )
+
+    assert (field["source_path"], field["expression"], field["previous_expression"]) == (
+        None,
+        "bucket[16](#7)",
+        "bucket[16](#7)",
+    )
+
+
+def test_partition_spec_comparison_has_no_expression_on_an_absent_side():
+    """An added field has no previous expression and a removed one no current expression."""
+    added = _spec_field(
+        previous_field_id=None,
+        previous_name=None,
+        previous_source_id=None,
+        previous_source_path=None,
+        previous_transform=None,
+        changes=("added",),
+    )
+    removed = _spec_field(
+        field_id=None, name=None, source_id=None, source_path=None, transform=None, changes=("removed",)
+    )
+    stub = StubUseCase(_spec_comparison(added, removed))
+
+    fields = (
+        build_client(get_table_partition_spec_comparison=stub)
+        .get(f"{BASE}/partition-spec-versions/1/comparison")
+        .json()["fields"]
+    )
+
+    assert [(field["expression"], field["previous_expression"]) for field in fields] == [
+        ("hour(order_ts)", None),
+        (None, "day(order_ts)"),
     ]
 
 

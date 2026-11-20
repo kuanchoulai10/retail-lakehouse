@@ -74,17 +74,25 @@ def _matched(current: SchemaFieldAtPath, previous: SchemaFieldAtPath) -> SchemaF
     )
 
 
-def _removed_after_neighbour(
-    rows: list[SchemaFieldComparison], base_walk: tuple[SchemaFieldAtPath, ...], gone: list[SchemaFieldAtPath]
-) -> list[SchemaFieldComparison]:
-    """Place each removed row right after the nearest field before it in the base that is in the list."""
-    base_ids = [walked.field.id for walked in base_walk]
-    for removed in gone:
-        position = base_ids.index(removed.field.id)
-        listed = {row.field_id: index for index, row in enumerate(rows)}
-        anchor = next((listed[base_ids[i]] for i in range(position - 1, -1, -1) if base_ids[i] in listed), -1)
-        rows.insert(anchor + 1, _removed(removed))
-    return rows
+def _with_removed_rows(
+    rows: list[SchemaFieldComparison], base_walk: tuple[SchemaFieldAtPath, ...], current_ids: set[int]
+) -> tuple[SchemaFieldComparison, ...]:
+    """Place each removed row right after the field before it in the base, a kept one or another removed one.
+
+    One pass over the base collects, for each kept field, the removed fields that follow it before
+    the next kept one; those with no kept field before them come first.
+    """
+    following: dict[int | None, list[SchemaFieldComparison]] = {}
+    kept_before: int | None = None
+    for walked in base_walk:
+        if walked.field.id in current_ids:
+            kept_before = walked.field.id
+        else:
+            following.setdefault(kept_before, []).append(_removed(walked))
+    return (
+        *following.get(None, ()),
+        *(placed for row in rows for placed in (row, *following.get(row.field_id, ()))),
+    )
 
 
 def compare_schemas(base: Schema | None, schema: Schema) -> SchemaComparison:
@@ -107,6 +115,5 @@ def compare_schemas(base: Schema | None, schema: Schema) -> SchemaComparison:
         _matched(current, previous_by_id[current.field.id]) if current.field.id in previous_by_id else _added(current)
         for current in walk
     ]
-    gone = [walked for walked in base_walk if walked.field.id not in current_ids]
-    rows = _removed_after_neighbour(rows, base_walk, gone)
-    return SchemaComparison(base_schema_id=base.schema_id, schema_id=schema.schema_id, fields=tuple(rows))
+    fields = _with_removed_rows(rows, base_walk, current_ids)
+    return SchemaComparison(base_schema_id=base.schema_id, schema_id=schema.schema_id, fields=fields)

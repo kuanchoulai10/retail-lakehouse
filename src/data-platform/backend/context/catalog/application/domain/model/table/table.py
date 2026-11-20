@@ -19,7 +19,7 @@ class Table(AggregateRoot[TableId]):
     ``schemas`` and ``partition_specs`` hold every version in ascending id order, each id once.
     ``current_schema_id`` and ``default_spec_id`` name the current schema and the default spec,
     which need not be the highest id: Iceberg reuses an existing id when a change produces a
-    schema or spec it already has. ``current_schema`` and ``partition_spec`` return them.
+    schema or spec it already has. ``current_schema`` and ``default_partition_spec`` return them.
 
     The catalog assigns ``uuid``, ``format_version`` and ``last_updated_ms`` and, unless one is
     asked for, ``location`` when it saves the table. A table defined for create (``define``)
@@ -86,7 +86,7 @@ class Table(AggregateRoot[TableId]):
         return next(schema for schema in self.schemas if schema.schema_id == self.current_schema_id)
 
     @property
-    def partition_spec(self) -> PartitionSpec:
+    def default_partition_spec(self) -> PartitionSpec:
         """Return the spec ``default_spec_id`` names."""
         return next(spec for spec in self.partition_specs if spec.spec_id == self.default_spec_id)
 

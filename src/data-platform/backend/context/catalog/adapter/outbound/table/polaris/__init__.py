@@ -8,6 +8,9 @@ from context.catalog.adapter.outbound.table.polaris.partition_spec_to_polaris im
 from context.catalog.adapter.outbound.table.polaris.partition_specs_from_polaris import (
     partition_specs_from_polaris,
 )
+from context.catalog.adapter.outbound.table.polaris.partition_transform_from_polaris import (
+    partition_transform_from_polaris,
+)
 from context.catalog.adapter.outbound.table.polaris.snapshot_from_polaris import snapshot_from_polaris
 from context.catalog.adapter.outbound.table.polaris.sort_order_from_polaris import sort_order_from_polaris
 from context.catalog.adapter.outbound.table.polaris.table_from_polaris import table_from_polaris
@@ -20,6 +23,7 @@ __all__ = [
     "TablesPolarisRepo",
     "partition_specs_from_polaris",
     "partition_spec_to_polaris",
+    "partition_transform_from_polaris",
     "snapshot_from_polaris",
     "sort_order_from_polaris",
     "table_from_polaris",

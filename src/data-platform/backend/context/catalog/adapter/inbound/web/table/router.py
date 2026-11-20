@@ -21,12 +21,14 @@ from context.catalog.adapter.inbound.web.table.dto import (
     CatalogTableSchemaVersionApiResponse,
     CatalogTableSchemaVersionsApiResponse,
     CreateTableApiRequest,
-    PartitionFieldComparisonApiResponse,
     RenameTableApiRequest,
     ResetTablePropertiesApiRequest,
     SchemaFieldComparisonApiResponse,
     TableIdentifierApiResponse,
     UpdateTablePropertiesApiRequest,
+)
+from context.catalog.adapter.inbound.web.table.partition_field_comparison_response import (
+    partition_field_comparison_response,
 )
 from context.catalog.application.port.inbound.table import (
     CreateTableUseCaseInput,
@@ -238,5 +240,5 @@ def get_table_partition_spec_comparison(
     return CatalogTablePartitionSpecComparisonApiResponse(
         base_spec_id=output.base_spec_id,
         spec_id=output.spec_id,
-        fields=[PartitionFieldComparisonApiResponse.model_validate(item) for item in output.items],
+        fields=[partition_field_comparison_response(item) for item in output.items],
     )

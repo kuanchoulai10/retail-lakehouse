@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from context.catalog.application.domain.model.shared import Schema, SchemaField
+from context.catalog.application.domain.model.shared import Schema, SchemaField, SchemaFieldKind
 from context.catalog.application.domain.model.table import SchemaChange, SchemaFieldComparison
 from context.catalog.application.domain.service.table import compare_schemas
 
@@ -14,9 +14,10 @@ def _field(
     *,
     required: bool = False,
     doc: str | None = None,
+    kind: SchemaFieldKind = SchemaFieldKind.PRIMITIVE,
     children: tuple[SchemaField, ...] = (),
 ) -> SchemaField:
-    return SchemaField(id=field_id, name=name, type=type_, required=required, doc=doc, children=children)
+    return SchemaField(id=field_id, name=name, type=type_, required=required, doc=doc, kind=kind, children=children)
 
 
 def _schema(*fields: SchemaField, schema_id: int = 0) -> Schema:
@@ -77,7 +78,7 @@ def test_nullability_and_doc_changes():
 
 
 def _shipping(*children: SchemaField, name: str = "shipping") -> SchemaField:
-    return _field(7, name, "struct<...>", children=children)
+    return _field(7, name, "struct<...>", kind=SchemaFieldKind.STRUCT, children=children)
 
 
 def test_nested_child_added_shows_full_path():
@@ -104,16 +105,60 @@ def test_parent_rename_does_not_rename_children():
     assert rows[8].previous_path == ("shipping", "city")
 
 
+def _list(element: SchemaField, *, type_: str) -> SchemaField:
+    return _field(5, "tags", type_, kind=SchemaFieldKind.LIST, children=(element,))
+
+
 def test_list_element_promotion():
     """A list element promoted from int to long changes the element row, not the list row."""
-    base = _schema(_field(5, "tags", "list<int>", children=(_field(6, "element", "int"),)))
-    new = _schema(_field(5, "tags", "list<long>", children=(_field(6, "element", "long"),)))
+    base = _schema(_list(_field(6, "element", "int"), type_="list<int>"))
+    new = _schema(_list(_field(6, "element", "long"), type_="list<long>"))
     rows = _cmp(base, new)
     assert rows[6].changes == (SchemaChange.TYPE_CHANGED,)
     assert rows[6].path == ("tags", "element")
     assert (rows[6].previous_type, rows[6].type) == ("int", "long")
     assert rows[5].changes == ()
     assert rows[5].type == "list"
+
+
+def test_map_value_promotion_changes_the_value_row_only():
+    """A map value promoted from int to long changes the value row; the map and its key are unchanged."""
+
+    def counts(value_type: str) -> SchemaField:
+        key = _field(10, "key", "string", required=True)
+        value = _field(11, "value", value_type)
+        return _field(9, "counts", f"map<string, {value_type}>", kind=SchemaFieldKind.MAP, children=(key, value))
+
+    rows = _cmp(_schema(counts("int")), _schema(counts("long"), schema_id=1))
+    assert rows[11].changes == (SchemaChange.TYPE_CHANGED,)
+    assert rows[11].path == ("counts", "value")
+    assert (rows[11].previous_type, rows[11].type) == ("int", "long")
+    assert rows[9].changes == ()
+    assert rows[9].type == "map"
+    assert rows[10].changes == ()
+
+
+def test_decimal_precision_widening_is_a_type_change():
+    """``decimal(10,2)`` to ``decimal(12,2)`` is a type change carrying both texts."""
+    rows = _cmp(_schema(_field(4, "amount", "decimal(10,2)")), _schema(_field(4, "amount", "decimal(12,2)")))
+    assert rows[4].changes == (SchemaChange.TYPE_CHANGED,)
+    assert (rows[4].previous_type, rows[4].type) == ("decimal(10,2)", "decimal(12,2)")
+
+
+def test_reordered_columns_change_nothing_and_follow_the_new_order():
+    """Moving a column is not a field change: every row is unchanged and rows follow the new order."""
+    base = _schema(_field(1, "a", "int"), _field(2, "b", "int"), _field(3, "c", "int"))
+    new = _schema(_field(3, "c", "int"), _field(1, "a", "int"), _field(2, "b", "int"), schema_id=1)
+    comparison = compare_schemas(base, new)
+    assert [f.field_id for f in comparison.fields] == [3, 1, 2]
+    assert all(f.changes == () for f in comparison.fields)
+
+
+def test_removed_fields_follow_their_base_neighbours_after_a_reorder():
+    """Each removed field sits after the field before it in the base, wherever that field moved."""
+    base = _schema(_field(1, "a", "int"), _field(2, "b", "int"), _field(3, "c", "int"), _field(4, "d", "int"))
+    new = _schema(_field(3, "c", "int"), _field(1, "a", "int"), schema_id=1)
+    assert _order(base, new) == [3, 4, 1, 2]
 
 
 def test_removed_field_sits_after_its_former_neighbour():

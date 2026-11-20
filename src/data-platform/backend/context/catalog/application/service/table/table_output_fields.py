@@ -27,10 +27,10 @@ def table_output_fields(table: Table) -> dict[str, Any]:
             ],
         },
         "partition_spec": {
-            "spec_id": table.partition_spec.spec_id,
+            "spec_id": table.default_partition_spec.spec_id,
             "fields": [
-                {"source_id": f.source_id, "field_id": f.field_id, "name": f.name, "transform": f.transform}
-                for f in table.partition_spec.fields
+                {"source_id": f.source_id, "field_id": f.field_id, "name": f.name, "transform": f.transform.text()}
+                for f in table.default_partition_spec.fields
             ],
         },
         "sort_order": {

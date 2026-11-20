@@ -54,13 +54,13 @@ class GetTablePartitionSpecComparisonService(GetTablePartitionSpecComparisonUseC
                     previous_field_id=field.previous_field_id,
                     name=field.name,
                     previous_name=field.previous_name,
+                    source_id=field.source_id,
+                    previous_source_id=field.previous_source_id,
                     source_path=field.source_path,
                     previous_source_path=field.previous_source_path,
-                    transform=field.transform,
-                    previous_transform=field.previous_transform,
+                    transform=None if field.transform is None else field.transform.text(),
+                    previous_transform=None if field.previous_transform is None else field.previous_transform.text(),
                     changes=tuple(str(change) for change in field.changes),
-                    expression=field.expression(),
-                    previous_expression=field.previous_expression(),
                 )
                 for field in comparison.fields
             ),

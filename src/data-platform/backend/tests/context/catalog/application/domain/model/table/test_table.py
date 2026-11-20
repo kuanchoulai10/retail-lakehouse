@@ -5,11 +5,13 @@ from __future__ import annotations
 import pytest
 
 from base import InvariantViolation
-from context.catalog.application.domain.model.shared import Schema, SchemaField
+from context.catalog.application.domain.model.shared import Schema, SchemaField, SchemaFieldKind
 from context.catalog.application.domain.model.table import (
     NullOrder,
     PartitionField,
     PartitionSpec,
+    PartitionTransform,
+    PartitionTransformKind,
     Snapshot,
     SortDirection,
     SortField,
@@ -18,6 +20,8 @@ from context.catalog.application.domain.model.table import (
     TableId,
     TableSummary,
 )
+
+IDENTITY = PartitionTransform(kind=PartitionTransformKind.IDENTITY)
 
 
 def test_table_id_joins_catalog_namespace_and_name_with_the_unit_separator():
@@ -128,7 +132,7 @@ def test_assigning_a_wrong_type_is_rejected_and_changes_nothing(field: str, valu
 @pytest.mark.parametrize(
     ("value", "field", "change"),
     [
-        (PartitionField(source_id=1, field_id=1000, name="id", transform="identity"), "name", "other"),
+        (PartitionField(source_id=1, field_id=1000, name="id", transform=IDENTITY), "name", "other"),
         (PartitionSpec.unpartitioned(), "spec_id", 1),
         (Snapshot(snapshot_id=1, parent_id=None, timestamp_ms=10, operation="append", summary={}), "parent_id", 2),
         (
@@ -153,7 +157,7 @@ def test_table_value_objects_are_strict():
     with pytest.raises(InvariantViolation):
         PartitionSpec(spec_id=0, fields=[])  # ty: ignore[invalid-argument-type]
     with pytest.raises(InvariantViolation):
-        PartitionField(source_id=True, field_id=1000, name="id", transform="identity")
+        PartitionField(source_id=True, field_id=1000, name="id", transform=IDENTITY)
     with pytest.raises(InvariantViolation):
         Snapshot(snapshot_id=1, parent_id=None, timestamp_ms=10, operation="append", summary={"k": 1})  # ty: ignore[invalid-argument-type]
 
@@ -198,16 +202,14 @@ def _versioned(
 def test_define_holds_one_schema_and_one_spec():
     """A defined table has its one schema as the current one and its one spec as the default."""
     schema = _schema(0)
-    spec = PartitionSpec(
-        spec_id=0, fields=(PartitionField(source_id=1, field_id=1000, name="id", transform="identity"),)
-    )
+    spec = PartitionSpec(spec_id=0, fields=(PartitionField(source_id=1, field_id=1000, name="id", transform=IDENTITY),))
 
     table = Table.define(
         id=TableId.of("sales", ("retail",), "orders"), schema=schema, partition_spec=spec, location=None, properties={}
     )
 
     assert table.schemas == (schema,) and table.current_schema_id == 0 and table.current_schema == schema
-    assert table.partition_specs == (spec,) and table.default_spec_id == 0 and table.partition_spec == spec
+    assert table.partition_specs == (spec,) and table.default_spec_id == 0 and table.default_partition_spec == spec
 
 
 def test_duplicate_schema_ids_are_refused():
@@ -290,7 +292,13 @@ def test_column_paths_prefer_the_current_schema():
     legacy = SchemaField(id=3, name="legacy", type="string", required=False, doc=None)
     city = SchemaField(id=6, name="city", type="string", required=False, doc=None)
     shipping = SchemaField(
-        id=5, name="shipping", type="struct<city: string>", required=False, doc=None, children=(city,)
+        id=5,
+        name="shipping",
+        type="struct<city: string>",
+        required=False,
+        doc=None,
+        kind=SchemaFieldKind.STRUCT,
+        children=(city,),
     )
     table = _versioned(
         schemas=(_schema(0, customer_id, legacy), _schema(1, customer, shipping)),

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from base import InvariantViolation
-from context.catalog.application.domain.model.shared import Schema, SchemaField
+from context.catalog.application.domain.model.shared import Schema, SchemaField, SchemaFieldKind
 
 ID = SchemaField(id=1, name="id", type="long", required=True, doc=None)
 
@@ -45,10 +45,18 @@ def test_walk_lists_nested_fields_after_their_parent():
     """Every field is listed depth first, a field before its children, with its path and depth."""
     city = SchemaField(id=8, name="city", type="string", required=True, doc=None)
     shipping = SchemaField(
-        id=7, name="shipping", type="struct<city: required string>", required=False, doc=None, children=(city,)
+        id=7,
+        name="shipping",
+        type="struct<city: required string>",
+        required=False,
+        doc=None,
+        kind=SchemaFieldKind.STRUCT,
+        children=(city,),
     )
     element = SchemaField(id=6, name="element", type="string", required=False, doc=None)
-    tags = SchemaField(id=5, name="tags", type="list<string>", required=False, doc=None, children=(element,))
+    tags = SchemaField(
+        id=5, name="tags", type="list<string>", required=False, doc=None, kind=SchemaFieldKind.LIST, children=(element,)
+    )
 
     walked = Schema(schema_id=1, fields=(tags, shipping)).walk()
 
@@ -66,22 +74,50 @@ def test_walk_of_a_schema_without_nested_fields_is_its_top_level_fields():
 
 
 @pytest.mark.parametrize(
-    ("type_text", "outer"),
+    ("kind", "type_text", "outer"),
     [
-        ("struct<a: int>", "struct"),
-        ("list<int>", "list"),
-        ("map<string, int>", "map"),
-        ("decimal(10,2)", "decimal(10,2)"),
-        ("long", "long"),
+        (SchemaFieldKind.STRUCT, "struct<a: int>", "struct"),
+        (SchemaFieldKind.LIST, "list<int>", "list"),
+        (SchemaFieldKind.MAP, "map<string, int>", "map"),
+        (SchemaFieldKind.PRIMITIVE, "decimal(10,2)", "decimal(10,2)"),
+        (SchemaFieldKind.PRIMITIVE, "long", "long"),
     ],
 )
-def test_outer_type_of_nested_and_primitive_fields(type_text, outer):
-    """A nested type's outer type is its kind; a primitive keeps its own name."""
-    assert SchemaField(id=1, name="f", type=type_text, required=False, doc=None).outer_type == outer
+def test_outer_type_of_nested_and_primitive_fields(kind, type_text, outer):
+    """A nested field's outer type is its kind, whatever its text; a primitive keeps its own name."""
+    field = SchemaField(id=1, name="f", type=type_text, required=False, doc=None, kind=kind)
+    assert field.outer_type == outer
 
 
-def test_children_default_to_none_and_must_be_a_tuple():
+def test_outer_type_follows_the_kind_not_the_text():
+    """The outer type is read from the kind, so a text that only looks nested stays a primitive name."""
+    assert SchemaField(id=1, name="f", type="struct<odd", required=False, doc=None).outer_type == "struct<odd"
+    assert SchemaField(id=1, name="f", type="", required=False, doc=None, kind=SchemaFieldKind.MAP).outer_type == "map"
+
+
+def test_kind_defaults_to_primitive_and_must_be_the_enum():
+    """A field is primitive unless given a kind, and a plain string is not a kind."""
+    assert ID.kind is SchemaFieldKind.PRIMITIVE
+    with pytest.raises(InvariantViolation):
+        SchemaField(id=1, name="f", type="list<int>", required=False, doc=None, kind="list")  # ty: ignore[invalid-argument-type]
+
+
+def test_a_primitive_field_has_no_children():
+    """Only a struct, list or map holds nested fields."""
+    with pytest.raises(InvariantViolation, match="primitive"):
+        SchemaField(id=1, name="f", type="long", required=False, doc=None, children=(ID,))
+
+
+def test_children_default_to_an_empty_tuple_and_must_be_a_tuple():
     """A field has no children unless given, and a list of children is refused."""
     assert ID.children == ()
     with pytest.raises(InvariantViolation):
-        SchemaField(id=1, name="f", type="struct<>", required=False, doc=None, children=[ID])  # ty: ignore[invalid-argument-type]
+        SchemaField(
+            id=1,
+            name="f",
+            type="struct<>",
+            required=False,
+            doc=None,
+            kind=SchemaFieldKind.STRUCT,
+            children=[ID],  # ty: ignore[invalid-argument-type]
+        )

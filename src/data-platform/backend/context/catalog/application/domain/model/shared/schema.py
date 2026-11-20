@@ -8,7 +8,7 @@ from context.catalog.application.domain.model.shared.schema_field_at_path import
 
 
 class Schema(ValueObject):
-    """The current schema of a table: its id and its top-level fields in order."""
+    """One schema version of a table: its id and its top-level fields in order."""
 
     schema_id: int
     fields: tuple[SchemaField, ...]
@@ -19,12 +19,13 @@ class Schema(ValueObject):
 
     def walk(self) -> tuple[SchemaFieldAtPath, ...]:
         """Return every field with its path, depth first: a field before its children, children in order."""
-        return tuple(self._walk(self.fields, ()))
+        return tuple(Schema._walk(self.fields, ()))
 
-    def _walk(self, fields: tuple[SchemaField, ...], parent: tuple[str, ...]) -> list[SchemaFieldAtPath]:
+    @staticmethod
+    def _walk(fields: tuple[SchemaField, ...], parent: tuple[str, ...]) -> list[SchemaFieldAtPath]:
         walked: list[SchemaFieldAtPath] = []
         for field in fields:
             path = (*parent, field.name)
             walked.append(SchemaFieldAtPath(path=path, field=field))
-            walked.extend(self._walk(field.children, path))
+            walked.extend(Schema._walk(field.children, path))
         return walked

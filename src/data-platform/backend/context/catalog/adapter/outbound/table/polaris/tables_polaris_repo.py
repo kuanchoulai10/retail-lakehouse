@@ -52,8 +52,8 @@ class TablesPolarisRepo(TablesRepo):
         An unpartitioned spec and a missing location are left out, so Polaris applies its defaults.
         """
         body: dict[str, Any] = {"name": entity.id.name, "schema": iceberg_schema_to_polaris(entity.current_schema)}
-        if entity.partition_spec.fields:
-            body["partition-spec"] = partition_spec_to_polaris(entity.partition_spec)
+        if entity.default_partition_spec.fields:
+            body["partition-spec"] = partition_spec_to_polaris(entity.default_partition_spec)
         if entity.location:
             body["location"] = entity.location
         body["properties"] = dict(entity.properties)

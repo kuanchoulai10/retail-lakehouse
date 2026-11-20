@@ -5,62 +5,33 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from context.catalog.application.domain.model.table import (
+    DefaultPartitionFieldNames,
     PartitionChange,
     PartitionField,
     PartitionFieldComparison,
     PartitionSpec,
     PartitionSpecComparison,
+    PartitionTransformKind,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-_VOID = "void"
-
-
-def _default_suffixes(transform: str) -> frozenset[str]:
-    """Return the suffixes Iceberg may append to the source column name for ``transform``, empty if unknown.
-
-    Java Iceberg has two default naming forms: ``PartitionSpec.Builder`` (CREATE TABLE) names bucket
-    and truncate fields ``<src>_bucket`` and ``<src>_trunc``, while ``BaseUpdatePartitionSpec``
-    (ALTER TABLE ... ADD / REPLACE PARTITION FIELD, and PyIceberg's ``_PartitionNameGenerator``) names
-    them ``<src>_bucket_<N>`` and ``<src>_trunc_<W>``. Both count as defaults.
-    """
-    kind, _, argument = transform.partition("[")
-    number = argument.removesuffix("]")
-    return {
-        "identity": frozenset({""}),
-        "year": frozenset({"_year"}),
-        "month": frozenset({"_month"}),
-        "day": frozenset({"_day"}),
-        "hour": frozenset({"_hour"}),
-        "bucket": frozenset({"_bucket", f"_bucket_{number}"}),
-        "truncate": frozenset({"_trunc", f"_trunc_{number}"}),
-    }.get(kind, frozenset())
-
-
-def _is_default_name(name: str, transform: str, source_path: tuple[str, ...]) -> bool:
-    """Tell whether ``name`` is a default for ``transform``; Java builds it from the dotted column name."""
-    source_name = ".".join(source_path)
-    return name in {f"{source_name}{suffix}" for suffix in _default_suffixes(transform)}
-
-
-def _source_path(field: PartitionField, column_paths: Mapping[int, tuple[str, ...]]) -> tuple[str, ...]:
-    return column_paths.get(field.source_id, (f"#{field.source_id}",))
+_DEFAULT_NAMES = DefaultPartitionFieldNames()
 
 
 def _renamed(
     current: PartitionField,
-    current_path: tuple[str, ...],
+    current_path: tuple[str, ...] | None,
     previous: PartitionField,
-    previous_path: tuple[str, ...],
+    previous_path: tuple[str, ...] | None,
 ) -> bool:
     """A name change is a rename unless both names are Iceberg's default for their transforms."""
     if current.name == previous.name:
         return False
     return not (
-        _is_default_name(current.name, current.transform, current_path)
-        and _is_default_name(previous.name, previous.transform, previous_path)
+        _DEFAULT_NAMES.is_default(current.name, current.transform, current_path)
+        and _DEFAULT_NAMES.is_default(previous.name, previous.transform, previous_path)
     )
 
 
@@ -70,7 +41,9 @@ def _added(current: PartitionField, column_paths: Mapping[int, tuple[str, ...]])
         previous_field_id=None,
         name=current.name,
         previous_name=None,
-        source_path=_source_path(current, column_paths),
+        source_id=current.source_id,
+        previous_source_id=None,
+        source_path=column_paths.get(current.source_id),
         previous_source_path=None,
         transform=current.transform,
         previous_transform=None,
@@ -84,8 +57,10 @@ def _removed(previous: PartitionField, column_paths: Mapping[int, tuple[str, ...
         previous_field_id=previous.field_id,
         name=None,
         previous_name=previous.name,
+        source_id=None,
+        previous_source_id=previous.source_id,
         source_path=None,
-        previous_source_path=_source_path(previous, column_paths),
+        previous_source_path=column_paths.get(previous.source_id),
         transform=None,
         previous_transform=previous.transform,
         changes=(PartitionChange.REMOVED,),
@@ -95,8 +70,8 @@ def _removed(previous: PartitionField, column_paths: Mapping[int, tuple[str, ...
 def _matched(
     current: PartitionField, previous: PartitionField, column_paths: Mapping[int, tuple[str, ...]]
 ) -> PartitionFieldComparison:
-    current_path = _source_path(current, column_paths)
-    previous_path = _source_path(previous, column_paths)
+    current_path = column_paths.get(current.source_id)
+    previous_path = column_paths.get(previous.source_id)
     changes = tuple(
         kind
         for kind, changed in (
@@ -110,6 +85,8 @@ def _matched(
         previous_field_id=previous.field_id,
         name=current.name,
         previous_name=previous.name,
+        source_id=current.source_id,
+        previous_source_id=previous.source_id,
         source_path=current_path,
         previous_source_path=previous_path,
         transform=current.transform,
@@ -120,7 +97,7 @@ def _matched(
 
 def _live(spec: PartitionSpec) -> tuple[PartitionField, ...]:
     """Return the fields of ``spec`` that partition something: a ``void`` field is a dropped one."""
-    return tuple(field for field in spec.fields if field.transform != _VOID)
+    return tuple(field for field in spec.fields if field.transform.kind is not PartitionTransformKind.VOID)
 
 
 def compare_partition_specs(
@@ -132,9 +109,9 @@ def compare_partition_specs(
     field on the same source column are paired into one row carrying ``TRANSFORM_CHANGED``. A
     ``void`` field (format v1's way of dropping a field) counts as absent: removed against a base
     that had it live, left out when it is ``void`` on both sides. A name change is ``RENAMED``
-    unless both names are Iceberg's default for their transforms. A source id missing from
-    ``column_paths`` reads as ``#<id>``. With no ``base`` every field is listed unchanged. Rows
-    follow ``spec``'s field order, then unpaired removed fields in ``base`` order.
+    unless both names are default names (``DefaultPartitionFieldNames``). A source id missing
+    from ``column_paths`` has no source path. With no ``base`` every field is listed unchanged.
+    Rows follow ``spec``'s field order, then unpaired removed fields in ``base`` order.
     """
     current_fields = _live(spec)
     rows: list[PartitionFieldComparison]

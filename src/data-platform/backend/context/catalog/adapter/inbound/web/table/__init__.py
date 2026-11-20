@@ -30,6 +30,9 @@ from context.catalog.adapter.inbound.web.table.dto import (
     TableSummaryApiResponse,
     UpdateTablePropertiesApiRequest,
 )
+from context.catalog.adapter.inbound.web.table.partition_field_comparison_response import (
+    partition_field_comparison_response,
+)
 from context.catalog.adapter.inbound.web.table.router import router
 
 __all__ = [
@@ -59,5 +62,6 @@ __all__ = [
     "TableIdentifierApiResponse",
     "TableSummaryApiResponse",
     "UpdateTablePropertiesApiRequest",
+    "partition_field_comparison_response",
     "router",
 ]

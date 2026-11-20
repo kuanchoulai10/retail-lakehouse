@@ -16,8 +16,11 @@ from context.catalog.application.port.inbound.table import (
 from context.catalog.application.port.outbound.table import (
     PartitionField,
     PartitionSpec,
+    PartitionTransform,
+    PartitionTransformKind,
     Schema,
     SchemaField,
+    SchemaFieldKind,
     SortOrder,
     Table,
     TableId,
@@ -31,11 +34,15 @@ from context.catalog.application.service.table import (
 from tests.context.catalog.fakes.in_memory_tables_repo import InMemoryTablesRepo
 
 TABLE_ID = TableId.of("sales", ("retail",), "orders")
+DAY = PartitionTransform(kind=PartitionTransformKind.DAY)
+HOUR = PartitionTransform(kind=PartitionTransformKind.HOUR)
+BUCKET_16 = PartitionTransform(kind=PartitionTransformKind.BUCKET, argument=16)
 MISSING = re.escape("table missing not found in namespace ['retail'] of catalog sales")
 
 
 def _field(field_id: int, name: str, type_: str = "string", doc: str | None = None, *children: SchemaField):
-    return SchemaField(id=field_id, name=name, type=type_, required=False, doc=doc, children=children)
+    kind = SchemaFieldKind.STRUCT if children else SchemaFieldKind.PRIMITIVE
+    return SchemaField(id=field_id, name=name, type=type_, required=False, doc=doc, kind=kind, children=children)
 
 
 @pytest.fixture
@@ -61,8 +68,8 @@ def tables_repo() -> InMemoryTablesRepo:
             _field(8, "note"),
         ),
     )
-    day = PartitionField(source_id=3, field_id=1000, name="order_ts_day", transform="day")
-    bucket = PartitionField(source_id=2, field_id=1001, name="customer_id_bucket", transform="bucket[16]")
+    day = PartitionField(source_id=3, field_id=1000, name="order_ts_day", transform=DAY)
+    bucket = PartitionField(source_id=2, field_id=1001, name="customer_id_bucket", transform=BUCKET_16)
     repo.items[TABLE_ID.value] = Table(
         id=TABLE_ID,
         uuid="u-1",
@@ -182,19 +189,54 @@ def test_partition_spec_versions_mark_the_default(tables_repo):
     assert out.items[1].changes is None
 
 
-def test_partition_comparison_carries_expressions(tables_repo):
-    """Each field carries its ``transform(source)`` text, from the table's column paths."""
+def test_partition_spec_versions_walk_the_column_paths_once(tables_repo, monkeypatch):
+    """The column paths are walked once per listing, not once per spec."""
+    walks: list[int] = []
+    column_paths = Table.column_paths
+
+    def counted(table: Table) -> dict[int, tuple[str, ...]]:
+        walks.append(1)
+        return column_paths(table)
+
+    monkeypatch.setattr(Table, "column_paths", counted)
+
+    ListTablePartitionSpecVersionsService(tables_repo).execute(
+        ListTablePartitionSpecVersionsUseCaseInput(catalog="sales", namespace=("retail",), name="orders")
+    )
+
+    assert len(walks) == 1
+
+
+def test_partition_comparison_carries_transform_text_and_source_columns(tables_repo):
+    """Each field carries its transform as Iceberg text and its source column id and path."""
     out = GetTablePartitionSpecComparisonService(tables_repo).execute(_spec_input(1))
 
     assert (out.base_spec_id, out.spec_id) == (0, 1)
     added = next(field for field in out.items if field.field_id == 1001)
-    assert (added.expression, added.previous_expression, added.changes) == (
-        "bucket[16](customer_id)",
-        None,
-        ("added",),
-    )
+    assert (added.transform, added.previous_transform, added.changes) == ("bucket[16]", None, ("added",))
+    assert (added.source_id, added.source_path) == (2, ("customer_id",))
+    assert (added.previous_source_id, added.previous_source_path) == (None, None)
     kept = next(field for field in out.items if field.field_id == 1000)
-    assert (kept.expression, kept.previous_expression, kept.changes) == ("day(order_ts)", "day(order_ts)", ())
+    assert (kept.transform, kept.previous_transform, kept.changes) == ("day", "day", ())
+    assert (kept.source_path, kept.previous_source_path) == (("order_ts",), ("order_ts",))
+
+
+def test_partition_field_on_a_column_no_schema_holds_has_its_id_and_no_path(tables_repo):
+    """A source column missing from every schema reaches the output as its id with no path."""
+    table = tables_repo.items[TABLE_ID.value]
+    region = PartitionField(source_id=42, field_id=1002, name="region", transform=BUCKET_16)
+    specs = (*table.partition_specs, PartitionSpec(spec_id=2, fields=(region,)))
+    tables_repo.items[TABLE_ID.value] = table.model_copy(update={"partition_specs": specs})
+
+    out = GetTablePartitionSpecComparisonService(tables_repo).execute(_spec_input(2, base=2))
+
+    (field,) = out.items
+    assert (field.source_id, field.source_path, field.previous_source_id, field.previous_source_path) == (
+        42,
+        None,
+        42,
+        None,
+    )
 
 
 def test_partition_comparison_with_a_chosen_base_and_the_first_spec(tables_repo):
@@ -205,11 +247,8 @@ def test_partition_comparison_with_a_chosen_base_and_the_first_spec(tables_repo)
     first = service.execute(_spec_input(0))
 
     removed = next(field for field in reverse.items if field.previous_field_id == 1001)
-    assert (removed.changes, removed.expression, removed.previous_expression) == (
-        ("removed",),
-        None,
-        "bucket[16](customer_id)",
-    )
+    assert (removed.changes, removed.transform, removed.previous_transform) == (("removed",), None, "bucket[16]")
+    assert (removed.source_path, removed.previous_source_path) == (None, ("customer_id",))
     assert first.base_spec_id is None
     assert [field.changes for field in first.items] == [()]
 
@@ -249,8 +288,8 @@ def reused_ids_repo(tables_repo) -> InMemoryTablesRepo:
     """
     table = tables_repo.items[TABLE_ID.value]
     schema_2 = Schema(schema_id=2, fields=(*table.schemas[1].fields, _field(9, "channel")))
-    day = PartitionField(source_id=3, field_id=1000, name="order_ts_day", transform="day")
-    hour = PartitionField(source_id=3, field_id=1002, name="order_ts_hour", transform="hour")
+    day = PartitionField(source_id=3, field_id=1000, name="order_ts_day", transform=DAY)
+    hour = PartitionField(source_id=3, field_id=1002, name="order_ts_hour", transform=HOUR)
     tables_repo.items[TABLE_ID.value] = table.model_copy(
         update={
             "schemas": (*table.schemas, schema_2),
@@ -282,6 +321,6 @@ def test_default_base_is_the_next_lower_id_not_the_id_minus_one(reused_ids_repo)
     out = GetTablePartitionSpecComparisonService(reused_ids_repo).execute(_spec_input(2))
 
     assert (out.base_spec_id, out.spec_id) == (0, 2)
-    assert {(field.previous_expression, field.expression, field.changes) for field in out.items} == {
-        ("day(order_ts)", "hour(order_ts)", ("transform_changed",))
+    assert {(field.previous_transform, field.transform, field.changes) for field in out.items} == {
+        ("day", "hour", ("transform_changed",))
     }
