@@ -16,6 +16,12 @@ Namespace: table-metrics
 
 One job, `table-maintenance-api`, scrapes `http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000/v1/table-metrics` every 30 s (timeout 10 s). It is one static target (the Service), so several API replicas never duplicate series; every replica reads the same database. Retention is 6 h or 1 GB, whichever comes first.
 
+Prometheus reads `prometheus.yml` only when it starts, so an edit to the scrape config takes effect after a restart:
+
+```
+kubectl rollout restart deployment/table-metrics-prometheus --namespace table-metrics --context retail-lakehouse
+```
+
 ## Reader
 
 The table maintenance API reads `query_range` from `http://table-metrics-prometheus.table-metrics.svc.cluster.local:9090` (`metrics.prometheusUrl` in the wave 25 chart, rendered as `GLAC_METRICS__PROMETHEUS_URL`). Wave 26 runs after wave 25, which holds the API it scrapes.

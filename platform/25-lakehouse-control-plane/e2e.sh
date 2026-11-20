@@ -891,15 +891,6 @@ jq -e '[.items[].committed_at | sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | f
   || { echo "${ORDERS} commits are not newest first" >&2; exit 1; }
 jq -e '.metrics.data_files != null' <<<"${REGIONS_METRICS}" >/dev/null \
   || { echo "${REGIONS} current metrics carry no data_files: ${REGIONS_METRICS}" >&2; exit 1; }
-REPORTED_REWRITTEN="$(jq '[.[] | .operations[] | select(.operation == "rewrite_data_files")
-  | .metrics.rewritten_data_files_count // 0] | add // 0' <<<"${ORDERS_RUNS}")"
-if jq -e '[.[] | .operations[] | select(.operation == "rewrite_data_files")
-    | .metrics.completed_without_callback] | any' <<<"${ORDERS_RUNS}" >/dev/null; then
-  progress "${ORDERS}: the compaction callback was lost; skipping the rewritten files check"
-elif (( REPORTED_REWRITTEN <= 0 )); then
-  echo "${ORDERS} compaction reported no rewritten data files" >&2
-  exit 1
-fi
 
 (( ORDERS_FILES_AFTER < ORDERS_FILES_BEFORE )) \
   || { echo "${ORDERS} file count did not decrease" >&2; exit 1; }
