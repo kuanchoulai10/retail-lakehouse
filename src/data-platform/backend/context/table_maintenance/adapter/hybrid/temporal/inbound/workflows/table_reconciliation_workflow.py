@@ -72,16 +72,15 @@ _RECONCILIATION_ID_PREFIX = "rc"
 class TableReconciliationWorkflow:
     """Plan and start the maintenance runs of one table, one run at a time.
 
-    The loop wakes on its timer (the table's schedule interval, from the last
-    plan; one hour at first) or on any signal, and then asks
-    ``plan_table_maintenance``, which reloads the table: the database is the
-    authority on whether the table is managed and the policy applies at plan
-    time, so a policy change only wakes the loop.
-    A non-empty plan starts a ``TableMaintenanceWorkflow`` child that outlives this run
-    (``ABANDON``) and reports back only through ``maintenance_finished``, which is
-    why the run in flight survives continue-as-new. While a run is in flight
-    nothing is planned. A ``trigger_now`` then raises the priority of the run in
-    flight instead of starting another: the child is signalled ``raise_priority``
+    The loop wakes on its timer (the table's schedule interval, from the last plan;
+    one hour at first) or on any signal, and then asks ``plan_table_maintenance``,
+    which reloads the table: the database is the authority on whether the table is
+    managed and the policy applies at plan time, so a policy change only wakes the
+    loop. A non-empty plan starts a ``TableMaintenanceWorkflow`` child that outlives
+    this run (``ABANDON``) and reports back only through ``maintenance_finished``,
+    which is why the run in flight survives continue-as-new. While a run is in
+    flight nothing is planned. A ``trigger_now`` then raises the priority of the run
+    in flight instead of starting another: the child is signalled ``raise_priority``
     with the trigger's priority (none means the table's), and a delivered signal
     consumes the trigger and takes its ``manual_run`` off the wake reasons. The
     consumed trigger is kept with the run in flight (through continue-as-new), and
@@ -89,61 +88,60 @@ class TableReconciliationWorkflow:
     unapplied (``unapplied_raise``) or reports fewer raises received
     (``raises_received``) than were delivered to it (counted through
     continue-as-new), since those reached it after it built its report. A trigger
-    whose signal cannot be delivered, or whose run reported while the signal was
-    on its way, is kept and planned once the run finishes. A run whose child
-    closed without reporting is treated as finished, and its consumed trigger
-    given back: a child this execution started is noticed when its handle
-    resolves (a closed one is never carried through continue-as-new), and one
-    carried through continue-as-new when a raise cannot reach it and a lookup
-    (``get_workflow_running``) finds it no longer running, otherwise at the
-    give-up. A run given up gives its consumed trigger back whether or not it
-    reports, since the cancel stopped its work. A
-    run that never reports back is given up once the child's worst case has passed
-    (per planned operation: every attempt waiting out the queue wait limit the plan
-    carried, 24 hours for a plan without one, then timing out after the attempt
-    deadline the plan carried, six hours for a plan without one, and being fenced
-    for 15 minutes, plus the backoffs, plus 1 h): the child is cancelled first (by the
-    workflow ID recorded when it started, the table's maintenance workflow ID),
-    so its cleanup fences its live attempt, records the result
-    and deletes its Spark job, and its report is
-    awaited for as long as the child still runs (less if the cancel fails
-    because the child is gone or no workflow ID was recorded), so a new run does
-    not overlap the old one's Spark job. A skip
-    because the table was dropped or unmanaged, or a
-    ``stop`` signal, ends the workflow once no run is in flight, but never on a
-    stale decision (R31): any other signal after ``stop`` cancels the stop, and a
-    wake that arrives while a plan says dropped or unmanaged makes it plan again.
+    whose signal cannot be delivered, or whose run reported while the signal was on
+    its way, is kept and planned once the run finishes. A run whose child closed
+    without reporting is treated as finished, and its consumed trigger given back: a
+    child this execution started is noticed when its handle resolves (a closed one
+    is never carried through continue-as-new), and one carried through
+    continue-as-new when a raise cannot reach it and a lookup
+    (``get_workflow_running``) finds it no longer running, otherwise at the give-up.
+    A run given up gives its consumed trigger back whether or not it reports, since
+    the cancel stopped its work. A run that never reports back is given up once the
+    child's worst case has passed (per planned operation: every attempt waiting out
+    the queue wait limit the plan carried, 24 hours for a plan without one, then
+    timing out after the attempt deadline the plan carried, six hours for a plan
+    without one, and being fenced for 15 minutes, plus the backoffs, plus 1 h): the
+    child is cancelled first (by the workflow ID recorded when it started, the
+    table's maintenance workflow ID), so its cleanup fences its live attempt,
+    records the result and deletes its Spark job, and its report is awaited for as
+    long as the child still runs (less if the cancel fails because the child is gone
+    or no workflow ID was recorded), so a new run does not overlap the old one's
+    Spark job. A skip because the table was dropped or unmanaged, or a ``stop``
+    signal, ends the workflow once no run is in flight, but never on a stale
+    decision (R31): any other signal after ``stop`` cancels the stop, and a wake
+    that arrives while a plan says dropped or unmanaged makes it plan again.
 
     Every wake also counts its reason (a due plan timer counts ``schedule``;
     ``stop`` and a discovery scan's ``table_seen`` count nothing, so a scan only
     keeps the workflow alive and cancels a ``stop``; a table that became managed
-    counts ``table_managed`` and is checked at once), except a catalog commit,
-    which is debounced. The
-    first commit not yet covered by a check opens a window of the plan's
-    ``catalog_commit_debounce_seconds`` (five minutes before the first plan);
-    later commits join it without moving its end, so a table written every
-    minute is still checked once per window, and when it closes its commits are
-    counted ``catalog_commit`` and checked. A check for any other reason before
-    then takes the open window with it, and a window that closes while a run is
-    in flight is checked after the run. With no ``catalog_commit`` in the policy
-    (debounce ``None``) a commit opens no window and counts nothing, but still
-    cancels a ``stop``. The open window and its commits survive continue-as-new.
-    The reasons accumulate, through runs in flight and
-    continue-as-new, until the next plan takes them; reasons that arrive while
-    a plan is running belong to the plan they wake next. After each plan that
-    found the table, ``record_table_reconciliation`` stores the reconciliation
-    with those reasons, the plan's checks and the run it started (or that its
-    start failed). The run id is generated with the reconciliation id before
-    planning, so the record and the run agree. A failed plan records nothing
-    and drops its reasons; a failed record is logged and the loop goes on.
-    Each run ends once, counted as ``previous_run_finished``: when its
-    ``maintenance_finished`` arrives or when it is given up, whichever comes
-    first (a report after the give-up is ignored). The loop never plans
-    without a reason: a wake that leaves no reason and finds the plan timer not
-    yet due (such as a stale wake left by a report during the give-up grace)
-    goes back to waiting. A plan with operations that is not started because the workflow is stopping
-    is not recorded either, since its due operations neither started nor
-    failed to start.
+    counts ``table_managed`` and is checked at once), except a catalog commit, which
+    is debounced. The first commit not yet covered by a check opens a window of the
+    plan's ``catalog_commit_debounce_seconds`` (five minutes before the first plan);
+    later commits join it without moving its end, so a table written every minute is
+    still checked once per window, and when it closes its commits are counted
+    ``catalog_commit`` and checked. A check for any other reason before then takes
+    the open window with it, except a manual run, which looks only at the operations
+    it names and leaves the window to close on its own. A window that closes while a
+    run is in flight is checked after the run, and commits that arrive after it
+    closed during the run join it, so the check after the run counts them all. With
+    no ``catalog_commit`` in the policy (debounce ``None``) a commit opens no window
+    and counts nothing, but still cancels a ``stop``; a plan that answers no
+    debounce drops the window a commit opened while it ran. The open window and its
+    commits survive continue-as-new. The reasons accumulate, through runs in flight
+    and continue-as-new, until the next plan takes them; reasons that arrive while a
+    plan is running belong to the plan they wake next. After each plan that found
+    the table, ``record_table_reconciliation`` stores the reconciliation with those
+    reasons, the plan's checks and the run it started (or that its start failed).
+    The run id is generated with the reconciliation id before planning, so the
+    record and the run agree. A failed plan records nothing and drops its reasons; a
+    failed record is logged and the loop goes on. Each run ends once, counted as
+    ``previous_run_finished``: when its ``maintenance_finished`` arrives or when it
+    is given up, whichever comes first (a report after the give-up is ignored). The
+    loop never plans without a reason: a wake that leaves no reason and finds the
+    plan timer not yet due (such as a stale wake left by a report during the give-up
+    grace) goes back to waiting. A plan with operations that is not started because
+    the workflow is stopping is not recorded either, since its due operations
+    neither started nor failed to start.
 
     The workflow tags itself with its table UUID when it starts, and with the
     table name each plan reports when that name changed, and starts each run
@@ -662,7 +660,8 @@ class TableReconciliationWorkflow:
         manual_priority = self._pending_manual_priority
         reconciliation_id, run_id = self._mint_ids()
         now = workflow.now()
-        self._take_commit_window()
+        if manual is None:
+            self._take_commit_window()
         reasons, self._wake_reasons = self._wake_reasons, {}
         self._woken = False
         try:
@@ -718,13 +717,14 @@ class TableReconciliationWorkflow:
     def _follow_plan_triggers(self, plan: dict[str, Any]) -> None:
         """Take the schedule interval and the commit debounce from the plan.
 
-        A plan an older worker returned, as a history from before the debounce holds, has no
-        debounce: the debounce then stays the last one (it changes only what the activity returns,
-        so it needs no patch).
+        A plan without ``catalog_commit`` (debounce ``None``) drops the window a commit opened
+        while it ran, since such a policy counts no commit.
         """
         self._interval = timedelta(seconds=plan["schedule_interval_seconds"])
-        if "catalog_commit_debounce_seconds" in plan:
-            self._commit_debounce = _seconds_or_none(plan["catalog_commit_debounce_seconds"])
+        self._commit_debounce = _seconds_or_none(plan["catalog_commit_debounce_seconds"])
+        if self._commit_debounce is None:
+            self._commit_window_closes_at = None
+            self._pending_commits = 0
 
     @staticmethod
     def _mint_ids() -> tuple[str, str]:

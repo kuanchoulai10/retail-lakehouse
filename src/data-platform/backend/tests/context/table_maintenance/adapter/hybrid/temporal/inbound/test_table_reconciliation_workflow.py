@@ -2491,16 +2491,74 @@ def test_the_schedule_interval_comes_from_the_plan():
 
 
 def test_a_failed_plan_keeps_the_schedule_and_the_debounce():
-    """A plan that fails keeps the schedule interval and the debounce the last plan set."""
+    """A plan that fails keeps the schedule interval and the debounce the last plan set.
+
+    It drops the commits of the window it took, and the next commit opens a fresh window.
+    """
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        await h.plan_count(1)
+        await h.records(1)
+        await h.settle()
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
         await h.settle()
         h.plans.failures = 1
         await h.signal(TableReconciliationSignal.RECONCILE_NOW)
         await h.plan_count(2)
         state = await h.settle()
         assert (state["schedule_interval_seconds"], state["catalog_commit_debounce_seconds"]) == (600, 60)
+        assert (state["commit_window_closes_at"], state["pending_commits"], state["wake_reasons"]) == (None, 0, {})
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        opened = await h.settle()
+        assert opened["pending_commits"] == 1
+        await h.env.sleep(timedelta(seconds=70))
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"catalog_commit": 1}
+        assert _within_a_second(_reconciled_at(second) - _window_opened_at(opened, timedelta(seconds=60)), 60)
 
     _run(scenario, script=lambda _: _planned(interval=600, debounce=60))
+
+
+def test_a_manual_run_leaves_the_open_window_to_close_on_its_own():
+    """A manual plan looks only at the requested operations, so the window it finds open closes and checks normally."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        await h.records(1)
+        await h.settle()
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        opened = await h.settle()
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE]})
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"manual_run": 1}
+        state = await h.settle()
+        assert (state["commit_window_closes_at"], state["pending_commits"]) == (opened["commit_window_closes_at"], 1)
+        await h.env.sleep(timedelta(seconds=310))
+        third = (await h.records(3))[2]
+        assert third["wake_reasons"] == {"catalog_commit": 1}
+        assert _within_a_second(_reconciled_at(third) - _window_opened_at(opened), 300)
+
+    _run(scenario, script=lambda _: _planned())
+
+
+def test_a_plan_without_catalog_commit_drops_the_window_a_commit_opened_during_it():
+    """A commit during a plan that answers no debounce opens a window the plan then drops: nothing is checked."""
+    answers = [_planned()]
+
+    async def scenario(h: Harness) -> None:
+        h.plans.gate = asyncio.Event()
+        await h.start()
+        await h.plan_count(1)
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        during = await eventually(h.state, lambda s: s["signals_handled"] >= h.sent)
+        assert during["pending_commits"] == 1
+        answers[0] = _planned(debounce=None)
+        h.plans.gate.set()
+        await h.records(1)
+        state = await h.settle()
+        assert (state["commit_window_closes_at"], state["pending_commits"]) == (None, 0)
+        await h.env.sleep(timedelta(seconds=400))
+        await h.settle()
+        assert len(h.plans.requests) == 1
+
+    _run(scenario, script=lambda _: answers[0])
