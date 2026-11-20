@@ -48,6 +48,7 @@ _FENCE_MISSING_PATCH = "fence-missing-job"
 _FENCE_CANCELLED_PATCH = "fence-cancelled-attempt"
 _CANCELLED = "cancelled"
 _DECISION_PATCH = "classify-attempt-failure"
+_STARTED_STATES = frozenset({"RUNNING", "COMPLETED"})
 _PLANNED_POLICY_KEYS = ("policy_id", "policy_name", "policy_version", "policy_target")
 
 
@@ -65,8 +66,9 @@ class TableMaintenanceWorkflow:
     poll, is recorded (``record_maintenance_attempt_running``; a failed record is logged) and
     starts the attempt's deadline, ``attempt_deadline_seconds`` (input, 6 h by default), so time
     spent waiting in the queue does not count toward it. An attempt still queued
-    ``queue_wait_limit_seconds`` (input, 24 h by default) after its submit is polled once more, and
-    unless that poll reads its driver start or its end it is fenced and ends ``queue_timed_out``.
+    ``queue_wait_limit_seconds`` (input, 24 h by default) after its submit is polled once more: a job
+    read running or completed then (its driver start, unreadable, taken as that poll) is running, a
+    failed or missing one ends as any poll would, and otherwise it is fenced and ends ``queue_timed_out``.
     Polling runs every 30 s for the first 10 minutes of an attempt's queue wait and again for the
     first 10 minutes after its driver starts, then every 10 minutes while it is queued and every 5
     minutes once it runs, which bounds the history. A timed-out attempt is
@@ -245,9 +247,11 @@ class TableMaintenanceWorkflow:
         replacement wanted for the next poll.
 
         At the queue wait limit the job is polled once more: a driver start read then makes the attempt
-        running, with its deadline from that start, and a failed or missing job ends it as any poll
-        would. Otherwise (a job still pending, one running or completed whose start cannot be read, or
-        a status that cannot be read) the attempt is fenced and ends ``queue_timed_out``.
+        running, with its deadline from that start; a job ``RUNNING`` or ``COMPLETED`` whose start
+        cannot be read is taken as started at that poll (the upper end of the clamp), so a completed
+        one gets its callback grace and a running one its deadline; and a failed or missing job ends it
+        as any poll would. Otherwise (a job still pending, or a status that cannot be read) the attempt
+        is fenced and ends ``queue_timed_out``.
         """
         name = operation["operation"]
         key = (name, attempt)
@@ -285,8 +289,11 @@ class TableMaintenanceWorkflow:
             status = await self._job_status(name, attempt)
             if status is None:
                 continue
-            if running_since is None and status.get("driver_started_at"):
-                running_since = await self._started_running(name, attempt, status["driver_started_at"], submitted_at)
+            driver_started_at = status.get("driver_started_at")
+            if driver_started_at is None and at_the_limit and status["state"] in _STARTED_STATES:
+                driver_started_at = workflow.now().isoformat()
+            if running_since is None and driver_started_at:
+                running_since = await self._started_running(name, attempt, driver_started_at, submitted_at)
                 deadline = running_since + self._policy.attempt_deadline
             completed_since = (completed_since or workflow.now()) if status["state"] == "COMPLETED" else None
             ended = await self._ended_by_status(name, attempt, job_name, status, completed_since)

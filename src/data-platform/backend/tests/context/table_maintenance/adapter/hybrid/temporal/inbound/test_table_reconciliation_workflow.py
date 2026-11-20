@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from temporalio import activity
 from temporalio.client import WorkflowExecutionStatus, WorkflowHistory
 from temporalio.common import SearchAttributeKey
 from temporalio.converter import DataConverter
@@ -28,6 +29,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
     TABLE_RECONCILIATION_WORKFLOW,
+    TableReconciliationActivity,
     TableReconciliationSignal,
     TableReconciliationWorkflowInput,
     table_reconciliation_workflow_id,
@@ -352,6 +354,7 @@ def _run(
     runner: WorkflowRunner | None = None,
     *,
     max_cached_workflows: int = 1000,
+    lookup: Callable[[dict[str, Any]], Awaitable[dict[str, Any]]] | None = None,
 ) -> None:
     async def go() -> None:
         async with await WorkflowEnvironment.start_time_skipping() as env:
@@ -366,7 +369,7 @@ def _run(
                 activities=[
                     plans.plan_table_maintenance,
                     recorder.record_table_reconciliation,
-                    lookups.get_workflow_running,
+                    lookup or lookups.get_workflow_running,
                 ],
                 workflow_runner=runner or SandboxedWorkflowRunner(),
                 max_cached_workflows=max_cached_workflows,
@@ -540,6 +543,11 @@ def test_reconciliation_follows_a_renamed_table():
     _run(scenario, script=lambda _: {**_planned(), "table_name": next(names, renamed)})
 
 
+def _settled_on_a_new_run(state: dict[str, Any]) -> bool:
+    """Tell whether a run other than the carried one is in flight and its plan is done."""
+    return state["in_flight_run_id"] not in (None, GHOST_RUN_ID) and not state["planning"]
+
+
 def test_trigger_now_while_in_flight_runs_after_finish():
     """A manual trigger during a run whose child cannot be signalled is kept and planned after the run finishes."""
 
@@ -553,7 +561,7 @@ def test_trigger_now_while_in_flight_runs_after_finish():
         await h.report_gone_child()
         plan = (await h.plan_count(1))[0]
         assert plan["manual_operations"] == [EXPIRE]
-        run = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, GHOST_RUN_ID))
+        run = await eventually(h.state, _settled_on_a_new_run)
         assert run["pending_manual"] is None
         child = await h.child(run["in_flight_run_id"])
         assert child["trigger"] == "manual"
@@ -571,7 +579,7 @@ def test_trigger_now_priority_reaches_the_manual_plan_only():
         assert (await h.state())["pending_manual_priority"] == "P0"
         await h.report_gone_child()
         assert (await h.plan_count(1))[0]["manual_priority"] == "P0"
-        run = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, GHOST_RUN_ID))
+        run = await eventually(h.state, _settled_on_a_new_run)
         assert run["pending_manual_priority"] is None
         await h.complete_child(run["in_flight_run_id"])
         assert (await h.plan_count(2))[1]["manual_priority"] is None
@@ -671,7 +679,7 @@ def test_manual_trigger_to_a_gone_child_clears_the_run_and_is_planned_at_once():
         plan = (await h.plan_count(1))[0]
         assert (plan["manual_operations"], plan["manual_priority"]) == ([EXPIRE], "P1")
         assert (await h.records(1))[0]["wake_reasons"] == {"manual_run": 1, "previous_run_finished": 1}
-        run = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, GHOST_RUN_ID))
+        run = await eventually(h.state, _settled_on_a_new_run)
         assert run["pending_manual"] is None
         assert (await h.child(run["in_flight_run_id"]))["trigger"] == "manual"
 
@@ -2106,3 +2114,118 @@ def test_carried_closing_run_still_open_past_the_bound_is_started_anyway():
         assert (await h.client.get_workflow_handle(CHILD_ID).query("started_with"))["run_id"] == OTHER_RUN_ID
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+async def _raise_on_the_first_run(h: Harness) -> str:
+    """Start the first run, raise it with a manual P0 trigger and return its run id once the raise is consumed."""
+    await h.start()
+    first = await h.in_flight()
+    await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P0"})
+    state = await eventually(h.state, lambda s: s["pending_manual"] is None and s["raised_manual"] is not None)
+    assert (state["raised_manual"], state["raised_manual_priority"]) == ([EXPIRE], "P0")
+    return first
+
+
+def test_a_given_up_run_that_reports_gives_its_raised_trigger_back():
+    """A run given up and cancelled stopped its work, so even its clean report gives the raised trigger back."""
+
+    async def scenario(h: Harness) -> None:
+        first = await _raise_on_the_first_run(h)
+        await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
+        plan = (await h.plan_count(2))[1]
+        assert (plan["manual_operations"], plan["manual_priority"]) == ([EXPIRE], "P0")
+        assert await h.child_status(first) == WorkflowExecutionStatus.CANCELED
+        assert (await h.records(2))[1]["wake_reasons"] == {"manual_run": 1, "previous_run_finished": 1}
+
+    _run(scenario, script=lambda _: _planned(COMPACTION, interval=10**6))
+
+
+def test_a_given_up_run_that_never_reports_gives_its_raised_trigger_back():
+    """A run given up whose child closes without reporting gives the raised trigger back when it is forgotten."""
+    plan = {**_planned(COMPACTION, interval=10**6), "stub_ignores_cancel": True}
+
+    async def scenario(h: Harness) -> None:
+        first = await _raise_on_the_first_run(h)
+        await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=5))
+        assert (await h.settle())["in_flight_run_id"] == first
+        await (await h.child_handle(first)).terminate()
+        await h.env.sleep(timedelta(minutes=12))
+        second = (await h.plan_count(2))[1]
+        assert (second["manual_operations"], second["manual_priority"]) == ([EXPIRE], "P0")
+
+    _run(scenario, script=lambda _: plan)
+
+
+def test_a_run_closing_unreported_just_before_a_continue_as_new_is_ended_not_carried():
+    """A run whose child closes without reporting right before the loop continues as new is ended, not carried.
+
+    The record of the plan that started the run closes its child (which does not report) and waits until
+    the reconciliation's history shows the close, so the closed child is there when the loop reaches its
+    continue-as-new check.
+    """
+    closed: list[str] = []
+
+    async def scenario(h: Harness) -> None:
+        async def close_the_first_run(request: dict[str, Any]) -> None:
+            run_id = request.get("run_id")
+            if run_id is None or closed:
+                return
+            closed.append(run_id)
+            await (await h.child_handle(run_id)).signal("complete")
+
+            async def closed_in_history() -> bool:
+                history = await h.client.get_workflow_handle(WORKFLOW_ID).fetch_history()
+                return any(e.HasField("child_workflow_execution_completed_event_attributes") for e in history.events)
+
+            await eventually(closed_in_history, bool)
+
+        h.recorder.hook = close_the_first_run
+        handle = await h.start(continue_as_new_after=1)
+
+        async def run_id_now() -> str | None:
+            return (await h.client.get_workflow_handle(WORKFLOW_ID).describe()).run_id
+
+        await eventually(run_id_now, lambda r: r != handle.result_run_id)
+        carried = await h.run_input()
+        assert closed
+        assert carried["in_flight_run_id"] != closed[0]
+
+    _run(scenario, script=_first_plan_with("stub_skips_report"))
+
+
+_LOOKED_UP: list[str] = []
+
+
+@activity.defn(name=TableReconciliationActivity.GET_WORKFLOW_RUNNING)
+async def _always_running(request: dict[str, Any]) -> dict[str, Any]:
+    """Answer every workflow lookup as still running, keeping the workflow ids looked up."""
+    _LOOKED_UP.append(request["workflow_id"])
+    return {"running": True}
+
+
+def test_manual_trigger_to_a_carried_run_still_running_stays_pending():
+    """A raise that cannot reach a carried run whose workflow still runs keeps the trigger pending and the run.
+
+    The lookup after the failed raise finds the workflow running, so the run is not forgotten and
+    nothing is planned until it reports.
+    """
+    _LOOKED_UP.clear()
+
+    async def scenario(h: Harness) -> None:
+        await h.start_with_a_gone_child()
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P1"})
+
+        async def looked_up() -> list[str]:
+            return list(_LOOKED_UP)
+
+        assert await eventually(looked_up, bool) == [GONE_CHILD_ID]
+        state = await h.settle()
+        assert (state["pending_manual"], state["pending_manual_priority"]) == ([EXPIRE], "P1")
+        assert state["in_flight_run_id"] == GHOST_RUN_ID
+        assert state["raised_manual"] is None
+        assert h.plans.requests == []
+        await h.report_gone_child()
+        plan = (await h.plan_count(1))[0]
+        assert (plan["manual_operations"], plan["manual_priority"]) == ([EXPIRE], "P1")
+
+    _run(scenario, script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])), lookup=_always_running)

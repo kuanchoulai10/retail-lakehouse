@@ -93,8 +93,11 @@ class TableReconciliationWorkflow:
     on its way, is kept and planned once the run finishes. A run whose child
     closed without reporting is treated as finished, and its consumed trigger
     given back: a child this execution started is noticed when its handle
-    resolves, and one carried through continue-as-new when a raise cannot reach
-    it and a lookup (``get_workflow_running``) finds it no longer running. A
+    resolves (a closed one is never carried through continue-as-new), and one
+    carried through continue-as-new when a raise cannot reach it and a lookup
+    (``get_workflow_running``) finds it no longer running, otherwise at the
+    give-up. A run given up gives its consumed trigger back whether or not it
+    reports, since the cancel stopped its work. A
     run that never reports back is given up once the child's worst case has passed
     (per planned operation: every attempt waiting out the queue wait limit the plan
     carried, 24 hours for a plan without one, then timing out after the attempt
@@ -189,6 +192,7 @@ class TableReconciliationWorkflow:
         self._signals_handled = 0
         self._cancel_failed = False
         self._cancel_task: asyncio.Task[None] | None = None
+        self._given_up_run_id: str | None = None
 
     @workflow.run
     async def run(self, input: TableReconciliationWorkflowInput) -> None:  # noqa: A002
@@ -203,7 +207,7 @@ class TableReconciliationWorkflow:
                 return
             if self._should_continue_as_new(iterations):
                 await workflow.wait_condition(workflow.all_handlers_finished)
-                if not self._woken:
+                if not self._woken and not self._child_closed():
                     workflow.continue_as_new(self._carry())
             await self._wait()
             self._woken = False
@@ -260,7 +264,7 @@ class TableReconciliationWorkflow:
         if run_id is None or run_id != self._in_flight_run_id:
             workflow.logger.warning("ignoring maintenance_finished of run %s", run_id)
             return
-        if self._raise_missed(payload or {}):
+        if run_id == self._given_up_run_id or self._raise_missed(payload or {}):
             self._give_back_raised_manual(run_id)
         self._closing_workflow_id = self._in_flight_workflow_id
         self._closing_handle = self._child_handle
@@ -413,7 +417,8 @@ class TableReconciliationWorkflow:
         closed: every 15 minutes without a report the child is looked up, and
         only a child that is no longer running is forgotten. A history from
         before this (patch ``await-cancelled-run-close``) forgets the run after
-        one 15 minute grace.
+        one 15 minute grace. The cancel stopped the run's work, so the manual
+        trigger a raise of it consumed is given back whether it reports or not.
         """
         deadline = self._in_flight_deadline()
         run_id = self._in_flight_run_id
@@ -421,6 +426,7 @@ class TableReconciliationWorkflow:
             return
         workflow.logger.warning("maintenance run %s never reported back; cancelling it", run_id)
         workflow_id = self._in_flight_workflow_id
+        self._given_up_run_id = run_id
         self._cancel_failed = False
         self._cancel_task = asyncio.create_task(self._cancel_child(run_id, workflow_id))
         awaits_close = workflow.patched(_AWAIT_CLOSE_PATCH)
@@ -436,9 +442,9 @@ class TableReconciliationWorkflow:
                     workflow.logger.warning("cancelled run %s did not report back; no longer waiting", run_id)
                     break
                 workflow.logger.warning("cancelled run %s is still running; waiting for it", run_id)
+        self._given_up_run_id = None
         if self._in_flight_run_id == run_id:
-            self._clear_in_flight()
-            self._count(_REASON_PREVIOUS_RUN_FINISHED)
+            self._end_unreported_run(run_id, "it was given up and did not report back")
 
     async def _still_running(self, workflow_id: str) -> bool:
         """Tell whether a cancelled child still runs; a failed lookup counts as running."""

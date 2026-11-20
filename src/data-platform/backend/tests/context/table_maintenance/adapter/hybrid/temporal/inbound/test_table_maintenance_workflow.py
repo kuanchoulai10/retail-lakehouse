@@ -1838,3 +1838,61 @@ def test_late_result_of_the_replaced_job_is_dropped():
         assert h.recorded() == [(COMPACTION, 1, True, None)]
 
     _run(scenario)
+
+
+def _state_from_the_queue_limit(h: Harness, state: dict) -> None:
+    """Make every status poll from the queue wait limit on read ``state``, with no driver start to read."""
+
+    async def hook(app_name: str, polled_at: datetime) -> None:
+        if app_name == FIRST_APP and polled_at - h.fakes.submitted_at[FIRST_APP] >= SHORT_QUEUE_LIMIT:
+            h.fakes.states[FIRST_APP] = state
+
+    h.fakes.status_hook = hook
+
+
+def test_completed_at_the_queue_limit_without_a_readable_start_succeeds():
+    """A job read COMPLETED at the queue limit, its driver start unreadable, is taken as started then and succeeds.
+
+    It gets its callback grace like any completed job instead of being fenced as queued too long.
+    """
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        _state_from_the_queue_limit(h, {"state": "COMPLETED", "error": None})
+        handle = await h.start_maintenance(COMPACTION, queue_wait_limit_seconds=int(SHORT_QUEUE_LIMIT.total_seconds()))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+        assert h.fakes.records[0]["metrics"] == {"completed_without_callback": 1}
+        [running] = h.fakes.running_records
+        assert running["started_running_at"] == running["now"]
+        assert len(h.fakes.submits) == 1
+
+    _run(scenario)
+
+
+def test_running_at_the_queue_limit_without_a_readable_start_runs_under_its_deadline():
+    """A job read RUNNING at the queue limit, its driver start unreadable, is taken as started then.
+
+    It runs under its deadline from that poll and is timed out (not queue timed out) at it.
+    """
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.record_replies[(COMPACTION, 1)] = {"next_step": "not_retried"}
+        _state_from_the_queue_limit(h, {"state": "RUNNING", "error": None})
+        handle = await h.start_maintenance(
+            COMPACTION,
+            queue_wait_limit_seconds=int(SHORT_QUEUE_LIMIT.total_seconds()),
+            attempt_deadline_seconds=int(SHORT_DEADLINE.total_seconds()),
+        )
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert [r["ended_by"] for r in h.fakes.records] == ["timed_out"]
+        [running] = h.fakes.running_records
+        started = datetime.fromisoformat(running["started_running_at"])
+        assert started - h.submit_times()[0] >= SHORT_QUEUE_LIMIT
+        timed_out_at = datetime.fromisoformat(h.fakes.records[0]["now"])
+        assert timed_out_at - started >= SHORT_DEADLINE
+
+    _run(scenario)
