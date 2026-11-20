@@ -24,10 +24,11 @@ class TableMaintenanceStubWorkflow:
 
     A cancellation is reported to the parent like the real child's cleanup does,
     unless the plan carries ``stub_ignores_cancel``: then the stub keeps waiting.
-    The priority raises it receives are kept for the ``raises`` query, and a plan carrying
-    ``stub_leaves_raises_unapplied`` reports any raise it received as unapplied. A plan carrying
-    ``stub_lingers_seconds`` stays open that long after it reported, as the real child does
-    while its report activity completes.
+    The priority raises it receives are kept for the ``raises`` query and counted in its report, and
+    a plan carrying ``stub_leaves_raises_unapplied`` reports any raise it received as unapplied. A
+    plan carrying ``stub_lingers_seconds`` stays open that long after it reported, as the real child
+    does while its report activity completes, and one carrying ``stub_skips_report`` closes on
+    ``complete`` without reporting.
     """
 
     @workflow.init
@@ -48,6 +49,8 @@ class TableMaintenanceStubWorkflow:
             else:
                 await self._report(input)
                 raise
+        if input.plan.get("stub_skips_report"):
+            return
         await self._report(input)
         lingers = input.plan.get("stub_lingers_seconds")
         if lingers:
@@ -58,7 +61,12 @@ class TableMaintenanceStubWorkflow:
         handle = workflow.get_external_workflow_handle(input.parent_workflow_id)
         await handle.signal(
             TableReconciliationSignal.MAINTENANCE_FINISHED,
-            {"run_id": input.run_id, "record_failures": 0, "unapplied_raise": unapplied},
+            {
+                "run_id": input.run_id,
+                "record_failures": 0,
+                "unapplied_raise": unapplied,
+                "raises_received": len(self._raises),
+            },
         )
 
     @workflow.signal(name="complete")

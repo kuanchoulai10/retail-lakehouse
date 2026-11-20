@@ -197,6 +197,16 @@ class Harness:
             **fields,
         )
 
+    async def start_with_an_unsignalled_run(self, **fields: Any) -> WorkflowHandle:
+        """Start the workflow carrying a run in flight with no recorded workflow, so it cannot be signalled."""
+        return await self.start(start_signal=None, in_flight_run_id=GHOST_RUN_ID, in_flight_operation_count=1, **fields)
+
+    async def run_input(self) -> dict[str, Any]:
+        """Return the input the reconciliation's current execution started with."""
+        history = await self.client.get_workflow_handle(WORKFLOW_ID).fetch_history()
+        started = history.events[0].workflow_execution_started_event_attributes
+        return DataConverter.default.payload_converter.from_payloads(started.input.payloads)[0]
+
     async def report_gone_child(self, *, unapplied_raise: bool = False) -> None:
         """Report the carried run in flight finished, as its child would have."""
         await self.signal(
@@ -254,12 +264,12 @@ class Harness:
         """
 
         async def started() -> dict[str, str]:
-            return await self._started_children()
+            return await self.started_children()
 
         children = await eventually(started, lambda found: run_id in found)
         return self.client.get_workflow_handle(CHILD_ID, run_id=children[run_id])
 
-    async def _started_children(self) -> dict[str, str]:
+    async def started_children(self) -> dict[str, str]:
         """Map each maintenance run id the reconciliation started to its child's Temporal run id."""
         converter = DataConverter.default.payload_converter
         found: dict[str, str] = {}
@@ -534,7 +544,7 @@ def test_trigger_now_while_in_flight_runs_after_finish():
     """A manual trigger during a run whose child cannot be signalled is kept and planned after the run finishes."""
 
     async def scenario(h: Harness) -> None:
-        await h.start_with_a_gone_child()
+        await h.start_with_an_unsignalled_run()
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [COMPACTION]})
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE]})
         await h.settle()
@@ -555,7 +565,7 @@ def test_trigger_now_priority_reaches_the_manual_plan_only():
     """A kept manual trigger's priority goes to its plan; the plan after its run carries none."""
 
     async def scenario(h: Harness) -> None:
-        await h.start_with_a_gone_child()
+        await h.start_with_an_unsignalled_run()
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P0"})
         await h.settle()
         assert (await h.state())["pending_manual_priority"] == "P0"
@@ -573,7 +583,7 @@ def test_a_later_trigger_without_priority_clears_the_pending_priority():
     """A second manual trigger replaces the first, so one that names no priority clears it."""
 
     async def scenario(h: Harness) -> None:
-        await h.start_with_a_gone_child()
+        await h.start_with_an_unsignalled_run()
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P0"})
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE]})
         await h.settle()
@@ -588,7 +598,7 @@ def test_trigger_now_priority_survives_continue_as_new():
     """A pending manual priority is carried through continue as new."""
 
     async def scenario(h: Harness) -> None:
-        handle = await h.start_with_a_gone_child(continue_as_new_after=2)
+        handle = await h.start_with_an_unsignalled_run(continue_as_new_after=2)
         first_run = handle.result_run_id
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P1"})
         await h.settle()
@@ -648,11 +658,31 @@ def test_manual_trigger_without_priority_raises_to_the_table_priority():
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
 
-def test_manual_trigger_to_a_gone_child_is_planned_after_the_report():
-    """A manual trigger whose raise cannot reach the run in flight stays pending and is planned once it reports."""
+def test_manual_trigger_to_a_gone_child_clears_the_run_and_is_planned_at_once():
+    """A carried run whose workflow is gone, found when a raise cannot reach it, ends; the manual run is planned.
+
+    The run was carried through continue-as-new, so there is no child handle to see it close; the
+    failed raise looks the workflow up instead of waiting for the give-up.
+    """
 
     async def scenario(h: Harness) -> None:
         await h.start_with_a_gone_child()
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P1"})
+        plan = (await h.plan_count(1))[0]
+        assert (plan["manual_operations"], plan["manual_priority"]) == ([EXPIRE], "P1")
+        assert (await h.records(1))[0]["wake_reasons"] == {"manual_run": 1, "previous_run_finished": 1}
+        run = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, GHOST_RUN_ID))
+        assert run["pending_manual"] is None
+        assert (await h.child(run["in_flight_run_id"]))["trigger"] == "manual"
+
+    _run(scenario, script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])))
+
+
+def test_manual_trigger_to_an_unsignalled_run_is_planned_after_the_report():
+    """A manual trigger whose raise cannot reach the run in flight stays pending and is planned once it reports."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start_with_an_unsignalled_run()
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P1"})
         await h.settle()
         state = await h.state()
@@ -1927,8 +1957,8 @@ def test_stop_while_the_last_run_closes_starts_nothing():
         await h.env.sleep(LINGERS + timedelta(seconds=30))
         await h.ended()
         assert len(h.recorder.records) == 1
-        assert first in await h._started_children()  # noqa: SLF001
-        assert len(await h._started_children()) == 1  # noqa: SLF001
+        assert first in await h.started_children()
+        assert len(await h.started_children()) == 1
 
     _run(scenario, script=lambda _: {**_planned(COMPACTION), "stub_lingers_seconds": int(LINGERS.total_seconds())})
 
@@ -1970,7 +2000,7 @@ def test_next_run_after_a_run_that_never_closes_is_refused():
     _run(scenario, script=lambda _: {**_planned(COMPACTION), "stub_lingers_seconds": 7200})
 
 
-def test_carried_closing_run_is_waited_for_before_the_next_plan():
+def test_carried_closing_run_is_waited_for_before_the_next_start():
     """A closing run carried through continue as new is looked up until it closed, then the next run starts."""
 
     async def scenario(h: Harness) -> None:
@@ -1990,5 +2020,89 @@ def test_carried_closing_run_is_waited_for_before_the_next_plan():
         await h.env.sleep(timedelta(seconds=30))
         record = (await h.records(1))[0]
         assert record["run_start_failed"] is False
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_a_run_whose_child_closes_without_reporting_is_treated_as_finished():
+    """A child that closes without reporting ends its run at once, long before the give-up, and gives the trigger back.
+
+    The run's raise consumed a manual trigger; with no report there is no telling whether the raise
+    was applied, so the next plan is that manual run.
+    """
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        first_plan = (await h.plan_count(1))[0]
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P0"})
+        await eventually(h.state, lambda s: s["raised_manual"] == [EXPIRE])
+        await h.complete_child(first)
+        second = (await h.plan_count(2))[1]
+        assert (second["manual_operations"], second["manual_priority"]) == ([EXPIRE], "P0")
+        gap = datetime.fromisoformat(second["now"]) - datetime.fromisoformat(first_plan["now"])
+        assert gap < timedelta(hours=1)
+        assert (await h.records(2))[1]["wake_reasons"] == {"manual_run": 1, "previous_run_finished": 1}
+        run = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
+        assert (await h.child(run["in_flight_run_id"]))["trigger"] == "manual"
+
+    _run(scenario, script=_first_plan_with("stub_skips_report"))
+
+
+def test_continue_as_new_carries_the_closing_run():
+    """A run that reported but whose close no start has awaited yet is carried through a real continue as new.
+
+    The run reports, the next plan has nothing to start, and the loop then continues as new: the next
+    execution's input names the closing run. The child closes before the continue-as-new.
+    """
+    answers = iter([_planned(COMPACTION)])
+
+    async def scenario(h: Harness) -> None:
+        handle = await h.start(continue_as_new_after=3)
+        first_run = handle.result_run_id
+        first = await h.in_flight()
+        await h.complete_child(first)
+        await h.plan_count(2)
+
+        async def child_status() -> WorkflowExecutionStatus | None:
+            return await h.child_status(first)
+
+        await eventually(child_status, lambda s: s == WorkflowExecutionStatus.COMPLETED)
+        assert (await h.settle())["closing_workflow_id"] == CHILD_ID
+        await h.signal(TableReconciliationSignal.POLICY_CHANGED)
+
+        async def run_id_now() -> str | None:
+            return (await h.client.get_workflow_handle(WORKFLOW_ID).describe()).run_id
+
+        await eventually(run_id_now, lambda r: r != first_run)
+        assert (await h.run_input())["closing_workflow_id"] == CHILD_ID
+
+    _run(scenario, script=lambda _: next(answers, _planned()))
+
+
+def test_carried_closing_run_still_open_past_the_bound_is_started_anyway():
+    """A closing run carried through continue as new, still open past the closing bound, is looked up no longer.
+
+    The start is then tried, refused because that run still holds the table's workflow id, and
+    recorded as a failed start.
+    """
+
+    async def scenario(h: Harness) -> None:
+        await h.client.start_workflow(
+            TABLE_MAINTENANCE_WORKFLOW,
+            TableMaintenanceWorkflowInput(
+                run_id=OTHER_RUN_ID, table_uuid=UUID, parent_workflow_id="elsewhere", trigger="manual", plan=_planned()
+            ),
+            id=CHILD_ID,
+            task_queue=TASK_QUEUE,
+        )
+        await h.start(closing_workflow_id=CHILD_ID)
+        await h.env.sleep(CLOSING_BOUND - timedelta(minutes=1))
+        assert h.recorder.records == []
+        await h.env.sleep(timedelta(minutes=2))
+        record = (await h.records(1))[0]
+        assert record["run_start_failed"] is True
+        assert (await h.settle())["closing_workflow_id"] is None
+        assert (await h.client.get_workflow_handle(CHILD_ID).query("started_with"))["run_id"] == OTHER_RUN_ID
 
     _run(scenario, script=lambda _: _planned(COMPACTION))

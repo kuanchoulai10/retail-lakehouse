@@ -32,7 +32,12 @@ class TableMaintenanceActivityPolicy:
         )
 
     def worst_case(self) -> timedelta:
-        """Return the longest one activity can take: every attempt times out, with the backoffs between."""
+        """Return the longest one activity can take: every attempt times out, with the backoffs between.
+
+        It leaves out the time an activity task waits for a worker to pick it up (schedule to
+        start), which no timeout bounds. A report activity that takes longer than this only makes
+        the reconciliation try the next start early, which is refused and recorded as a failed start.
+        """
         backoff = sum(
             (self.initial_backoff * self.backoff_coefficient**n for n in range(self.max_attempts - 1)),
             timedelta(),

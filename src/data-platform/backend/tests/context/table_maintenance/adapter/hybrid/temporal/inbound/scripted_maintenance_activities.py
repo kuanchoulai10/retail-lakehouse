@@ -41,7 +41,8 @@ class ScriptedMaintenanceActivities:
     The pods activity reports the attempt's live pods: none by default; a job in
     ``pods_live_polls[app_name]`` reports one live pod for that many polls, and a job
     in ``pods_live_for[app_name]`` reports one while less than that long has passed
-    since its first delete. ``pods_hook``, when set, runs inside each pods call.
+    since its first delete. ``pods_hook``, when set, runs inside each pods call, and
+    ``delete_hook``, when set, inside each delete, with the app name.
     ``delete_failures[app_name]`` makes that many deletes of the job fail
     non-retryably before one succeeds; ``delete_times`` keeps the first delete
     that succeeded.
@@ -83,6 +84,7 @@ class ScriptedMaintenanceActivities:
         self.pods_live_polls: dict[str, int] = {}
         self.pods_live_for: dict[str, timedelta] = {}
         self.pods_hook: Callable[[str], Awaitable[None]] | None = None
+        self.delete_hook: Callable[[str], Awaitable[None]] | None = None
         self.pods_calls: list[str] = []
         self.pods_times: list[datetime] = []
         self.delete_times: dict[str, datetime] = {}
@@ -215,6 +217,8 @@ class ScriptedMaintenanceActivities:
         """Record the job deletion and echo its attempt."""
         app_name = self.app_name(request["run_id"], request["operation"], request["attempt"])
         self.deletes.append(app_name)
+        if self.delete_hook is not None:
+            await self.delete_hook(app_name)
         if self.deletes.count(app_name) <= self.delete_failures.get(app_name, 0):
             raise ApplicationError("apiserver unavailable", type="RuntimeError", non_retryable=True)
         self.delete_times.setdefault(app_name, activity.info().scheduled_time)

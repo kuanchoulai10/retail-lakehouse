@@ -29,10 +29,11 @@ if TYPE_CHECKING:
     )
 
 HTTP_NOT_FOUND = 404
+FOREGROUND = "Foreground"
 
 
 class DeleteMaintenanceJobK8sGateway(DeleteMaintenanceJobGateway):
-    """Delete a SparkApplication."""
+    """Delete a SparkApplication, together with what it owns (its driver and executor pods, its PodGroup)."""
 
     def __init__(self, api: CustomObjectsApi, config: SparkK8sConfig) -> None:
         """Keep the injected Kubernetes client and configuration."""
@@ -40,7 +41,12 @@ class DeleteMaintenanceJobK8sGateway(DeleteMaintenanceJobGateway):
         self._config = config
 
     def delete(self, input: DeleteMaintenanceJobGatewayInput) -> None:  # noqa: A002
-        """Delete the SparkApplication; a missing one is a no-op."""
+        """Delete the SparkApplication in the foreground; a missing one is a no-op.
+
+        Foreground propagation keeps the application readable, marked for deletion, until the objects
+        it owns that block owner deletion are gone, so reading it as missing also means its pods and
+        PodGroup are gone and a replacement under the same attempt does not meet them.
+        """
         try:
             self._api.delete_namespaced_custom_object(
                 group=GROUP,
@@ -48,6 +54,7 @@ class DeleteMaintenanceJobK8sGateway(DeleteMaintenanceJobGateway):
                 namespace=self._config.namespace,
                 plural=PLURAL,
                 name=spark_application_name(input.run_id, input.operation, input.attempt),
+                propagation_policy=FOREGROUND,
             )
         except ApiException as exc:
             if exc.status != HTTP_NOT_FOUND:

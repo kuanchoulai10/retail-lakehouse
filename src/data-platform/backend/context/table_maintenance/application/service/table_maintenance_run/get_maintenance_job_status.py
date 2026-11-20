@@ -43,8 +43,8 @@ class GetMaintenanceJobStatusService(GetMaintenanceJobStatusUseCase):
     def execute(self, request: GetMaintenanceJobStatusUseCaseInput) -> GetMaintenanceJobStatusUseCaseOutput:
         """Return the gateway's state and error and the driver's start, rejecting an unknown state.
 
-        A job that is gone reads no pods. Pods that cannot be read leave the driver start out
-        and the state still answers.
+        A job that is gone reads no pods. Pods that cannot be read, or a driver start that is not a
+        time, leave the driver start out (logged) and the state still answers.
         """
         try:
             operation = MaintenanceOperation(request.operation)
@@ -75,6 +75,7 @@ class GetMaintenanceJobStatusService(GetMaintenanceJobStatusUseCase):
                     run_id=request.run_id, operation=operation.value, attempt=request.attempt
                 )
             )
+            started = None if pods.driver_started_at is None else datetime.fromisoformat(pods.driver_started_at)
         except Exception:
             logger.exception(
                 "cannot read the pods of attempt %s of %s in run %s; its driver start stays unknown",
@@ -83,4 +84,4 @@ class GetMaintenanceJobStatusService(GetMaintenanceJobStatusUseCase):
                 request.run_id,
             )
             return None
-        return None if pods.driver_started_at is None else datetime.fromisoformat(pods.driver_started_at)
+        return started

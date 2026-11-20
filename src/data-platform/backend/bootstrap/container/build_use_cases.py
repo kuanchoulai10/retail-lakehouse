@@ -82,11 +82,10 @@ def build_use_cases(
 ) -> UseCases:
     """Build every application service on the given repositories and gateways.
 
-    ``size_memory`` is the memory each compute size runs with; without it no
-    operation is ever stepped down to a smaller size. ``failure_backoff_cap``
-    is where the doubling of a failing operation's cooldown stops.
-    ``platform_settings`` are the values the platform settings page lists;
-    every caller gives them, so none shows defaults by accident.
+    ``size_memory`` is the memory each compute size runs with; without it no operation is ever
+    stepped down to a smaller size. ``failure_backoff_cap`` is where the doubling of a failing
+    operation's cooldown stops. ``platform_settings`` are the values the platform settings page
+    lists; every caller gives them, so none shows defaults by accident.
     """
     tables = repos.tables
     rules = repos.table_discovery_rules

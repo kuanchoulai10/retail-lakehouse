@@ -84,6 +84,16 @@ def _plan(*operations: str, start_size: str | None = None) -> dict:
     }
 
 
+def _report(*, record_failures: int = 0, unapplied_raise: bool = False, raises_received: int = 0) -> dict:
+    """Return the report the run sends its parent when it finishes."""
+    return {
+        "run_id": RUN_ID,
+        "record_failures": record_failures,
+        "unapplied_raise": unapplied_raise,
+        "raises_received": raises_received,
+    }
+
+
 @dataclass
 class Harness:
     """Run the maintenance workflow against scripted activities and a parent stub."""
@@ -239,7 +249,7 @@ def test_operations_run_in_order_and_parent_signalled():
             f"{RUN_ID}-{COMPACTION}-1",
             f"{RUN_ID}-{EXPIRE}-1",
         ]
-        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0, "unapplied_raise": False}]
+        assert await h.parent_payloads() == [_report()]
 
     _run(scenario)
 
@@ -268,7 +278,7 @@ def test_failed_operation_retried_three_attempts_total_then_next_operation_runs(
         assert times[2] - times[1] >= timedelta(seconds=120)
         assert times[2] - times[1] < timedelta(seconds=180)
         assert len(h.fakes.deletes) == 4
-        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0, "unapplied_raise": False}]
+        assert await h.parent_payloads() == [_report()]
 
     _run(scenario)
 
@@ -482,7 +492,7 @@ def test_cancelled_workflow_records_deletes_and_notifies():
 
         assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
         assert set(h.fakes.deletes) == {f"{RUN_ID}-{COMPACTION}-1"}
-        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0, "unapplied_raise": False}]
+        assert await h.parent_payloads() == [_report()]
 
     _run(scenario)
 
@@ -502,7 +512,7 @@ def test_record_failures_are_counted_in_the_parent_payload():
             (COMPACTION, 1),
             (EXPIRE, 1),
         ]
-        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 1, "unapplied_raise": False}]
+        assert await h.parent_payloads() == [_report(record_failures=1)]
 
     _run(scenario)
 
@@ -532,7 +542,7 @@ async def _cancel_while_blocked(
     assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
     assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1)]
     assert set(h.fakes.deletes) == {f"{RUN_ID}-{COMPACTION}-1"}
-    assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0, "unapplied_raise": False}]
+    assert await h.parent_payloads() == [_report()]
 
 
 def test_cancel_during_status_poll_activity_cancels_the_workflow():
@@ -694,8 +704,10 @@ def test_missing_job_is_fenced_before_the_next_attempt():
 
         commands = await h.commands()
         names = _names(commands)
-        status = names.index("get_maintenance_job_status")
-        assert status < _first_after(commands, "delete_maintenance_job", status)
+        second_submit = _first_after(
+            commands, "submit_maintenance_operation", names.index("submit_maintenance_operation") + 1
+        )
+        assert names.index("delete_maintenance_job") < second_submit
         assert h.fakes.pods_calls == [FIRST] * 4
         assert h.submit_times()[1] > h.fakes.pods_times[-1]
         assert h.recorded() == [(COMPACTION, 1, False, "spark job missing"), (COMPACTION, 2, True, None)]
@@ -773,7 +785,7 @@ def test_cancelled_run_fences_its_live_attempt_before_it_reports():
         assert h.fakes.pods_times[-1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=10)
         assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
         assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1)]
-        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0, "unapplied_raise": False}]
+        assert await h.parent_payloads() == [_report()]
 
     _run(scenario)
 
@@ -957,7 +969,7 @@ def test_needs_attention_stops_the_operation_without_another_attempt():
         ]
         times = h.submit_times()
         assert times[2] - times[1] < timedelta(seconds=60)
-        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0, "unapplied_raise": False}]
+        assert await h.parent_payloads() == [_report()]
 
     _run(scenario)
 
@@ -1270,8 +1282,8 @@ def test_failed_running_record_still_starts_the_deadline():
 def test_queued_attempt_polls_slowly_after_the_fast_window():
     """A queued attempt polls every 30 s for 10 minutes, then every 10 minutes until the queue wait limit.
 
-    Over the 24 h limit that is at most 20 + (24 h - 10 min) / 10 min = 163 status polls, which keeps
-    the history of a queued-out attempt small.
+    Over the 24 h limit that is at most 20 + (24 h - 10 min) / 10 min = 163 status polls, plus the
+    one poll at the limit, which keeps the history of a queued-out attempt small.
     """
 
     async def scenario(h: Harness) -> None:
@@ -1281,8 +1293,11 @@ def test_queued_attempt_polls_slowly_after_the_fast_window():
 
         submitted = h.submit_times()[0]
         polls = [t for t, name in zip(h.fakes.status_times, h.fakes.status_calls, strict=True) if name == FIRST_APP]
-        bound = 20 + (timedelta(hours=24) - timedelta(minutes=10)) // timedelta(minutes=10)
+        bound = 20 + (timedelta(hours=24) - timedelta(minutes=10)) // timedelta(minutes=10) + 1
         assert len(polls) <= bound
+        limit = submitted + timedelta(seconds=QUEUE_WAIT_LIMIT_SECONDS)
+        assert len([t for t in polls if t >= limit]) == 1
+        polls = [t for t in polls if t < limit]
         gaps = [b - a for a, b in zip(polls, polls[1:], strict=False)]
         late = [g for p, g in zip(polls, gaps, strict=False) if p - submitted >= timedelta(minutes=10)]
         assert late
@@ -1343,9 +1358,10 @@ REPLACE_ERROR = "queued job could not be replaced: its job was still there 15 mi
 async def _raise_after(h: Harness, handle: WorkflowHandle, wait: timedelta, priority: str | None = "P0") -> None:
     """Signal a priority raise from the first status poll at least ``wait`` after the first submit.
 
-    The signal goes out from inside that poll, before any hook already set runs, and its time is kept
-    in ``h.raise_sent_at``; sending it from the poll, rather than from the test after skipping time,
-    keeps the time-skipping server's clock moving only while the test awaits the result.
+    The signal goes out from inside that poll, in place of any hook already set, which runs on every
+    other poll; its time is kept in ``h.raise_sent_at``. Sending it from the poll, rather than from
+    the test after skipping time, keeps the time-skipping server's clock moving only while the test
+    awaits the result.
     """
     earlier = h.fakes.status_hook
 
@@ -1449,7 +1465,7 @@ def test_raise_leaves_a_running_attempt_alone():
         assert [r["attempt"] for r in h.fakes.running_records] == [1]
         names = _names(await h.commands())
         assert "get_maintenance_job_status" not in names[names.index("raise_maintenance_run_priority") :]
-        assert (await h.parent_payloads())[0]["unapplied_raise"] is False
+        assert await h.parent_payloads() == [_report(raises_received=1)]
 
     _run(scenario)
 
@@ -1691,7 +1707,7 @@ def test_finish_reports_a_raise_left_unapplied():
         await h.run_maintenance(COMPACTION)
 
         assert h.fakes.raises == []
-        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0, "unapplied_raise": True}]
+        assert await h.parent_payloads() == [_report(unapplied_raise=True, raises_received=1)]
 
     _run(scenario)
 
@@ -1734,6 +1750,91 @@ def test_result_during_the_raise_poll_is_not_requeued():
 
         assert len(h.fakes.submits) == 1
         assert h.fakes.deletes == [FIRST_APP]
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+
+    _run(scenario)
+
+
+SHORT_QUEUE_LIMIT = timedelta(hours=1)
+
+
+def test_driver_start_read_at_the_queue_limit_runs_the_attempt():
+    """A driver start first reported by the poll at the queue wait limit makes the attempt run, not time out.
+
+    Every poll before the limit reads the job pending; the one at the limit reads the start, so the
+    attempt runs under its deadline from that start and its result is recorded.
+    """
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = (SHORT_QUEUE_LIMIT, SHORT_QUEUE_LIMIT)
+
+        async def succeed_once_running(app_name: str, _: datetime) -> None:
+            if app_name == FIRST_APP and h.fakes.running_records and not h.fakes.callbacks:
+                h.fakes.callbacks[(COMPACTION, 1)] = [(1, True, None)]
+                await h.client.get_workflow_handle(WORKFLOW_ID).signal(
+                    TableMaintenanceSignal.OPERATION_RESULT,
+                    OperationResultSignal(RUN_ID, COMPACTION, 1, True, {"files": 4}, None),
+                )
+
+        h.fakes.status_hook = succeed_once_running
+        handle = await h.start_maintenance(COMPACTION, queue_wait_limit_seconds=int(SHORT_QUEUE_LIMIT.total_seconds()))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+        assert len(h.fakes.submits) == 1
+        [running] = h.fakes.running_records
+        assert datetime.fromisoformat(running["started_running_at"]) == h.submit_times()[0] + SHORT_QUEUE_LIMIT
+        assert h.fakes.deletes == [FIRST_APP]
+
+    _run(scenario)
+
+
+def test_still_pending_at_the_queue_limit_is_polled_once_then_fenced():
+    """At the queue wait limit a job is polled once more; still pending without a start, it is fenced."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.record_replies[(COMPACTION, 1)] = {"next_step": "not_retried"}
+        handle = await h.start_maintenance(COMPACTION, queue_wait_limit_seconds=int(SHORT_QUEUE_LIMIT.total_seconds()))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert [r["ended_by"] for r in h.fakes.records] == ["queue_timed_out"]
+        limit = h.submit_times()[0] + SHORT_QUEUE_LIMIT
+        commands = await h.commands()
+        delete = _names(commands).index("delete_maintenance_job")
+        last_poll = max(i for i, (name, _) in enumerate(commands[:delete]) if name == "get_maintenance_job_status")
+        assert commands[last_poll][1] >= limit
+
+    _run(scenario)
+
+
+def test_late_result_of_the_replaced_job_is_dropped():
+    """A result the killed job sends while a requeue deletes it is dropped; the replacement's result is recorded."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.vanish_after_delete[FIRST_APP] = timedelta(0)
+        sent: list[bool] = []
+
+        async def killed_job_reports(app_name: str) -> None:
+            if app_name == FIRST_APP and not sent:
+                sent.append(True)
+                await h.client.get_workflow_handle(WORKFLOW_ID).signal(
+                    TableMaintenanceSignal.OPERATION_RESULT,
+                    OperationResultSignal(RUN_ID, COMPACTION, 1, False, {}, "driver killed by the delete"),
+                )
+
+        async def replacement_succeeds(_: dict) -> None:
+            h.fakes.callbacks[(COMPACTION, 1)] = [(1, True, None)]
+
+        h.fakes.delete_hook = killed_job_reports
+        h.fakes.raise_hook = replacement_succeeds
+        handle = await h.start_maintenance(COMPACTION)
+        await _raise_after(h, handle, timedelta(minutes=15))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert sent == [True]
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1), (COMPACTION, 1)]
         assert h.recorded() == [(COMPACTION, 1, True, None)]
 
     _run(scenario)

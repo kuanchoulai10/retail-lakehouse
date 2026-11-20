@@ -86,9 +86,15 @@ class TableReconciliationWorkflow:
     consumes the trigger and takes its ``manual_run`` off the wake reasons. The
     consumed trigger is kept with the run in flight (through continue-as-new), and
     given back, counted ``manual_run`` again, when the run reports the raise
-    arrived too late to be applied (``unapplied_raise``). A trigger whose signal
-    cannot be delivered (the child is gone), or whose run reported while the
-    signal was on its way, is kept and planned once the run finishes. A
+    unapplied (``unapplied_raise``) or reports fewer raises received
+    (``raises_received``) than were delivered to it (counted through
+    continue-as-new), since those reached it after it built its report. A trigger
+    whose signal cannot be delivered, or whose run reported while the signal was
+    on its way, is kept and planned once the run finishes. A run whose child
+    closed without reporting is treated as finished, and its consumed trigger
+    given back: a child this execution started is noticed when its handle
+    resolves, and one carried through continue-as-new when a raise cannot reach
+    it and a lookup (``get_workflow_running``) finds it no longer running. A
     run that never reports back is given up once the child's worst case has passed
     (per planned operation: every attempt waiting out the queue wait limit the plan
     carried, 24 hours for a plan without one, then timing out after the attempt
@@ -169,6 +175,7 @@ class TableReconciliationWorkflow:
         self._pending_manual_priority = input.pending_manual_priority
         self._raised_manual = None if input.raised_manual is None else list(input.raised_manual)
         self._raised_manual_priority = input.raised_manual_priority
+        self._raises_delivered = input.raises_delivered
         self._closing_workflow_id = input.closing_workflow_id
         self._closing_handle: workflow.ChildWorkflowHandle[Any, Any] | None = None
         self._child_handle: workflow.ChildWorkflowHandle[Any, Any] | None = None
@@ -201,6 +208,7 @@ class TableReconciliationWorkflow:
             await self._wait()
             self._woken = False
             iterations += 1
+            self._end_closed_child()
             if self._in_flight_run_id is not None:
                 await self._give_up_stuck_run()
             if self._in_flight_run_id is not None and self._pending_manual is not None:
@@ -252,13 +260,25 @@ class TableReconciliationWorkflow:
         if run_id is None or run_id != self._in_flight_run_id:
             workflow.logger.warning("ignoring maintenance_finished of run %s", run_id)
             return
-        if (payload or {}).get("unapplied_raise", False):
+        if self._raise_missed(payload or {}):
             self._give_back_raised_manual(run_id)
         self._closing_workflow_id = self._in_flight_workflow_id
         self._closing_handle = self._child_handle
         self._clear_in_flight()
         self._count(_REASON_PREVIOUS_RUN_FINISHED)
         self._woken = True
+
+    def _raise_missed(self, report: dict[str, Any]) -> bool:
+        """Tell whether the run's report leaves a raise of it unapplied.
+
+        The run says so (``unapplied_raise``), or it received fewer raises than were delivered to it:
+        those arrived after it built its report. A report without ``raises_received`` counts only
+        its own word.
+        """
+        if report.get("unapplied_raise", False):
+            return True
+        received = report.get("raises_received")
+        return received is not None and self._raises_delivered > received
 
     @workflow.query
     def state(self) -> dict[str, Any]:
@@ -272,6 +292,7 @@ class TableReconciliationWorkflow:
             "raised_manual": self._raised_manual,
             "raised_manual_priority": self._raised_manual_priority,
             "closing_workflow_id": self._closing_workflow_id,
+            "raises_delivered": self._raises_delivered,
             "stopping": self._stopping,
             "next_plan_at": _iso(self._next_plan_at),
             "reconcile_interval_seconds": int(self._interval.total_seconds()),
@@ -341,6 +362,7 @@ class TableReconciliationWorkflow:
             raised_manual=self._raised_manual,
             raised_manual_priority=self._raised_manual_priority,
             closing_workflow_id=self._closing_workflow_id,
+            raises_delivered=self._raises_delivered,
         )
 
     async def _wait(self) -> None:
@@ -349,9 +371,13 @@ class TableReconciliationWorkflow:
         if timeout is not None and timeout <= timedelta(0):
             return
         try:
-            await workflow.wait_condition(lambda: self._woken, timeout=timeout)
+            await workflow.wait_condition(lambda: self._woken or self._child_closed(), timeout=timeout)
         except TimeoutError:
             pass
+
+    def _child_closed(self) -> bool:
+        """Tell whether the run in flight's child, started by this execution, has closed."""
+        return self._child_handle is not None and self._child_handle.done()
 
     def _in_flight_deadline(self) -> datetime | None:
         if self._in_flight_run_id is None or self._in_flight_started_at is None:
@@ -466,24 +492,52 @@ class TableReconciliationWorkflow:
             if is_cancelled_exception(error):
                 raise asyncio.CancelledError from error
             workflow.logger.info("raising the priority of run %s failed: %s; keeping the manual trigger", run_id, error)
+            await self._forget_if_gone(run_id, workflow_id)
             return
         if self._in_flight_run_id != run_id:
             workflow.logger.info("run %s reported while its raise was on the way; keeping the manual trigger", run_id)
             return
+        self._raises_delivered += 1
         workflow.logger.info("raised the priority of run %s for manual trigger %s", run_id, manual)
         if self._pending_manual is manual:
             self._raised_manual, self._raised_manual_priority = manual, priority
         self._consume_manual(manual, None)
         self._uncount(_REASON_MANUAL_RUN)
 
+    async def _forget_if_gone(self, run_id: str | None, workflow_id: str) -> None:
+        """End a run carried through continue-as-new whose workflow no longer runs, as if it had reported.
+
+        A run this execution started has a child handle, and its close ends it through ``_wait``.
+        """
+        if self._child_handle is not None or await self._still_running(workflow_id):
+            return
+        if run_id is not None and self._in_flight_run_id == run_id:
+            self._end_unreported_run(run_id, f"its workflow {workflow_id} is no longer running")
+
+    def _end_closed_child(self) -> None:
+        """End the run in flight whose child closed without reporting, as if it had reported."""
+        run_id = self._in_flight_run_id
+        if run_id is None or not self._child_closed():
+            return
+        self._end_unreported_run(run_id, "its workflow closed without reporting")
+
+    def _end_unreported_run(self, run_id: str, why: str) -> None:
+        """Treat a run that will never report as finished, giving back the manual trigger its raise consumed."""
+        workflow.logger.warning("maintenance run %s ended: %s", run_id, why)
+        self._give_back_raised_manual(run_id)
+        self._clear_in_flight()
+        self._count(_REASON_PREVIOUS_RUN_FINISHED)
+
     def _give_back_raised_manual(self, run_id: str) -> None:
         """Make the manual trigger a raise of ``run_id`` consumed pending again, unless a newer one is."""
         if self._raised_manual is None:
             return
         if self._pending_manual is not None:
-            workflow.logger.info("run %s left a raise unapplied; a newer manual trigger is pending", run_id)
+            workflow.logger.info("run %s may have left a raise unapplied; a newer manual trigger is pending", run_id)
             return
-        workflow.logger.info("run %s left its raise unapplied; planning manual trigger %s", run_id, self._raised_manual)
+        workflow.logger.info(
+            "run %s may have left its raise unapplied; planning manual trigger %s", run_id, self._raised_manual
+        )
         self._pending_manual = self._raised_manual
         self._pending_manual_priority = self._raised_manual_priority
         self._count(_REASON_MANUAL_RUN)
@@ -531,6 +585,7 @@ class TableReconciliationWorkflow:
         self._in_flight_queue_wait_limit_seconds = DEFAULT_QUEUE_WAIT_LIMIT_SECONDS
         self._raised_manual = None
         self._raised_manual_priority = None
+        self._raises_delivered = 0
         self._child_handle = None
 
     async def _plan_and_start(self) -> bool:
@@ -572,10 +627,10 @@ class TableReconciliationWorkflow:
         self._tag_table_name(plan["table_name"])
         record = {"reconciliation_id": reconciliation_id, "reconciled_at": now.isoformat(), "wake_reasons": reasons}
         if self._stopping:
-            self._consume_manual(manual, "the workflow is stopping")
             if plan["status"] != "skip" and plan["operations"]:
-                workflow.logger.info("not recording reconciliation %s: the workflow is stopping", reconciliation_id)
+                self._drop_unstarted_plan(manual, reconciliation_id)
             else:
+                self._consume_manual(manual, "the workflow is stopping")
                 await self._record(record, plan, run_id=None, run_start_failed=False)
             return False
         if plan["status"] == "skip":
@@ -588,8 +643,7 @@ class TableReconciliationWorkflow:
             return False
         await self._await_closing()
         if self._stopping:
-            self._consume_manual(manual, "the workflow is stopping")
-            workflow.logger.info("not recording reconciliation %s: the workflow is stopping", reconciliation_id)
+            self._drop_unstarted_plan(manual, reconciliation_id)
             return False
         started = await self._start_run(plan, manual is not None, run_id)
         if started:
@@ -643,6 +697,11 @@ class TableReconciliationWorkflow:
             if is_cancelled_exception(error):
                 raise asyncio.CancelledError from error
             workflow.logger.error("recording reconciliation %s failed: %s", record["reconciliation_id"], error)
+
+    def _drop_unstarted_plan(self, manual: list[str] | None, reconciliation_id: str) -> None:
+        """Drop a plan with operations that is not started because the workflow is stopping, unrecorded."""
+        self._consume_manual(manual, "the workflow is stopping")
+        workflow.logger.info("not recording reconciliation %s: the workflow is stopping", reconciliation_id)
 
     def _consume_manual(self, manual: list[str] | None, dropped_because: str | None) -> None:
         if manual is None or self._pending_manual is not manual:

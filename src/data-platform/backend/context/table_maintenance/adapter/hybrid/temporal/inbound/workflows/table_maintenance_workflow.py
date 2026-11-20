@@ -65,10 +65,11 @@ class TableMaintenanceWorkflow:
     poll, is recorded (``record_maintenance_attempt_running``; a failed record is logged) and
     starts the attempt's deadline, ``attempt_deadline_seconds`` (input, 6 h by default), so time
     spent waiting in the queue does not count toward it. An attempt still queued
-    ``queue_wait_limit_seconds`` (input, 24 h by default) after its submit is fenced and ends
-    ``queue_timed_out``. Polling runs every 30 s for the first 10 minutes of an attempt's queue
-    wait and again for the first 10 minutes after its driver starts, then every 10 minutes while
-    it is queued and every 5 minutes once it runs, which bounds the history. A timed-out attempt is
+    ``queue_wait_limit_seconds`` (input, 24 h by default) after its submit is polled once more, and
+    unless that poll reads its driver start or its end it is fenced and ends ``queue_timed_out``.
+    Polling runs every 30 s for the first 10 minutes of an attempt's queue wait and again for the
+    first 10 minutes after its driver starts, then every 10 minutes while it is queued and every 5
+    minutes once it runs, which bounds the history. A timed-out attempt is
     fenced before the next one is submitted: its Spark job is deleted and its pods are
     polled until none is live (see
     ``TableMaintenanceFencingPolicy``); pods still live after the confirm bound fail
@@ -103,11 +104,13 @@ class TableMaintenanceWorkflow:
     going; one still queued is polled at once, and only a job that reads ``PENDING`` without a driver
     start is replaced: its job is deleted, polled every 30 s until it reads ``NOT_FOUND`` and has no
     live pods, and submitted again under the same attempt number, keeping its submit time and queue
-    deadline (a status that cannot be read leaves the replacement to the next poll). A job not gone
-    within the fencing confirm bound fails the attempt like an unconfirmed fence (ended ``missing``,
-    possibly still running), and the operation waits until it is gone. The parent is told, with the
-    run's end, whether a raise arrived too late to be applied (``unapplied_raise``), so the manual run
-    behind it can still be planned.
+    deadline (a status that cannot be read leaves the replacement to the next poll); a result the
+    deleted job sent meanwhile is dropped. A job not gone within the fencing confirm bound fails the
+    attempt like an unconfirmed fence (ended ``missing``, possibly still running), and the operation
+    waits until it is gone. The parent is told, with the run's end, whether a raise was left
+    unapplied (``unapplied_raise``: it arrived after the last attempt ended, or its record failed)
+    and how many raises the run had received when it built that report (``raises_received``), so
+    the parent can tell a raise that arrived later and still plan the manual run behind it.
     """
 
     @workflow.init
@@ -127,6 +130,7 @@ class TableMaintenanceWorkflow:
         self._priority: str = input.plan.get("priority", "P3")
         self._raise_requests: list[RaisePrioritySignal] = []
         self._dropped_raise = False
+        self._raises_received = 0
 
     @workflow.run
     async def run(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
@@ -160,7 +164,8 @@ class TableMaintenanceWorkflow:
 
     @workflow.signal(name=TableMaintenanceSignal.RAISE_PRIORITY)
     def raise_priority(self, request: RaisePrioritySignal) -> None:
-        """Keep a priority raise until the workflow applies it."""
+        """Keep a priority raise until the workflow applies it, and count it for the report."""
+        self._raises_received += 1
         self._raise_requests.append(request)
 
     async def _run_operation(self, operation: dict[str, Any]) -> None:
@@ -238,6 +243,11 @@ class TableMaintenanceWorkflow:
         makes the attempt running; ``RUNNING`` without a start is left alone; and a failed, missing or
         completed job ends the attempt as any poll would. A poll that cannot read the status keeps the
         replacement wanted for the next poll.
+
+        At the queue wait limit the job is polled once more: a driver start read then makes the attempt
+        running, with its deadline from that start, and a failed or missing job ends it as any poll
+        would. Otherwise (a job still pending, one running or completed whose start cannot be read, or
+        a status that cannot be read) the attempt is fenced and ends ``queue_timed_out``.
         """
         name = operation["operation"]
         key = (name, attempt)
@@ -247,32 +257,30 @@ class TableMaintenanceWorkflow:
         completed_since: datetime | None = None
         poll_at: datetime | None = None
         requeue_wanted = False
+        polled_at_the_limit = False
         while True:
             if key in self._results:
                 return self._results[key]
             now = workflow.now()
-            if now >= deadline:
+            at_the_limit = now >= deadline
+            if at_the_limit and (running_since is not None or polled_at_the_limit):
                 return await self._past_deadline(name, attempt, running=running_since is not None)
-            if poll_at is None:
-                in_fast_window = now - (running_since or submitted_at) < FAST_POLL_WINDOW
-                poll_at = now + _poll_interval(in_fast_window=in_fast_window, running=running_since is not None)
-            wait = min(poll_at, deadline) - now
-            if wait > timedelta(0):
-                try:
-                    await workflow.wait_condition(
-                        lambda: key in self._results or bool(self._raise_requests), timeout=wait
-                    )
-                except TimeoutError:
-                    pass
-            if key in self._results:
-                return self._results[key]
-            if self._raise_requests:
-                if await self._apply_raises() and running_since is None:
-                    requeue_wanted = True
-                    poll_at = workflow.now()
-                continue
-            if workflow.now() >= deadline or workflow.now() < poll_at:
-                continue
+            if at_the_limit:
+                polled_at_the_limit = True
+            else:
+                if poll_at is None:
+                    in_fast_window = now - (running_since or submitted_at) < FAST_POLL_WINDOW
+                    poll_at = now + _poll_interval(in_fast_window=in_fast_window, running=running_since is not None)
+                await self._await_poll(key, min(poll_at, deadline) - now)
+                if key in self._results:
+                    return self._results[key]
+                if self._raise_requests:
+                    if await self._apply_raises() and running_since is None:
+                        requeue_wanted = True
+                        poll_at = workflow.now()
+                    continue
+                if workflow.now() >= deadline or workflow.now() < poll_at:
+                    continue
             poll_at = None
             status = await self._job_status(name, attempt)
             if status is None:
@@ -284,13 +292,22 @@ class TableMaintenanceWorkflow:
             ended = await self._ended_by_status(name, attempt, job_name, status, completed_since)
             if ended is not None:
                 return ended
-            if requeue_wanted:
+            if requeue_wanted and not at_the_limit:
                 requeue_wanted = False
                 replaced = await self._requeue_if_pending(
                     operation, attempt, size, status, queued=running_since is None
                 )
                 if replaced is not None:
                     return replaced
+
+    async def _await_poll(self, key: tuple[str, int], wait: timedelta) -> None:
+        """Wait ``wait`` for the next poll, or less when the attempt's result or a raise arrives."""
+        if wait <= timedelta(0):
+            return
+        try:
+            await workflow.wait_condition(lambda: key in self._results or bool(self._raise_requests), timeout=wait)
+        except TimeoutError:
+            pass
 
     async def _ended_by_status(
         self, name: str, attempt: int, job_name: str, status: dict[str, Any], completed_since: datetime | None
@@ -375,7 +392,8 @@ class TableMaintenanceWorkflow:
 
         A driver that starts between the status read that found the job pending and the delete is
         killed with it; the attempt is then simply run again, which the maintenance procedures
-        allow since they are idempotent.
+        allow since they are idempotent. A result that killed job sent meanwhile is dropped before
+        the new submit, so only the replacement's result ends the attempt.
         """
         name = operation["operation"]
         minutes = int(self._policy.fencing.confirm_bound.total_seconds() // 60)
@@ -388,6 +406,7 @@ class TableMaintenanceWorkflow:
         )
         if unconfirmed is not None:
             return unconfirmed
+        self._results.pop((name, attempt), None)
         try:
             await self._submit(operation, attempt, size)
         except ActivityError as error:
@@ -619,6 +638,7 @@ class TableMaintenanceWorkflow:
                         "run_id": self._run_id,
                         "record_failures": self._record_failures,
                         "unapplied_raise": self._dropped_raise or bool(self._raise_requests),
+                        "raises_received": self._raises_received,
                     },
                 },
             )

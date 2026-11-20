@@ -221,6 +221,13 @@ def test_delete_calls_api_and_ignores_not_found():
     gateway.delete(DeleteMaintenanceJobGatewayInput(*ATTEMPT))
 
 
+def test_delete_waits_for_the_dependents_in_the_foreground():
+    """The delete asks for foreground propagation, so the application reads gone only once its pods and PodGroup are."""
+    api = MagicMock()
+    DeleteMaintenanceJobK8sGateway(api, CONFIG).delete(DeleteMaintenanceJobGatewayInput(*ATTEMPT))
+    assert api.delete_namespaced_custom_object.call_args.kwargs["propagation_policy"] == "Foreground"
+
+
 def test_delete_other_errors_propagate():
     """Other API errors from a delete are raised."""
     api = MagicMock()

@@ -28,7 +28,9 @@ class TableReconciliationWorkflowInput:
     ``pending_manual_priority`` is the priority that trigger asked for (``None``: the table's own).
     ``raised_manual`` and ``raised_manual_priority`` keep, in the same shape, the manual trigger
     the run in flight was asked to raise its priority for (``None``: none), so it can be planned
-    after the run should the run report the raise unapplied. ``closing_workflow_id`` is the
+    after the run should the run report the raise unapplied. ``raises_delivered`` counts the raise
+    signals delivered to the run in flight, so a run that reports fewer received gives that trigger
+    back too. ``closing_workflow_id`` is the
     workflow of a run that reported but may not have closed yet (``None``: none); the next run is
     not started under that id until it closed or the closing bound passed.
     ``next_plan_at`` (ISO-8601) is when the timer plans next; ``None`` means one
@@ -56,3 +58,4 @@ class TableReconciliationWorkflowInput:
     raised_manual: list[str] | None = None
     raised_manual_priority: str | None = None
     closing_workflow_id: str | None = None
+    raises_delivered: int = 0

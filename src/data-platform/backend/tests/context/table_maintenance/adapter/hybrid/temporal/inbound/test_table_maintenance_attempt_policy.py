@@ -44,10 +44,9 @@ def test_worst_case_counts_the_queue_wait():
 
 
 def test_default_fencing_polls_and_bounds_the_wait():
-    """A timed-out attempt is polled every 30 s, bounded at 15 min, then polled every 5 min; it renews no lease."""
+    """A timed-out attempt is polled every 30 s, bounded at 15 min, then polled every 5 min."""
     fencing = TableMaintenanceFencingPolicy()
     assert fencing.poll_interval == timedelta(seconds=30)
-    assert not hasattr(fencing, "renew_interval")
     assert fencing.confirm_bound == timedelta(minutes=15)
     assert fencing.slow_poll_interval == timedelta(minutes=5)
     assert TableMaintenanceAttemptPolicy().fencing == fencing

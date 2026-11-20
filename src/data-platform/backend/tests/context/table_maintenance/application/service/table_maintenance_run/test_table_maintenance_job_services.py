@@ -357,6 +357,19 @@ def test_job_status_survives_a_failed_pods_read(read_job, caplog):
     assert record.exc_info[1] is pods.error
 
 
+def test_job_status_survives_a_driver_start_it_cannot_read(read_job, caplog):
+    """A driver start the pods report in a form that is not a time is logged and left unknown; the state answers."""
+    pods = ScriptedReadMaintenanceJobPodsGateway()
+    read_job.set_state(RUN_1, "rewrite_data_files", 1, "RUNNING")
+    pods.set_driver_started_at(RUN_1, "rewrite_data_files", 1, "not-a-time")
+
+    with caplog.at_level(logging.ERROR):
+        out = GetMaintenanceJobStatusService(read_job, pods).execute(_status_input())
+
+    assert (out.state, out.driver_started_at) == ("RUNNING", None)
+    assert [r for r in caplog.records if "cannot read the pods" in r.getMessage()]
+
+
 def test_delete_job_forwards_the_attempt_to_the_gateway(delete_job):
     """Deleting a job forwards the run, operation and attempt to the gateway."""
     out = DeleteMaintenanceJobService(delete_job).execute(

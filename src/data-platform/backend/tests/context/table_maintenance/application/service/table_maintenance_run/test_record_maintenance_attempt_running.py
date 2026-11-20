@@ -13,7 +13,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     TableMaintenanceRunId,
     TriggerType,
 )
-from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
+from context.table_maintenance.application.exceptions import ConflictError, NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     RecordMaintenanceAttemptRunningUseCaseInput,
 )
@@ -88,3 +88,9 @@ def test_record_running_of_an_unknown_operation_is_invalid(runs_repo, queued_run
     """An operation the platform does not know is refused."""
     with pytest.raises(ValidationError):
         RecordMaintenanceAttemptRunningService(runs_repo).execute(_input(now, operation="defragment"))
+
+
+def test_record_running_of_an_attempt_never_started_is_a_conflict(runs_repo, queued_run, now):
+    """A report for an attempt after the current one, which was never started, is refused as a conflict."""
+    with pytest.raises(ConflictError, match="never started"):
+        RecordMaintenanceAttemptRunningService(runs_repo).execute(_input(now, attempt=2))
