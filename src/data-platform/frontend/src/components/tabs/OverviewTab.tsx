@@ -7,7 +7,8 @@ import { ApplicablePolicyPanel } from "@/components/ApplicablePolicyPanel";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
 import { TablePrioritySelect } from "@/components/TablePrioritySelect";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
-import { formatBytes, formatCount, formatRelativeTime } from "@/format";
+import { TableMetricsDashboard } from "@/components/TableMetricsDashboard";
+import { formatRelativeTime } from "@/format";
 import type { TableMaintenanceState } from "@/lib/tableMaintenanceState";
 
 interface Props {
@@ -33,7 +34,8 @@ function Fact({ label, children, mono }: { label: string; children: ReactNode; m
   );
 }
 
-// What the catalog holds, plus whether maintenance manages the table; then the policy that applies,
+// A managed table's metrics first; then what the catalog holds, plus whether maintenance manages the
+// table (the header and the cards carry its rows, files and size); then the policy that applies,
 // for every table: one maintenance has a record of is read by that record's uuid, any other by its
 // name in the catalog, so a policy can be attached before maintenance manages it. When maintenance
 // does not manage the table, the shared empty state says why; while maintenance's answer is pending
@@ -43,9 +45,9 @@ export function OverviewTab({ table, maintenance, record }: Props) {
   // The rule that selected the table is asked for only when maintenance manages it.
   const rules = useGetTableDiscoveryRules({ query: { enabled: managed !== null } });
   const rule = managed === null ? undefined : rules.data?.rules.find((r) => r.id === managed.matched_rule_id);
-  const { total_records: records, total_data_files: files, total_files_size: size } = table.summary;
   return (
     <div className="grid grid-cols-1 gap-4">
+      {managed !== null && <TableMetricsDashboard tableUuid={managed.uuid} />}
       <Panel title="Table" actions={
           <span className="type-body-small text-on-surface-variant">
             <span>{MARKER[maintenance.kind]}</span>
@@ -71,9 +73,6 @@ export function OverviewTab({ table, maintenance, record }: Props) {
           <Fact label="Current snapshot" mono>
             {table.current_snapshot_id ?? "—"}
           </Fact>
-          <Fact label="Rows">{formatCount(records)}</Fact>
-          <Fact label="Data files">{formatCount(files)}</Fact>
-          <Fact label="Size">{size === null ? "—" : formatBytes(size)}</Fact>
           <Fact label="Last updated">{formatRelativeTime(new Date(table.last_updated_ms).toISOString())}</Fact>
           {record.data !== undefined && (
             <Fact label="Priority">

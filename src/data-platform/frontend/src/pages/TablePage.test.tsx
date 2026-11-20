@@ -63,19 +63,41 @@ function stubTable({ table = catalogTableFixture(), covered = ["iceberg"], maint
     "GET /v1/discovery-rules": () => jsonResponse({ version: 1, rules: [RULE] }),
     "GET /v1/tables/uuid-orders": maintenanceTable ?? (() => jsonResponse(maintenance())),
     "GET /v1/tables/uuid-orders/commits*": () => jsonResponse({ items: [], truncated: false }),
-    "GET /v1/tables/uuid-orders/health": () =>
-      jsonResponse({
-        scheduled: true,
-        not_scheduled_reason: null,
-        operations: [],
-        position_delete_files: 0,
-        equality_delete_files: 0,
-      }),
-    "GET /v1/tables/uuid-orders/storage": () => jsonResponse({ detail: "not in this test" }, 503),
+    "GET /v1/tables/uuid-orders/metrics/current": () => jsonResponse(CURRENT_METRICS),
+    "GET /v1/tables/uuid-orders/metrics*": () => jsonResponse(METRIC_TRENDS),
     "GET /v1/tables/uuid-orders/table-maintenance-runs": () => jsonResponse([]),
     ...extra,
   });
 }
+
+const CURRENT_METRICS = {
+  observed_at: "2026-11-20T09:58:00Z",
+  metrics: {
+    data_files: 1174,
+    position_delete_files: 0,
+    equality_delete_files: 0,
+    deletion_vectors: 0,
+    data_records: 2180,
+    position_delete_records: 0,
+    equality_delete_records: 0,
+    data_size_bytes: 1_824_310,
+    reducible_files: 3,
+    snapshots: 2,
+    manifests: 2,
+    manifests_size_bytes: 16_384,
+    manifest_added_entries: 4,
+    manifest_existing_entries: 3,
+    manifest_deleted_entries: 0,
+  },
+};
+
+const METRIC_TRENDS = {
+  time_range: "6h",
+  start: "2026-11-20T04:00:00Z",
+  end: "2026-11-20T10:00:00Z",
+  step_seconds: 180,
+  points: [{ at: "2026-11-20T10:00:00Z", values: CURRENT_METRICS.metrics }],
+};
 
 const RULE = {
   id: "dr-01m7s6c3tqee0rhg00xn5s97gw",
@@ -242,20 +264,37 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(screen.queryByText("Loading maintenance…")).not.toBeInTheDocument();
   });
 
-  it("overview holds only the Table panel: no health, storage, freshness, commits or runs", async () => {
+  it("overview shows the metrics dashboard above the Table panel, and no commits or runs", async () => {
     const calls = stubTable();
     renderAt(PAGE);
     const summary = await screen.findByRole("region", { name: "Table" });
     await within(summary).findByText("Maintenance: managed");
+    const files = await screen.findByRole("region", { name: "Files" });
+    expect(files.compareDocumentPosition(summary)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(await within(await screen.findByRole("group", { name: "Data files" })).findByText("1,174")).toBeInTheDocument();
+    for (const label of ["Rows", "Data files", "Size"]) {
+      expect(within(summary).queryByText(label)).not.toBeInTheDocument();
+    }
     await settle();
-    for (const name of ["Health", "Storage", "Freshness & activity", "Recent commits", "Last maintenance run"]) {
+    for (const name of ["Recent commits", "Last maintenance run"]) {
       expect(screen.queryByRole("region", { name })).not.toBeInTheDocument();
     }
     expect(screen.queryByText("No maintenance runs yet.")).not.toBeInTheDocument();
-    for (const path of ["health", "storage", "commits*", "table-maintenance-runs"]) {
+    for (const path of ["commits*", "table-maintenance-runs"]) {
       expect(calls.filter((call) => call.path.startsWith(`/v1/tables/uuid-orders/${path.replace("*", "")}`))).toHaveLength(0);
     }
+    expect(callsTo(calls, "GET", "/v1/tables/uuid-orders/metrics/current")).toHaveLength(1);
+    expect(callsTo(calls, "GET", "/v1/tables/uuid-orders/metrics?range=6h")).toHaveLength(1);
     expect(screen.queryByText("Maintenance does not manage this table")).not.toBeInTheDocument();
+  });
+
+  it("overview shows no metrics dashboard for a table maintenance does not manage", async () => {
+    const calls = stubTable({ covered: [] });
+    renderAt(PAGE);
+    await screen.findByText("Maintenance: not managed");
+    await settle();
+    expect(screen.queryByRole("region", { name: "Files" })).not.toBeInTheDocument();
+    expect(calls.filter((call) => call.path.startsWith("/v1/tables/uuid-orders/metrics"))).toHaveLength(0);
   });
 
   it("overview names the discovery rule that selected a managed table, by priority", async () => {

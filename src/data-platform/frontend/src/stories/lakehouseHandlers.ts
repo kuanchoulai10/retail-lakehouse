@@ -22,6 +22,8 @@ import {
 } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
 import {
   getGetCatalogTableMockHandler,
+  getGetTableCurrentMetricsMockHandler,
+  getGetTableMetricTrendsMockHandler,
   getGetTableMockHandler,
   getListCatalogTablesMockHandler,
   getListCatalogTablePropertiesMockHandler,
@@ -42,6 +44,8 @@ import {
   MAINTAINED_TABLES,
   NAMESPACES,
   ORDERS,
+  ORDERS_CURRENT_METRICS,
+  ORDERS_METRIC_TRENDS,
   ORDERS_PROPERTIES,
   PLATFORM_SETTINGS,
   POLICIES,
@@ -77,6 +81,17 @@ export function lakehouseHandlers() {
       priority: ((await request.json()) as { priority: string }).priority,
     })),
     getTriggerTableMaintenanceMockHandler({ accepted: true }),
+    getGetTableCurrentMetricsMockHandler(ORDERS_CURRENT_METRICS),
+    getGetTableMetricTrendsMockHandler(({ request }) => {
+      const hours = Number((new URL(request.url).searchParams.get("range") ?? "6h").replace("h", ""));
+      const start = Date.parse(ORDERS_METRIC_TRENDS.end) - hours * 3_600_000;
+      return {
+        ...ORDERS_METRIC_TRENDS,
+        time_range: `${hours}h`,
+        start: new Date(start).toISOString(),
+        points: ORDERS_METRIC_TRENDS.points.filter((point) => Date.parse(point.at) >= start),
+      };
+    }),
     getListTableCommitsMockHandler(({ request }) => {
       const query = new URL(request.url).searchParams;
       const since = query.get("since");

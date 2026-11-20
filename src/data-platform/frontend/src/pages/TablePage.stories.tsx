@@ -3,7 +3,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { getListCoveredCatalogsMockHandler } from "@/api/generated/discovery-rules/discovery-rules.msw";
 import { getGetTableApplicableMaintenancePolicyMockHandler } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
 import { getListTableMaintenanceRunsMockHandler } from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
-import { getGetTableMockHandler } from "@/api/generated/tables/tables.msw";
+import { getGetTableCurrentMetricsMockHandler, getGetTableMockHandler } from "@/api/generated/tables/tables.msw";
 import { getListTableReconciliationsMockHandler } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
 import { temporalWorkflowsUrl } from "@/lib/temporalWorkflowsUrl";
 import { apiError } from "@/stories/apiError";
@@ -25,6 +25,8 @@ import {
 } from "@/stories/storyData";
 
 const ORDERS = "/catalogs/iceberg/namespaces/retail/tables/orders";
+const METRIC_CARDS = ["Data files", "Total size", "Total rows", "Reducible files", "Snapshots", "Manifests"];
+const METRIC_SECTIONS = ["Files", "Size", "Rows", "Reducible files", "Manifests", "Snapshots"];
 
 const meta = {
   title: "Pages/Table",
@@ -47,6 +49,52 @@ export const Overview: Story = {
     const table = within(await canvas.findByRole("region", { name: "Table" }));
     await expect(await table.findByRole("link", { name: "Priority 10" })).toHaveAttribute("href", "/discovery-rules");
     await expect(await table.findByRole("combobox", { name: "Priority" })).toHaveTextContent("P3 · default");
+    for (const label of METRIC_CARDS) {
+      await expect(await canvas.findByRole("group", { name: label })).toBeVisible();
+    }
+    await expect(await within(canvas.getByRole("group", { name: "Data files" })).findByText("1,174")).toBeVisible();
+    await canvas.findByRole("region", { name: "Maintenance policy" });
+    await expect(canvas.getAllByRole("region").map((region) => region.querySelector("h2")?.textContent)).toEqual([
+      ...METRIC_SECTIONS,
+      "Table",
+      "Maintenance policy",
+    ]);
+  },
+};
+
+export const OverviewTrendsUnavailable: Story = {
+  beforeEach({ msw }) {
+    msw.use(apiError("get", "/v1/tables/:tableUuid/metrics", "Prometheus did not answer", 502));
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getAllByText("Trends unavailable: Prometheus did not answer")).toHaveLength(7));
+    await expect(await within(await canvas.findByRole("group", { name: "Data files" })).findByText("1,174")).toBeVisible();
+  },
+};
+
+export const OverviewNotReconciledYet: Story = {
+  beforeEach({ msw }) {
+    msw.use(getGetTableCurrentMetricsMockHandler({ observed_at: null, metrics: null }));
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText("Metrics appear after the table's next reconciliation.")).toBeVisible();
+    for (const label of METRIC_CARDS) {
+      await expect(canvas.getByRole("group", { name: label })).toHaveTextContent("—");
+    }
+  },
+};
+
+export const OverviewPhone: Story = {
+  globals: PHONE,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await within(await canvas.findByRole("group", { name: "Data files" })).findByText("1,174")).toBeVisible();
+    await waitFor(() =>
+      expect(canvasElement.querySelectorAll('svg.recharts-surface[tabindex="0"]')).toHaveLength(7),
+    );
+    await expectNoHorizontalPageScroll(canvasElement);
   },
 };
 

@@ -13,10 +13,13 @@ import type {
   ReconciliationOperationApiResponse,
   TableApiResponse,
   TableCommitsApiResponse,
+  TableCurrentMetricsApiResponse,
   TableDiscoveryRuleApiResponse,
   TableIdentifierApiResponse,
   TableMaintenanceRunApiResponse,
   TableMaintenanceRunAttemptApiResponse,
+  TableMetricTrendsApiResponse,
+  TableMetricValuesApiResponse,
   TableReconciliationApiResponse,
 } from "@/api/generated/model";
 import type { PolicyContent } from "@/lib/policyDraft";
@@ -840,4 +843,67 @@ export const PLATFORM_SETTINGS: PlatformSettingsApiResponse = {
         "How often discovery scans the catalogs for tables to manage."),
     ]),
   ],
+};
+
+const METRICS_END = Date.parse("2026-11-20T10:00:00Z");
+const METRICS_STEP_SECONDS = 180;
+const METRICS_STEPS = 120;
+const COMPACTED_AT_STEP = 80;
+
+// orders over six hours, one value every three minutes: files, deletes, reducible files and manifests
+// pile up until a compaction at step 80 folds them, while rows and size keep growing.
+function ordersMetricsAt(step: number): TableMetricValuesApiResponse {
+  const since = step - COMPACTED_AT_STEP;
+  const compacted = since >= 0;
+  const dataFiles = compacted ? 1150 + Math.round(since * 0.6) : 1100 + step * 4;
+  const manifests = compacted ? 6 + Math.floor(since / 14) : 8 + Math.floor(step / 6);
+  return {
+    data_files: dataFiles,
+    position_delete_files: compacted ? Math.floor(since / 10) : 10 + Math.floor(step / 4),
+    equality_delete_files: compacted ? 0 : 2 + Math.floor(step / 30),
+    deletion_vectors: compacted ? 0 : Math.floor(step / 20),
+    data_records: 48_200_000 + step * 90_000,
+    position_delete_records: compacted ? since * 12 : 400 + step * 35,
+    equality_delete_records: compacted ? 0 : 20 + step * 3,
+    data_size_bytes: 3_435_973_837 + step * 7_340_032,
+    reducible_files: compacted ? 12 + Math.floor(since / 4) : 180 + step * 3,
+    snapshots: compacted ? 14 + Math.floor(since / 8) : 20 + Math.floor(step / 4),
+    manifests,
+    manifests_size_bytes: manifests * 49_152,
+    manifest_added_entries: 4,
+    manifest_existing_entries: dataFiles,
+    manifest_deleted_entries: 0,
+  };
+}
+
+function metricsAt(step: number): string {
+  return new Date(METRICS_END - (METRICS_STEPS - step) * METRICS_STEP_SECONDS * 1000).toISOString();
+}
+
+export const ORDERS_CURRENT_METRICS: TableCurrentMetricsApiResponse = {
+  observed_at: "2026-11-20T09:58:00Z",
+  metrics: ordersMetricsAt(METRICS_STEPS),
+};
+
+// The last six hours as the API sends them: Prometheus started a little after the window began, so the
+// first points are gaps, and it missed one scrape at step 50.
+export const ORDERS_METRIC_TRENDS: TableMetricTrendsApiResponse = {
+  time_range: "6h",
+  start: metricsAt(0),
+  end: metricsAt(METRICS_STEPS),
+  step_seconds: METRICS_STEP_SECONDS,
+  points: Array.from({ length: METRICS_STEPS + 1 }, (_, step) => {
+    const metrics = ordersMetricsAt(step);
+    const entries = metrics.manifest_added_entries + metrics.manifest_existing_entries + metrics.manifest_deleted_entries;
+    const values = {
+      ...metrics,
+      manifest_average_size_bytes: metrics.manifests_size_bytes / metrics.manifests,
+      manifest_average_entries: entries / metrics.manifests,
+    };
+    const gap = step < 6 || step === 50;
+    return {
+      at: metricsAt(step),
+      values: Object.fromEntries(Object.entries(values).map(([key, value]) => [key, gap ? null : value])),
+    };
+  }),
 };
