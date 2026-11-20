@@ -8,12 +8,14 @@ from context.table_maintenance.application.domain.model.shared import (
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
+    TABLE_METRIC_COUNT_FIELDS,
     AppliedPolicyRef,
     AttentionMark,
     OperationState,
     RecordedAttempt,
     Table,
     TableId,
+    TableMetrics,
     TableName,
     TableStatus,
 )
@@ -63,11 +65,15 @@ from context.table_maintenance.application.port.outbound.table.send_table_change
 from context.table_maintenance.application.port.outbound.table.send_table_change.input import (
     SendTableChangeGatewayInput,
 )
+from context.table_maintenance.application.port.outbound.table.table_metrics_store import (
+    TableMetricsStore,
+)
 from context.table_maintenance.application.port.outbound.table.tables_repo import (
     TablesRepo,
 )
 
 __all__ = [
+    "TABLE_METRIC_COUNT_FIELDS",
     "AppliedPolicyRef",
     "AttentionMark",
     "ComputeSize",
@@ -92,6 +98,8 @@ __all__ = [
     "TableMetadata",
     "TableMetadataObservation",
     "TableMetadataRef",
+    "TableMetrics",
+    "TableMetricsStore",
     "TableName",
     "TablePriority",
     "TableStatus",

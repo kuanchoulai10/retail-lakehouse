@@ -68,3 +68,10 @@ def test_create_schema_adds_columns_an_older_release_did_not_create(tmp_path: Pa
         connection.execute(text("ALTER TABLE table_maintenance_runs DROP COLUMN priority"))
     create_schema(engine)
     assert "priority" in {c["name"] for c in inspect(engine).get_columns("table_maintenance_runs")}
+
+
+def test_create_schema_creates_the_table_metrics_table(tmp_path: Path) -> None:
+    """The newest metrics of each table are kept in the table_metrics table."""
+    engine = create_engine(f"sqlite:///{tmp_path / 'db.sqlite'}")
+    create_schema(engine)
+    assert "table_metrics" in inspect(engine).get_table_names()
