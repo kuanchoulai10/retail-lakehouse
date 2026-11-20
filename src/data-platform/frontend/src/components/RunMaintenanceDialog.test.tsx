@@ -2,14 +2,36 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import type { TableMaintenanceRunApiResponse } from "../api/generated/model";
 import { bodyOf, stubCatalogApi, type StubbedCall } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
 import { RunMaintenanceDialog } from "./RunMaintenanceDialog";
 
 const PATH = "/v1/tables/uuid-orders/maintenance";
 
-function renderDialog(tablePriority: string): StubbedCall[] {
-  const calls = stubCatalogApi({ [`POST ${PATH}`]: () => jsonResponse({ accepted: true }, 202) });
+const RUNS_PATH = "/v1/tables/uuid-orders/table-maintenance-runs?limit=1";
+const IN_FLIGHT_NOTE =
+  "A maintenance run is already in flight. Running now does not start another run: it raises that run's priority if you pick a higher one, and changes nothing otherwise.";
+
+function runWithStatus(status: string): TableMaintenanceRunApiResponse {
+  return {
+    run_id: "mr-1",
+    table_uuid: "uuid-orders",
+    execution_ref: "table-maintenance:table-uuid=uuid-orders",
+    trigger: "manual",
+    priority: "P3",
+    status,
+    created_at: "2026-11-20T10:00:00Z",
+    finished_at: null,
+    operations: [],
+  };
+}
+
+function renderDialog(tablePriority: string, newestRun: TableMaintenanceRunApiResponse | null = null): StubbedCall[] {
+  const calls = stubCatalogApi({
+    [`POST ${PATH}`]: () => jsonResponse({ accepted: true }, 202),
+    [`GET ${RUNS_PATH}`]: () => jsonResponse(newestRun === null ? [] : [newestRun]),
+  });
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <RunMaintenanceDialog tableUuid="uuid-orders" tablePriority={tablePriority} onClose={() => {}} />
@@ -22,6 +44,39 @@ describe("RunMaintenanceDialog", { timeout: 15_000 }, () => {
   it("defaults the priority to the table's own", () => {
     renderDialog("P1");
     expect(screen.getByRole("combobox", { name: "Priority" })).toHaveTextContent("P1");
+  });
+
+  it.each(["pending", "queued", "running"])("says a %s newest run is already in flight", async (status) => {
+    renderDialog("P3", runWithStatus(status));
+    expect(await screen.findByText(IN_FLIGHT_NOTE)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run" })).toBeEnabled();
+  });
+
+  it.each(["succeeded", "failed"])("says nothing when the newest run %s", async (status) => {
+    const calls = renderDialog("P3", runWithStatus(status));
+    await waitFor(() => expect(calls.some((call) => call.path === RUNS_PATH)).toBe(true));
+    await waitFor(() => expect(screen.queryByText(IN_FLIGHT_NOTE)).not.toBeInTheDocument());
+  });
+
+  it("asks for the table's newest run only", async () => {
+    const calls = renderDialog("P3", runWithStatus("queued"));
+    await screen.findByText(IN_FLIGHT_NOTE);
+    expect(calls.filter((call) => call.method === "GET").map((call) => call.path)).toEqual([RUNS_PATH]);
+  });
+
+  it("keeps the in-flight note out of the tab order: the operations and Run stay reachable", async () => {
+    const user = userEvent.setup();
+    renderDialog("P3", runWithStatus("queued"));
+    const note = await screen.findByText(IN_FLIGHT_NOTE);
+    const visited: Element[] = [];
+    for (let step = 0; step < 12 && document.activeElement !== screen.getByRole("button", { name: "Run" }); step++) {
+      await user.tab();
+      visited.push(document.activeElement!);
+    }
+    expect(visited).toContain(screen.getByRole("checkbox", { name: "rewrite_data_files" }));
+    expect(visited).toContain(screen.getByRole("checkbox", { name: "remove_orphan_files" }));
+    expect(visited.at(-1)).toBe(screen.getByRole("button", { name: "Run" }));
+    expect(visited.some((element) => note.contains(element))).toBe(false);
   });
 
   it("sends no priority when the user does not change the table's", async () => {

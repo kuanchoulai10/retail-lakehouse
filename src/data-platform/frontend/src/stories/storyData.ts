@@ -20,6 +20,7 @@ import type {
   TableDiscoveryRuleApiResponse,
   TableIdentifierApiResponse,
   TableMaintenanceRunApiResponse,
+  TableMaintenanceRunAttemptApiResponse,
   TableReconciliationApiResponse,
 } from "@/api/generated/model";
 import type { PolicyContent } from "@/lib/policyDraft";
@@ -350,7 +351,7 @@ export const RUNS: TableMaintenanceRunApiResponse[] = [
   {
     run_id: SCHEDULED_RUN_ID,
     table_uuid: ORDERS_UUID,
-    execution_ref: `table-maintenance:table=${ORDERS_UUID}:run=${SCHEDULED_RUN_ID}`,
+    execution_ref: `table-maintenance:table-uuid=${ORDERS_UUID}`,
     trigger: "scheduled",
     priority: "P3",
     status: "succeeded",
@@ -391,7 +392,7 @@ export const RUNS: TableMaintenanceRunApiResponse[] = [
 export const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
   run_id: ESCALATED_RUN_ID,
   table_uuid: ORDERS_UUID,
-  execution_ref: `table-maintenance:table=${ORDERS_UUID}:run=${ESCALATED_RUN_ID}`,
+  execution_ref: `table-maintenance:table-uuid=${ORDERS_UUID}`,
   trigger: "manual",
   priority: "P3",
   status: "succeeded",
@@ -439,6 +440,96 @@ export const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
     },
   ],
 };
+
+export const IN_FLIGHT_RUN_ID = "mr-01m7bk4q80f3dt6ywe2m5c1h9a";
+export const QUEUE_TIMEOUT_RUN_ID = "mr-01m7bk9d30ff8e5hn7a2xk4b6c";
+const MINUTE_MS = 60_000;
+const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * MINUTE_MS).toISOString();
+
+function unfinishedAttempt(overrides: Partial<TableMaintenanceRunAttemptApiResponse>): TableMaintenanceRunAttemptApiResponse {
+  return {
+    attempt: 1,
+    size: "S",
+    status: "running",
+    started_at: minutesAgo(25),
+    started_running_at: minutesAgo(18),
+    finished_at: null,
+    failure_class: null,
+    error: null,
+    event_log_finished: null,
+    next_step: null,
+    next_size: null,
+    ...overrides,
+  };
+}
+
+function runOfAttempts(
+  runId: string,
+  status: string,
+  attempts: TableMaintenanceRunAttemptApiResponse[],
+  finishedAt: string | null,
+): TableMaintenanceRunApiResponse {
+  return {
+    run_id: runId,
+    table_uuid: ORDERS_UUID,
+    execution_ref: `table-maintenance:table-uuid=${ORDERS_UUID}`,
+    trigger: "manual",
+    priority: "P1",
+    status,
+    created_at: attempts[0]!.started_at,
+    finished_at: finishedAt,
+    operations: [
+      {
+        operation: "rewrite_data_files",
+        status,
+        attempts: attempts.length,
+        started_at: attempts[0]!.started_at,
+        finished_at: finishedAt,
+        job_name: "tm-orders-rewrite-live",
+        metrics: {},
+        error: null,
+        expected_files: null,
+        attempt_history: attempts,
+      },
+    ],
+  };
+}
+
+const OUT_OF_MEMORY_AT_S = unfinishedAttempt({
+  attempt: 1,
+  status: "failed",
+  started_at: minutesAgo(40),
+  started_running_at: minutesAgo(38),
+  finished_at: minutesAgo(33),
+  failure_class: "oom",
+  event_log_finished: false,
+  next_step: "retry_larger",
+  next_size: "M",
+});
+
+// A run in flight: the first attempt ran out of memory at S, the second, at M, has been running for 18 minutes.
+export const IN_FLIGHT_RUN = runOfAttempts(IN_FLIGHT_RUN_ID, "running", [
+  OUT_OF_MEMORY_AT_S,
+  unfinishedAttempt({ attempt: 2, size: "M" }),
+], null);
+
+// The same run while the larger attempt still waits in its Volcano queue.
+export const QUEUED_RUN = runOfAttempts(IN_FLIGHT_RUN_ID, "running", [
+  OUT_OF_MEMORY_AT_S,
+  unfinishedAttempt({ attempt: 2, size: "M", status: "queued", started_at: minutesAgo(4), started_running_at: null }),
+], null);
+
+// An attempt that waited the whole queue limit and never ran.
+export const QUEUE_TIMEOUT_RUN = runOfAttempts(QUEUE_TIMEOUT_RUN_ID, "failed", [
+  unfinishedAttempt({
+    status: "failed",
+    started_at: minutesAgo(24 * 60 + 5),
+    started_running_at: null,
+    finished_at: minutesAgo(5),
+    failure_class: "queue_timeout",
+    next_step: "not_retried",
+  }),
+], minutesAgo(5));
 
 export const NEWEST_ROUND_ID = "cr-01m79a4580ekrvn7jjtkvbg2gx";
 const OLDER_ROUND_ID = "cr-01m79a0g20fyg9rjvt5yegdse3";

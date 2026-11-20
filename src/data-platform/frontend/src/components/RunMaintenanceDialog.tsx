@@ -1,7 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Banner, Button, CheckBox, Divider, ModalDialog, Select } from "@retail-lakehouse/design-system";
 import { useState } from "react";
-import { getListTableMaintenanceRunsQueryKey } from "@/api/generated/table-maintenance-runs/table-maintenance-runs";
+import {
+  getListTableMaintenanceRunsQueryKey,
+  useListTableMaintenanceRuns,
+} from "@/api/generated/table-maintenance-runs/table-maintenance-runs";
 import { triggerTableMaintenance } from "@/api/generated/tables/tables";
 import type { TriggerTableMaintenanceApiRequestPriority } from "@/api/generated/model";
 import { errorMessage } from "@/format";
@@ -13,6 +16,9 @@ export const ALL_OPERATIONS = [
   "expire_snapshots",
   "remove_orphan_files",
 ];
+
+// A run in one of these states still has work to do, so a manual run joins it instead of starting another.
+const IN_FLIGHT_STATUSES = ["pending", "queued", "running"];
 
 interface Props {
   tableUuid: string;
@@ -33,6 +39,8 @@ export function RunMaintenanceDialog({
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<string[]>(initialOperations);
   const [priority, setPriority] = useState(tablePriority);
+  const newestRun = useListTableMaintenanceRuns(tableUuid, { limit: 1 });
+  const inFlight = newestRun.data?.some((run) => IN_FLIGHT_STATUSES.includes(run.status)) ?? false;
   const run = useMutation({
     mutationFn: () =>
       triggerTableMaintenance(tableUuid, {
@@ -75,6 +83,12 @@ export function RunMaintenanceDialog({
       }
     >
       <div className="flex flex-col gap-2">
+        {inFlight && (
+          <Banner
+            type="information"
+            title="A maintenance run is already in flight. Running now does not start another run: it raises that run's priority if you pick a higher one, and changes nothing otherwise."
+          />
+        )}
         {ALL_OPERATIONS.map((operation) => (
           <CheckBox
             key={operation}

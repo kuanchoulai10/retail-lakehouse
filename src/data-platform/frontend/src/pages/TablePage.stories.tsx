@@ -16,9 +16,14 @@ import { PHONE } from "@/stories/phone";
 import {
   ESCALATED_RUN,
   ESCALATED_RUN_ID,
+  IN_FLIGHT_RUN,
+  IN_FLIGHT_RUN_ID,
   MAINTAINED_ORDERS,
   NEWEST_ROUND_ID,
   POLICIES,
+  QUEUE_TIMEOUT_RUN,
+  QUEUE_TIMEOUT_RUN_ID,
+  QUEUED_RUN,
   SCHEDULED_RUN_ID,
 } from "@/stories/storyData";
 
@@ -124,6 +129,59 @@ export const MaintenanceAttemptsEscalatedPhone: Story = {
   },
   play: async ({ canvasElement }) => {
     await openEscalatedRun(canvasElement);
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
+
+async function openRun(canvasElement: HTMLElement, runId: string) {
+  const canvas = within(canvasElement);
+  await userEvent.click(await canvas.findByRole("button", { name: `Expand run ${runId}` }));
+  return within(canvas.getByRole("table", { name: "Attempts of rewrite_data_files" }));
+}
+
+export const MaintenanceAttemptRunning: Story = {
+  args: { route: `${ORDERS}/maintenance` },
+  beforeEach({ msw }) {
+    msw.use(getListTableMaintenanceRunsMockHandler([IN_FLIGHT_RUN]));
+  },
+  play: async ({ canvasElement }) => {
+    const attempts = await openRun(canvasElement, IN_FLIGHT_RUN_ID);
+    await expect(attempts.getByText(/^18m \d+s \(running\)$/)).toBeVisible();
+    await expect(attempts.getByText("Out of memory")).toBeVisible();
+  },
+};
+
+export const MaintenanceAttemptQueued: Story = {
+  args: { route: `${ORDERS}/maintenance` },
+  beforeEach({ msw }) {
+    msw.use(getListTableMaintenanceRunsMockHandler([QUEUED_RUN]));
+  },
+  play: async ({ canvasElement }) => {
+    const attempts = await openRun(canvasElement, IN_FLIGHT_RUN_ID);
+    await expect(attempts.getByText(/^4m \d+s \(waiting\)$/)).toBeVisible();
+  },
+};
+
+export const MaintenanceQueueTimeout: Story = {
+  args: { route: `${ORDERS}/maintenance` },
+  beforeEach({ msw }) {
+    msw.use(getListTableMaintenanceRunsMockHandler([QUEUE_TIMEOUT_RUN]));
+  },
+  play: async ({ canvasElement }) => {
+    const attempts = await openRun(canvasElement, QUEUE_TIMEOUT_RUN_ID);
+    await expect(attempts.getByText("Waited too long in the queue")).toBeVisible();
+    await expect(attempts.getByText("1440m 0s")).toBeVisible();
+  },
+};
+
+export const MaintenanceQueuedPhone: Story = {
+  args: { route: `${ORDERS}/maintenance` },
+  globals: PHONE,
+  beforeEach({ msw }) {
+    msw.use(getListTableMaintenanceRunsMockHandler([QUEUED_RUN]));
+  },
+  play: async ({ canvasElement }) => {
+    await openRun(canvasElement, IN_FLIGHT_RUN_ID);
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };

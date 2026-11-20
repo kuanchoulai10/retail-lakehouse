@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getListTableMaintenanceRunsQueryKey } from "../api/generated/table-maintenance-runs/table-maintenance-runs";
 import { getListTableReconciliationsQueryKey } from "../api/generated/table-reconciliations/table-reconciliations";
 import type { TableApiResponse } from "../api/generated/model";
-import { bodyOf, catalogTableFixture, stubCatalogApi, type StubbedCall } from "../test/catalogApiStub";
+import { bodyOf, callsTo, catalogTableFixture, stubCatalogApi, type StubbedCall } from "../test/catalogApiStub";
 import { jsonResponse, tableFixture } from "../test/fixtures";
 import { TableHeader } from "./TableHeader";
 
@@ -167,7 +167,7 @@ describe("TableHeader", () => {
     expect(screen.getByRole("dialog", { name: "Run maintenance" })).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(calls).toEqual([]);
+    expect(calls.filter((call) => call.method === "POST")).toEqual([]);
   });
 
   it("gives the disabled phone overflow item the same reason as the button", async () => {
@@ -191,7 +191,7 @@ describe("TableHeader", () => {
     expect(screen.getByText("Runs on the whole table, ignoring thresholds")).toBeInTheDocument();
     await user.click(screen.getByLabelText("expire_snapshots"));
     await user.click(screen.getByRole("button", { name: "Run" }));
-    await vi.waitFor(() => expect(calls[0]?.path).toBe("/v1/tables/uuid-orders/maintenance"));
+    await vi.waitFor(() => expect(callsTo(calls, "POST", "/v1/tables/uuid-orders/maintenance")).toHaveLength(1));
     expect(bodyOf(calls, "POST", "/v1/tables/uuid-orders/maintenance")).toEqual({
       operations: ["rewrite_data_files", "rewrite_manifests", "remove_orphan_files"],
     });

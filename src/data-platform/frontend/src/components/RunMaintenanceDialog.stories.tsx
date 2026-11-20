@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
+import { getListTableMaintenanceRunsMockHandler } from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
-import { MAINTAINED_ORDERS } from "@/stories/storyData";
+import { MAINTAINED_ORDERS, QUEUED_RUN } from "@/stories/storyData";
 import { RunMaintenanceDialog } from "./RunMaintenanceDialog";
 
 const meta = {
@@ -39,5 +40,16 @@ export const PickPriority: Story = {
     await waitFor(() => expect(within(dialog).getByRole("combobox", { name: "Priority" })).toHaveTextContent("P0 · urgent"));
     await userEvent.click(within(dialog).getByRole("button", { name: "Run" }));
     await waitFor(() => expect(args.onClose).toHaveBeenCalled());
+  },
+};
+
+export const RunInFlight: Story = {
+  beforeEach({ msw }) {
+    msw.use(getListTableMaintenanceRunsMockHandler([QUEUED_RUN]));
+  },
+  play: async () => {
+    const dialog = await screen.findByRole("dialog", { name: "Run maintenance" });
+    await expect(await within(dialog).findByText(/^A maintenance run is already in flight\./)).toBeVisible();
+    await expect(within(dialog).getByRole("button", { name: "Run" })).toBeEnabled();
   },
 };

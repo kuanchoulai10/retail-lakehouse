@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useNavigate } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
-import type { TableMaintenanceRunApiResponse } from "../../api/generated/model";
+import type { TableMaintenanceRunApiResponse, TableMaintenanceRunAttemptApiResponse } from "../../api/generated/model";
 import { stubCatalogApi, type StubbedCall } from "../../test/catalogApiStub";
 import { jsonResponse } from "../../test/fixtures";
 import { MaintenanceTab } from "./MaintenanceTab";
@@ -11,7 +11,7 @@ import { MaintenanceTab } from "./MaintenanceTab";
 const RUN: TableMaintenanceRunApiResponse = {
   run_id: "run-1",
   table_uuid: "uuid-orders",
-  execution_ref: "table-maintenance:table=uuid-orders:run=run-1",
+  execution_ref: "table-maintenance:table-uuid=uuid-orders",
   trigger: "manual",
   priority: "P3",
   status: "failed",
@@ -74,7 +74,7 @@ const RUN: TableMaintenanceRunApiResponse = {
 const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
   ...RUN,
   run_id: "run-3",
-  execution_ref: "table-maintenance:table=uuid-orders:run=run-3",
+  execution_ref: "table-maintenance:table-uuid=uuid-orders",
   trigger: "scheduled",
   status: "succeeded",
   operations: [
@@ -94,7 +94,7 @@ const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
           size: "S",
           status: "failed",
           started_at: "2026-10-31T10:00:00Z",
-          started_running_at: "2026-10-31T10:00:00Z",
+          started_running_at: "2026-10-31T10:00:20Z",
           finished_at: "2026-10-31T10:02:00Z",
           failure_class: "oom",
           error: "java.lang.OutOfMemoryError: Java heap space",
@@ -107,7 +107,7 @@ const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
           size: "M",
           status: "succeeded",
           started_at: "2026-10-31T10:03:00Z",
-          started_running_at: "2026-10-31T10:03:00Z",
+          started_running_at: "2026-10-31T10:03:05Z",
           finished_at: "2026-10-31T10:09:00Z",
           failure_class: null,
           error: null,
@@ -123,7 +123,7 @@ const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
 const LEGACY_RUN: TableMaintenanceRunApiResponse = {
   ...RUN,
   run_id: "run-4",
-  execution_ref: "table-maintenance:table=uuid-orders:run=run-4",
+  execution_ref: "table-maintenance:table-uuid=uuid-orders",
   trigger: "event",
   operations: [{ ...RUN.operations[1]!, attempts: 2, error: "spark job failed", attempt_history: [] }],
 };
@@ -131,7 +131,7 @@ const LEGACY_RUN: TableMaintenanceRunApiResponse = {
 const OLDER_RUN: TableMaintenanceRunApiResponse = {
   ...RUN,
   run_id: "run-2",
-  execution_ref: "table-maintenance:table=uuid-orders:run=run-2",
+  execution_ref: "table-maintenance:table-uuid=uuid-orders",
   trigger: "scheduled",
   status: "succeeded",
   operations: [],
@@ -179,7 +179,7 @@ describe("MaintenanceTab", () => {
     const user = userEvent.setup();
     renderTab();
     await user.click(await screen.findByText("manual"));
-    expect(screen.getByText("table-maintenance:table=uuid-orders:run=run-1")).toBeInTheDocument();
+    expect(screen.getByText("table-maintenance:table-uuid=uuid-orders")).toBeInTheDocument();
     expect(screen.getByText("rewrite_data_files")).toBeInTheDocument();
     expect(screen.getByText("1 attempt")).toBeInTheDocument();
     expect(screen.getByText("rewritten_data_files_count: 12")).toBeInTheDocument();
@@ -197,18 +197,72 @@ describe("MaintenanceTab", () => {
     const attempts = screen.getByRole("table", { name: "Attempts of rewrite_data_files" });
     const rows = within(attempts).getAllByRole("row").slice(1);
     expect(rows.map((row) => within(row).getAllByRole("cell").map((cell) => cell.textContent))).toEqual([
-      ["1", "S", "Failed", "Out of memory", "Did not finish", "Retrying at size M"],
-      ["2", "M", "Succeeded", "", "Finished", "Done"],
+      ["1", "S", "Failed", "20s", "1m 40s", "Out of memory", "Did not finish", "Retrying at size M"],
+      ["2", "M", "Succeeded", "5s", "5m 55s", "", "Finished", "Done"],
     ]);
     expect(within(rows[0]!).getByText("Failed")).toHaveClass("bg-negative-container");
     expect(within(attempts).getAllByRole("columnheader").map((h) => h.textContent)).toEqual([
       "Attempt",
       "Size",
       "Result",
+      "Queued",
+      "Ran",
       "Reason",
       "Event log",
       "Next",
     ]);
+  });
+
+  it("shows a queued attempt waiting, a running one counting and a queue timeout never running", async () => {
+    const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+    const attemptOf = (overrides: Partial<TableMaintenanceRunAttemptApiResponse>) => ({
+      ...ESCALATED_RUN.operations[0]!.attempt_history[0]!,
+      failure_class: null,
+      error: null,
+      event_log_finished: null,
+      next_step: null,
+      next_size: null,
+      finished_at: null,
+      ...overrides,
+    });
+    const inFlight: TableMaintenanceRunApiResponse = {
+      ...ESCALATED_RUN,
+      status: "running",
+      operations: [
+        {
+          ...ESCALATED_RUN.operations[0]!,
+          status: "running",
+          attempt_history: [
+            attemptOf({
+              attempt: 1,
+              status: "failed",
+              started_at: "2026-10-30T10:00:00Z",
+              started_running_at: null,
+              finished_at: "2026-10-31T10:00:00Z",
+              failure_class: "queue_timeout",
+              next_step: "not_retried",
+            }),
+            attemptOf({ attempt: 2, status: "running", started_at: minutesAgo(12), started_running_at: minutesAgo(7) }),
+            attemptOf({ attempt: 3, status: "queued", started_at: minutesAgo(5), started_running_at: null }),
+          ],
+        },
+      ],
+    };
+    stubCatalogApi({
+      "GET /v1/tables/uuid-orders/table-maintenance-runs": () => jsonResponse([inFlight]),
+    });
+    const user = userEvent.setup();
+    renderTab();
+    await user.click(await screen.findByText("scheduled"));
+    const attempts = screen.getByRole("table", { name: "Attempts of rewrite_data_files" });
+    const [timedOut, running, queued] = within(attempts)
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => within(row).getAllByRole("cell").map((cell) => cell.textContent));
+    expect(timedOut?.slice(2, 6)).toEqual(["Failed", "1440m 0s", "—", "Waited too long in the queue"]);
+    expect(running?.slice(2, 5)).toEqual(["Running", "5m 0s", expect.stringMatching(/^7m \ds \(running\)$/)]);
+    expect(queued?.slice(2, 5)).toEqual(["Queued", expect.stringMatching(/^5m \ds \(waiting\)$/), "—"]);
+    expect(within(attempts).getByText("Queued", { selector: "span" })).toHaveClass("bg-surface-container-dim");
   });
 
   it("keeps the attempt count for runs from before attempt history", async () => {
@@ -248,7 +302,7 @@ describe("MaintenanceTab", () => {
     renderTab("/?run=run-2");
     const opened = await screen.findByRole("button", { name: "Collapse run run-2" });
     expect(opened).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText("table-maintenance:table=uuid-orders:run=run-2")).toBeInTheDocument();
+    expect(screen.getByText("table-maintenance:table-uuid=uuid-orders")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Expand run run-1" })).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByText("This run is no longer available")).not.toBeInTheDocument();
   });

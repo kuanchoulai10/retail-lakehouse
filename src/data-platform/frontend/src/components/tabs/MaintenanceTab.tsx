@@ -1,4 +1,5 @@
 import { Banner, createDataTableColumnHelper, DataTable, Panel, TextLink } from "@retail-lakehouse/design-system";
+import { useMemo } from "react";
 import { useSearchParams } from "react-router";
 import type {
   TableMaintenanceRunApiResponse,
@@ -9,48 +10,65 @@ import { useListTableMaintenanceRuns } from "@/api/generated/table-maintenance-r
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { RunStatusBadge } from "@/components/RunStatusBadge";
 import { errorMessage, formatDuration, formatTimestamp } from "@/format";
-import { eventLogText, failureClassText, nextStepText } from "@/lib/attemptText";
+import { eventLogText, failureClassText, nextStepText, queueWaitText, runTimeText } from "@/lib/attemptText";
 import { temporalWorkflowsUrl } from "@/lib/temporalWorkflowsUrl";
 
 const attemptColumn = createDataTableColumnHelper<TableMaintenanceRunAttemptApiResponse>();
 
-const attemptColumns = attemptColumn.columns([
-  attemptColumn.accessor("attempt", {
-    header: "Attempt",
-    enableSorting: false,
-    cell: (info) => <span className="tabular-nums">{info.getValue()}</span>,
-  }),
-  attemptColumn.accessor((attempt) => attempt.size ?? "", {
-    id: "size",
-    header: "Size",
-    enableSorting: false,
-    cell: (info) => <span className="font-mono">{info.getValue()}</span>,
-  }),
-  attemptColumn.accessor("status", {
-    header: "Result",
-    enableSorting: false,
-    cell: (info) => <RunStatusBadge status={info.getValue()} />,
-  }),
-  attemptColumn.accessor((attempt) => failureClassText(attempt.failure_class), {
-    id: "reason",
-    header: "Reason",
-    enableSorting: false,
-  }),
-  attemptColumn.accessor((attempt) => eventLogText(attempt.event_log_finished), {
-    id: "event_log",
-    header: "Event log",
-    enableSorting: false,
-  }),
-  attemptColumn.accessor((attempt) => nextStepText(attempt.next_step, attempt.next_size), {
-    id: "next",
-    header: "Next",
-    enableSorting: false,
-  }),
-]);
+// The times of a queued or running attempt count up to `now`, so the columns are made for one.
+function attemptColumnsAt(now: Date) {
+  return attemptColumn.columns([
+    attemptColumn.accessor("attempt", {
+      header: "Attempt",
+      enableSorting: false,
+      cell: (info) => <span className="tabular-nums">{info.getValue()}</span>,
+    }),
+    attemptColumn.accessor((attempt) => attempt.size ?? "", {
+      id: "size",
+      header: "Size",
+      enableSorting: false,
+      cell: (info) => <span className="font-mono">{info.getValue()}</span>,
+    }),
+    attemptColumn.accessor("status", {
+      header: "Result",
+      enableSorting: false,
+      cell: (info) => <RunStatusBadge status={info.getValue()} />,
+    }),
+    attemptColumn.accessor((attempt) => queueWaitText(attempt, now), {
+      id: "queued",
+      header: "Queued",
+      enableSorting: false,
+      cell: (info) => <span className="tabular-nums">{info.getValue()}</span>,
+    }),
+    attemptColumn.accessor((attempt) => runTimeText(attempt, now), {
+      id: "ran",
+      header: "Ran",
+      enableSorting: false,
+      cell: (info) => <span className="tabular-nums">{info.getValue()}</span>,
+    }),
+    attemptColumn.accessor((attempt) => failureClassText(attempt.failure_class), {
+      id: "reason",
+      header: "Reason",
+      enableSorting: false,
+    }),
+    attemptColumn.accessor((attempt) => eventLogText(attempt.event_log_finished), {
+      id: "event_log",
+      header: "Event log",
+      enableSorting: false,
+    }),
+    attemptColumn.accessor((attempt) => nextStepText(attempt.next_step, attempt.next_size), {
+      id: "next",
+      header: "Next",
+      enableSorting: false,
+    }),
+  ]);
+}
 
-// Each attempt of the operation: the size it ran at, why it failed, whether its Spark event log
-// finished and what the platform did next. A run from before attempt history keeps only the count.
-function OperationDetail({ operation }: { operation: TableMaintenanceRunOperationApiResponse }) {
+// Each attempt of the operation: the size it ran at, how long it queued and ran, why it failed,
+// whether its Spark event log finished and what the platform did next. A run from before attempt
+// history keeps only the count.
+function OperationDetail({ operation, now }: { operation: TableMaintenanceRunOperationApiResponse; now: Date }) {
+  const attemptColumns = useMemo(() => attemptColumnsAt(now), [now]);
   const attempts = operation.attempts;
   const metrics = Object.entries(operation.metrics);
   const error = operation.error;
@@ -81,7 +99,7 @@ function OperationDetail({ operation }: { operation: TableMaintenanceRunOperatio
   );
 }
 
-function RunDetail({ run }: { run: TableMaintenanceRunApiResponse }) {
+function RunDetail({ run, now }: { run: TableMaintenanceRunApiResponse; now: Date }) {
   return (
     <>
       <p className="type-body-small mb-3">
@@ -89,7 +107,7 @@ function RunDetail({ run }: { run: TableMaintenanceRunApiResponse }) {
       </p>
       <ul className="flex flex-col gap-3">
         {run.operations.map((op) => (
-          <OperationDetail key={op.operation} operation={op} />
+          <OperationDetail key={op.operation} operation={op} now={now} />
         ))}
       </ul>
     </>
@@ -128,6 +146,8 @@ export function MaintenanceTab({ tableUuid }: { tableUuid: string }) {
   const runs = useListTableMaintenanceRuns(tableUuid);
   const [searchParams] = useSearchParams();
   const linkedRunId = searchParams.get("run");
+  // A queued or running attempt counts up to the moment the runs were read, not to a clock that ticks.
+  const now = useMemo(() => new Date(runs.dataUpdatedAt), [runs.dataUpdatedAt]);
 
   if (runs.isPending) return <PanelSkeleton label="Loading runs…" />;
   if (runs.isError) {
@@ -152,7 +172,7 @@ export function MaintenanceTab({ tableUuid }: { tableUuid: string }) {
         getRowId={(run) => run.run_id}
         getRowLabel={(run) => `run ${run.run_id}`}
         {...(linkedRunId === null ? {} : { initialExpandedRowIds: [linkedRunId] })}
-        renderDetail={(run) => <RunDetail run={run} />}
+        renderDetail={(run) => <RunDetail run={run} now={now} />}
         emptyState="No maintenance runs yet."
       />
     </Panel>
