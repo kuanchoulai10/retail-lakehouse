@@ -26,6 +26,9 @@ from context.table_maintenance.application.service.table.last_commit_of import (
 from context.table_maintenance.application.service.table.list_table_commits import (
     ListTableCommitsService,
 )
+from context.table_maintenance.application.service.table.list_table_metrics import (
+    ListTableMetricsService,
+)
 from context.table_maintenance.application.service.table.list_tables import (
     ListTablesService,
 )
@@ -78,6 +81,7 @@ __all__ = [
     "GetTableHealthService",
     "GetTableStorageService",
     "ListTableCommitsService",
+    "ListTableMetricsService",
     "ListTablesService",
     "PlanTableMaintenanceService",
     "ProcessTableHintService",

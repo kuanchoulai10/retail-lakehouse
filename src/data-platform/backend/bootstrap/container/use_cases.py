@@ -11,6 +11,7 @@ if TYPE_CHECKING:
         GetTableStorageUseCase,
         GetTableUseCase,
         ListTableCommitsUseCase,
+        ListTableMetricsUseCase,
         ListTablesUseCase,
         PlanTableMaintenanceUseCase,
         ProcessTableHintUseCase,
@@ -81,6 +82,7 @@ class UseCases:
     get_table_health: GetTableHealthUseCase
     get_table_storage: GetTableStorageUseCase
     list_table_commits: ListTableCommitsUseCase
+    list_table_metrics: ListTableMetricsUseCase
     list_tables: ListTablesUseCase
     set_table_priority: SetTablePriorityUseCase
     trigger_table_maintenance: TriggerTableMaintenanceUseCase

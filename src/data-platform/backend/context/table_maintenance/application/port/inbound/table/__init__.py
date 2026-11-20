@@ -38,6 +38,15 @@ from context.table_maintenance.application.port.inbound.table.list_table_commits
 from context.table_maintenance.application.port.inbound.table.list_table_commits.use_case import (
     ListTableCommitsUseCase,
 )
+from context.table_maintenance.application.port.inbound.table.list_table_metrics.input import (
+    ListTableMetricsUseCaseInput,
+)
+from context.table_maintenance.application.port.inbound.table.list_table_metrics.output import (
+    ListTableMetricsUseCaseOutput,
+)
+from context.table_maintenance.application.port.inbound.table.list_table_metrics.use_case import (
+    ListTableMetricsUseCase,
+)
 from context.table_maintenance.application.port.inbound.table.list_tables.input import (
     ListTablesUseCaseInput,
 )
@@ -115,6 +124,9 @@ __all__ = [
     "ListTableCommitsUseCase",
     "ListTableCommitsUseCaseInput",
     "ListTableCommitsUseCaseOutput",
+    "ListTableMetricsUseCase",
+    "ListTableMetricsUseCaseInput",
+    "ListTableMetricsUseCaseOutput",
     "ListTablesUseCase",
     "ListTablesUseCaseInput",
     "ListTablesUseCaseOutput",

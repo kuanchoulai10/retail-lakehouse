@@ -8,6 +8,7 @@ from context.table_maintenance.adapter.inbound.web.error_handlers import (
     register_error_handlers,
 )
 from context.table_maintenance.adapter.inbound.web.table import router as table_router
+from context.table_maintenance.adapter.inbound.web.table import table_metrics_router
 from context.table_maintenance.adapter.inbound.web.table_discovery_rules import (
     router as table_discovery_rules_router,
 )
@@ -47,5 +48,6 @@ def register_routes(app: FastAPI, use_cases: WebUseCases) -> None:
         table_maintenance_run_router,
         table_reconciliation_router,
         platform_settings_router,
+        table_metrics_router,
     ):
         app.include_router(router, prefix=_API_PREFIX)
