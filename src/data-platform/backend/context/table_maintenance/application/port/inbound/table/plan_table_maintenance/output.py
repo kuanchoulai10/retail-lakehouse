@@ -21,6 +21,11 @@ class PlanTableMaintenanceUseCaseOutput(UseCaseOutput):
     plan for display only (``None`` likewise). ``priority`` is
     the priority the run the plan starts gets: the manual priority when one was
     given, else the table's own (P3 when the table is unknown).
+    ``schedule_interval_seconds`` is how long the reconciliation waits between checks of the table
+    (the policy's ``on.schedule``), and ``catalog_commit_debounce_seconds`` how long the window a
+    catalog commit opens stays open before the check it calls for (``None``: the policy has no
+    ``on.catalog_commit``, so commits call for no check); an unknown table answers the platform
+    default's.
     """
 
     class Filter(UseCaseOutput):
@@ -57,7 +62,8 @@ class PlanTableMaintenanceUseCaseOutput(UseCaseOutput):
 
     status: str
     reason: str | None
-    reconcile_interval_seconds: int
+    schedule_interval_seconds: int
+    catalog_commit_debounce_seconds: int | None
     table_name: str | None
     operations: tuple[Operation, ...]
     dry_run: bool = False

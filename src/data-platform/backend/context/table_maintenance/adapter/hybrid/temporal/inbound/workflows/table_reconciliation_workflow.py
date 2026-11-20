@@ -66,13 +66,14 @@ _CLOSING_BOUND = TableMaintenanceActivityPolicy().worst_case()
 _CLOSING_POLL = timedelta(seconds=5)
 _RUN_ID_PREFIX = "mr"
 _RECONCILIATION_ID_PREFIX = "rc"
+_OLDER_PLAN_INTERVAL_KEY = "reconcile_interval_seconds"
 
 
 @workflow.defn(name=TABLE_RECONCILIATION_WORKFLOW)
 class TableReconciliationWorkflow:
     """Plan and start the maintenance runs of one table, one run at a time.
 
-    The loop wakes on its timer (the table's reconcile interval, from the last
+    The loop wakes on its timer (the table's schedule interval, from the last
     plan; one hour at first) or on any signal, and then asks
     ``plan_table_maintenance``, which reloads the table: the database is the
     authority on whether the table is managed and the policy applies at plan
@@ -115,7 +116,17 @@ class TableReconciliationWorkflow:
     wake that arrives while a plan says dropped or unmanaged makes it plan again.
 
     Every wake also counts its reason (a due plan timer counts ``schedule``;
-    ``stop`` counts nothing). The reasons accumulate, through runs in flight and
+    ``stop`` counts nothing), except a catalog commit, which is debounced. The
+    first commit not yet covered by a check opens a window of the plan's
+    ``catalog_commit_debounce_seconds`` (five minutes before the first plan);
+    later commits join it without moving its end, so a table written every
+    minute is still checked once per window, and when it closes its commits are
+    counted ``catalog_commit`` and checked. A check for any other reason before
+    then takes the open window with it, and a window that closes while a run is
+    in flight is checked after the run. With no ``catalog_commit`` in the policy
+    (debounce ``None``) a commit opens no window and counts nothing, but still
+    cancels a ``stop``. The open window and its commits survive continue-as-new.
+    The reasons accumulate, through runs in flight and
     continue-as-new, until the next plan takes them; reasons that arrive while
     a plan is running belong to the plan they wake next. After each plan that
     found the table, ``record_table_reconciliation`` stores the reconciliation
@@ -139,7 +150,7 @@ class TableReconciliationWorkflow:
     tags existed (patch ``table-search-attributes``) carries none until its next
     continue-as-new.
 
-    The next plan always comes one reconcile interval after the last. A plan
+    The next plan always comes one schedule interval after the last. A plan
     names no run: it claims nothing for the run it starts, and a run that is not
     started leaves nothing to hand back.
 
@@ -184,7 +195,12 @@ class TableReconciliationWorkflow:
         self._child_handle: workflow.ChildWorkflowHandle[Any, Any] | None = None
         self._next_plan_at = datetime.fromisoformat(input.next_plan_at) if input.next_plan_at else None
         self._continue_as_new_after = input.continue_as_new_after
-        self._interval = timedelta(seconds=input.reconcile_interval_seconds)
+        self._interval = timedelta(seconds=input.schedule_interval_seconds)
+        self._commit_debounce = _seconds_or_none(input.catalog_commit_debounce_seconds)
+        self._commit_window_closes_at: datetime | None = None
+        if input.commit_window_closes_at:
+            self._commit_window_closes_at = datetime.fromisoformat(input.commit_window_closes_at)
+        self._pending_commits = input.pending_commits
         self._wake_reasons: dict[str, int] = dict(input.wake_reasons or {})
         self._woken = False
         self._stopping = False
@@ -229,8 +245,15 @@ class TableReconciliationWorkflow:
 
     @workflow.signal(name=TableReconciliationSignal.TABLE_UPDATED)
     def table_updated(self, payload: dict | None = None) -> None:
-        """Wake the loop because the table changed in the catalog."""
-        self._wake(_REASON_CATALOG_COMMIT, cancels_stop=True)
+        """Count a catalog commit in the open window, opening one if none is, and wake the loop to re-arm its timer.
+
+        Without ``catalog_commit`` in the policy the commit counts nothing, but still cancels a ``stop`` (R31).
+        """
+        if self._commit_debounce is not None:
+            self._pending_commits += 1
+            if self._commit_window_closes_at is None:
+                self._commit_window_closes_at = workflow.now() + self._commit_debounce
+        self._wake(None, cancels_stop=True)
 
     @workflow.signal(name=TableReconciliationSignal.TABLE_SEEN)
     def table_seen(self, payload: dict | None = None) -> None:
@@ -286,7 +309,7 @@ class TableReconciliationWorkflow:
 
     @workflow.query
     def state(self) -> dict[str, Any]:
-        """Report the run in flight, the pending manual trigger, the timer, the wake reasons and the loop."""
+        """Report the run in flight, the manual trigger, the timer, the commit window, the wake reasons and the loop."""
         return {
             "in_flight_run_id": self._in_flight_run_id,
             "in_flight_workflow_id": self._in_flight_workflow_id,
@@ -299,7 +322,10 @@ class TableReconciliationWorkflow:
             "raises_delivered": self._raises_delivered,
             "stopping": self._stopping,
             "next_plan_at": _iso(self._next_plan_at),
-            "reconcile_interval_seconds": int(self._interval.total_seconds()),
+            "schedule_interval_seconds": int(self._interval.total_seconds()),
+            "catalog_commit_debounce_seconds": _whole_seconds_or_none(self._commit_debounce),
+            "commit_window_closes_at": _iso(self._commit_window_closes_at),
+            "pending_commits": self._pending_commits,
             "woken": self._woken,
             "wake_reasons": dict(self._wake_reasons),
             "planning": self._planning,
@@ -328,16 +354,28 @@ class TableReconciliationWorkflow:
         self._woken = True
 
     def _has_reason_to_plan(self) -> bool:
-        """Count ``schedule`` when the plan timer is due; tell whether any reason calls for a plan.
+        """Count a due plan timer and a closed commit window; tell whether any reason calls for a plan.
 
         ``schedule`` is counted here, once per plan. While a run is in flight the loop's timer is
         that run's deadline, so a give-up is not a schedule wake; a tick that came due during the
         run is counted when the run ends, which is why the plan after a run can carry
-        {previous_run_finished: 1, schedule: 1} without counting twice.
+        {previous_run_finished: 1, schedule: 1} without counting twice. A commit window that closed
+        during the run is counted the same way.
         """
-        if self._next_plan_at is not None and workflow.now() >= self._next_plan_at:
+        now = workflow.now()
+        if self._next_plan_at is not None and now >= self._next_plan_at:
             self._count(_REASON_SCHEDULE)
+        if self._commit_window_closes_at is not None and now >= self._commit_window_closes_at:
+            self._take_commit_window()
         return bool(self._wake_reasons)
+
+    def _take_commit_window(self) -> None:
+        """Close the open commit window, counting its commits as ``catalog_commit``."""
+        if self._pending_commits > 0:
+            reasons = self._wake_reasons
+            reasons[_REASON_CATALOG_COMMIT] = reasons.get(_REASON_CATALOG_COMMIT, 0) + self._pending_commits
+        self._pending_commits = 0
+        self._commit_window_closes_at = None
 
     def _count(self, reason: str) -> None:
         self._wake_reasons[reason] = self._wake_reasons.get(reason, 0) + 1
@@ -357,7 +395,7 @@ class TableReconciliationWorkflow:
             pending_manual=self._pending_manual,
             pending_manual_priority=self._pending_manual_priority,
             next_plan_at=_iso(self._next_plan_at),
-            reconcile_interval_seconds=int(self._interval.total_seconds()),
+            schedule_interval_seconds=int(self._interval.total_seconds()),
             continue_as_new_after=self._continue_as_new_after,
             wake_reasons=dict(self._wake_reasons),
             in_flight_attempt_deadline_seconds=self._in_flight_attempt_deadline_seconds,
@@ -367,10 +405,16 @@ class TableReconciliationWorkflow:
             raised_manual_priority=self._raised_manual_priority,
             closing_workflow_id=self._closing_workflow_id,
             raises_delivered=self._raises_delivered,
+            catalog_commit_debounce_seconds=_whole_seconds_or_none(self._commit_debounce),
+            commit_window_closes_at=_iso(self._commit_window_closes_at),
+            pending_commits=self._pending_commits,
         )
 
     async def _wait(self) -> None:
-        wake_at = self._in_flight_deadline() or self._next_plan_at
+        """Wait for a wake or the timer: the deadline of a run in flight, else the plan timer or the window end."""
+        wake_at = self._in_flight_deadline()
+        if self._in_flight_run_id is None:
+            wake_at = _earliest(self._next_plan_at, self._commit_window_closes_at)
         timeout = None if wake_at is None else wake_at - workflow.now()
         if timeout is not None and timeout <= timedelta(0):
             return
@@ -607,6 +651,7 @@ class TableReconciliationWorkflow:
         manual_priority = self._pending_manual_priority
         reconciliation_id, run_id = self._mint_ids()
         now = workflow.now()
+        self._take_commit_window()
         reasons, self._wake_reasons = self._wake_reasons, {}
         self._woken = False
         try:
@@ -628,7 +673,7 @@ class TableReconciliationWorkflow:
             self._consume_manual(manual, "the plan failed")
             self._next_plan_at = workflow.now() + self._interval
             return False
-        self._interval = timedelta(seconds=plan["reconcile_interval_seconds"])
+        self._follow_plan_triggers(plan)
         self._next_plan_at = workflow.now() + self._interval
         self._tag_table_name(plan["table_name"])
         record = {"reconciliation_id": reconciliation_id, "reconciled_at": now.isoformat(), "wake_reasons": reasons}
@@ -658,6 +703,20 @@ class TableReconciliationWorkflow:
             workflow.logger.info("keeping manual trigger %s: its run did not start", manual)
         await self._record(record, plan, run_id=run_id if started else None, run_start_failed=not started)
         return False
+
+    def _follow_plan_triggers(self, plan: dict[str, Any]) -> None:
+        """Take the schedule interval and the commit debounce from the plan.
+
+        A plan an older worker returned, as a history from before the debounce holds, names its
+        interval ``reconcile_interval_seconds`` and has no debounce: its interval is read under that
+        name, so the history replays, and the debounce stays the last one (it changes only what the
+        activity returns, so it needs no patch).
+        """
+        interval = plan.get("schedule_interval_seconds", plan.get(_OLDER_PLAN_INTERVAL_KEY))
+        if interval is not None:
+            self._interval = timedelta(seconds=interval)
+        if "catalog_commit_debounce_seconds" in plan:
+            self._commit_debounce = _seconds_or_none(plan["catalog_commit_debounce_seconds"])
 
     @staticmethod
     def _mint_ids() -> tuple[str, str]:
@@ -791,6 +850,19 @@ class TableReconciliationWorkflow:
 
 def _iso(value: datetime | None) -> str | None:
     return None if value is None else value.isoformat()
+
+
+def _seconds_or_none(seconds: int | None) -> timedelta | None:
+    return None if seconds is None else timedelta(seconds=seconds)
+
+
+def _whole_seconds_or_none(value: timedelta | None) -> int | None:
+    return None if value is None else int(value.total_seconds())
+
+
+def _earliest(*moments: datetime | None) -> datetime | None:
+    """Return the earliest of the moments that are set, or ``None`` when none is."""
+    return min((m for m in moments if m is not None), default=None)
 
 
 def _discard_outcome(child: asyncio.Future[Any]) -> None:

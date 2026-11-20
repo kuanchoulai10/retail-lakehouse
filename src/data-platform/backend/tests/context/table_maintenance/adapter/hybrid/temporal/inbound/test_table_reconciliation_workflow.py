@@ -105,11 +105,12 @@ POLICY = {
 NO_POLICY = {"policy_id": None, "policy_name": None, "policy_version": None, "policy_target": None}
 
 
-def _planned(*operations: str, interval: int = 3600) -> dict[str, Any]:
+def _planned(*operations: str, interval: int = 3600, debounce: int | None = 300) -> dict[str, Any]:
     return {
         "status": "planned",
         "reason": None,
-        "reconcile_interval_seconds": interval,
+        "schedule_interval_seconds": interval,
+        "catalog_commit_debounce_seconds": debounce,
         "table_name": TABLE,
         "operations": [{"operation": op, "filters": [], "procedure_args": {}} for op in operations],
         "dry_run": False,
@@ -142,11 +143,12 @@ def _dry_run(*due: str) -> dict[str, Any]:
     return {**_planned(), "dry_run": True, "checks": [_check(op) for op in due]}
 
 
-def _skip(reason: str, interval: int = 3600, *, table_found: bool = True) -> dict[str, Any]:
+def _skip(reason: str, interval: int = 3600, *, table_found: bool = True, debounce: int | None = 300) -> dict[str, Any]:
     return {
         "status": "skip",
         "reason": reason,
-        "reconcile_interval_seconds": interval,
+        "schedule_interval_seconds": interval,
+        "catalog_commit_debounce_seconds": debounce,
         "table_name": TABLE if table_found else None,
         "operations": [],
         "dry_run": False,
@@ -854,6 +856,7 @@ def test_manual_trigger_on_a_table_missing_from_the_catalog_is_dropped():
         assert (await h.state())["pending_manual"] is None
         missing["value"] = False
         await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        await h.env.sleep(timedelta(seconds=300))
         assert (await h.plan_count(2))[1]["manual_operations"] is None
         run_id = await h.in_flight()
         assert (await h.child(run_id))["trigger"] == "scheduled"
@@ -1185,7 +1188,7 @@ def test_three_catalog_commits_during_a_run_are_recorded_after_it_finishes():
         for _ in range(3):
             await h.signal(TableReconciliationSignal.TABLE_UPDATED)
         state = await h.settle()
-        assert state["wake_reasons"] == {"catalog_commit": 3}
+        assert (state["pending_commits"], state["wake_reasons"]) == (3, {})
         assert len(h.recorder.records) == 1
         await h.complete_child(run_id)
         second = (await h.records(2))[1]
@@ -1311,6 +1314,8 @@ def test_reason_arriving_during_a_plan_goes_on_the_next_record():
         await h.signal(TableReconciliationSignal.TABLE_UPDATED)
         await eventually(h.state, lambda s: s["signals_handled"] >= h.sent)
         h.plans.gate.set()
+        await h.records(1)
+        await h.env.sleep(timedelta(seconds=300))
         first, second = (await h.records(2))[:2]
         assert first["wake_reasons"] == {"discovery_scan": 1}
         assert second["wake_reasons"] == {"catalog_commit": 1}
@@ -1366,7 +1371,7 @@ def test_give_up_before_the_plan_timer_plans_once_as_previous_run_finished():
             start_signal=None,
             in_flight_run_id=GHOST_RUN_ID,
             in_flight_operation_count=1,
-            reconcile_interval_seconds=10**6,
+            schedule_interval_seconds=10**6,
         )
         await eventually(h.state, lambda s: s["in_flight_started_at"])
         await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
@@ -1402,6 +1407,7 @@ def test_catalog_commit_is_still_recorded_as_catalog_commit():
         await h.start()
         await h.records(1)
         await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        await h.env.sleep(timedelta(seconds=300))
         second = (await h.records(2))[1]
         assert second["wake_reasons"] == {"catalog_commit": 1}
 
@@ -2229,3 +2235,250 @@ def test_manual_trigger_to_a_carried_run_still_running_stays_pending():
         assert (plan["manual_operations"], plan["manual_priority"]) == ([EXPIRE], "P1")
 
     _run(scenario, script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])), lookup=_always_running)
+
+
+DEBOUNCE = timedelta(seconds=300)
+
+
+def _window_opened_at(state: dict[str, Any], debounce: timedelta = DEBOUNCE) -> datetime:
+    """Return when the open commit window of ``state`` opened: its end less the debounce."""
+    return datetime.fromisoformat(state["commit_window_closes_at"]) - debounce
+
+
+def _reconciled_at(record: dict[str, Any]) -> datetime:
+    return datetime.fromisoformat(record["reconciled_at"])
+
+
+def test_commits_inside_the_window_make_one_check():
+    """The first commit opens a window; commits inside it join it without moving its end, and one check follows."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        await h.records(1)
+        await h.settle()
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        opened = await h.settle()
+        for _ in range(2):
+            await h.env.sleep(timedelta(seconds=60))
+            await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        joined = await h.settle()
+        assert joined["commit_window_closes_at"] == opened["commit_window_closes_at"]
+        assert (joined["pending_commits"], joined["wake_reasons"]) == (3, {})
+        await h.env.sleep(timedelta(seconds=170))
+        await h.settle()
+        assert len(h.recorder.records) == 1
+        await h.env.sleep(timedelta(seconds=20))
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"catalog_commit": 3}
+        assert _within_a_second(_reconciled_at(second) - _window_opened_at(opened), 300)
+        closed = await h.settle()
+        assert (closed["commit_window_closes_at"], closed["pending_commits"]) == (None, 0)
+
+    _run(scenario, script=lambda _: _planned())
+
+
+def test_a_table_written_every_minute_is_checked_every_window():
+    """A commit every minute never starves the table: each window closes on time and is checked."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        await h.records(1)
+        await h.settle()
+        first_commit_at: datetime | None = None
+        for _ in range(11):
+            await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+            state = await h.settle()
+            if first_commit_at is None:
+                first_commit_at = _window_opened_at(state)
+            await h.env.sleep(timedelta(seconds=60))
+        assert first_commit_at is not None
+        records = await h.records(3)
+        assert len(records) == 3
+        gaps = [_reconciled_at(r) - first_commit_at for r in records[1:]]
+        assert timedelta(seconds=300) <= gaps[0] < timedelta(seconds=305)
+        assert timedelta(seconds=600) <= gaps[1] < timedelta(seconds=610)
+        assert all(set(r["wake_reasons"]) == {"catalog_commit"} for r in records[1:])
+        assert records[1]["wake_reasons"]["catalog_commit"] == 5
+
+    _run(scenario, script=lambda _: _planned())
+
+
+def test_thirty_commits_in_one_window_record_thirty():
+    """Every commit of a window is counted in the one check that closes it."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        await h.records(1)
+        await h.settle()
+        for _ in range(30):
+            await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        assert (await h.settle())["pending_commits"] == 30
+        await h.env.sleep(timedelta(seconds=310))
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"catalog_commit": 30}
+        await h.settle()
+        assert len(h.recorder.records) == 2
+
+    _run(scenario, script=lambda _: _planned())
+
+
+def test_commits_are_ignored_without_catalog_commit():
+    """With no ``catalog_commit`` in the policy a commit opens no window, counts nothing and plans nothing."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        await h.records(1)
+        await h.settle()
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        state = await h.settle()
+        assert (state["commit_window_closes_at"], state["pending_commits"], state["wake_reasons"]) == (None, 0, {})
+        assert state["catalog_commit_debounce_seconds"] is None
+        await h.env.sleep(timedelta(seconds=3000))
+        assert (await h.settle())["wake_reasons"] == {}
+        assert len(h.plans.requests) == 1
+        assert len(h.recorder.records) == 1
+
+    _run(scenario, script=lambda _: _planned(debounce=None))
+
+
+def test_a_commit_after_stop_cancels_it_without_catalog_commit():
+    """A commit cancels a pending ``stop`` (R31) even when the policy has no ``catalog_commit``."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.signal(TableReconciliationSignal.STOP)
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        state = await h.settle()
+        assert (state["stopping"], state["pending_commits"]) == (False, 0)
+        await h.complete_child(first)
+        await h.plan_count(2)
+        assert await h.status() == WorkflowExecutionStatus.RUNNING
+
+    _run(scenario, script=lambda _: _planned(COMPACTION, debounce=None))
+
+
+def test_another_check_takes_the_open_window():
+    """A check for another reason before the window closes counts its commits, and the window's end plans nothing."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        await h.records(1)
+        await h.settle()
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        await h.settle()
+        await h.signal(TableReconciliationSignal.RECONCILE_NOW)
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"catalog_commit": 1, "reconcile_now": 1}
+        state = await h.settle()
+        assert (state["commit_window_closes_at"], state["pending_commits"]) == (None, 0)
+        await h.env.sleep(timedelta(seconds=400))
+        await h.settle()
+        assert len(h.plans.requests) == 2
+        assert len(h.recorder.records) == 2
+
+    _run(scenario, script=lambda _: _planned())
+
+
+def test_a_window_closing_during_a_run_is_checked_after_it():
+    """A window that closes while a run is in flight is counted and checked once the run finishes."""
+    answers = [_planned(COMPACTION), _planned()]
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        await h.settle()
+        await h.env.sleep(timedelta(seconds=400))
+        state = await h.settle()
+        assert state["in_flight_run_id"] == run_id
+        assert len(h.plans.requests) == 1
+        await h.complete_child(run_id)
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"catalog_commit": 1, "previous_run_finished": 1}
+
+    _run(scenario, script=lambda _: answers.pop(0) if answers else _planned())
+
+
+def test_the_window_survives_continue_as_new():
+    """Continue-as-new carries the open window's end and its commits; the check still runs at the original end."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start(continue_as_new_after=1)
+        await h.records(1)
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        carried = await eventually(h.run_input, lambda i: i.get("commit_window_closes_at") is not None)
+        assert (carried["pending_commits"], carried["catalog_commit_debounce_seconds"]) == (1, 300)
+        state = await h.state()
+        assert (state["commit_window_closes_at"], state["pending_commits"]) == (carried["commit_window_closes_at"], 1)
+        await h.env.sleep(timedelta(seconds=310))
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"catalog_commit": 1}
+        assert _within_a_second(_reconciled_at(second) - _window_opened_at(carried), 300)
+
+    _run(scenario, script=lambda _: _planned())
+
+
+def test_a_zero_debounce_checks_at_once():
+    """A zero debounce closes the window as it opens: the commit is checked at once."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        await h.records(1)
+        await h.settle()
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"catalog_commit": 1}
+
+    _run(scenario, script=lambda _: _planned(debounce=0))
+
+
+def test_the_first_plan_waits_the_default_debounce():
+    """Before its first plan the workflow assumes the platform default's five minute debounce."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start(start_signal=TableReconciliationSignal.TABLE_UPDATED)
+        state = await h.settle()
+        assert (state["catalog_commit_debounce_seconds"], state["pending_commits"]) == (300, 1)
+        await h.env.sleep(timedelta(seconds=290))
+        await h.settle()
+        assert h.plans.requests == []
+        await h.env.sleep(timedelta(seconds=20))
+        [record] = await h.records(1)
+        assert record["wake_reasons"] == {"catalog_commit": 1}
+        assert _within_a_second(_reconciled_at(record) - _window_opened_at(state), 300)
+
+    _run(scenario, script=lambda _: _planned())
+
+
+def test_the_schedule_interval_comes_from_the_plan():
+    """The next scheduled check comes the plan's schedule interval later, and the state reports it."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = (await h.plan_count(1))[0]
+        state = await h.settle()
+        assert (state["schedule_interval_seconds"], state["catalog_commit_debounce_seconds"]) == (300, 60)
+        assert "reconcile_interval_seconds" not in state
+        await h.env.sleep(timedelta(seconds=310))
+        second = (await h.plan_count(2))[1]
+        assert _within_a_second(datetime.fromisoformat(second["now"]) - datetime.fromisoformat(first["now"]), 300)
+        assert (await h.records(2))[1]["wake_reasons"] == {"schedule": 1}
+
+    _run(scenario, script=lambda _: _planned(interval=300, debounce=60))
+
+
+def test_a_failed_plan_keeps_the_schedule_and_the_debounce():
+    """A plan that fails keeps the schedule interval and the debounce the last plan set."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        await h.plan_count(1)
+        await h.settle()
+        h.plans.failures = 1
+        await h.signal(TableReconciliationSignal.RECONCILE_NOW)
+        await h.plan_count(2)
+        state = await h.settle()
+        assert (state["schedule_interval_seconds"], state["catalog_commit_debounce_seconds"]) == (600, 60)
+
+    _run(scenario, script=lambda _: _planned(interval=600, debounce=60))

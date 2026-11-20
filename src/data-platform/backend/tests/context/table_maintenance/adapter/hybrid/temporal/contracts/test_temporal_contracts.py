@@ -49,8 +49,11 @@ def test_contracts_round_trip():
             in_flight_operation_count=2,
             pending_manual=["expire_snapshots"],
             next_plan_at="2026-10-24T01:00:00+00:00",
-            reconcile_interval_seconds=600,
+            schedule_interval_seconds=600,
             continue_as_new_after=5,
+            catalog_commit_debounce_seconds=None,
+            commit_window_closes_at="2026-10-24T00:05:00+00:00",
+            pending_commits=3,
         ),
         TableDiscoveryWorkflowInput("iceberg"),
         TableDiscoveryWorkflowInput("iceberg", "sales"),
@@ -86,7 +89,10 @@ def test_table_reconcile_workflow_input_defaults():
     assert value.in_flight_operation_count == 0
     assert value.pending_manual is None
     assert value.next_plan_at is None
-    assert value.reconcile_interval_seconds == 3600
+    assert value.schedule_interval_seconds == 3600
+    assert value.catalog_commit_debounce_seconds == 300
+    assert value.commit_window_closes_at is None
+    assert value.pending_commits == 0
     assert value.continue_as_new_after == 200
 
 

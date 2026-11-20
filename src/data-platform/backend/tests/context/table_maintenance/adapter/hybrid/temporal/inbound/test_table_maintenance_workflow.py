@@ -66,7 +66,8 @@ def _plan(*operations: str, start_size: str | None = None) -> dict:
     return {
         "status": "planned",
         "reason": None,
-        "reconcile_interval_seconds": 3600,
+        "schedule_interval_seconds": 3600,
+        "catalog_commit_debounce_seconds": 300,
         "table_name": TABLE,
         "policy_id": PLANNED_POLICY[0],
         "policy_name": PLANNED_POLICY_NAME,

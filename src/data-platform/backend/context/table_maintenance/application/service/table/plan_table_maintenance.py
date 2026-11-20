@@ -186,7 +186,8 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         return PlanTableMaintenanceUseCaseOutput(
             status="planned",
             reason=None,
-            reconcile_interval_seconds=_interval(policy),
+            schedule_interval_seconds=_interval(policy),
+            catalog_commit_debounce_seconds=_debounce(policy),
             table_name=table.name.fully_qualified(),
             operations=operations,
             dry_run=policy.dry_run,
@@ -227,6 +228,12 @@ def _priority_of(table: Table, manual_priority: TablePriority | None) -> str:
 def _interval(policy: MaintenancePolicyContent) -> int:
     """Return the schedule interval of ``policy`` in seconds, which the reconciliation waits between checks."""
     return int(policy.on.schedule.every.total_seconds())
+
+
+def _debounce(policy: MaintenancePolicyContent) -> int | None:
+    """Return the catalog commit debounce of ``policy`` in seconds; ``None`` when commits call for no check."""
+    commit = policy.on.catalog_commit
+    return None if commit is None else int(commit.debounce.total_seconds())
 
 
 _VERDICTS = {
@@ -282,7 +289,8 @@ def _skip(
     return PlanTableMaintenanceUseCaseOutput(
         status="skip",
         reason=reason,
-        reconcile_interval_seconds=_interval(policy),
+        schedule_interval_seconds=_interval(policy),
+        catalog_commit_debounce_seconds=_debounce(policy),
         table_name=table.name.fully_qualified(),
         operations=(),
         policy_id=applied.policy_id,
@@ -294,11 +302,13 @@ def _skip(
 
 
 def _skip_unknown_table() -> PlanTableMaintenanceUseCaseOutput:
-    """Skip a table maintenance does not know; no policy applies, so the interval is the platform default's."""
+    """Skip a table maintenance does not know; no policy applies, so its triggers are the platform default's."""
+    default = MaintenancePolicyContent.platform_default()
     return PlanTableMaintenanceUseCaseOutput(
         status="skip",
         reason="dropped",
-        reconcile_interval_seconds=_interval(MaintenancePolicyContent.platform_default()),
+        schedule_interval_seconds=_interval(default),
+        catalog_commit_debounce_seconds=_debounce(default),
         table_name=None,
         operations=(),
         table_found=False,

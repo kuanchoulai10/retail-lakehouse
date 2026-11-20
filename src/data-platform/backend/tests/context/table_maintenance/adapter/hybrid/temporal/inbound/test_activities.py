@@ -125,7 +125,8 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
     assert result == {
         "status": "planned",
         "reason": None,
-        "reconcile_interval_seconds": 3600,
+        "schedule_interval_seconds": 3600,
+        "catalog_commit_debounce_seconds": 300,
         "table_name": "iceberg.sales.orders",
         "operations": [
             {
@@ -163,7 +164,8 @@ def _full_plan() -> PlanTableMaintenanceUseCaseOutput:
     return PlanTableMaintenanceUseCaseOutput(
         status="planned",
         reason=None,
-        reconcile_interval_seconds=900,
+        schedule_interval_seconds=900,
+        catalog_commit_debounce_seconds=None,
         table_name="iceberg.sales.orders",
         operations=(
             PlanTableMaintenanceUseCaseOutput.Operation(
@@ -219,7 +221,8 @@ def test_plan_payload_keeps_every_field_of_a_full_plan():
     assert result == {
         "status": "planned",
         "reason": None,
-        "reconcile_interval_seconds": 900,
+        "schedule_interval_seconds": 900,
+        "catalog_commit_debounce_seconds": None,
         "table_name": "iceberg.sales.orders",
         "operations": [
             {
@@ -358,7 +361,8 @@ def _measured_plan() -> PlanTableMaintenanceUseCaseOutput:
     return PlanTableMaintenanceUseCaseOutput(
         status="planned",
         reason=None,
-        reconcile_interval_seconds=900,
+        schedule_interval_seconds=900,
+        catalog_commit_debounce_seconds=None,
         table_name="iceberg.sales.orders",
         operations=(),
         checks=(

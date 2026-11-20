@@ -34,8 +34,12 @@ class TableReconciliationWorkflowInput:
     workflow of a run that reported but may not have closed yet (``None``: none); the next run is
     not started under that id until it closed or the closing bound passed.
     ``next_plan_at`` (ISO-8601) is when the timer plans next; ``None`` means one
-    ``reconcile_interval_seconds`` after start. That interval comes from the last
-    plan and is also used after a failed plan. ``continue_as_new_after`` bounds
+    ``schedule_interval_seconds`` after start. That interval and
+    ``catalog_commit_debounce_seconds`` (``None``: commits call for no check) come from
+    the last plan, are kept after a failed plan, and before the first plan are the
+    platform default's. ``commit_window_closes_at`` (ISO-8601) is the end of the open
+    catalog commit window (``None``: none open) and ``pending_commits`` the commits it
+    holds, not yet counted as wake reasons. ``continue_as_new_after`` bounds
     the loop iterations per run. ``wake_reasons`` counts, per reason, the wakes
     not yet taken by a plan (``None`` means none), so the next reconciliation
     records them.
@@ -48,7 +52,7 @@ class TableReconciliationWorkflowInput:
     in_flight_operation_count: int = 0
     pending_manual: list[str] | None = None
     next_plan_at: str | None = None
-    reconcile_interval_seconds: int = 3600
+    schedule_interval_seconds: int = 3600
     continue_as_new_after: int = 200
     wake_reasons: dict[str, int] | None = None
     in_flight_attempt_deadline_seconds: int = DEFAULT_ATTEMPT_DEADLINE_SECONDS
@@ -59,3 +63,6 @@ class TableReconciliationWorkflowInput:
     raised_manual_priority: str | None = None
     closing_workflow_id: str | None = None
     raises_delivered: int = 0
+    catalog_commit_debounce_seconds: int | None = 300
+    commit_window_closes_at: str | None = None
+    pending_commits: int = 0

@@ -29,6 +29,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     DEFAULT_POLICY_ID,
     DEFAULT_POLICY_NAME,
     AtMost,
+    CatalogCommitTrigger,
     MaintenancePolicyContent,
     RewriteDataFilesSpec,
     RewriteDataFilesTarget,
@@ -241,7 +242,7 @@ def test_plan_skip_reasons(planner, tables_repo, catalog, now):
         "u-1": ("skip", "not_found"),
     }
     assert all(v.operations == () for v in results.values())
-    assert results["u-1"].reconcile_interval_seconds == 3600
+    assert results["u-1"].schedule_interval_seconds == 3600
 
 
 def test_plan_carries_the_fully_qualified_table_name(planner, tables_repo, catalog, now):
@@ -329,7 +330,7 @@ def test_plan_orders_operations_and_renders_procedure_args(planner, tables_repo,
         "retain_last": 10,
     }
     assert by_op["remove_orphan_files"].procedure_args == {"older_than": "2026-10-21T12:00:00+00:00"}
-    assert plan.reconcile_interval_seconds == 3600
+    assert plan.schedule_interval_seconds == 3600
 
 
 def test_plan_target_file_size_comes_from_the_table(planner, tables_repo, catalog, policies, now):
@@ -349,7 +350,7 @@ def test_plan_target_file_size_comes_from_the_table(planner, tables_repo, catalo
     )
     plan = _plan(planner, now)
     assert plan.operations[0].procedure_args == {"options": {"target-file-size-bytes": 1024}}
-    assert plan.reconcile_interval_seconds == 300
+    assert plan.schedule_interval_seconds == 300
 
 
 def test_plan_whole_table_compaction_has_no_filters(planner, tables_repo, catalog, now):
@@ -464,7 +465,7 @@ def test_plan_output_names_resolved_policy(planner, tables_repo, catalog, polici
     plan = _plan(planner, now)
     assert (plan.policy_id, plan.policy_name, plan.policy_version) == (created.id, "gold", 1)
     assert plan.policy_target == {"type": "namespace", "path": ["iceberg", "sales"]}
-    assert (plan.reconcile_interval_seconds, plan.dry_run) == (600, True)
+    assert (plan.schedule_interval_seconds, plan.dry_run) == (600, True)
 
 
 def test_plan_without_attachment_names_the_default_policy(planner, tables_repo, catalog, now):
@@ -480,13 +481,47 @@ def test_skipped_plan_names_the_policy_for_its_interval(planner, tables_repo, po
     _use_policy(policies, now, _every(DEFAULT, timedelta(minutes=2)))
     _table(tables_repo, now).unmanage(now)
     plan = _plan(planner, now)
-    assert (plan.reason, plan.reconcile_interval_seconds, plan.policy_id, plan.policy_name, plan.policy_version) == (
+    assert (plan.reason, plan.schedule_interval_seconds, plan.policy_id, plan.policy_name, plan.policy_version) == (
         "unmanaged",
         120,
         DEFAULT_POLICY_ID.value,
         "default",
         2,
     )
+
+
+def test_the_plan_carries_the_schedule_and_the_debounce(planner, tables_repo, catalog, policies, now):
+    """The plan carries the policy's schedule interval and commit debounce, None without ``catalog_commit``."""
+    _table(tables_repo, now)
+    _observe(catalog, now)
+    every = _every(DEFAULT, timedelta(minutes=10))
+    commit = CatalogCommitTrigger(debounce=timedelta(minutes=2))
+    _use_policy(policies, now, every.with_changes(on=every.on.with_changes(catalog_commit=commit)))
+    plan = _plan(planner, now)
+    assert (plan.schedule_interval_seconds, plan.catalog_commit_debounce_seconds) == (600, 120)
+    UpdateTableMaintenancePolicyService(
+        policies,
+        InMemoryTableMaintenancePolicyAttachmentsRepo(),
+        InMemoryTablesRepo(),
+        RecordingSendTableChangeGateway(),
+        clock=lambda: now,
+    ).execute(
+        UpdateTableMaintenancePolicyUseCaseInput(
+            name=DEFAULT_POLICY_NAME,
+            content=every.with_changes(on=every.on.with_changes(catalog_commit=None)).to_primitives(),
+            version=2,
+        )
+    )
+    plan = _plan(planner, now)
+    assert (plan.schedule_interval_seconds, plan.catalog_commit_debounce_seconds) == (600, None)
+
+
+def test_a_skipped_plan_carries_the_debounce(planner, tables_repo, policies, now):
+    """A skipped plan carries the applicable policy's debounce; an unknown table answers the platform default's."""
+    _table(tables_repo, now).unmanage(now)
+    assert _plan(planner, now).catalog_commit_debounce_seconds == 300
+    unknown = _plan(planner, now, uuid="missing")
+    assert (unknown.schedule_interval_seconds, unknown.catalog_commit_debounce_seconds) == (3600, 300)
 
 
 # --- checks and dry run ---

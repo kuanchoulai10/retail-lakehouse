@@ -67,7 +67,8 @@ def _planned(request: dict[str, Any]) -> dict[str, Any]:
     return {
         "status": "planned",
         "reason": None,
-        "reconcile_interval_seconds": 3600,
+        "schedule_interval_seconds": 3600,
+        "catalog_commit_debounce_seconds": 300,
         "table_name": "iceberg.e2e.t",
         "operations": [{"operation": op, "filters": [], "procedure_args": {}} for op in operations],
         "dry_run": False,
