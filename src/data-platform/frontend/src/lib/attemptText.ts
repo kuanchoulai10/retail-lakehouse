@@ -47,11 +47,17 @@ export function eventLogText(finished: boolean | null): string {
   return finished ? "Finished" : "Did not finish";
 }
 
+// The end of a span that is still open: now, unless this browser's clock is behind the server's and says
+// it has not started yet, which reads as 0s.
+function openEnd(start: string, now: Date): string {
+  return new Date(Math.max(now.getTime(), new Date(start).getTime())).toISOString();
+}
+
 // From submit to the driver start; while the attempt is still queued it counts up to now.
 export function queueWaitText(attempt: TableMaintenanceRunAttemptApiResponse, now: Date): string {
   const waited = formatDuration(
     attempt.started_at,
-    attempt.started_running_at ?? attempt.finished_at ?? now.toISOString(),
+    attempt.started_running_at ?? attempt.finished_at ?? openEnd(attempt.started_at, now),
   );
   return attempt.status === "queued" ? `${waited} (waiting)` : waited;
 }
@@ -59,6 +65,6 @@ export function queueWaitText(attempt: TableMaintenanceRunAttemptApiResponse, no
 // From the driver start to the end; "—" for an attempt whose driver never started.
 export function runTimeText(attempt: TableMaintenanceRunAttemptApiResponse, now: Date): string {
   if (attempt.started_running_at === null) return "—";
-  const ran = formatDuration(attempt.started_running_at, attempt.finished_at ?? now.toISOString());
+  const ran = formatDuration(attempt.started_running_at, attempt.finished_at ?? openEnd(attempt.started_running_at, now));
   return attempt.status === "running" ? `${ran} (running)` : ran;
 }

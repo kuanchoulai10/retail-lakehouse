@@ -10,8 +10,12 @@ import { useListTableMaintenanceRuns } from "@/api/generated/table-maintenance-r
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { RunStatusBadge } from "@/components/RunStatusBadge";
 import { errorMessage, formatDuration, formatTimestamp } from "@/format";
+import { anyRunInFlight } from "@/lib/anyRunInFlight";
 import { eventLogText, failureClassText, nextStepText, queueWaitText, runTimeText } from "@/lib/attemptText";
 import { temporalWorkflowsUrl } from "@/lib/temporalWorkflowsUrl";
+
+// While a run is in flight the list is read again this often, so its queued and running times keep counting.
+const IN_FLIGHT_REFETCH_MS = 15_000;
 
 const attemptColumn = createDataTableColumnHelper<TableMaintenanceRunAttemptApiResponse>();
 
@@ -143,10 +147,12 @@ const columns = column.columns([
 // The Temporal link is a plain anchor, not a router Link: the Temporal UI is another app on the
 // gateway, outside the console's base path.
 export function MaintenanceTab({ tableUuid }: { tableUuid: string }) {
-  const runs = useListTableMaintenanceRuns(tableUuid);
+  const runs = useListTableMaintenanceRuns(tableUuid, undefined, {
+    query: { refetchInterval: (query) => (anyRunInFlight(query.state.data) ? IN_FLIGHT_REFETCH_MS : false) },
+  });
   const [searchParams] = useSearchParams();
   const linkedRunId = searchParams.get("run");
-  // A queued or running attempt counts up to the moment the runs were read, not to a clock that ticks.
+  // A queued or running attempt counts up to the moment the runs were last read.
   const now = useMemo(() => new Date(runs.dataUpdatedAt), [runs.dataUpdatedAt]);
 
   if (runs.isPending) return <PanelSkeleton label="Loading runs…" />;

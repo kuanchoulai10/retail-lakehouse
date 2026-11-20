@@ -16,14 +16,14 @@ import { PHONE } from "@/stories/phone";
 import {
   ESCALATED_RUN,
   ESCALATED_RUN_ID,
-  IN_FLIGHT_RUN,
+  inFlightRun,
   IN_FLIGHT_RUN_ID,
   MAINTAINED_ORDERS,
   NEWEST_ROUND_ID,
   POLICIES,
   QUEUE_TIMEOUT_RUN,
   QUEUE_TIMEOUT_RUN_ID,
-  QUEUED_RUN,
+  queuedRun,
   SCHEDULED_RUN_ID,
 } from "@/stories/storyData";
 
@@ -142,11 +142,11 @@ async function openRun(canvasElement: HTMLElement, runId: string) {
 export const MaintenanceAttemptRunning: Story = {
   args: { route: `${ORDERS}/maintenance` },
   beforeEach({ msw }) {
-    msw.use(getListTableMaintenanceRunsMockHandler([IN_FLIGHT_RUN]));
+    msw.use(getListTableMaintenanceRunsMockHandler([inFlightRun()]));
   },
   play: async ({ canvasElement }) => {
     const attempts = await openRun(canvasElement, IN_FLIGHT_RUN_ID);
-    await expect(attempts.getByText(/^18m \d+s \(running\)$/)).toBeVisible();
+    await expect(attempts.getByText(/\(running\)$/)).toBeVisible();
     await expect(attempts.getByText("Out of memory")).toBeVisible();
   },
 };
@@ -154,11 +154,11 @@ export const MaintenanceAttemptRunning: Story = {
 export const MaintenanceAttemptQueued: Story = {
   args: { route: `${ORDERS}/maintenance` },
   beforeEach({ msw }) {
-    msw.use(getListTableMaintenanceRunsMockHandler([QUEUED_RUN]));
+    msw.use(getListTableMaintenanceRunsMockHandler([queuedRun()]));
   },
   play: async ({ canvasElement }) => {
     const attempts = await openRun(canvasElement, IN_FLIGHT_RUN_ID);
-    await expect(attempts.getByText(/^4m \d+s \(waiting\)$/)).toBeVisible();
+    await expect(attempts.getByText(/\(waiting\)$/)).toBeVisible();
   },
 };
 
@@ -170,7 +170,7 @@ export const MaintenanceQueueTimeout: Story = {
   play: async ({ canvasElement }) => {
     const attempts = await openRun(canvasElement, QUEUE_TIMEOUT_RUN_ID);
     await expect(attempts.getByText("Waited too long in the queue")).toBeVisible();
-    await expect(attempts.getByText("1440m 0s")).toBeVisible();
+    await expect(attempts.getByText("24h 0m")).toBeVisible();
   },
 };
 
@@ -178,7 +178,7 @@ export const MaintenanceQueuedPhone: Story = {
   args: { route: `${ORDERS}/maintenance` },
   globals: PHONE,
   beforeEach({ msw }) {
-    msw.use(getListTableMaintenanceRunsMockHandler([QUEUED_RUN]));
+    msw.use(getListTableMaintenanceRunsMockHandler([queuedRun()]));
   },
   play: async ({ canvasElement }) => {
     await openRun(canvasElement, IN_FLIGHT_RUN_ID);

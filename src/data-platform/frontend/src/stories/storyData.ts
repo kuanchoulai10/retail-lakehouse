@@ -444,29 +444,13 @@ export const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
 export const IN_FLIGHT_RUN_ID = "mr-01m7bk4q80f3dt6ywe2m5c1h9a";
 export const QUEUE_TIMEOUT_RUN_ID = "mr-01m7bk9d30ff8e5hn7a2xk4b6c";
 const MINUTE_MS = 60_000;
-const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * MINUTE_MS).toISOString();
 
-function unfinishedAttempt(overrides: Partial<TableMaintenanceRunAttemptApiResponse>): TableMaintenanceRunAttemptApiResponse {
-  return {
-    attempt: 1,
-    size: "S",
-    status: "running",
-    started_at: minutesAgo(25),
-    started_running_at: minutesAgo(18),
-    finished_at: null,
-    failure_class: null,
-    error: null,
-    event_log_finished: null,
-    next_step: null,
-    next_size: null,
-    ...overrides,
-  };
-}
+type Attempt = TableMaintenanceRunAttemptApiResponse;
 
 function runOfAttempts(
   runId: string,
   status: string,
-  attempts: TableMaintenanceRunAttemptApiResponse[],
+  attempts: Attempt[],
   finishedAt: string | null,
 ): TableMaintenanceRunApiResponse {
   return {
@@ -495,41 +479,84 @@ function runOfAttempts(
   };
 }
 
-const OUT_OF_MEMORY_AT_S = unfinishedAttempt({
-  attempt: 1,
-  status: "failed",
-  started_at: minutesAgo(40),
-  started_running_at: minutesAgo(38),
-  finished_at: minutesAgo(33),
-  failure_class: "oom",
-  event_log_finished: false,
-  next_step: "retry_larger",
-  next_size: "M",
-});
-
-// A run in flight: the first attempt ran out of memory at S, the second, at M, has been running for 18 minutes.
-export const IN_FLIGHT_RUN = runOfAttempts(IN_FLIGHT_RUN_ID, "running", [
-  OUT_OF_MEMORY_AT_S,
-  unfinishedAttempt({ attempt: 2, size: "M" }),
-], null);
-
-// The same run while the larger attempt still waits in its Volcano queue.
-export const QUEUED_RUN = runOfAttempts(IN_FLIGHT_RUN_ID, "running", [
-  OUT_OF_MEMORY_AT_S,
-  unfinishedAttempt({ attempt: 2, size: "M", status: "queued", started_at: minutesAgo(4), started_running_at: null }),
-], null);
-
-// An attempt that waited the whole queue limit and never ran.
-export const QUEUE_TIMEOUT_RUN = runOfAttempts(QUEUE_TIMEOUT_RUN_ID, "failed", [
-  unfinishedAttempt({
+// The first attempt of a run in flight ran out of memory at S. A story builds the run when it starts, so its
+// queued and running times count from the moment the story opens and no assertion depends on the date.
+function outOfMemoryAtS(minutesAgo: (minutes: number) => string): Attempt {
+  return {
+    attempt: 1,
+    size: "S",
     status: "failed",
-    started_at: minutesAgo(24 * 60 + 5),
+    started_at: minutesAgo(40),
+    started_running_at: minutesAgo(38),
+    finished_at: minutesAgo(33),
+    failure_class: "oom",
+    error: null,
+    event_log_finished: false,
+    next_step: "retry_larger",
+    next_size: "M",
+  };
+}
+
+function attemptAtM(overrides: Partial<Attempt>): Attempt {
+  return {
+    attempt: 2,
+    size: "M",
+    status: "running",
+    started_at: "",
     started_running_at: null,
-    finished_at: minutesAgo(5),
-    failure_class: "queue_timeout",
-    next_step: "not_retried",
-  }),
-], minutesAgo(5));
+    finished_at: null,
+    failure_class: null,
+    error: null,
+    event_log_finished: null,
+    next_step: null,
+    next_size: null,
+    ...overrides,
+  };
+}
+
+function agoFrom(now: Date): (minutes: number) => string {
+  return (minutes) => new Date(now.getTime() - minutes * MINUTE_MS).toISOString();
+}
+
+// A run in flight: the larger attempt waited 7 minutes in the queue and has been running for 18.
+export function inFlightRun(now: Date = new Date()): TableMaintenanceRunApiResponse {
+  const minutesAgo = agoFrom(now);
+  return runOfAttempts(
+    IN_FLIGHT_RUN_ID,
+    "running",
+    [outOfMemoryAtS(minutesAgo), attemptAtM({ started_at: minutesAgo(25), started_running_at: minutesAgo(18) })],
+    null,
+  );
+}
+
+// The same run (same id) earlier in its life: the larger attempt still waits in its Volcano queue.
+export function queuedRun(now: Date = new Date()): TableMaintenanceRunApiResponse {
+  const minutesAgo = agoFrom(now);
+  return runOfAttempts(
+    IN_FLIGHT_RUN_ID,
+    "running",
+    [outOfMemoryAtS(minutesAgo), attemptAtM({ status: "queued", started_at: minutesAgo(4) })],
+    null,
+  );
+}
+
+// An attempt that waited the whole queue limit and never ran; every time is fixed, as it has ended.
+export const QUEUE_TIMEOUT_RUN = runOfAttempts(
+  QUEUE_TIMEOUT_RUN_ID,
+  "failed",
+  [
+    attemptAtM({
+      attempt: 1,
+      size: "S",
+      status: "failed",
+      started_at: "2026-11-18T02:00:00Z",
+      finished_at: "2026-11-19T02:00:00Z",
+      failure_class: "queue_timeout",
+      next_step: "not_retried",
+    }),
+  ],
+  "2026-11-19T02:00:00Z",
+);
 
 export const NEWEST_ROUND_ID = "cr-01m79a4580ekrvn7jjtkvbg2gx";
 const OLDER_ROUND_ID = "cr-01m79a0g20fyg9rjvt5yegdse3";

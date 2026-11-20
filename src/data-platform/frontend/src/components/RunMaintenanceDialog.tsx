@@ -8,6 +8,7 @@ import {
 import { triggerTableMaintenance } from "@/api/generated/tables/tables";
 import type { TriggerTableMaintenanceApiRequestPriority } from "@/api/generated/model";
 import { errorMessage } from "@/format";
+import { isInFlightStatus } from "@/lib/isInFlightStatus";
 import { TABLE_PRIORITY_ITEMS } from "@/lib/tablePriorityItems";
 
 export const ALL_OPERATIONS = [
@@ -16,9 +17,6 @@ export const ALL_OPERATIONS = [
   "expire_snapshots",
   "remove_orphan_files",
 ];
-
-// A run in one of these states still has work to do, so a manual run joins it instead of starting another.
-const IN_FLIGHT_STATUSES = ["pending", "queued", "running"];
 
 interface Props {
   tableUuid: string;
@@ -39,8 +37,13 @@ export function RunMaintenanceDialog({
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<string[]>(initialOperations);
   const [priority, setPriority] = useState(tablePriority);
-  const newestRun = useListTableMaintenanceRuns(tableUuid, { limit: 1 });
-  const inFlight = newestRun.data?.some((run) => IN_FLIGHT_STATUSES.includes(run.status)) ?? false;
+  // Read again on every open: the note must say what is in flight now, not what was when the dialog was last open.
+  const newestRun = useListTableMaintenanceRuns(
+    tableUuid,
+    { limit: 1 },
+    { query: { staleTime: 0, refetchOnMount: "always" } },
+  );
+  const inFlight = newestRun.data?.some((run) => isInFlightStatus(run.status)) ?? false;
   const run = useMutation({
     mutationFn: () =>
       triggerTableMaintenance(tableUuid, {
@@ -83,12 +86,6 @@ export function RunMaintenanceDialog({
       }
     >
       <div className="flex flex-col gap-2">
-        {inFlight && (
-          <Banner
-            type="information"
-            title="A maintenance run is already in flight. Running now does not start another run: it raises that run's priority if you pick a higher one, and changes nothing otherwise."
-          />
-        )}
         {ALL_OPERATIONS.map((operation) => (
           <CheckBox
             key={operation}
@@ -105,6 +102,12 @@ export function RunMaintenanceDialog({
           value={priority}
           onValueChange={setPriority}
         />
+        {inFlight && (
+          <Banner
+            type="information"
+            title="A maintenance run is already in flight. Running now does not start another run: it raises that run's priority if you pick a higher one, and changes nothing otherwise."
+          />
+        )}
         {run.isError && (
           <Banner type="negative" title={`Could not start maintenance: ${errorMessage(run.error)}`} />
         )}

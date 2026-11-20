@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useNavigate } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TableMaintenanceRunApiResponse, TableMaintenanceRunAttemptApiResponse } from "../../api/generated/model";
 import { stubCatalogApi, type StubbedCall } from "../../test/catalogApiStub";
 import { jsonResponse } from "../../test/fixtures";
@@ -213,21 +213,26 @@ describe("MaintenanceTab", () => {
     ]);
   });
 
-  it("shows a queued attempt waiting, a running one counting and a queue timeout never running", async () => {
-    const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
-    const attemptOf = (overrides: Partial<TableMaintenanceRunAttemptApiResponse>) => ({
-      ...ESCALATED_RUN.operations[0]!.attempt_history[0]!,
-      failure_class: null,
-      error: null,
-      event_log_finished: null,
-      next_step: null,
-      next_size: null,
-      finished_at: null,
-      ...overrides,
-    });
-    const inFlight: TableMaintenanceRunApiResponse = {
+  describe("with a run in flight", () => {
+    const NOW = new Date("2026-11-20T10:10:00Z");
+
+    function attemptOf(overrides: Partial<TableMaintenanceRunAttemptApiResponse>) {
+      return {
+        ...ESCALATED_RUN.operations[0]!.attempt_history[0]!,
+        failure_class: null,
+        error: null,
+        event_log_finished: null,
+        next_step: null,
+        next_size: null,
+        finished_at: null,
+        ...overrides,
+      };
+    }
+
+    const IN_FLIGHT: TableMaintenanceRunApiResponse = {
       ...ESCALATED_RUN,
       status: "running",
+      finished_at: null,
       operations: [
         {
           ...ESCALATED_RUN.operations[0]!,
@@ -236,33 +241,68 @@ describe("MaintenanceTab", () => {
             attemptOf({
               attempt: 1,
               status: "failed",
-              started_at: "2026-10-30T10:00:00Z",
+              started_at: "2026-11-19T10:00:00Z",
               started_running_at: null,
-              finished_at: "2026-10-31T10:00:00Z",
+              finished_at: "2026-11-20T10:00:00Z",
               failure_class: "queue_timeout",
               next_step: "not_retried",
             }),
-            attemptOf({ attempt: 2, status: "running", started_at: minutesAgo(12), started_running_at: minutesAgo(7) }),
-            attemptOf({ attempt: 3, status: "queued", started_at: minutesAgo(5), started_running_at: null }),
+            attemptOf({
+              attempt: 2,
+              status: "running",
+              started_at: "2026-11-20T09:55:00Z",
+              started_running_at: "2026-11-20T10:03:00Z",
+            }),
+            attemptOf({ attempt: 3, status: "queued", started_at: "2026-11-20T10:05:00Z", started_running_at: null }),
           ],
         },
       ],
     };
-    stubCatalogApi({
-      "GET /v1/tables/uuid-orders/table-maintenance-runs": () => jsonResponse([inFlight]),
+
+    const RUNS_PATH = "/v1/tables/uuid-orders/table-maintenance-runs";
+    const runReads = () => calls.filter((call) => call.method === "GET" && call.path === RUNS_PATH).length;
+
+    afterEach(() => {
+      vi.useRealTimers();
     });
-    const user = userEvent.setup();
-    renderTab();
-    await user.click(await screen.findByText("scheduled"));
-    const attempts = screen.getByRole("table", { name: "Attempts of rewrite_data_files" });
-    const [timedOut, running, queued] = within(attempts)
-      .getAllByRole("row")
-      .slice(1)
-      .map((row) => within(row).getAllByRole("cell").map((cell) => cell.textContent));
-    expect(timedOut?.slice(2, 6)).toEqual(["Failed", "1440m 0s", "—", "Waited too long in the queue"]);
-    expect(running?.slice(2, 5)).toEqual(["Running", "5m 0s", expect.stringMatching(/^7m \ds \(running\)$/)]);
-    expect(queued?.slice(2, 5)).toEqual(["Queued", expect.stringMatching(/^5m \ds \(waiting\)$/), "—"]);
-    expect(within(attempts).getByText("Queued", { selector: "span" })).toHaveClass("bg-surface-container-dim");
+
+    it("shows a queued attempt waiting, a running one counting and a queue timeout never running", async () => {
+      vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+      calls = stubCatalogApi({ [`GET ${RUNS_PATH}`]: () => jsonResponse([IN_FLIGHT]) });
+      const user = userEvent.setup();
+      renderTab();
+      await user.click(await screen.findByText("scheduled"));
+      const attempts = screen.getByRole("table", { name: "Attempts of rewrite_data_files" });
+      const rows = within(attempts)
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => within(row).getAllByRole("cell").map((cell) => cell.textContent));
+      expect(rows.map((cells) => cells.slice(2, 6))).toEqual([
+        ["Failed", "24h 0m", "—", "Waited too long in the queue"],
+        ["Running", "8m 0s", "7m 0s (running)", ""],
+        ["Queued", "5m 0s (waiting)", "—", ""],
+      ]);
+      expect(within(attempts).getByText("Queued", { selector: "span" })).toHaveClass("bg-surface-container-dim");
+    });
+
+    it("reads the runs again while one is in flight, so the counters move", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "setInterval", "clearTimeout", "clearInterval", "Date"], shouldAdvanceTime: true });
+      calls = stubCatalogApi({ [`GET ${RUNS_PATH}`]: () => jsonResponse([IN_FLIGHT]) });
+      renderTab();
+      await screen.findByText("scheduled");
+      expect(runReads()).toBe(1);
+      await vi.advanceTimersByTimeAsync(15_500);
+      await vi.waitFor(() => expect(runReads()).toBeGreaterThanOrEqual(2));
+    });
+
+    it("does not read the runs again when every one has ended", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "setInterval", "clearTimeout", "clearInterval", "Date"], shouldAdvanceTime: true });
+      calls = stubCatalogApi({ [`GET ${RUNS_PATH}`]: () => jsonResponse([ESCALATED_RUN]) });
+      renderTab();
+      await screen.findByText("scheduled");
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(runReads()).toBe(1);
+    });
   });
 
   it("keeps the attempt count for runs from before attempt history", async () => {

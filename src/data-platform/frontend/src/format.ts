@@ -39,9 +39,10 @@ export function formatDuration(startIso: string, endIso: string | null): string 
   const ms = new Date(endIso).getTime() - new Date(startIso).getTime();
   if (Number.isNaN(ms) || ms < 0) return "—";
   const total = Math.round(ms / 1000);
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return minutes > 0 ? `${minutes}m ${total % 60}s` : `${total}s`;
 }
 
 const SECOND_UNITS: [number, string][] = [

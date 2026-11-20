@@ -43,7 +43,12 @@ describe("queueWaitText", () => {
       finished_at: "2026-11-21T10:00:00Z",
       failure_class: "queue_timeout",
     });
-    expect(queueWaitText(timedOut, new Date("2026-11-22T00:00:00Z"))).toBe("1440m 0s");
+    expect(queueWaitText(timedOut, new Date("2026-11-22T00:00:00Z"))).toBe("24h 0m");
+  });
+
+  it("reads 0s while waiting when the browser clock is behind the server's", () => {
+    const queued = attempt({ status: "queued", started_running_at: null, finished_at: null });
+    expect(queueWaitText(queued, new Date("2026-11-20T09:59:58Z"))).toBe("0s (waiting)");
   });
 });
 
@@ -62,6 +67,11 @@ describe("runTimeText", () => {
 
   it("stops at the end of a finished attempt", () => {
     expect(runTimeText(attempt({}), NOW)).toBe("5m 30s");
+  });
+
+  it("reads 0s while running when the browser clock is behind the server's", () => {
+    const running = attempt({ status: "running", finished_at: null });
+    expect(runTimeText(running, new Date("2026-11-20T10:02:59Z"))).toBe("0s (running)");
   });
 });
 

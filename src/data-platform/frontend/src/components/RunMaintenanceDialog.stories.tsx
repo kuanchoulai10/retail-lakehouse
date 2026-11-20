@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 import { getListTableMaintenanceRunsMockHandler } from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
-import { MAINTAINED_ORDERS, QUEUED_RUN } from "@/stories/storyData";
+import { MAINTAINED_ORDERS, queuedRun } from "@/stories/storyData";
 import { RunMaintenanceDialog } from "./RunMaintenanceDialog";
 
 const meta = {
@@ -45,7 +45,7 @@ export const PickPriority: Story = {
 
 export const RunInFlight: Story = {
   beforeEach({ msw }) {
-    msw.use(getListTableMaintenanceRunsMockHandler([QUEUED_RUN]));
+    msw.use(getListTableMaintenanceRunsMockHandler([queuedRun()]));
   },
   play: async () => {
     const dialog = await screen.findByRole("dialog", { name: "Run maintenance" });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBytes, formatCount, formatGbHours, formatRelativeTime, formatSeconds } from "./format";
+import { formatBytes, formatCount, formatDuration, formatGbHours, formatRelativeTime, formatSeconds } from "./format";
 
 describe("formatBytes", () => {
   it("formats bytes in binary units", () => {
@@ -49,5 +49,35 @@ describe("formatSeconds", () => {
     expect(formatSeconds(21600)).toBe("6 h");
     expect(formatSeconds(300)).toBe("5 min");
     expect(formatSeconds(90)).toBe("90 s");
+  });
+});
+
+describe("formatDuration", () => {
+  const START = "2026-11-20T10:00:00Z";
+  const after = (seconds: number) => new Date(Date.parse(START) + seconds * 1000).toISOString();
+
+  it.each([
+    [0, "0s"],
+    [45, "45s"],
+    [60, "1m 0s"],
+    [150, "2m 30s"],
+    [3599, "59m 59s"],
+  ])("shows %i seconds as %s under an hour", (seconds, text) => {
+    expect(formatDuration(START, after(seconds))).toBe(text);
+  });
+
+  it.each([
+    [3600, "1h 0m"],
+    [3900, "1h 5m"],
+    [86_399, "23h 59m"],
+    [86_400, "24h 0m"],
+    [90_000, "25h 0m"],
+  ])("shows %i seconds as %s from an hour on", (seconds, text) => {
+    expect(formatDuration(START, after(seconds))).toBe(text);
+  });
+
+  it("is a dash without an end or when the end precedes the start", () => {
+    expect(formatDuration(START, null)).toBe("—");
+    expect(formatDuration(START, after(-1))).toBe("—");
   });
 });

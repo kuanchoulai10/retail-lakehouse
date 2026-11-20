@@ -3,7 +3,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { TableMaintenanceRunApiResponse } from "../api/generated/model";
-import { bodyOf, stubCatalogApi, type StubbedCall } from "../test/catalogApiStub";
+import { getListTableMaintenanceRunsQueryKey } from "../api/generated/table-maintenance-runs/table-maintenance-runs";
+import { bodyOf, stubCatalogApi, type StubbedCall, type StubHandler } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
 import { RunMaintenanceDialog } from "./RunMaintenanceDialog";
 
@@ -27,13 +28,20 @@ function runWithStatus(status: string): TableMaintenanceRunApiResponse {
   };
 }
 
-function renderDialog(tablePriority: string, newestRun: TableMaintenanceRunApiResponse | null = null): StubbedCall[] {
+let queryClient: QueryClient;
+
+function renderDialog(
+  tablePriority: string,
+  newestRun: TableMaintenanceRunApiResponse | null = null,
+  readNewestRun: StubHandler = () => jsonResponse(newestRun === null ? [] : [newestRun]),
+): StubbedCall[] {
   const calls = stubCatalogApi({
     [`POST ${PATH}`]: () => jsonResponse({ accepted: true }, 202),
-    [`GET ${RUNS_PATH}`]: () => jsonResponse(newestRun === null ? [] : [newestRun]),
+    [`GET ${RUNS_PATH}`]: readNewestRun,
   });
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider client={queryClient}>
       <RunMaintenanceDialog tableUuid="uuid-orders" tablePriority={tablePriority} onClose={() => {}} />
     </QueryClientProvider>,
   );
@@ -53,9 +61,36 @@ describe("RunMaintenanceDialog", { timeout: 15_000 }, () => {
   });
 
   it.each(["succeeded", "failed"])("says nothing when the newest run %s", async (status) => {
-    const calls = renderDialog("P3", runWithStatus(status));
+    renderDialog("P3", runWithStatus(status));
+    await waitFor(() =>
+      expect(queryClient.getQueryState(getListTableMaintenanceRunsQueryKey("uuid-orders", { limit: 1 }))?.status).toBe(
+        "success",
+      ),
+    );
+    expect(screen.queryByText(IN_FLIGHT_NOTE)).not.toBeInTheDocument();
+  });
+
+  it("says nothing and still runs when reading the newest run fails", async () => {
+    const user = userEvent.setup();
+    const calls = renderDialog("P3", null, () => jsonResponse({ detail: "runs unavailable" }, 500));
+    await waitFor(() =>
+      expect(queryClient.getQueryState(getListTableMaintenanceRunsQueryKey("uuid-orders", { limit: 1 }))?.status).toBe(
+        "error",
+      ),
+    );
+    expect(screen.queryByText(IN_FLIGHT_NOTE)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Run" }));
+    await waitFor(() => expect(bodyOf(calls, "POST", PATH)).toBeDefined());
+  });
+
+  it("says nothing and still runs while reading the newest run has not answered", async () => {
+    const user = userEvent.setup();
+    const calls = renderDialog("P3", null, () => new Promise<Response>(() => {}));
     await waitFor(() => expect(calls.some((call) => call.path === RUNS_PATH)).toBe(true));
-    await waitFor(() => expect(screen.queryByText(IN_FLIGHT_NOTE)).not.toBeInTheDocument());
+    expect(screen.queryByText(IN_FLIGHT_NOTE)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Run" }));
+    await waitFor(() => expect(bodyOf(calls, "POST", PATH)).toBeDefined());
   });
 
   it("asks for the table's newest run only", async () => {
