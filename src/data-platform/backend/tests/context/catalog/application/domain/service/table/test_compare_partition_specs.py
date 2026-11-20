@@ -215,3 +215,47 @@ def test_two_fields_on_one_source_pair_in_order():
         (PartitionChange.TRANSFORM_CHANGED,),
     )
     assert (second.field_id, second.previous_field_id, second.changes) == (None, 1001, (PartitionChange.REMOVED,))
+
+
+def test_change_counts_include_zero_counts():
+    """A kind no field carries is still listed, with 0."""
+    comparison = compare_partition_specs(
+        _spec(0, _pfield(1000, "order_ts_day", "day", 3)),
+        _spec(1, _pfield(1000, "order_ts_day", "day", 3), _pfield(1001, "customer_id_bucket_16", "bucket[16]", 2)),
+        PATHS,
+    )
+    assert comparison.change_counts() == {
+        PartitionChange.ADDED: 1,
+        PartitionChange.REMOVED: 0,
+        PartitionChange.RENAMED: 0,
+        PartitionChange.TRANSFORM_CHANGED: 0,
+    }
+
+
+def test_java_unnumbered_bucket_name_is_a_default():
+    """Java names a bucket field ``<src>_bucket`` (CREATE) or ``<src>_bucket_<N>`` (ALTER): both are defaults."""
+    base = _spec(0, _pfield(1000, "customer_id_bucket", "bucket[16]", 2))
+    new = _spec(1, _pfield(1001, "customer_id_bucket_32", "bucket[32]", 2))
+    (row,) = compare_partition_specs(base, new, PATHS).fields
+    assert row.changes == (PartitionChange.TRANSFORM_CHANGED,)
+
+
+def test_java_unnumbered_truncate_name_is_a_default():
+    """Java names a truncate field ``<src>_trunc`` (CREATE) or ``<src>_trunc_<W>`` (ALTER): both are defaults."""
+    base = _spec(0, _pfield(1000, "customer_id_trunc", "truncate[4]", 2))
+    new = _spec(1, _pfield(1001, "customer_id_trunc_8", "truncate[8]", 2))
+    (row,) = compare_partition_specs(base, new, PATHS).fields
+    assert row.changes == (PartitionChange.TRANSFORM_CHANGED,)
+
+
+def test_default_name_of_a_nested_source_column_is_dotted():
+    """Java builds the default name from the dotted column name, so ``address.zip_day`` is a default."""
+    paths = {5: ("address", "zip")}
+    base = _spec(0, _pfield(1000, "address.zip_day", "day", 5))
+    new = _spec(1, _pfield(1001, "address.zip_hour", "hour", 5))
+    (row,) = compare_partition_specs(base, new, paths).fields
+    assert row.changes == (PartitionChange.TRANSFORM_CHANGED,)
+    assert row.expression() == "hour(address.zip)"
+    underscored = _spec(2, _pfield(1002, "address_zip_hour", "hour", 5))
+    (row,) = compare_partition_specs(base, underscored, paths).fields
+    assert row.changes == (PartitionChange.RENAMED, PartitionChange.TRANSFORM_CHANGED)

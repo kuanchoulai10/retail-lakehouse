@@ -18,29 +18,31 @@ if TYPE_CHECKING:
 _VOID = "void"
 
 
-def _default_suffix(transform: str) -> str | None:
-    """Return the suffix Iceberg appends to the source column name for ``transform``, None if unknown.
+def _default_suffixes(transform: str) -> frozenset[str]:
+    """Return the suffixes Iceberg may append to the source column name for ``transform``, empty if unknown.
 
-    The rule is PyIceberg's ``_PartitionNameGenerator`` (``pyiceberg/partitioning.py``).
+    Java Iceberg has two default naming forms: ``PartitionSpec.Builder`` (CREATE TABLE) names bucket
+    and truncate fields ``<src>_bucket`` and ``<src>_trunc``, while ``BaseUpdatePartitionSpec``
+    (ALTER TABLE ... ADD / REPLACE PARTITION FIELD, and PyIceberg's ``_PartitionNameGenerator``) names
+    them ``<src>_bucket_<N>`` and ``<src>_trunc_<W>``. Both count as defaults.
     """
     kind, _, argument = transform.partition("[")
     number = argument.removesuffix("]")
     return {
-        "identity": "",
-        "year": "_year",
-        "month": "_month",
-        "day": "_day",
-        "hour": "_hour",
-        "bucket": f"_bucket_{number}",
-        "truncate": f"_trunc_{number}",
-    }.get(kind)
+        "identity": frozenset({""}),
+        "year": frozenset({"_year"}),
+        "month": frozenset({"_month"}),
+        "day": frozenset({"_day"}),
+        "hour": frozenset({"_hour"}),
+        "bucket": frozenset({"_bucket", f"_bucket_{number}"}),
+        "truncate": frozenset({"_trunc", f"_trunc_{number}"}),
+    }.get(kind, frozenset())
 
 
 def _is_default_name(name: str, transform: str, source_path: tuple[str, ...]) -> bool:
-    suffix = _default_suffix(transform)
-    if suffix is None:
-        return False
-    return name in {f"{'.'.join(source_path)}{suffix}", f"{'_'.join(source_path)}{suffix}"}
+    """Tell whether ``name`` is a default for ``transform``; Java builds it from the dotted column name."""
+    source_name = ".".join(source_path)
+    return name in {f"{source_name}{suffix}" for suffix in _default_suffixes(transform)}
 
 
 def _source_path(field: PartitionField, column_paths: Mapping[int, tuple[str, ...]]) -> tuple[str, ...]:
@@ -135,6 +137,7 @@ def compare_partition_specs(
     follow ``spec``'s field order, then unpaired removed fields in ``base`` order.
     """
     current_fields = _live(spec)
+    rows: list[PartitionFieldComparison]
     if base is None:
         rows = [_matched(field, field, column_paths) for field in current_fields]
         return PartitionSpecComparison(base_spec_id=None, spec_id=spec.spec_id, fields=tuple(rows))
@@ -142,7 +145,7 @@ def compare_partition_specs(
     previous_by_id = {field.field_id: field for field in previous_fields}
     current_ids = {field.field_id for field in current_fields}
     unpaired = [field for field in previous_fields if field.field_id not in current_ids]
-    rows: list[PartitionFieldComparison] = []
+    rows = []
     for field in current_fields:
         if field.field_id in previous_by_id:
             rows.append(_matched(field, previous_by_id[field.field_id], column_paths))
