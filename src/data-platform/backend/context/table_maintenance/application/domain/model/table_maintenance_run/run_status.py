@@ -9,6 +9,7 @@ class RunStatus(StrEnum):
     """Enumerate the derived status of a maintenance run."""
 
     PENDING = "pending"
+    QUEUED = "queued"
     RUNNING = "running"
     SUCCEEDED = "succeeded"
     PARTIALLY_FAILED = "partially_failed"

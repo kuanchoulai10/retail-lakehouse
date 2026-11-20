@@ -209,11 +209,14 @@ def test_attempt_history_round_trips(repo: TableMaintenanceRunsSqlRepo):
         next_attempt=NextAttempt(step=NextStep.RETRY_LARGER, size=ComputeSize.M),
     )
     run.start_attempt(rdf, 2, "job-2", NOW + timedelta(minutes=2), size=ComputeSize.M)
+    run.record_attempt_running(rdf, 2, NOW + timedelta(minutes=2, seconds=30), NOW + timedelta(minutes=3))
     run.succeed(rdf, 2, {"rewritten_data_files_count": 3}, NOW + timedelta(minutes=3), event_log_finished=True)
     repo.create(run)
     loaded = repo.get(TableMaintenanceRunId(R1))
     assert loaded is not None
     assert loaded.operations == run.operations
+    assert loaded.operations[0].attempt_history[1].started_running_at == NOW + timedelta(minutes=2, seconds=30)
+    assert loaded.operations[0].attempt_history[0].started_running_at is None
 
 
 def test_row_without_attempt_history_decodes_to_none_recorded():
@@ -243,3 +246,34 @@ def test_row_without_attempt_history_decodes_to_none_recorded():
     run = TableMaintenanceRunRowMapper.to_aggregate(cast("RowMapping", row))
     assert run.operations[0].attempt_history == ()
     assert run.operations[0].attempts == 3
+
+
+def test_attempt_without_a_running_time_decodes_to_none():
+    """An attempt recorded without the started_running_at key decodes with no running time."""
+    row = {
+        "id": R1,
+        "table_uuid": "u1",
+        "execution_ref": f"wf-{R1}",
+        "trigger": "scheduled",
+        "priority": "P3",
+        "operations_json": [
+            {
+                "operation": "rewrite_data_files",
+                "status": "running",
+                "attempts": 1,
+                "started_at": NOW.isoformat(),
+                "finished_at": None,
+                "job_name": "job-1",
+                "metrics": {},
+                "error": None,
+                "expected_files": None,
+                "attempt_history": [
+                    {"attempt": 1, "size": "S", "status": "running", "started_at": NOW.isoformat()},
+                ],
+            }
+        ],
+        "created_at": NOW,
+        "finished_at": None,
+    }
+    run = TableMaintenanceRunRowMapper.to_aggregate(cast("RowMapping", row))
+    assert run.operations[0].attempt_history[0].started_running_at is None

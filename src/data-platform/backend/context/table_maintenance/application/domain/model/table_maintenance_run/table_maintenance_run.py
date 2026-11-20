@@ -47,6 +47,8 @@ if TYPE_CHECKING:
         NextAttempt,
     )
 
+_IN_FLIGHT = frozenset({OperationRunStatus.QUEUED, OperationRunStatus.RUNNING})
+
 _TERMINAL = frozenset(
     {
         OperationRunStatus.SUCCEEDED,
@@ -110,7 +112,8 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         if all(s is OperationRunStatus.PENDING for s in statuses):
             return RunStatus.PENDING
         if any(s not in _TERMINAL for s in statuses):
-            return RunStatus.RUNNING
+            queued_only = OperationRunStatus.QUEUED in statuses and OperationRunStatus.RUNNING not in statuses
+            return RunStatus.QUEUED if queued_only else RunStatus.RUNNING
         counted = [s for s in statuses if s is not OperationRunStatus.SKIPPED]
         if all(s is OperationRunStatus.SUCCEEDED for s in counted):
             return RunStatus.SUCCEEDED
@@ -127,20 +130,21 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         *,
         size: ComputeSize | None = None,
     ) -> None:
-        """Mark an attempt of an operation as running at ``size`` and add it to the attempt history.
+        """Mark an attempt of an operation as queued at ``size`` and add it to the attempt history.
 
-        Starting the attempt that is already running is a no-op, except that a
-        given ``job_name`` is attached when none is recorded yet.
+        The attempt stays queued until ``record_attempt_running`` says its driver runs. Starting the
+        attempt that is already queued or running is a no-op, except that a given ``job_name`` is
+        attached when none is recorded yet.
         """
         current = self._get(operation)
-        if attempt == current.attempts and current.status is OperationRunStatus.RUNNING:
+        if attempt == current.attempts and current.status in _IN_FLIGHT:
             if job_name is not None:
                 self.attach_job_name(operation, attempt, job_name)
             return
         self._require_startable(current, operation, attempt)
         self._replace(
             current.with_changes(
-                status=OperationRunStatus.RUNNING,
+                status=OperationRunStatus.QUEUED,
                 attempts=attempt,
                 job_name=job_name,
                 started_at=now,
@@ -149,7 +153,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
                 metrics={},
                 attempt_history=(
                     *current.attempt_history,
-                    OperationAttempt(attempt=attempt, size=size, status=OperationRunStatus.RUNNING, started_at=now),
+                    OperationAttempt(attempt=attempt, size=size, status=OperationRunStatus.QUEUED, started_at=now),
                 ),
             ),
             now,
@@ -159,10 +163,49 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         """Return the history entry of one attempt of an operation, or None when it has none."""
         return next((a for a in self._get(operation).attempt_history if a.attempt == attempt), None)
 
-    def attach_job_name(self, operation: MaintenanceOperation, attempt: int, job_name: str) -> None:
-        """Record the job of the running attempt; repeating the same name is a no-op."""
+    def record_attempt_running(
+        self,
+        operation: MaintenanceOperation,
+        attempt: int,
+        started_running_at: datetime,
+        now: datetime,
+    ) -> None:
+        """Record that the driver of an attempt started running at ``started_running_at``.
+
+        The time is clamped into the attempt's submit time and ``now``. A queued attempt becomes
+        running; a running one is left alone; a finished attempt that has no running time only gets
+        it, within its own span, and keeps its status. A report for an earlier attempt is ignored.
+        """
         current = self._get(operation)
-        if attempt != current.attempts or current.status is not OperationRunStatus.RUNNING:
+        if attempt < current.attempts:
+            return
+        if attempt > current.attempts or current.attempts == 0:
+            msg = f"attempt {attempt} of {operation} was never started"
+            raise InvalidRunTransition(msg)
+        record = self.attempt_record(operation, attempt)
+        if record is None or record.status is OperationRunStatus.RUNNING:
+            return
+        if record.finished:
+            if record.started_running_at is None and record.finished_at is not None:
+                self._set_running_time(current, record, started_running_at, record.finished_at)
+            return
+        self._replace(
+            current.with_changes(
+                status=OperationRunStatus.RUNNING,
+                attempt_history=self._with_attempt(
+                    current,
+                    attempt,
+                    status=OperationRunStatus.RUNNING,
+                    started_running_at=self._clamp(started_running_at, record.started_at, now),
+                ),
+            ),
+            now,
+        )
+
+    def attach_job_name(self, operation: MaintenanceOperation, attempt: int, job_name: str) -> None:
+        """Record the job of the queued or running attempt; repeating the same name is a no-op."""
+        current = self._get(operation)
+        if attempt != current.attempts or current.status not in _IN_FLIGHT:
             msg = (
                 f"cannot attach a job to attempt {attempt} of {operation} "
                 f"(status {current.status}, attempts {current.attempts})"
@@ -184,14 +227,19 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         metrics: dict[str, int],
         now: datetime,
         *,
+        started_running_at: datetime | None = None,
         event_log_finished: bool | None = None,
     ) -> None:
-        """Record that an attempt succeeded; nothing follows it."""
+        """Record that an attempt succeeded; nothing follows it.
+
+        ``started_running_at`` fills the attempt's running time when it has none.
+        """
         self._finish(
             operation,
             attempt,
             OperationRunStatus.SUCCEEDED,
             now,
+            started_running_at=started_running_at,
             metrics=dict(metrics),
             error=None,
             failure_class=None,
@@ -208,15 +256,20 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         now: datetime,
         *,
         failure_class: FailureClass = FailureClass.OTHER,
+        started_running_at: datetime | None = None,
         event_log_finished: bool | None = None,
         next_attempt: NextAttempt | None = None,
     ) -> None:
-        """Record that an attempt failed, why, and what follows it when that is decided."""
+        """Record that an attempt failed, why, and what follows it when that is decided.
+
+        ``started_running_at`` fills the attempt's running time when it has none.
+        """
         self._finish(
             operation,
             attempt,
             OperationRunStatus.FAILED,
             now,
+            started_running_at=started_running_at,
             metrics={},
             error=error,
             failure_class=failure_class,
@@ -247,6 +300,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         status: OperationRunStatus,
         now: datetime,
         *,
+        started_running_at: datetime | None,
         metrics: dict[str, int],
         error: str | None,
         failure_class: FailureClass | None,
@@ -262,7 +316,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             raise InvalidRunTransition(msg)
         if current.status is status:
             return
-        if current.status is not OperationRunStatus.RUNNING:
+        if current.status not in _IN_FLIGHT:
             msg = f"cannot mark {operation} {status} from status {current.status}"
             raise InvalidRunTransition(msg)
         self._replace(
@@ -276,6 +330,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
                     attempt,
                     status,
                     now,
+                    started_running_at=started_running_at,
                     failure_class=failure_class,
                     error=error,
                     event_log_finished=event_log_finished,
@@ -292,9 +347,13 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         attempt: int,
         status: OperationRunStatus,
         now: datetime,
+        *,
+        started_running_at: datetime | None,
         **outcome: object,
     ) -> tuple[OperationAttempt, ...]:
         """Return the history with the finished attempt's outcome, adding an entry it lacks.
+
+        The attempt's running time stays as recorded; when it has none, ``started_running_at`` fills it.
 
         An attempt started before attempt history existed has no entry; it gets one with no size,
         started when its operation's latest attempt started.
@@ -307,12 +366,48 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             entry.with_changes(
                 status=status,
                 finished_at=now,
+                started_running_at=entry.started_running_at
+                or (
+                    TableMaintenanceRun._clamp(started_running_at, entry.started_at, now)
+                    if started_running_at is not None
+                    else None
+                ),
                 **outcome,
             )
             if entry.attempt == attempt
             else entry
             for entry in history
         )
+
+    def _set_running_time(
+        self,
+        current: OperationRun,
+        record: OperationAttempt,
+        started_running_at: datetime,
+        upper: datetime,
+    ) -> None:
+        self.operations = tuple(
+            run.with_changes(
+                attempt_history=self._with_attempt(
+                    run,
+                    record.attempt,
+                    started_running_at=self._clamp(started_running_at, record.started_at, upper),
+                )
+            )
+            if run.operation == current.operation
+            else run
+            for run in self.operations
+        )
+
+    @staticmethod
+    def _with_attempt(current: OperationRun, attempt: int, **changes: object) -> tuple[OperationAttempt, ...]:
+        return tuple(
+            entry.with_changes(**changes) if entry.attempt == attempt else entry for entry in current.attempt_history
+        )
+
+    @staticmethod
+    def _clamp(value: datetime, lower: datetime, upper: datetime) -> datetime:
+        return min(max(value, lower), upper)
 
     @staticmethod
     def _require_startable(current: OperationRun, operation: MaintenanceOperation, attempt: int) -> None:

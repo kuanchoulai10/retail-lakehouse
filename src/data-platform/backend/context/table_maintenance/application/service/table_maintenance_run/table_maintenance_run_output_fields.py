@@ -23,6 +23,7 @@ def _attempt_fields(attempt: OperationAttempt) -> dict[str, Any]:
         "size": _value(attempt.size),
         "status": attempt.status.value,
         "started_at": attempt.started_at,
+        "started_running_at": attempt.started_running_at,
         "finished_at": attempt.finished_at,
         "failure_class": _value(attempt.failure_class),
         "error": attempt.error,

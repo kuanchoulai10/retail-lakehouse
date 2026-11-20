@@ -16,6 +16,9 @@ class TableMaintenanceRunAttemptApiResponse(BaseModel):
     size: str | None
     status: str
     started_at: datetime
+    started_running_at: datetime | None = Field(
+        description="When the attempt's Spark driver started running; null while the attempt waits in its queue."
+    )
     finished_at: datetime | None
     failure_class: str | None
     error: str | None

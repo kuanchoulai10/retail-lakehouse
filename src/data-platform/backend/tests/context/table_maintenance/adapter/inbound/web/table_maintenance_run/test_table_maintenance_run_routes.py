@@ -6,6 +6,13 @@ from typing import Any
 
 import pytest
 
+from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
+from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    TableMaintenanceRun,
+    TableMaintenanceRunId,
+    TriggerType,
+)
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     GetTableMaintenanceRunUseCaseInput,
     GetTableMaintenanceRunUseCaseOutput,
@@ -55,6 +62,7 @@ FIELDS: dict[str, Any] = {
                     "size": "S",
                     "status": "failed",
                     "started_at": NOW,
+                    "started_running_at": NOW,
                     "finished_at": NOW,
                     "failure_class": "oom",
                     "error": "java.lang.OutOfMemoryError: Java heap space",
@@ -65,8 +73,9 @@ FIELDS: dict[str, Any] = {
                 {
                     "attempt": 2,
                     "size": "M",
-                    "status": "running",
+                    "status": "queued",
                     "started_at": NOW,
+                    "started_running_at": None,
                     "finished_at": None,
                     "failure_class": None,
                     "error": None,
@@ -135,6 +144,7 @@ def test_run_response_lists_each_attempt() -> None:
         "size": "S",
         "status": "failed",
         "started_at": NOW.isoformat().replace("+00:00", "Z"),
+        "started_running_at": NOW.isoformat().replace("+00:00", "Z"),
         "finished_at": NOW.isoformat().replace("+00:00", "Z"),
         "failure_class": "oom",
         "error": "java.lang.OutOfMemoryError: Java heap space",
@@ -142,6 +152,29 @@ def test_run_response_lists_each_attempt() -> None:
         "next_step": "retry_larger",
         "next_size": "M",
     }
+
+
+def test_a_fresh_attempt_is_queued_and_has_not_started_running() -> None:
+    """A run's fresh attempt reads queued, with no running time yet."""
+    runs = InMemoryTableMaintenanceRunsRepo()
+    run = TableMaintenanceRun.create(
+        TableMaintenanceRunId(RUN_ID),
+        TableId("u-1"),
+        TriggerType.MANUAL,
+        [MaintenanceOperation.REWRITE_DATA_FILES],
+        NOW,
+        execution_ref="wf-run-1",
+    )
+    run.start_attempt(MaintenanceOperation.REWRITE_DATA_FILES, 1, "job-1", NOW)
+    runs.create(run)
+    client = build_client(get_table_maintenance_run=GetTableMaintenanceRunService(runs))
+
+    body = client.get(f"/v1/table-maintenance-runs/{RUN_ID}").json()
+
+    assert body["status"] == "queued"
+    assert body["operations"][0]["status"] == "queued"
+    assert body["operations"][0]["attempt_history"][0]["status"] == "queued"
+    assert body["operations"][0]["attempt_history"][0]["started_running_at"] is None
 
 
 def test_run_schema_types_its_operations_and_attempts() -> None:

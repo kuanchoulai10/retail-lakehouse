@@ -4184,6 +4184,19 @@
             "title": "Started At",
             "type": "string"
           },
+          "started_running_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the attempt's Spark driver started running; null while the attempt waits in its queue.",
+            "title": "Started Running At"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -4194,6 +4207,7 @@
           "size",
           "status",
           "started_at",
+          "started_running_at",
           "finished_at",
           "failure_class",
           "error",

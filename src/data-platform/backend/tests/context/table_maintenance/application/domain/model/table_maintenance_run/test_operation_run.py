@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -69,3 +69,22 @@ def test_history_cannot_hold_an_attempt_beyond_the_count():
     """A history listing an attempt the operation never reached is refused."""
     with pytest.raises(InvariantViolation, match="latest attempt"):
         _run(1, _attempt(1), _attempt(2))
+
+
+def test_an_attempt_cannot_start_running_before_it_was_submitted():
+    """A running time earlier than the submit time is rejected."""
+    with pytest.raises(InvariantViolation):
+        OperationAttempt(
+            attempt=1,
+            size=ComputeSize.S,
+            status=OperationRunStatus.RUNNING,
+            started_at=T0,
+            started_running_at=T0 - timedelta(seconds=1),
+        )
+
+
+def test_a_queued_or_running_attempt_is_not_finished():
+    """Only an attempt with an outcome is finished."""
+    assert not _attempt(1, OperationRunStatus.QUEUED).finished
+    assert not _attempt(1, OperationRunStatus.RUNNING).finished
+    assert _attempt(1, OperationRunStatus.FAILED).finished

@@ -96,6 +96,8 @@ def test_status_rollup():
     run = _run([Op.REWRITE_DATA_FILES, Op.EXPIRE_SNAPSHOTS])
     assert run.status is RunStatus.PENDING
     run.start_attempt(Op.REWRITE_DATA_FILES, 1, "app-1", _now(1))
+    assert run.status is RunStatus.QUEUED
+    run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(1), _now(1))
     assert run.status is RunStatus.RUNNING
     run.succeed(Op.REWRITE_DATA_FILES, 1, {"files": 3}, _now(2))
     assert run.status is RunStatus.RUNNING
@@ -157,7 +159,7 @@ def test_stale_attempt_result_ignored():
     run.succeed(Op.REWRITE_DATA_FILES, 1, {"x": 1}, _now(4))
     run.fail(Op.REWRITE_DATA_FILES, 1, "late", _now(4))
     op = _op(run, Op.REWRITE_DATA_FILES)
-    assert op.status is OperationRunStatus.RUNNING
+    assert op.status is OperationRunStatus.QUEUED
     assert op.attempts == 2
     assert op.job_name == "a2"
 
@@ -173,7 +175,7 @@ def test_retry_clears_previous_outcome():
     assert op.error is None and op.finished_at is None and op.metrics == {}
     assert op.started_at == _now(3)
     assert run.finished_at is None
-    assert run.status is RunStatus.RUNNING
+    assert run.status is RunStatus.QUEUED
 
 
 def test_start_attempt_idempotent_and_guarded():
@@ -328,12 +330,12 @@ def _attempts(run: TableMaintenanceRun, op: Op = Op.REWRITE_DATA_FILES) -> tuple
     return _op(run, op).attempt_history
 
 
-def test_start_attempt_appends_a_running_attempt_with_its_size():
-    """Starting an attempt records it as running at its size."""
+def test_start_attempt_appends_a_queued_attempt_with_its_size():
+    """Starting an attempt records it as queued at its size."""
     run = _run()
     run.start_attempt(Op.REWRITE_DATA_FILES, 1, "job-1", _now(1), size=ComputeSize.M)
     assert _attempts(run) == (
-        OperationAttempt(attempt=1, size=ComputeSize.M, status=OperationRunStatus.RUNNING, started_at=_now(1)),
+        OperationAttempt(attempt=1, size=ComputeSize.M, status=OperationRunStatus.QUEUED, started_at=_now(1)),
     )
 
 
@@ -467,3 +469,136 @@ def test_attempt_record_is_none_for_an_unknown_attempt():
     """An attempt that has no entry reads as None."""
     run = _run()
     assert run.attempt_record(Op.REWRITE_DATA_FILES, 1) is None
+
+
+def _queued_run() -> TableMaintenanceRun:
+    run = _run([Op.REWRITE_DATA_FILES])
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, "job-1", _now(1), size=ComputeSize.S)
+    return run
+
+
+def test_a_submitted_attempt_is_queued():
+    """A submitted attempt, its operation and the run wait in the queue until the job runs."""
+    run = _queued_run()
+    assert _op(run, Op.REWRITE_DATA_FILES).status is OperationRunStatus.QUEUED
+    assert _attempts(run)[0].status is OperationRunStatus.QUEUED
+    assert _attempts(run)[0].started_running_at is None
+    assert not _attempts(run)[0].finished
+    assert run.status is RunStatus.QUEUED
+
+
+def test_restarting_a_queued_attempt_is_a_no_op_that_attaches_the_job_name():
+    """Starting the queued attempt again changes nothing but a missing job name."""
+    run = _run([Op.REWRITE_DATA_FILES])
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, None, _now(1))
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, "job-1", _now(2))
+    assert _op(run, Op.REWRITE_DATA_FILES).job_name == "job-1"
+    assert len(_attempts(run)) == 1
+
+
+def test_record_running_moves_queued_to_running():
+    """Recording that the driver runs moves the attempt, its operation and the run to running."""
+    run = _queued_run()
+    run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(3), _now(4))
+    assert _op(run, Op.REWRITE_DATA_FILES).status is OperationRunStatus.RUNNING
+    assert _attempts(run)[0].status is OperationRunStatus.RUNNING
+    assert _attempts(run)[0].started_running_at == _now(3)
+    assert run.status is RunStatus.RUNNING
+
+
+def test_record_running_twice_is_a_no_op():
+    """A second report that the driver runs keeps the first running time."""
+    run = _queued_run()
+    run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(3), _now(4))
+    run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(5), _now(6))
+    assert _attempts(run)[0].started_running_at == _now(3)
+
+
+def test_running_before_the_submit_is_clamped():
+    """A running time before the submit is raised to the submit time."""
+    run = _queued_run()
+    run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(1) - timedelta(seconds=5), _now(4))
+    assert _attempts(run)[0].started_running_at == _now(1)
+
+
+def test_running_after_now_is_clamped():
+    """A running time in the future is lowered to now."""
+    run = _queued_run()
+    run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(4) + timedelta(seconds=5), _now(4))
+    assert _attempts(run)[0].started_running_at == _now(4)
+
+
+def test_a_result_fills_a_missing_running_time():
+    """A result carrying the running time records it on an attempt that never got one."""
+    run = _queued_run()
+    run.succeed(Op.REWRITE_DATA_FILES, 1, {}, _now(5), started_running_at=_now(3))
+    assert _op(run, Op.REWRITE_DATA_FILES).status is OperationRunStatus.SUCCEEDED
+    assert _attempts(run)[0].started_running_at == _now(3)
+
+
+def test_a_result_keeps_the_running_time_already_recorded():
+    """A result does not replace a running time the attempt already has."""
+    run = _queued_run()
+    run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(2), _now(3))
+    run.fail(Op.REWRITE_DATA_FILES, 1, "boom", _now(5), started_running_at=_now(4))
+    assert _attempts(run)[0].started_running_at == _now(2)
+
+
+def test_record_running_on_a_finished_attempt_only_fills_the_time():
+    """A running time that arrives after the result is recorded within the attempt, status unchanged."""
+    run = _queued_run()
+    run.fail(Op.REWRITE_DATA_FILES, 1, "boom", _now(5))
+    run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(9), _now(10))
+    assert _op(run, Op.REWRITE_DATA_FILES).status is OperationRunStatus.FAILED
+    assert _attempts(run)[0].status is OperationRunStatus.FAILED
+    assert _attempts(run)[0].started_running_at == _now(5)
+    run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(2), _now(10))
+    assert _attempts(run)[0].started_running_at == _now(5)
+
+
+def test_record_running_of_a_lower_attempt_is_a_no_op():
+    """A running report for an earlier attempt changes nothing."""
+    run = _queued_run()
+    run.fail(Op.REWRITE_DATA_FILES, 1, "boom", _now(2))
+    run.start_attempt(Op.REWRITE_DATA_FILES, 2, "job-2", _now(3))
+    run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(4), _now(5))
+    assert _op(run, Op.REWRITE_DATA_FILES).status is OperationRunStatus.QUEUED
+    assert [a.started_running_at for a in _attempts(run)] == [None, None]
+
+
+def test_record_running_of_an_unstarted_attempt_is_refused():
+    """A running report for an attempt that was never started is rejected."""
+    run = _run([Op.REWRITE_DATA_FILES])
+    with pytest.raises(InvalidRunTransition):
+        run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(1), _now(2))
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, "job-1", _now(1))
+    with pytest.raises(InvalidRunTransition):
+        run.record_attempt_running(Op.REWRITE_DATA_FILES, 2, _now(1), _now(2))
+
+
+def test_queued_attempt_can_fail_without_running():
+    """An attempt can fail while still queued, with no running time."""
+    run = _queued_run()
+    run.fail(Op.REWRITE_DATA_FILES, 1, "queue wait limit", _now(5))
+    assert _op(run, Op.REWRITE_DATA_FILES).status is OperationRunStatus.FAILED
+    assert _attempts(run)[0].started_running_at is None
+
+
+def test_attach_job_name_accepts_a_queued_or_running_attempt():
+    """The job name can be attached while the attempt is queued and while it runs."""
+    run = _run([Op.REWRITE_DATA_FILES])
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, None, _now(1))
+    run.attach_job_name(Op.REWRITE_DATA_FILES, 1, "j1")
+    run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(2), _now(3))
+    run.attach_job_name(Op.REWRITE_DATA_FILES, 1, "j1")
+
+
+def test_status_is_running_over_queued_and_queued_over_pending():
+    """The run is running when any operation runs, else queued when any is queued, else pending."""
+    run = _run([Op.REWRITE_DATA_FILES, Op.EXPIRE_SNAPSHOTS])
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, "a", _now(1))
+    run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(2), _now(3))
+    run.succeed(Op.REWRITE_DATA_FILES, 1, {}, _now(4))
+    assert run.status is RunStatus.RUNNING
+    run.start_attempt(Op.EXPIRE_SNAPSHOTS, 1, "b", _now(5))
+    assert run.status is RunStatus.QUEUED

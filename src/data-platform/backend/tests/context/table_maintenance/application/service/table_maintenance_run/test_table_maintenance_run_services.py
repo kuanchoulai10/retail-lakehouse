@@ -166,7 +166,7 @@ def test_create_run_is_idempotent_by_id(creator, runs_repo, table, now):
     run.start_attempt(RDF, 1, "app-1", now)
     again = creator.execute(_create_input(now + timedelta(hours=1), trigger="manual"))
     assert again.trigger == "scheduled"
-    assert again.status == "running"
+    assert again.status == "queued"
     assert again.created_at == now
     assert len(runs_repo.items) == 1
 
@@ -264,8 +264,8 @@ def test_record_result_stale_attempt_is_ignored(recorder, started_run, table, no
     started_run.fail(RDF, 1, "boom", now)
     started_run.start_attempt(RDF, 2, "tm-rdf-run1-a2", now)
     out = _record(recorder, now, attempt=1, succeeded=False, error="late")
-    assert out.status == "running"
-    assert started_run.operations[0].status.value == "running"
+    assert out.status == "queued"
+    assert started_run.operations[0].status.value == "queued"
     assert table.operation_state(RDF).consecutive_failures == 0
 
 
@@ -363,7 +363,7 @@ def test_get_run_returns_the_run_or_not_found(runs_repo, started_run):
     """Getting a run returns it with its operations, or raises NotFoundError."""
     service = GetTableMaintenanceRunService(runs_repo)
     out = service.execute(GetTableMaintenanceRunUseCaseInput(run_id=RUN_1))
-    assert out.status == "running"
+    assert out.status == "queued"
     assert out.operations[0]["job_name"] == "tm-rdf-run1-a1"
     with pytest.raises(NotFoundError):
         service.execute(GetTableMaintenanceRunUseCaseInput(run_id=UNKNOWN_RUN))
@@ -474,6 +474,7 @@ def test_run_output_lists_every_attempt(runs_repo, started_run, now):
             "size": None,
             "status": "failed",
             "started_at": now,
+            "started_running_at": None,
             "finished_at": now,
             "failure_class": "oom",
             "error": "java.lang.OutOfMemoryError",
@@ -484,8 +485,9 @@ def test_run_output_lists_every_attempt(runs_repo, started_run, now):
         {
             "attempt": 2,
             "size": "M",
-            "status": "running",
+            "status": "queued",
             "started_at": now,
+            "started_running_at": None,
             "finished_at": None,
             "failure_class": None,
             "error": None,
