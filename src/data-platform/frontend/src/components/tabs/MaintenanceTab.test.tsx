@@ -175,6 +175,15 @@ describe("MaintenanceTab", () => {
     expect(calls[0]?.path).toBe("/v1/tables/uuid-orders/table-maintenance-runs");
   });
 
+  it("shows the load error when the first read fails", async () => {
+    calls = stubCatalogApi({
+      "GET /v1/tables/uuid-orders/table-maintenance-runs": () => jsonResponse({ detail: "runs unavailable" }, 500),
+    });
+    renderTab();
+    expect(await screen.findByText("Could not load maintenance runs: runs unavailable")).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
   it("shows per-operation attempts, metrics and error when expanded", async () => {
     const user = userEvent.setup();
     renderTab();
@@ -293,6 +302,56 @@ describe("MaintenanceTab", () => {
       expect(runReads()).toBe(1);
       await vi.advanceTimersByTimeAsync(15_500);
       await vi.waitFor(() => expect(runReads()).toBeGreaterThanOrEqual(2));
+    });
+
+    describe("while the runs are read again in the background", () => {
+      const REFRESH_FAILED = "Could not refresh. Times shown are from the last read.";
+      const FAKE_TIMERS: Parameters<typeof vi.useFakeTimers>[0] = {
+        toFake: ["setTimeout", "setInterval", "clearTimeout", "clearInterval", "Date"],
+        shouldAdvanceTime: true,
+      };
+
+      // Answers each read with the next of `answers`, then repeats the last.
+      function readsAnswering(...answers: (() => Response)[]) {
+        let read = 0;
+        calls = stubCatalogApi({
+          [`GET ${RUNS_PATH}`]: () => answers[Math.min(read++, answers.length - 1)]!(),
+        });
+      }
+      const ok = () => jsonResponse([IN_FLIGHT]);
+      const failing = () => jsonResponse({ detail: "runs unavailable" }, 500);
+
+      async function expandRun() {
+        const user = userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTime(ms) });
+        renderTab();
+        await user.click(await screen.findByText("scheduled"));
+        expect(screen.getByRole("button", { name: "Collapse run run-3" })).toHaveAttribute("aria-expanded", "true");
+      }
+
+      it("keeps an expanded run expanded across a refetch that succeeds", async () => {
+        vi.useFakeTimers(FAKE_TIMERS);
+        readsAnswering(ok, ok);
+        await expandRun();
+        await vi.advanceTimersByTimeAsync(15_500);
+        await vi.waitFor(() => expect(runReads()).toBeGreaterThanOrEqual(2));
+        expect(screen.getByRole("button", { name: "Collapse run run-3" })).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByRole("table", { name: "Attempts of rewrite_data_files" })).toBeInTheDocument();
+        expect(screen.queryByText(REFRESH_FAILED)).not.toBeInTheDocument();
+      });
+
+      it("keeps the table and the expanded run when a refetch fails, and drops the note once one succeeds", async () => {
+        vi.useFakeTimers(FAKE_TIMERS);
+        readsAnswering(ok, failing, ok);
+        await expandRun();
+        await vi.advanceTimersByTimeAsync(15_500);
+        expect(await screen.findByText(REFRESH_FAILED)).toBeInTheDocument();
+        expect(screen.queryByText(/^Could not load maintenance runs/)).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Collapse run run-3" })).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByRole("table", { name: "Attempts of rewrite_data_files" })).toBeInTheDocument();
+        await vi.advanceTimersByTimeAsync(15_500);
+        await vi.waitFor(() => expect(screen.queryByText(REFRESH_FAILED)).not.toBeInTheDocument());
+        expect(screen.getByRole("button", { name: "Collapse run run-3" })).toHaveAttribute("aria-expanded", "true");
+      });
     });
 
     it("does not read the runs again when every one has ended", async () => {

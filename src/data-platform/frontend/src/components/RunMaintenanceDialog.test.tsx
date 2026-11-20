@@ -99,6 +99,32 @@ describe("RunMaintenanceDialog", { timeout: 15_000 }, () => {
     expect(calls.filter((call) => call.method === "GET").map((call) => call.path)).toEqual([RUNS_PATH]);
   });
 
+  it("reads the newest run again on mount even when the cache is fresh and the client keeps data for long", async () => {
+    const calls = stubCatalogApi({
+      [`GET ${RUNS_PATH}`]: () => jsonResponse([runWithStatus("running")]),
+    });
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    queryClient.setQueryData(getListTableMaintenanceRunsQueryKey("uuid-orders", { limit: 1 }), [
+      runWithStatus("succeeded"),
+    ]);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RunMaintenanceDialog tableUuid="uuid-orders" tablePriority="P3" onClose={() => {}} />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(calls.filter((call) => call.path === RUNS_PATH)).toHaveLength(1));
+    expect(await screen.findByText(IN_FLIGHT_NOTE)).toBeInTheDocument();
+  });
+
+  it("puts the in-flight note after the Priority control", async () => {
+    renderDialog("P3", runWithStatus("queued"));
+    const note = await screen.findByText(IN_FLIGHT_NOTE);
+    const priority = screen.getByRole("combobox", { name: "Priority" });
+    const checkbox = screen.getByRole("checkbox", { name: "remove_orphan_files" });
+    expect(checkbox.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(priority.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("keeps the in-flight note out of the tab order: the operations and Run stay reachable", async () => {
     const user = userEvent.setup();
     renderDialog("P3", runWithStatus("queued"));

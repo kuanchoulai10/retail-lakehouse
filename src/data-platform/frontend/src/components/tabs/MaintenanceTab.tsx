@@ -156,7 +156,8 @@ export function MaintenanceTab({ tableUuid }: { tableUuid: string }) {
   const now = useMemo(() => new Date(runs.dataUpdatedAt), [runs.dataUpdatedAt]);
 
   if (runs.isPending) return <PanelSkeleton label="Loading runs…" />;
-  if (runs.isError) {
+  // A failed background read keeps the runs it already has on screen; only a first read that fails replaces them.
+  if (runs.isError && runs.data === undefined) {
     return <Banner type="negative" title={`Could not load maintenance runs: ${errorMessage(runs.error)}`} />;
   }
   const missing = linkedRunId !== null && !runs.data.some((run) => run.run_id === linkedRunId);
@@ -170,6 +171,9 @@ export function MaintenanceTab({ tableUuid }: { tableUuid: string }) {
       }
     >
       {missing && <Banner type="information" title="This run is no longer available" className="mb-4" />}
+      {runs.isError && (
+        <Banner type="information" title="Could not refresh. Times shown are from the last read." className="mb-4" />
+      )}
       <DataTable
         key={linkedRunId ?? ""}
         caption="Maintenance runs, newest first"
