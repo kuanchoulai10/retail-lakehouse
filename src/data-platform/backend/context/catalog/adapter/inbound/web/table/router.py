@@ -10,6 +10,7 @@ from context.catalog.adapter.inbound.web.shared import (
     WebUseCases,
     use_cases_dependency,
 )
+from context.catalog.adapter.inbound.web.table.change_counts_response import change_counts_response
 from context.catalog.adapter.inbound.web.table.dto import (
     CatalogTableApiResponse,
     CatalogTablePartitionSpecComparisonApiResponse,
@@ -21,8 +22,10 @@ from context.catalog.adapter.inbound.web.table.dto import (
     CatalogTableSchemaVersionApiResponse,
     CatalogTableSchemaVersionsApiResponse,
     CreateTableApiRequest,
+    PartitionChangeCountsApiResponse,
     RenameTableApiRequest,
     ResetTablePropertiesApiRequest,
+    SchemaChangeCountsApiResponse,
     SchemaFieldComparisonApiResponse,
     TableIdentifierApiResponse,
     UpdateTablePropertiesApiRequest,
@@ -192,7 +195,16 @@ def list_table_schema_versions(
     )
     return CatalogTableSchemaVersionsApiResponse(
         current_schema_id=output.current_schema_id,
-        versions=[CatalogTableSchemaVersionApiResponse.model_validate(item) for item in output.items],
+        versions=[
+            CatalogTableSchemaVersionApiResponse(
+                schema_id=item.schema_id,
+                previous_schema_id=item.previous_schema_id,
+                current=item.current,
+                column_count=item.column_count,
+                changes=change_counts_response(SchemaChangeCountsApiResponse, item.changes),
+            )
+            for item in output.items
+        ],
     )
 
 
@@ -223,7 +235,16 @@ def list_table_partition_spec_versions(
     )
     return CatalogTablePartitionSpecVersionsApiResponse(
         default_spec_id=output.default_spec_id,
-        versions=[CatalogTablePartitionSpecVersionApiResponse.model_validate(item) for item in output.items],
+        versions=[
+            CatalogTablePartitionSpecVersionApiResponse(
+                spec_id=item.spec_id,
+                previous_spec_id=item.previous_spec_id,
+                default=item.default,
+                field_count=item.field_count,
+                changes=change_counts_response(PartitionChangeCountsApiResponse, item.changes),
+            )
+            for item in output.items
+        ],
     )
 
 

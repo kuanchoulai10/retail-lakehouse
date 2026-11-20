@@ -98,15 +98,25 @@ def test_commit_with_partial_summary(service, catalog):
     assert item.removed_delete_files is None
 
 
-def test_commit_without_a_schema_id_reads_none(service, catalog):
-    """A commit dict without the schema id key reads None."""
-    commit = _commit({})
-    del commit["schema_id"]
-    catalog.commit_pages[KEY] = TableCommitPage(table_uuid="u-1", commits=[commit], truncated=False)
+def test_commit_with_a_null_schema_id_reads_none(service, catalog):
+    """A commit whose snapshot recorded no schema (format v1) reads None."""
+    catalog.commit_pages[KEY] = TableCommitPage(
+        table_uuid="u-1", commits=[_commit({}, schema_id=None)], truncated=False
+    )
 
     item = service.execute(ListTableCommitsUseCaseInput(uuid="u-1")).items[0]
 
     assert item.schema_id is None
+
+
+def test_commit_without_the_schema_id_key_fails_loudly(service, catalog):
+    """The gateway always writes the key, so a page without it is a broken gateway, never a silent None."""
+    commit = _commit({})
+    del commit["schema_id"]
+    catalog.commit_pages[KEY] = TableCommitPage(table_uuid="u-1", commits=[commit], truncated=False)
+
+    with pytest.raises(KeyError, match="schema_id"):
+        service.execute(ListTableCommitsUseCaseInput(uuid="u-1"))
 
 
 def test_truncated_passes_through(service, catalog):

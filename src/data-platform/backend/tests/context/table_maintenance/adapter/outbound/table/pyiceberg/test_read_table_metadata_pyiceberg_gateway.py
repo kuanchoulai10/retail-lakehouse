@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
 
@@ -19,6 +20,7 @@ from pyiceberg.types import LongType, NestedField, StringType, TimestampType
 
 from context.table_maintenance.adapter.outbound.table.pyiceberg import (
     ReadTableMetadataPyIcebergGateway,
+    commit_page_from_table,
 )
 from context.table_maintenance.application.port.outbound.table import (
     CatalogNotFoundError,
@@ -32,6 +34,8 @@ from context.table_maintenance.application.service.table import (
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from pyiceberg.table import Table
 
 CATALOG = "lake"
 SCHEMA = Schema(
@@ -448,6 +452,59 @@ def test_list_commits_carry_the_schema_id_each_was_written_with(
 
     assert page is not None
     assert [c["schema_id"] for c in page.commits] == [1, 0]
+
+
+def _v1_table_with_a_schema_change(catalog: SqlCatalog) -> Table:
+    catalog.create_namespace("db")
+    table = catalog.create_table("db.events", SCHEMA, properties={"format-version": "1"})
+    table.append(_rows([1], day=1))
+    with catalog.load_table("db.events").update_schema() as update:
+        update.add_column("note", StringType())
+    evolved = catalog.load_table("db.events")
+    evolved.append(
+        pa.table(
+            {"id": [2], "ts": [datetime(2024, 1, 2, 10)], "region": ["eu"], "note": ["x"]},
+            schema=ARROW.append(pa.field("note", pa.string())),
+        )
+    )
+    return catalog.load_table("db.events")
+
+
+def test_list_commits_of_a_format_v1_table_carry_their_schema_ids(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    """A real format v1 table records the schema id on each snapshot, and each commit carries it."""
+    table = _v1_table_with_a_schema_change(catalog)
+    assert table.metadata.format_version == 1
+
+    page = gateway.list_commits(_ref(), TableCommitSelection(limit=10))
+
+    assert page is not None
+    assert [c["schema_id"] for c in page.commits] == [1, 0]
+
+
+def test_a_v1_snapshot_without_a_schema_id_maps_to_none_and_keeps_the_key(catalog: SqlCatalog) -> None:
+    """Older v1 writers left ``schema-id`` off a snapshot; the commit then carries the key with None."""
+    table = _v1_table_with_a_schema_change(catalog)
+    snapshots = [snapshot.model_copy(update={"schema_id": None}) for snapshot in table.metadata.snapshots]
+    without_ids = cast("Table", SimpleNamespace(metadata=table.metadata.model_copy(update={"snapshots": snapshots})))
+
+    page = commit_page_from_table(without_ids, TableCommitSelection(limit=10))
+
+    assert [c["schema_id"] for c in page.commits] == [None, None]
+
+
+def test_every_commit_carries_the_schema_id_key(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    """The mapper writes ``schema_id`` on every commit, so the service can read it without a default."""
+    _v1_table_with_a_schema_change(catalog)
+
+    page = gateway.list_commits(_ref(), TableCommitSelection(limit=10))
+
+    assert page is not None
+    assert page.commits
+    assert all("schema_id" in commit for commit in page.commits)
 
 
 def test_list_commits_since(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
