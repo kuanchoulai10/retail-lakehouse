@@ -75,9 +75,9 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 class MaintenancePolicyContent(ValueObject):
     """Hold what a maintenance policy says: reconcile interval, dry run, priority and each operation's policy.
 
-    ``priority`` ranks the policy's compaction candidates against other tables'
-    in a compaction round; a version stored before priorities existed has no
-    field and reads as ``P2``, the default.
+    ``priority`` no longer orders maintenance (a table's own priority does; KCL-91
+    removes this one); a version stored before priorities existed has no field and
+    reads as ``P2``, the default.
     """
 
     description: str

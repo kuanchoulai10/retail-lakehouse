@@ -24,11 +24,13 @@ Option 3. The backend has three contexts under `context/<name>/`:
 
 | Context | Owns | Source of truth |
 |---|---|---|
-| `table_maintenance` | `Table`, `TableMaintenancePolicy`, `TableMaintenancePolicyAttachment`, `TableDiscoveryRules`, `TableMaintenanceRun`, `TableReconciliation` | Our database |
+| `table_maintenance` | `CatalogDiscovery`, `Table`, `TableMaintenancePolicy`, `TableMaintenancePolicyAttachment`, `TableDiscoveryRules`, `TableMaintenanceRun`, `TableReconciliation` | Our database |
 | `catalog` | Catalogs, namespaces, tables, views | Polaris |
 | `access` | Principals, principal roles, catalog roles (grants live inside the catalog-role aggregate) | Polaris |
 
 Updated 2026-11-12: maintenance presets and discovery settings were replaced by versioned maintenance policies with their attachments and by one versioned discovery rules list (plan `docs/superpowers/plans/2026-11-11-maintenance-policy-and-discovery-rules.md`).
+
+Updated 2026-11-20 (KCL-93): the maintenance flow is one reconciliation per table, which starts one maintenance workflow per table (`table-maintenance:table-uuid={uuid}`) whose Spark jobs go straight to Volcano queues. The global compaction round, the compaction candidates and the admission workflow were removed, so the `CompactionCandidate` and `CompactionRound` aggregates no longer exist.
 
 Relations between the contexts:
 

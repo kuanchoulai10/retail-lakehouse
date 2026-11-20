@@ -8,5 +8,5 @@ class MissingTableSearchAttributes(RuntimeError):
 
     Temporal fails the workflow task of a workflow that upserts an unregistered
     attribute and retries it without end, so the worker refuses to start
-    instead of letting the compaction rounds stop in silence.
+    instead of letting every workflow that tags itself fail its workflow task.
     """

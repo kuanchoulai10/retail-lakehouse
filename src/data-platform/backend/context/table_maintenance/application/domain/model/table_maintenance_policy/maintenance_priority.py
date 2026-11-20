@@ -6,11 +6,11 @@ from enum import StrEnum
 
 
 class MaintenancePriority(StrEnum):
-    """Enumerate how urgent a policy's tables are when compaction rounds share their budget.
+    """Enumerate the priority a maintenance policy names.
 
-    ``P0`` is the most urgent and ``P2`` the least; every priority has a weight
-    that multiplies a candidate's score, and an SLA after which a candidate
-    still waiting is overdue.
+    ``P0`` is the most urgent and ``P2`` the least. The policy's priority no longer
+    orders maintenance: a table's own priority does, in its Volcano queue; KCL-91
+    removes this one.
     """
 
     P0 = "P0"
