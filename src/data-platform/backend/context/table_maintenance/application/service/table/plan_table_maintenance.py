@@ -21,6 +21,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 )
 from context.table_maintenance.application.domain.service.table import (
     assess_maintenance,
+    measure_table,
     plan_manual_maintenance,
 )
 from context.table_maintenance.application.exceptions import ValidationError
@@ -51,6 +52,7 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table import OperationCooldowns, Table
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
+        TableMetricsStore,
         TablesRepo,
     )
 
@@ -69,9 +71,10 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         catalog_gateway: ReadTableMetadataGateway,
         resolve_applicable_policy: ResolveApplicableTableMaintenancePolicyUseCase,
         *,
+        metrics_store: TableMetricsStore,
         cooldowns: OperationCooldowns = DEFAULT_OPERATION_COOLDOWNS,
     ) -> None:
-        """Bind the tables repo, the catalog gateway and the applicable policy resolution.
+        """Bind the tables repo, the catalog gateway, the applicable policy resolution and the metrics store.
 
         ``cooldowns`` are the platform's cooldown of each operation and the cap where the doubling
         of a failing operation's cooldown stops.
@@ -79,6 +82,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         self._tables_repo = tables_repo
         self._catalog_gateway = catalog_gateway
         self._resolve_applicable_policy = resolve_applicable_policy
+        self._metrics_store = metrics_store
         self._cooldowns = cooldowns
 
     def execute(self, request: PlanTableMaintenanceUseCaseInput) -> PlanTableMaintenanceUseCaseOutput:
@@ -92,6 +96,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         managed table first lifts the needs-attention marks set under an earlier
         applicable policy and saves the table when it lifted any. A plan that
         observes the table saves its newest commit when that moves its last commit.
+        A plan that observes the table saves its metrics, a skip forgets them.
 
         Every planned operation targets the whole table (no filters) and starts at
         the size the table remembers for it; a due compaction rewrites the whole
@@ -102,19 +107,23 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         manual_priority = self._parse_manual_priority(request.manual_priority)
         table = self._tables_repo.get(TableId(request.table_uuid))
         if table is None:
+            self._forget_metrics(request.table_uuid)
             return _skip_unknown_table()
         applied = self._resolve(table)
         policy = MaintenancePolicyContent.from_primitives(applied.content)
         reason = _SKIP_REASONS.get(table.status)
         if reason is not None:
+            self._forget_metrics(request.table_uuid)
             return _skip(reason, applied, policy, table, manual_priority)
         ref = TableMetadataRef(table.name.catalog, table.name.namespace, table.name.table)
         gateway_observation = self._catalog_gateway.observe_table(ref)
         with translate_domain_errors():
             observation = None if gateway_observation is None else table_observation_from_gateway(gateway_observation)
             if observation is None or observation.table_uuid != table.id.value:
+                self._forget_metrics(request.table_uuid)
                 return _skip("not_found", applied, policy, table, manual_priority)
             self._record_last_commit(table, observation.last_committed_at)
+            self._metrics_store.save(measure_table(table.id, observation, request.now))
             self._lift_stale_marks(table, applied, request.now)
             if manual is not None:
                 plan = plan_manual_maintenance(manual)
@@ -151,6 +160,10 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         """
         if at is not None and table.record_last_commit(at):
             self._tables_repo.record_last_commit(table.id, at)
+
+    def _forget_metrics(self, table_uuid: str) -> None:
+        """Delete the metrics kept for ``table_uuid``, since a table that cannot be observed has none to show."""
+        self._metrics_store.delete(TableId(table_uuid))
 
     def _resolve(self, table: Table) -> ResolveApplicableTableMaintenancePolicyUseCaseOutput:
         return self._resolve_applicable_policy.execute(

@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.catalog_discovery import (
         CatalogDiscoveriesRepo,
     )
-    from context.table_maintenance.application.port.outbound.table import TablesRepo
+    from context.table_maintenance.application.port.outbound.table import TableMetricsStore, TablesRepo
     from context.table_maintenance.application.port.outbound.table_discovery_rules import (
         TableDiscoveryRulesRepo,
     )
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class Repositories:
-    """Hold one repository per aggregate."""
+    """Hold one repository per aggregate, and the table metrics store."""
 
     table_discovery_rules: TableDiscoveryRulesRepo
     table_maintenance_runs: TableMaintenanceRunsRepo
@@ -38,3 +38,4 @@ class Repositories:
     table_maintenance_policy_attachments: TableMaintenancePolicyAttachmentsRepo
     table_reconciliations: TableReconciliationsRepo
     catalog_discoveries: CatalogDiscoveriesRepo
+    table_metrics: TableMetricsStore

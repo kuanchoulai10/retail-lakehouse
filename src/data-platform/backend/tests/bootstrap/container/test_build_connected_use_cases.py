@@ -17,6 +17,7 @@ from bootstrap.container import (
 from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
     AsyncLoopBridge,
 )
+from context.table_maintenance.adapter.outbound.table.sql import TableMetricsSqlStore
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     ListTableMaintenancePoliciesUseCaseInput,
 )
@@ -103,6 +104,25 @@ def test_the_planner_and_the_health_report_read_the_cooldowns_the_settings_say(t
     assert expected.rewrite_data_files == timedelta(seconds=60)
     assert planner._cooldowns == expected  # noqa: SLF001
     assert health._cooldowns == expected  # noqa: SLF001
+
+
+def test_the_planner_saves_the_metrics_in_sql(tmp_path):
+    """The built plan service keeps the table metrics in the SQL store."""
+    settings = sqlite_settings()
+    settings.sqlite.path = str(tmp_path / "tm.db")
+
+    async def connect(_temporal: TemporalSettings):
+        return MagicMock(name="client")
+
+    bridge = AsyncLoopBridge()
+    try:
+        use_cases = build_connected_use_cases(settings, bridge, connect=connect, k8s_api_factory=MagicMock)
+    finally:
+        bridge.close()
+
+    planner = use_cases.plan_table_maintenance
+    assert isinstance(planner, PlanTableMaintenanceService)
+    assert isinstance(planner._metrics_store, TableMetricsSqlStore)  # noqa: SLF001
 
 
 def test_the_platform_settings_page_reads_the_settings_the_components_run_on(tmp_path):

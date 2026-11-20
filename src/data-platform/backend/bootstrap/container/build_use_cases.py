@@ -168,6 +168,7 @@ def build_use_cases(
             tables,
             catalog,
             resolve_applicable_policy,
+            metrics_store=repos.table_metrics,
             cooldowns=cooldowns,
         ),
         get_platform_settings=GetPlatformSettingsService(platform_settings),

@@ -19,6 +19,7 @@ from context.table_maintenance.application.domain.model.table import (
     OperationCooldowns,
     Table,
     TableId,
+    TableMetrics,
     TableName,
     TableStatus,
 )
@@ -76,6 +77,7 @@ from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo 
 )
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.context.table_maintenance.fakes.plan_service_on_fakes import plan_service_on_fakes
+from tests.context.table_maintenance.fakes.policy_with_only_operation import policy_with_only_operation
 from tests.context.table_maintenance.fakes.policy_with_operation import policy_with_operation
 from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
     RecordingSendTableChangeGateway,
@@ -158,9 +160,9 @@ def attachments(attachments_repo):
 
 
 @pytest.fixture
-def planner(tables_repo, catalog, resolve_applicable_policy):
+def planner(tables_repo, catalog, resolve_applicable_policy, metrics_store):
     """Provide the plan table maintenance service on the fakes."""
-    return plan_service_on_fakes(tables_repo, catalog, resolve_applicable_policy)
+    return plan_service_on_fakes(tables_repo, catalog, resolve_applicable_policy, metrics_store)
 
 
 def _use_policy(policies, now, content):
@@ -380,16 +382,17 @@ def test_scheduled_plan_respects_cooldown(planner, tables_repo, catalog, now):
     assert "rewrite_data_files" in [o.operation for o in control.operations]
 
 
-def test_plan_uses_the_injected_cooldowns(tables_repo, catalog, resolve_applicable_policy, now):
+def test_plan_uses_the_injected_cooldowns(tables_repo, catalog, resolve_applicable_policy, metrics_store, now):
     """With no compaction cooldown a table is due again right after an attempt, as the injected cooldowns say."""
     table = _table(tables_repo, now)
     table.record_operation_result(OPS.REWRITE_DATA_FILES, True, now)
     _observe(catalog, now)
-    held = PlanTableMaintenanceService(tables_repo, catalog, resolve_applicable_policy)
+    held = PlanTableMaintenanceService(tables_repo, catalog, resolve_applicable_policy, metrics_store=metrics_store)
     free = PlanTableMaintenanceService(
         tables_repo,
         catalog,
         resolve_applicable_policy,
+        metrics_store=metrics_store,
         cooldowns=OperationCooldowns.platform_default().with_changes(rewrite_data_files=timedelta(0)),
     )
     assert "rewrite_data_files" not in [o.operation for o in _plan(held, now).operations]
@@ -605,6 +608,115 @@ def test_unmanaged_table_skips_with_table_found(planner, tables_repo, now):
     _table(tables_repo, now).unmanage(now)
     plan = _plan(planner, now)
     assert (plan.status, plan.reason, plan.table_found, plan.checks) == ("skip", "unmanaged", True, ())
+
+
+def _saved_metrics(metrics_store):
+    """Return the metrics saved for the table ``u-1``."""
+    return metrics_store.get(TableId("u-1"))
+
+
+def _hold_metrics(metrics_store, now):
+    """Leave metrics saved for ``u-1``, as a reconcile that ran before this one did."""
+    metrics_store.save(
+        TableMetrics(
+            table_id=TableId("u-1"),
+            observed_at=now - timedelta(hours=1),
+            data_files=5,
+            position_delete_files=0,
+            equality_delete_files=0,
+            deletion_vectors=0,
+            data_size_bytes=1,
+            data_records=1,
+            position_delete_records=0,
+            equality_delete_records=0,
+            reducible_files=0,
+            manifests=1,
+            manifests_size_bytes=1,
+            manifest_added_entries=0,
+            manifest_existing_entries=0,
+            manifest_deleted_entries=0,
+            snapshots=1,
+        )
+    )
+
+
+def test_scheduled_plan_saves_the_tables_metrics(planner, tables_repo, catalog, metrics_store, now):
+    """A scheduled plan saves the metrics of the table it observed, as of the plan's time."""
+    _table(tables_repo, now)
+    _observe(catalog, now)
+    _plan(planner, now)
+    saved = _saved_metrics(metrics_store)
+    assert (saved.data_files, saved.observed_at) == (20, now)
+    assert (saved.snapshots, saved.manifests) == (12, 6)
+
+
+def test_manual_plan_saves_metrics_too(planner, tables_repo, catalog, metrics_store, now):
+    """A manual plan saves the table's metrics as well."""
+    _table(tables_repo, now)
+    _observe(catalog, now)
+    _plan(planner, now, ["rewrite_manifests"])
+    assert _saved_metrics(metrics_store).observed_at == now
+
+
+def test_dry_run_plan_saves_metrics_too(planner, tables_repo, catalog, policies, metrics_store, now):
+    """A table in dry run still has its metrics saved: only the plan is emptied."""
+    _use_policy(policies, now, DEFAULT.with_changes(dry_run=True))
+    _table(tables_repo, now)
+    _observe(catalog, now)
+    plan = _plan(planner, now)
+    assert plan.dry_run is True
+    assert _saved_metrics(metrics_store).data_files == 20
+
+
+def test_plan_of_a_policy_without_compaction_still_saves_reducible_files(
+    planner, tables_repo, catalog, policies, metrics_store, now
+):
+    """The reducible files are the table's state, so a policy with no compaction still gets them."""
+    _use_policy(policies, now, policy_with_only_operation(OPS.EXPIRE_SNAPSHOTS))
+    _table(tables_repo, now)
+    _observe(catalog, now)
+    _plan(planner, now)
+    assert _saved_metrics(metrics_store).reducible_files == 18
+
+
+def test_unmanaged_table_loses_its_metrics(planner, tables_repo, metrics_store, now):
+    """A plan of an unmanaged table forgets its metrics."""
+    _table(tables_repo, now).unmanage(now)
+    _hold_metrics(metrics_store, now)
+    _plan(planner, now)
+    assert _saved_metrics(metrics_store) is None
+
+
+def test_dropped_table_loses_its_metrics(planner, tables_repo, metrics_store, now):
+    """A plan of a dropped table forgets its metrics."""
+    _table(tables_repo, now).mark_dropped(now)
+    _hold_metrics(metrics_store, now)
+    _plan(planner, now)
+    assert _saved_metrics(metrics_store) is None
+
+
+def test_table_gone_from_the_catalog_loses_its_metrics(planner, tables_repo, metrics_store, now):
+    """A plan of a table the catalog no longer has forgets its metrics."""
+    _table(tables_repo, now)
+    _hold_metrics(metrics_store, now)
+    _plan(planner, now)
+    assert _saved_metrics(metrics_store) is None
+
+
+def test_catalog_table_with_another_uuid_loses_its_metrics(planner, tables_repo, catalog, metrics_store, now):
+    """A plan whose catalog table has another uuid forgets the metrics of the table it knew."""
+    _table(tables_repo, now)
+    _observe(catalog, now, table_uuid="u-recreated")
+    _hold_metrics(metrics_store, now)
+    _plan(planner, now)
+    assert _saved_metrics(metrics_store) is None
+
+
+def test_unknown_table_loses_its_metrics(planner, metrics_store, now):
+    """A plan of a table maintenance does not know forgets any metrics left for it."""
+    _hold_metrics(metrics_store, now)
+    _plan(planner, now)
+    assert _saved_metrics(metrics_store) is None
 
 
 def _record(plan, now, **overrides):

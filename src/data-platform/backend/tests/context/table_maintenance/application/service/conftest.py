@@ -37,6 +37,9 @@ from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policy_at
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_runs_repo import (
     InMemoryTableMaintenanceRunsRepo,
 )
+from tests.context.table_maintenance.fakes.in_memory_table_metrics_store import (
+    InMemoryTableMetricsStore,
+)
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import (
     InMemoryTablesRepo,
 )
@@ -97,6 +100,12 @@ def discoveries_repo() -> InMemoryCatalogDiscoveriesRepo:
 def tables_repo() -> InMemoryTablesRepo:
     """Provide an in-memory tables repository."""
     return InMemoryTablesRepo()
+
+
+@pytest.fixture
+def metrics_store() -> InMemoryTableMetricsStore:
+    """Provide an in-memory table metrics store."""
+    return InMemoryTableMetricsStore()
 
 
 @pytest.fixture

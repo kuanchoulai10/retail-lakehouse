@@ -8,7 +8,7 @@ from bootstrap.container.repositories import Repositories
 from context.table_maintenance.adapter.outbound.catalog_discovery.sql import (
     CatalogDiscoveriesSqlRepo,
 )
-from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo
+from context.table_maintenance.adapter.outbound.table.sql import TableMetricsSqlStore, TablesSqlRepo
 from context.table_maintenance.adapter.outbound.table_discovery_rules.sql import (
     TableDiscoveryRulesSqlRepo,
 )
@@ -39,4 +39,5 @@ def build_repositories(engine: Engine) -> Repositories:
         table_maintenance_policy_attachments=TableMaintenancePolicyAttachmentsSqlRepo(engine),
         table_reconciliations=TableReconciliationsSqlRepo(engine),
         catalog_discoveries=CatalogDiscoveriesSqlRepo(engine),
+        table_metrics=TableMetricsSqlStore(engine),
     )
