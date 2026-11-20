@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import PositiveInt
+from typing import Any
+
+from pydantic import PositiveInt, SerializerFunctionWrapHandler, model_serializer
 
 from base import ValueObject
 from context.table_maintenance.application.domain.model.table_maintenance_policy.prefix_mismatch_mode import (
@@ -18,6 +20,11 @@ class RemoveOrphanFilesOptions(ValueObject):
 
     max_concurrent_deletes: PositiveInt | None = None
     prefix_mismatch_mode: PrefixMismatchMode | None = None
+
+    @model_serializer(mode="wrap")
+    def _leave_unset_out(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        """Write only the options that are set, so an unset one stays left to the procedure."""
+        return {key: value for key, value in handler(self).items() if value is not None}
 
     def procedure_arguments(self) -> dict[str, int | str]:
         """Return the procedure arguments that are set."""

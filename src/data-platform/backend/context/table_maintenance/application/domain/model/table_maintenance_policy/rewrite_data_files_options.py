@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import Field, PositiveInt, model_validator
+from typing import Any
+
+from pydantic import Field, PositiveInt, SerializerFunctionWrapHandler, model_serializer, model_validator
 
 from base import ValueObject
 from context.table_maintenance.application.domain.model.table_maintenance_policy.rewrite_data_files_strategy import (
@@ -26,6 +28,11 @@ class RewriteDataFilesOptions(ValueObject):
     delete_file_threshold: PositiveInt | None = None
     remove_dangling_deletes: bool | None = None
     max_file_group_size_bytes: PositiveInt | None = None
+
+    @model_serializer(mode="wrap")
+    def _leave_unset_out(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        """Write only the options that are set, so an unset one stays left to the procedure."""
+        return {key: value for key, value in handler(self).items() if value is not None}
 
     @model_validator(mode="after")
     def _dependent_options_have_their_switch(self) -> RewriteDataFilesOptions:

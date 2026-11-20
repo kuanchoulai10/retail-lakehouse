@@ -167,18 +167,42 @@ def test_a_spec_reads_target_and_options() -> None:
     spec = RewriteDataFilesSpec.from_primitives(data)
     assert spec.options is not None
     assert spec.options.min_input_files == 2
-    assert spec.to_primitives() == {
-        "target": data["target"],
-        "options": {
-            "strategy": None,
-            "sort_order": None,
-            "min_input_files": 2,
-            "partial_progress_enabled": True,
-            "partial_progress_max_commits": None,
-            "max_concurrent_file_group_rewrites": None,
-            "rewrite_all": None,
-            "delete_file_threshold": None,
-            "remove_dangling_deletes": None,
-            "max_file_group_size_bytes": None,
-        },
+    assert spec.to_primitives() == data
+
+
+def test_a_spec_without_options_dumps_null_and_round_trips() -> None:
+    """Check an absent options object is written as null and read back equal."""
+    spec = RewriteManifestsSpec.from_primitives({"target": {"small_manifests": {"at_most": 5}}})
+    assert spec.to_primitives() == {"target": {"small_manifests": {"at_most": 5}}, "options": None}
+    assert RewriteManifestsSpec.from_primitives(spec.to_primitives()) == spec
+
+
+def test_unset_options_are_left_out_of_the_primitives() -> None:
+    """Check only the options that are set are written."""
+    assert RewriteDataFilesOptions().to_primitives() == {}
+    assert RewriteManifestsOptions().to_primitives() == {}
+    assert ExpireSnapshotsOptions(stream_results=False).to_primitives() == {"stream_results": False}
+    assert RemoveOrphanFilesOptions(prefix_mismatch_mode=PrefixMismatchMode.ERROR).to_primitives() == {
+        "prefix_mismatch_mode": "ERROR",
     }
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        RewriteDataFilesOptions(
+            strategy=RewriteDataFilesStrategy.SORT,
+            sort_order="a",
+            min_input_files=2,
+            partial_progress_enabled=True,
+            partial_progress_max_commits=3,
+            rewrite_all=False,
+        ),
+        RewriteManifestsOptions(use_caching=True),
+        ExpireSnapshotsOptions(max_concurrent_deletes=4),
+        RemoveOrphanFilesOptions(max_concurrent_deletes=4, prefix_mismatch_mode=PrefixMismatchMode.DELETE),
+    ],
+)
+def test_options_round_trip_through_primitives(options: Any) -> None:
+    """Check options with some keys set survive the wire."""
+    assert type(options).from_primitives(options.to_primitives()) == options

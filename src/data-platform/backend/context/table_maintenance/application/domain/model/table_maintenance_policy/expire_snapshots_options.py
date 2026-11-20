@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import PositiveInt
+from typing import Any
+
+from pydantic import PositiveInt, SerializerFunctionWrapHandler, model_serializer
 
 from base import ValueObject
 
@@ -15,6 +17,11 @@ class ExpireSnapshotsOptions(ValueObject):
 
     max_concurrent_deletes: PositiveInt | None = None
     stream_results: bool | None = None
+
+    @model_serializer(mode="wrap")
+    def _leave_unset_out(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        """Write only the options that are set, so an unset one stays left to the procedure."""
+        return {key: value for key, value in handler(self).items() if value is not None}
 
     def procedure_arguments(self) -> dict[str, int | bool]:
         """Return the procedure arguments that are set."""
