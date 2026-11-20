@@ -174,7 +174,8 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
 
         The time is clamped into the attempt's submit time and ``now``. A queued attempt becomes
         running; a running one is left alone; a finished attempt that has no running time only gets
-        it, within its own span, and keeps its status. A report for an earlier attempt is ignored.
+        it, within its own span, and keeps its status. A report for an earlier attempt is ignored, and
+        so is one for a current attempt that has no history entry (a row from before attempt history).
         """
         current = self._get(operation)
         if attempt < current.attempts:
@@ -366,12 +367,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             entry.with_changes(
                 status=status,
                 finished_at=now,
-                started_running_at=entry.started_running_at
-                or (
-                    TableMaintenanceRun._clamp(started_running_at, entry.started_at, now)
-                    if started_running_at is not None
-                    else None
-                ),
+                started_running_at=TableMaintenanceRun._running_time(entry, started_running_at, now),
                 **outcome,
             )
             if entry.attempt == attempt
@@ -391,7 +387,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
                 attempt_history=self._with_attempt(
                     run,
                     record.attempt,
-                    started_running_at=self._clamp(started_running_at, record.started_at, upper),
+                    started_running_at=self._running_time(record, started_running_at, upper),
                 )
             )
             if run.operation == current.operation
@@ -406,8 +402,16 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         )
 
     @staticmethod
+    def _running_time(entry: OperationAttempt, reported: datetime | None, upper: datetime) -> datetime | None:
+        """Return the attempt's running time: the one it has, else ``reported`` clamped into its span."""
+        if entry.started_running_at is not None or reported is None:
+            return entry.started_running_at
+        return TableMaintenanceRun._clamp(reported, entry.started_at, upper)
+
+    @staticmethod
     def _clamp(value: datetime, lower: datetime, upper: datetime) -> datetime:
-        return min(max(value, lower), upper)
+        """Return ``value`` within ``lower`` and ``upper``, and never below ``lower`` when ``upper`` is earlier."""
+        return min(max(value, lower), max(upper, lower))
 
     @staticmethod
     def _require_startable(current: OperationRun, operation: MaintenanceOperation, attempt: int) -> None:

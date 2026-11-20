@@ -602,3 +602,43 @@ def test_status_is_running_over_queued_and_queued_over_pending():
     assert run.status is RunStatus.RUNNING
     run.start_attempt(Op.EXPIRE_SNAPSHOTS, 1, "b", _now(5))
     assert run.status is RunStatus.QUEUED
+
+
+def test_a_result_earlier_than_the_submit_still_records_a_running_time_within_the_attempt():
+    """A result stamped before the submit (clock skew) is accepted; the running time is the submit time."""
+    run = _queued_run()
+    run.succeed(Op.REWRITE_DATA_FILES, 1, {}, _now(1) - timedelta(seconds=5), started_running_at=_now(3))
+    assert _op(run, Op.REWRITE_DATA_FILES).status is OperationRunStatus.SUCCEEDED
+    assert _attempts(run)[0].started_running_at == _now(1)
+
+
+def test_a_running_time_reported_after_a_skewed_finish_stays_within_the_attempt():
+    """A running time that arrives after a finish stamped before the submit is the submit time."""
+    run = _queued_run()
+    run.fail(Op.REWRITE_DATA_FILES, 1, "boom", _now(1) - timedelta(seconds=5))
+    run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(3), _now(4))
+    assert _attempts(run)[0].started_running_at == _now(1)
+
+
+def test_a_result_clamps_a_running_time_before_the_submit():
+    """The running time a result carries is raised to the submit time when it is earlier."""
+    run = _queued_run()
+    run.fail(Op.REWRITE_DATA_FILES, 1, "boom", _now(5), started_running_at=_now(1) - timedelta(seconds=5))
+    assert _attempts(run)[0].started_running_at == _now(1)
+
+
+def test_a_result_clamps_a_running_time_after_the_finish():
+    """The running time a result carries is lowered to the finish time when it is later."""
+    run = _queued_run()
+    run.succeed(Op.REWRITE_DATA_FILES, 1, {}, _now(5), started_running_at=_now(9))
+    assert _attempts(run)[0].started_running_at == _now(5)
+
+
+def test_a_running_operation_outranks_a_queued_one_for_the_run_status():
+    """The run is running when one operation runs and another is still queued."""
+    run = _run([Op.REWRITE_DATA_FILES, Op.EXPIRE_SNAPSHOTS])
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, "a", _now(1))
+    run.start_attempt(Op.EXPIRE_SNAPSHOTS, 1, "b", _now(1))
+    run.record_attempt_running(Op.REWRITE_DATA_FILES, 1, _now(2), _now(3))
+    assert _op(run, Op.EXPIRE_SNAPSHOTS).status is OperationRunStatus.QUEUED
+    assert run.status is RunStatus.RUNNING
