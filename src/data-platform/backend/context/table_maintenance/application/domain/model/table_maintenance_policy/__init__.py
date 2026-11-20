@@ -5,6 +5,12 @@ from __future__ import annotations
 from context.table_maintenance.application.domain.model.table_maintenance_policy.at_least import (  # noqa: E501
     AtLeast,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy.at_most import (  # noqa: E501
+    AtMost,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_policy.catalog_commit_trigger import (  # noqa: E501
+    CatalogCommitTrigger,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy.compaction_scope import (  # noqa: E501
     CompactionScope,
 )
@@ -23,8 +29,17 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.domain.model.table_maintenance_policy.expire_snapshots_execution_policy import (  # noqa: E501
     ExpireSnapshotsExecutionPolicy,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy.expire_snapshots_options import (  # noqa: E501
+    ExpireSnapshotsOptions,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy.expire_snapshots_policy import (  # noqa: E501
     ExpireSnapshotsPolicy,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_policy.expire_snapshots_spec import (  # noqa: E501
+    ExpireSnapshotsSpec,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_policy.expire_snapshots_target import (  # noqa: E501
+    ExpireSnapshotsTarget,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy.expire_snapshots_trigger_policy import (  # noqa: E501
     ExpireSnapshotsTriggerPolicy,
@@ -35,14 +50,23 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.domain.model.table_maintenance_policy.maintenance_priority import (  # noqa: E501
     MaintenancePriority,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy.maintenance_triggers import (  # noqa: E501
+    MaintenanceTriggers,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy.operation_policies import (  # noqa: E501
     OperationPolicies,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy.operation_policy import (  # noqa: E501
     OperationPolicy,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy.operation_spec import (  # noqa: E501
+    OperationSpec,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy.partial_progress import (  # noqa: E501
     PartialProgress,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_policy.prefix_mismatch_mode import (  # noqa: E501
+    PrefixMismatchMode,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy.remove_orphan_files_conditions import (  # noqa: E501
     RemoveOrphanFilesConditions,
@@ -50,8 +74,17 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.domain.model.table_maintenance_policy.remove_orphan_files_execution_policy import (  # noqa: E501
     RemoveOrphanFilesExecutionPolicy,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy.remove_orphan_files_options import (  # noqa: E501
+    RemoveOrphanFilesOptions,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy.remove_orphan_files_policy import (  # noqa: E501
     RemoveOrphanFilesPolicy,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_policy.remove_orphan_files_spec import (  # noqa: E501
+    RemoveOrphanFilesSpec,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_policy.remove_orphan_files_target import (  # noqa: E501
+    RemoveOrphanFilesTarget,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy.remove_orphan_files_trigger_policy import (  # noqa: E501
     RemoveOrphanFilesTriggerPolicy,
@@ -62,8 +95,20 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.domain.model.table_maintenance_policy.rewrite_data_files_execution_policy import (  # noqa: E501
     RewriteDataFilesExecutionPolicy,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy.rewrite_data_files_options import (  # noqa: E501
+    RewriteDataFilesOptions,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy.rewrite_data_files_policy import (  # noqa: E501
     RewriteDataFilesPolicy,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_policy.rewrite_data_files_spec import (  # noqa: E501
+    RewriteDataFilesSpec,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_policy.rewrite_data_files_strategy import (  # noqa: E501
+    RewriteDataFilesStrategy,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_policy.rewrite_data_files_target import (  # noqa: E501
+    RewriteDataFilesTarget,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy.rewrite_data_files_trigger_policy import (  # noqa: E501
     RewriteDataFilesTriggerPolicy,
@@ -74,11 +119,23 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.domain.model.table_maintenance_policy.rewrite_manifests_execution_policy import (  # noqa: E501
     RewriteManifestsExecutionPolicy,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy.rewrite_manifests_options import (  # noqa: E501
+    RewriteManifestsOptions,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy.rewrite_manifests_policy import (  # noqa: E501
     RewriteManifestsPolicy,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy.rewrite_manifests_spec import (  # noqa: E501
+    RewriteManifestsSpec,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_policy.rewrite_manifests_target import (  # noqa: E501
+    RewriteManifestsTarget,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy.rewrite_manifests_trigger_policy import (  # noqa: E501
     RewriteManifestsTriggerPolicy,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_policy.schedule_trigger import (  # noqa: E501
+    ScheduleTrigger,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy.small_manifests_condition import (  # noqa: E501
     SmallManifestsCondition,
@@ -104,31 +161,50 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 
 __all__ = [
     "AtLeast",
+    "AtMost",
+    "CatalogCommitTrigger",
     "CompactionScope",
     "CompactionUnit",
     "DEFAULT_POLICY_ID",
     "DEFAULT_POLICY_NAME",
     "ExpireSnapshotsConditions",
     "ExpireSnapshotsExecutionPolicy",
+    "ExpireSnapshotsOptions",
     "ExpireSnapshotsPolicy",
+    "ExpireSnapshotsSpec",
+    "ExpireSnapshotsTarget",
     "ExpireSnapshotsTriggerPolicy",
     "MaintenancePolicyContent",
     "MaintenancePriority",
+    "MaintenanceTriggers",
     "OperationPolicies",
     "OperationPolicy",
+    "OperationSpec",
     "PartialProgress",
+    "PrefixMismatchMode",
     "RemoveOrphanFilesConditions",
     "RemoveOrphanFilesExecutionPolicy",
+    "RemoveOrphanFilesOptions",
     "RemoveOrphanFilesPolicy",
+    "RemoveOrphanFilesSpec",
+    "RemoveOrphanFilesTarget",
     "RemoveOrphanFilesTriggerPolicy",
     "RewriteDataFilesConditions",
     "RewriteDataFilesExecutionPolicy",
+    "RewriteDataFilesOptions",
     "RewriteDataFilesPolicy",
+    "RewriteDataFilesSpec",
+    "RewriteDataFilesStrategy",
+    "RewriteDataFilesTarget",
     "RewriteDataFilesTriggerPolicy",
     "RewriteManifestsConditions",
     "RewriteManifestsExecutionPolicy",
+    "RewriteManifestsOptions",
     "RewriteManifestsPolicy",
+    "RewriteManifestsSpec",
+    "RewriteManifestsTarget",
     "RewriteManifestsTriggerPolicy",
+    "ScheduleTrigger",
     "SmallManifestsCondition",
     "StalePolicyVersion",
     "TableMaintenancePolicy",
