@@ -66,6 +66,14 @@ def _new_orders(partition_spec: PartitionSpec | None = None, location: str | Non
     )
 
 
+def _load_orders(body: dict[str, Any] | None = None) -> Table:
+    stub = PolarisStub()
+    stub.on("GET", ORDERS, httpx.Response(200, json=body or _load_result()))
+    table = TablesPolarisRepo(stub.client()).get(ORDERS_ID)
+    assert table is not None
+    return table
+
+
 def test_load_maps_schema_partition_sort_snapshots_and_summary():
     """A real v2 LoadTableResult maps to the current schema, default spec and order, every snapshot and the summary."""
     stub = PolarisStub()
@@ -158,6 +166,64 @@ def test_load_maps_map_types_and_optional_nested_elements():
 
     assert table is not None
     assert table.current_schema.fields[-1].type == "map<string, list<required int>>"
+
+
+def test_load_keeps_nested_field_ids():
+    """A list's element and a struct's fields keep their Iceberg ids, names, types and requiredness."""
+    table = _load_orders()
+
+    by_name = {f.name: f for f in table.current_schema.fields}
+    assert [(c.id, c.name, c.type, c.required) for c in by_name["tags"].children] == [(6, "element", "string", False)]
+    assert [(c.id, c.name, c.required) for c in by_name["shipping"].children] == [(8, "city", True)]
+    assert by_name["order_id"].children == ()
+
+
+def _attrs_map_body() -> dict[str, Any]:
+    body = _load_result()
+    body["metadata"]["schemas"][1]["fields"].append(
+        {
+            "id": 9,
+            "name": "attrs",
+            "required": False,
+            "type": {
+                "type": "map",
+                "key-id": 11,
+                "key": "string",
+                "value-id": 12,
+                "value": {
+                    "type": "struct",
+                    "fields": [{"id": 13, "name": "unit", "required": False, "type": "string", "doc": "the unit"}],
+                },
+                "value-required": True,
+            },
+        }
+    )
+    return body
+
+
+def test_load_keeps_map_key_and_value_ids():
+    """A map's key is always required; its value is required when value-required says so; both keep their ids."""
+    table = _load_orders(_attrs_map_body())
+
+    attrs = table.current_schema.fields[-1]
+    assert [(c.id, c.name, c.type, c.required, c.doc) for c in attrs.children] == [
+        (11, "key", "string", True, None),
+        (12, "value", "struct<unit: string>", True, None),
+    ]
+    (unit,) = attrs.children[1].children
+    assert (unit.id, unit.name, unit.required, unit.doc) == (13, "unit", False, "the unit")
+
+
+def test_nested_field_id_that_is_not_an_integer_is_unavailable():
+    """An element-id that is text is a reply of the wrong shape, so the catalog is unavailable."""
+    body = _load_result()
+    tags = next(f for f in body["metadata"]["schemas"][1]["fields"] if f["name"] == "tags")
+    tags["type"]["element-id"] = "6"
+    stub = PolarisStub()
+    stub.on("GET", ORDERS, httpx.Response(200, json=body))
+
+    with pytest.raises(CatalogUnavailableError):
+        TablesPolarisRepo(stub.client()).get(ORDERS_ID)
 
 
 def test_get_unknown_table_is_none():

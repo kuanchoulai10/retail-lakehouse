@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from context.catalog.application.domain.model.shared import Schema, SchemaField
+from context.catalog.application.domain.model.shared import Schema, SchemaField, SchemaFieldAtPath
 
-__all__ = ["Schema", "SchemaField"]
+__all__ = ["Schema", "SchemaField", "SchemaFieldAtPath"]

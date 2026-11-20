@@ -12,6 +12,10 @@ class SchemaField(ValueObject):
     ``decimal(10,2)``, ``fixed[16]``). A nested type is ``struct<name: type, ...>``,
     ``list<type>`` or ``map<key, value>``, where a nested field or element that is required
     carries ``required`` before its type (``struct<city: required string>``).
+
+    ``children`` are the nested fields: a struct's fields in order, a list's one ``element``, a
+    map's ``key`` and ``value``. Each carries its own Iceberg field id, so a nested field can be
+    followed across schema versions.
     """
 
     id: int
@@ -19,3 +23,12 @@ class SchemaField(ValueObject):
     type: str
     required: bool
     doc: str | None
+    children: tuple[SchemaField, ...] = ()
+
+    @property
+    def outer_type(self) -> str:
+        """Return ``struct``, ``list`` or ``map`` for a nested type, else the type text itself."""
+        for kind in ("struct", "list", "map"):
+            if self.type.startswith(f"{kind}<"):
+                return kind
+        return self.type
