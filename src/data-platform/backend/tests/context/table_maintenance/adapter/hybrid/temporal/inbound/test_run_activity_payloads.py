@@ -11,9 +11,6 @@ from temporalio.exceptions import ApplicationError
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     DEFAULT_MAX_ATTEMPTS,
 )
-from context.table_maintenance.application.port.inbound.compaction_candidate import (
-    ReleaseCompactionCandidatesUseCaseInput,
-)
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     CreateTableMaintenanceRunUseCaseInput,
     CreateTableMaintenanceRunUseCaseOutput,
@@ -521,10 +518,3 @@ def test_record_reconciliation_activity_hands_the_use_case_the_input_built_from_
     assert record.requests == [
         RecordTableReconciliationUseCaseInput.from_primitives(WORKFLOW_RECORD_RECONCILIATION_REQUEST)
     ]
-
-
-def test_release_input_is_built_from_the_payload_the_reconciliation_workflow_sends():
-    """The release input reads the run and the ISO time the workflow sends."""
-    assert ReleaseCompactionCandidatesUseCaseInput.from_primitives(
-        {"run_id": RUN_1, "now": NOW}
-    ) == ReleaseCompactionCandidatesUseCaseInput(run_id=RUN_1, now=NOW_DT)

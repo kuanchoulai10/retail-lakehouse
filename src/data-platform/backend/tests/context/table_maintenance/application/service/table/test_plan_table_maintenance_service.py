@@ -39,6 +39,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.exceptions import ValidationError
 from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCaseInput,
+    PlanTableMaintenanceUseCaseOutput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     CreateTableMaintenancePolicyUseCaseInput,
@@ -252,22 +253,53 @@ def test_plan_skip_carries_the_table_name_when_the_table_is_known(planner, table
     assert _plan(planner, now, uuid="missing").table_name is None
 
 
-def test_plan_compaction_has_one_filter_per_spec(planner, tables_repo, catalog, now):
-    """A compaction plan has one filter per partition spec."""
+def _three_regions(catalog, now, size=10 * 1024):
+    """Observe a table partitioned by region whose three partitions all need compaction."""
+    _observe(
+        catalog,
+        now,
+        specs=[{"spec_id": 0, "fields": [_field("region")]}],
+        partitions=[_partition(0, [region], size=size) for region in ("eu", "us", "ap")],
+    )
+
+
+def test_due_compaction_targets_the_whole_table(planner, tables_repo, catalog, now):
+    """A due compaction rewrites the whole table, however many partitions qualify, with the policy's options."""
     _table(tables_repo, now)
-    _observe(catalog, now)
+    _three_regions(catalog, now)
     plan = _plan(planner, now)
     assert (plan.status, plan.reason) == ("planned", None)
     compaction = plan.operations[0]
     assert compaction.operation == "rewrite_data_files"
-    assert [f.spec_id for f in compaction.filters] == [0, 1]
-    assert "'eu'" in compaction.filters[0].where
-    assert "'de'" in compaction.filters[1].where
+    assert compaction.filters == ()
     assert compaction.procedure_args == {
         "target-file-size-bytes": 536870912,
         "min-input-files": 2,
         "partial-progress.enabled": True,
     }
+
+
+def test_compaction_starts_at_the_remembered_size(planner, tables_repo, catalog, now):
+    """A compaction starts at the size the table remembers for it, whatever the size of its data."""
+    table = _table(tables_repo, now)
+    table.record_operation_result(OPS.REWRITE_DATA_FILES, True, now - timedelta(days=30), size=ComputeSize.M)
+    _three_regions(catalog, now, size=2 * 1024**3)
+    compaction = _plan(planner, now).operations[0]
+    assert (compaction.operation, compaction.start_size) == ("rewrite_data_files", "M")
+
+
+def test_plan_output_has_no_candidate_fields():
+    """A plan names no compaction candidates, no narrowed filter sets and no early next check."""
+    assert {"candidate_partitions", "filter_sets"}.isdisjoint(PlanTableMaintenanceUseCaseOutput.Operation.model_fields)
+    assert {"candidate_partitions", "filter_sets", "next_check_at"}.isdisjoint(
+        PlanTableMaintenanceUseCaseOutput.model_fields
+    )
+    assert not hasattr(PlanTableMaintenanceUseCaseOutput, "CandidatePartition")
+
+
+def test_plan_input_has_no_run_id():
+    """A plan is not asked for the run it starts: it claims nothing for it."""
+    assert "run_id" not in PlanTableMaintenanceUseCaseInput.model_fields
 
 
 def test_plan_orders_operations_and_renders_procedure_args(planner, tables_repo, catalog, now):
@@ -330,30 +362,6 @@ def test_plan_whole_table_compaction_has_no_filters(planner, tables_repo, catalo
     compaction = _plan(planner, now).operations[0]
     assert compaction.operation == "rewrite_data_files"
     assert compaction.filters == ()
-
-
-def test_plan_unsupported_partition_field_falls_back_to_whole_table_compaction(
-    planner, tables_repo, catalog, now, caplog
-):
-    """A partition field that cannot be filtered falls back to whole table compaction and logs it."""
-    _table(tables_repo, now)
-    binary = {**_field("payload"), "source_type": "binary"}
-    _observe(
-        catalog,
-        now,
-        specs=[{"spec_id": 0, "fields": [binary]}],
-        partitions=[_partition(0, ["AAE="], files=20)],
-    )
-    plan = _plan(planner, now)
-    assert [o.operation for o in plan.operations] == [
-        "rewrite_data_files",
-        "rewrite_manifests",
-        "expire_snapshots",
-        "remove_orphan_files",
-    ]
-    assert plan.operations[0].filters == ()
-    assert "whole table" in caplog.text
-    assert "binary" in caplog.text
 
 
 def test_scheduled_plan_respects_cooldown(planner, tables_repo, catalog, now):

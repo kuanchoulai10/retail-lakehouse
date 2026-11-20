@@ -28,9 +28,6 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
 from context.table_maintenance.application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
-    from datetime import datetime
-
-    from context.table_maintenance.application.port.outbound.compaction_candidate import CompactionCandidatesRepo
     from context.table_maintenance.application.port.outbound.table import TablesRepo
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         SubmitMaintenanceJobGateway,
@@ -48,14 +45,11 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
         runs_repo: TableMaintenanceRunsRepo,
         tables_repo: TablesRepo,
         submit_gateway: SubmitMaintenanceJobGateway,
-        *,
-        candidates_repo: CompactionCandidatesRepo,
     ) -> None:
         """Bind the repos and the submit gateway."""
         self._runs_repo = runs_repo
         self._tables_repo = tables_repo
         self._submit_gateway = submit_gateway
-        self._candidates_repo = candidates_repo
 
     def execute(self, request: SubmitMaintenanceOperationUseCaseInput) -> SubmitMaintenanceOperationUseCaseOutput:
         """Record the attempt as running, submit the job, then attach its name.
@@ -67,8 +61,7 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
         exactly one job. The run is read again after the submit, because the
         attempt can be recorded (for example as cancelled) while the submit runs;
         an attempt that is no longer running keeps its recorded outcome and the
-        job name, which is informational, is dropped. Submitting a compaction
-        starts the compaction candidates the run claimed (again, on a retry).
+        job name, which is informational, is dropped.
         """
         try:
             operation = MaintenanceOperation(request.operation)
@@ -84,8 +77,6 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
         with translate_domain_errors():
             run.start_attempt(operation, request.attempt, None, request.now, size=size)
             self._runs_repo.update(run)
-            if operation is MaintenanceOperation.REWRITE_DATA_FILES:
-                self._start_candidates(run.id, request.now)
         wheres = [f.where for f in request.filters]
         submitted = self._submit_gateway.submit(
             SubmitMaintenanceJobGatewayInput(
@@ -123,11 +114,3 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
         with translate_domain_errors():
             self._runs_repo.update(current)
         return output
-
-    def _start_candidates(self, run_id: TableMaintenanceRunId, now: datetime) -> None:
-        """Mark the candidates the run holds as being compacted."""
-        held = [c for c in self._candidates_repo.list_by_run(run_id) if c.state.holds_a_claim]
-        for candidate in held:
-            candidate.start(run_id, now)
-        if held:
-            self._candidates_repo.save_all(held)

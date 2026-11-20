@@ -11,15 +11,11 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fakes import (
     FakePlan,
     FakeRecordReconciliation,
-    FakeReleaseCandidates,
 )
 
 if TYPE_CHECKING:
     from temporalio.client import Client
 
-    from context.table_maintenance.application.port.inbound.compaction_candidate import (
-        ReleaseCompactionCandidatesUseCase,
-    )
     from context.table_maintenance.application.port.inbound.table import (
         PlanTableMaintenanceUseCase,
     )
@@ -32,7 +28,6 @@ def table_reconciliation_activities_with_fakes(
     *,
     plan: PlanTableMaintenanceUseCase | None = None,
     record: RecordTableReconciliationUseCase | None = None,
-    release: ReleaseCompactionCandidatesUseCase | None = None,
     client: Client | None = None,
     attempt_deadline_seconds: int = 21600,
     max_attempts: int = 3,
@@ -42,7 +37,6 @@ def table_reconciliation_activities_with_fakes(
     return TableReconciliationActivities(
         plan=plan or FakePlan(),
         record=record or FakeRecordReconciliation(),
-        release=release or FakeReleaseCandidates(),
         client=client or MagicMock(),
         attempt_deadline_seconds=attempt_deadline_seconds,
         max_attempts=max_attempts,

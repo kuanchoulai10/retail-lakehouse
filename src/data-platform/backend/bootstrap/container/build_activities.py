@@ -25,7 +25,6 @@ def build_activities(use_cases: UseCases, client: Client, settings: AppSettings)
         reconciliation=TableReconciliationActivities(
             plan=use_cases.plan_table_maintenance,
             record=use_cases.record_table_reconciliation,
-            release=use_cases.release_compaction_candidates,
             client=client,
             attempt_deadline_seconds=settings.maintenance_attempt_deadline_seconds,
             max_attempts=settings.maintenance_max_attempts,

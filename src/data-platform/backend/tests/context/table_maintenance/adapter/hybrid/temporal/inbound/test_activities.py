@@ -49,7 +49,6 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fa
     FakeRecordReconciliation,
     FakeRecordResult,
     FakeRecordRunning,
-    FakeReleaseCandidates,
     FakeStatus,
     FakeSubmit,
     FakeSync,
@@ -81,12 +80,10 @@ def _reconcile(
     fakes = {
         "plan": FakePlan(),
         "record": FakeRecordReconciliation(),
-        "release": FakeReleaseCandidates(),
     }
     activities = table_reconciliation_activities_with_fakes(
         plan=fakes["plan"],
         record=fakes["record"],
-        release=fakes["release"],
         attempt_deadline_seconds=attempt_deadline_seconds,
         max_attempts=max_attempts,
         queue_wait_limit_seconds=queue_wait_limit_seconds,
@@ -119,13 +116,12 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
     """The plan activity passes the table, time and manual operations to the use case and returns a dict."""
     activities, fakes = _reconcile()
     result = activities.plan_table_maintenance(
-        {"table_uuid": "u1", "now": NOW, "manual_operations": ["expire_snapshots"], "run_id": RUN_1}
+        {"table_uuid": "u1", "now": NOW, "manual_operations": ["expire_snapshots"]}
     )
     request = fakes["plan"].requests[0]
     assert request.table_uuid == "u1"
     assert request.now == NOW_DT
     assert request.manual_operations == ("expire_snapshots",)
-    assert request.run_id == RUN_1
     assert result == {
         "status": "planned",
         "reason": None,
@@ -137,8 +133,6 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
                 "filters": [{"spec_id": 0, "where": "x = 1"}],
                 "procedure_args": {"strategy": "binpack"},
                 "start_size": "S",
-                "candidate_partitions": [],
-                "filter_sets": [],
             }
         ],
         "dry_run": False,
@@ -148,7 +142,6 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
         "policy_name": "gold",
         "policy_version": 3,
         "policy_target": {"type": "namespace", "path": ["iceberg", "sales"]},
-        "next_check_at": None,
         "priority": "P3",
         "attempt_deadline_seconds": 21600,
         "max_attempts": 3,
@@ -159,7 +152,7 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
 def test_plan_payload_carries_policy_id_and_a_display_name():
     """The plan crosses Temporal pointing at its policy by ``mp-`` id, with its name then for the records to keep."""
     activities, _ = _reconcile()
-    result = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW, "run_id": RUN_1})
+    result = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW})
     assert (result["policy_id"], result["policy_name"]) == (GOLD_POLICY_ID, "gold")
 
 
@@ -178,11 +171,6 @@ def _full_plan() -> PlanTableMaintenanceUseCaseOutput:
                 filters=(where, other),
                 procedure_args={"strategy": "binpack", "options": {"min-input-files": "5"}},
                 start_size="M",
-                candidate_partitions=(
-                    PlanTableMaintenanceUseCaseOutput.CandidatePartition(spec_id=1, values=("eu", 2026)),
-                    PlanTableMaintenanceUseCaseOutput.CandidatePartition(spec_id=1, values=("us", None)),
-                ),
-                filter_sets=((where, other), (where,)),
             ),
             PlanTableMaintenanceUseCaseOutput.Operation(
                 operation="expire_snapshots",
@@ -217,7 +205,6 @@ def _full_plan() -> PlanTableMaintenanceUseCaseOutput:
         policy_name="gold",
         policy_version=3,
         policy_target={"type": "namespace", "path": ["iceberg", "sales"]},
-        next_check_at=datetime(2026, 10, 24, 1, 32, 3, tzinfo=UTC),
     )
 
 
@@ -227,9 +214,7 @@ def test_plan_payload_keeps_every_field_of_a_full_plan():
     activities, _ = _reconcile()
     activities._plan = plan  # noqa: SLF001
 
-    result = activities.plan_table_maintenance(
-        {"table_uuid": "u1", "now": NOW, "manual_operations": None, "run_id": RUN_1}
-    )
+    result = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW, "manual_operations": None})
 
     assert result == {
         "status": "planned",
@@ -245,22 +230,12 @@ def test_plan_payload_keeps_every_field_of_a_full_plan():
                 ],
                 "procedure_args": {"strategy": "binpack", "options": {"min-input-files": "5"}},
                 "start_size": "M",
-                "candidate_partitions": [
-                    {"spec_id": 1, "values": ["eu", 2026]},
-                    {"spec_id": 1, "values": ["us", None]},
-                ],
-                "filter_sets": [
-                    [{"spec_id": 1, "where": "region = 'eu'"}, {"spec_id": 1, "where": "region = 'us'"}],
-                    [{"spec_id": 1, "where": "region = 'eu'"}],
-                ],
             },
             {
                 "operation": "expire_snapshots",
                 "filters": [],
                 "procedure_args": {"older_than": "2026-10-17T01:02:03+00:00", "retain_last": 3},
                 "start_size": "S",
-                "candidate_partitions": [],
-                "filter_sets": [],
             },
         ],
         "dry_run": False,
@@ -300,7 +275,6 @@ def test_plan_payload_keeps_every_field_of_a_full_plan():
         "policy_name": "gold",
         "policy_version": 3,
         "policy_target": {"type": "namespace", "path": ["iceberg", "sales"]},
-        "next_check_at": "2026-10-24T01:32:03+00:00",
         "priority": "P3",
         "attempt_deadline_seconds": 21600,
         "max_attempts": 3,
@@ -334,7 +308,7 @@ def test_plan_checks_come_back_into_the_record_input_unchanged():
     """The plan's checks cross Temporal as lists of dicts; the record input reads them back as the plan wrote them."""
     activities, fakes = _reconcile()
     activities._plan = FakePlan(_full_plan())  # noqa: SLF001
-    plan = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW, "run_id": RUN_1})
+    plan = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW})
     payload = _record_payload_of(plan)
 
     activities.record_table_reconciliation(payload)
@@ -421,7 +395,7 @@ def test_plan_checks_are_recorded_as_the_measurements_the_plan_took():
     activities._plan = FakePlan(_measured_plan())  # noqa: SLF001
     repo = InMemoryTableReconciliationsRepo()
     activities._record = RecordTableReconciliationService(repo)  # noqa: SLF001
-    plan = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW, "run_id": RUN_1})
+    plan = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW})
 
     assert activities.record_table_reconciliation(_record_payload_of(plan)) == {"recorded": True}
 
@@ -444,7 +418,6 @@ WORKFLOW_PLAN_REQUEST = {
     "table_uuid": "u1",
     "now": NOW,
     "manual_operations": ["expire_snapshots", "rewrite_manifests"],
-    "run_id": RUN_1,
 }
 
 
@@ -456,7 +429,6 @@ def test_plan_input_is_built_from_the_payload_the_reconciliation_workflow_sends(
         table_uuid="u1",
         now=NOW_DT,
         manual_operations=("expire_snapshots", "rewrite_manifests"),
-        run_id=RUN_1,
     )
 
 
@@ -478,13 +450,13 @@ def test_plan_activity_ignores_a_key_a_newer_workflow_sends():
     assert fakes["plan"].requests == [PlanTableMaintenanceUseCaseInput.from_primitives(WORKFLOW_PLAN_REQUEST)]
 
 
-def test_plan_input_takes_a_scheduled_payload_without_operations_or_run():
-    """A scheduled plan's payload names no manual operations and may name no run."""
+def test_plan_input_takes_a_scheduled_payload_without_operations():
+    """A scheduled plan's payload names no manual operations; the run id an older workflow sent is ignored."""
     built = PlanTableMaintenanceUseCaseInput.from_primitives(
-        {"table_uuid": "u1", "now": NOW, "manual_operations": None, "run_id": None}
+        {"table_uuid": "u1", "now": NOW, "manual_operations": None, "run_id": RUN_1}
     )
 
-    assert (built.manual_operations, built.run_id) == (None, None)
+    assert built == PlanTableMaintenanceUseCaseInput(table_uuid="u1", now=NOW_DT)
 
 
 def test_plan_activity_refuses_a_payload_it_cannot_build_without_retry():
@@ -527,11 +499,10 @@ def test_plan_carries_the_queue_wait_limit():
 
 
 def test_plan_without_manual_operations_defaults_to_none():
-    """The plan activity passes no manual operations and no run when the request names none."""
+    """The plan activity passes no manual operations when the request names none."""
     activities, fakes = _reconcile()
     activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW})
     assert fakes["plan"].requests[0].manual_operations is None
-    assert fakes["plan"].requests[0].run_id is None
 
 
 def test_plan_passes_the_manual_priority_and_defaults_to_none():
@@ -540,17 +511,6 @@ def test_plan_passes_the_manual_priority_and_defaults_to_none():
     activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW, "manual_priority": "P0"})
     activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW})
     assert [r.manual_priority for r in fakes["plan"].requests] == ["P0", None]
-
-
-def test_release_compaction_candidates_passes_the_run_and_now():
-    """The release activity hands back the candidates of a run that never started."""
-    activities, fakes = _reconcile()
-
-    result = activities.release_compaction_candidates({"run_id": RUN_1, "now": NOW})
-
-    (request,) = fakes["release"].requests
-    assert (request.run_id, request.now) == (RUN_1, NOW_DT)
-    assert result == {"released": 2}
 
 
 CHECK = {

@@ -205,7 +205,7 @@ def started_run(runs_repo, table, now):
 
 
 @pytest.fixture
-def recorder(runs_repo, tables_repo, resolve_applicable_policy, candidates_repo):
+def recorder(runs_repo, tables_repo, resolve_applicable_policy):
     """Provide the record operation result service on the fakes."""
     return RecordTableMaintenanceOperationResultService(
         runs_repo,
@@ -214,7 +214,6 @@ def recorder(runs_repo, tables_repo, resolve_applicable_policy, candidates_repo)
         ScriptedReadMaintenanceEventLogGateway(),
         resolve_applicable_policy,
         size_memory={},
-        candidates_repo=candidates_repo,
     )
 
 

@@ -17,9 +17,6 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.activi
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.translate_application_errors import (
     translate_application_errors,
 )
-from context.table_maintenance.application.port.inbound.compaction_candidate import (
-    ReleaseCompactionCandidatesUseCaseInput,
-)
 from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCaseInput,
 )
@@ -30,9 +27,6 @@ from context.table_maintenance.application.port.inbound.table_reconciliation imp
 if TYPE_CHECKING:
     from temporalio.client import Client
 
-    from context.table_maintenance.application.port.inbound.compaction_candidate import (
-        ReleaseCompactionCandidatesUseCase,
-    )
     from context.table_maintenance.application.port.inbound.table import (
         PlanTableMaintenanceUseCase,
     )
@@ -42,7 +36,7 @@ if TYPE_CHECKING:
 
 
 class TableReconciliationActivities:
-    """Plan and record reconciliations, release unstarted candidates and look up the maintenance run's workflow.
+    """Plan and record reconciliations and look up the maintenance run's workflow.
 
     Each method wraps exactly one use case, except the workflow lookup, which asks
     the Temporal client. Inputs and outputs are primitive dicts; ``now`` travels as
@@ -54,7 +48,6 @@ class TableReconciliationActivities:
         *,
         plan: PlanTableMaintenanceUseCase,
         record: RecordTableReconciliationUseCase,
-        release: ReleaseCompactionCandidatesUseCase,
         client: Client,
         attempt_deadline_seconds: int,
         max_attempts: int,
@@ -69,7 +62,6 @@ class TableReconciliationActivities:
         """
         self._plan = plan
         self._record = record
-        self._release = release
         self._client = client
         self._attempt_deadline_seconds = attempt_deadline_seconds
         self._max_attempts = max_attempts
@@ -92,13 +84,6 @@ class TableReconciliationActivities:
         """Record one reconciliation: why it woke, what the plan found and the run it started."""
         with translate_application_errors():
             output = self._record.execute(RecordTableReconciliationUseCaseInput.from_primitives(request))
-        return activity_payload(output)
-
-    @activity.defn(name=TableReconciliationActivity.RELEASE_COMPACTION_CANDIDATES)
-    def release_compaction_candidates(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Hand back the compaction candidates a run claimed but never started."""
-        with translate_application_errors():
-            output = self._release.execute(ReleaseCompactionCandidatesUseCaseInput.from_primitives(request))
         return activity_payload(output)
 
     @activity.defn(name=TableReconciliationActivity.GET_WORKFLOW_RUNNING)

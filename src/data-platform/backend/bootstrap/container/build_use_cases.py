@@ -80,9 +80,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.shared import ComputeSize, PlatformSettings, SizeMemory
 
 
-_DEFAULT_CLAIM_LEASE = timedelta(hours=20)
-
-
 def _utc_now() -> datetime:
     return datetime.now(UTC)
 
@@ -96,17 +93,15 @@ def build_use_cases(
     catalog_names: Sequence[str] = (),
     size_memory: Mapping[ComputeSize, SizeMemory] | None = None,
     candidate_selection: CandidateSelection | None = None,
-    claim_lease: timedelta = _DEFAULT_CLAIM_LEASE,
     scheduler: SchedulerSettings | None = None,
     failure_backoff_cap: timedelta = DEFAULT_FAILURE_BACKOFF_CAP,
 ) -> UseCases:
     """Build every application service on the given repositories and gateways.
 
     ``size_memory`` is the memory each compute size runs with; without it no
-    operation is ever stepped down to a smaller size, and compaction costs are
-    estimated for a fixed memory. ``candidate_selection`` says how compaction
-    candidates are picked (the defaults without it) and ``claim_lease`` how long
-    a run holds the candidates it claims. ``scheduler`` says how compaction
+    operation is ever stepped down to a smaller size. ``candidate_selection``
+    says how many candidates a compaction round counts per run (the defaults
+    without it). ``scheduler`` says how compaction
     rounds share compaction across tables (the defaults without it).
     ``failure_backoff_cap`` is where the doubling of a failing operation's
     cooldown stops. ``platform_settings`` are the values the platform settings
@@ -183,7 +178,6 @@ def build_use_cases(
             gateways.read_maintenance_event_log,
             resolve_applicable_policy,
             size_memory=size_memory or {},
-            candidates_repo=candidates,
         ),
         delete_maintenance_job=DeleteMaintenanceJobService(gateways.delete_maintenance_job),
         get_maintenance_job_status=GetMaintenanceJobStatusService(
@@ -196,11 +190,6 @@ def build_use_cases(
             tables,
             catalog,
             resolve_applicable_policy,
-            candidates,
-            runs,
-            selection=selection,
-            size_memory=size_memory or {},
-            claim_lease=claim_lease,
             failure_backoff_cap=failure_backoff_cap,
         ),
         release_compaction_candidates=ReleaseCompactionCandidatesService(candidates),
@@ -235,7 +224,5 @@ def build_use_cases(
         ),
         list_table_reconciliations=ListTableReconciliationsService(reconciliations, policies),
         record_table_reconciliation=RecordTableReconciliationService(reconciliations),
-        submit_maintenance_operation=SubmitMaintenanceOperationService(
-            runs, tables, gateways.submit_maintenance_job, candidates_repo=candidates
-        ),
+        submit_maintenance_operation=SubmitMaintenanceOperationService(runs, tables, gateways.submit_maintenance_job),
     )

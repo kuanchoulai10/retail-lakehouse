@@ -15,7 +15,6 @@ from bootstrap.container.build_platform_settings import build_platform_settings
 from bootstrap.container.build_repositories import build_repositories
 from bootstrap.container.build_size_memory import build_size_memory
 from bootstrap.container.build_use_cases import build_use_cases
-from bootstrap.container.compaction_claim_lease import compaction_claim_lease
 from bootstrap.container.connect_temporal import connect_temporal
 from bootstrap.container.lazy_client import LazyClient
 
@@ -61,7 +60,6 @@ def build_connected_use_cases(
         catalog_names=settings.catalog.names,
         size_memory=build_size_memory(settings.spark),
         candidate_selection=build_candidate_selection(settings.compaction),
-        claim_lease=compaction_claim_lease(settings),
         scheduler=settings.scheduler,
         failure_backoff_cap=timedelta(seconds=settings.maintenance_failure_backoff_cap_seconds),
         platform_settings=build_platform_settings(settings),

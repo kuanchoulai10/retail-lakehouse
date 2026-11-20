@@ -62,11 +62,8 @@ _REASON_COMPACTION_GRANTED = "compaction_granted"
 _SEARCH_ATTRIBUTES_PATCH = "table-search-attributes"
 _FENCED_BOUND_PATCH = "fencing-in-flight-bound"
 _AWAIT_CLOSE_PATCH = "await-cancelled-run-close"
-_RELEASE_PATCH = "release-unstarted-candidates"
-_RECHECK_PATCH = "recheck-held-candidates"
 _COMPACTION_GRANTED_PATCH = "compaction-granted-signal"
 _PREFIXED_IDS_PATCH = "prefixed-run-and-reconciliation-ids"
-_MIN_RECHECK = timedelta(seconds=10)
 _CLOSING_BOUND = TableMaintenanceActivityPolicy().worst_case()
 _CLOSING_POLL = timedelta(seconds=5)
 _RUN_ID_PREFIX = "mr"
@@ -135,15 +132,9 @@ class TableReconciliationWorkflow:
     tags existed (patch ``table-search-attributes``) carries none until its next
     continue-as-new.
 
-    The plan is asked for the run id it will start under, so the compaction
-    candidates it claims belong to that run. A plan whose run is not started
-    (its start failed, or the workflow is stopping) hands those candidates back
-    with ``release_compaction_candidates`` (patch
-    ``release-unstarted-candidates``); a failed release is logged, and the
-    candidates are freed once their lease ends. A plan whose due compaction
-    found every candidate held says when the first hold ends
-    (``next_check_at``), and the next plan comes then, at least 10 seconds
-    later, when that is before the interval (patch ``recheck-held-candidates``).
+    The next plan always comes one reconcile interval after the last. A plan
+    names no run: it claims nothing for the run it starts, and a run that is not
+    started leaves nothing to hand back.
 
     A run that reported may still be open: its report activity completes, and is
     retried, after the report landed. The next run is started under the same
@@ -152,8 +143,9 @@ class TableReconciliationWorkflow:
     (``get_workflow_running``) for one carried through continue-as-new, and for at
     most the report activity's worst case (``TableMaintenanceActivityPolicy``),
     after which the start is tried and, if refused, recorded as a failed start. A
-    manual trigger is consumed only by a run that started, so a refused start
-    keeps it pending for the next plan.
+    ``stop`` that arrives during that wait starts no run, and the plan is not
+    recorded, like one planned while stopping. A manual trigger is consumed only
+    by a run that started, so a refused start keeps it pending for the next plan.
 
     Each pass mints its reconciliation id (``rc-``) and the run id it would start under (``mr-``)
     from the workflow's clock and random source (patch ``prefixed-run-and-reconciliation-ids``); a
@@ -580,7 +572,6 @@ class TableReconciliationWorkflow:
                     "now": now.isoformat(),
                     "manual_operations": manual or None,
                     "manual_priority": manual_priority if manual is not None else None,
-                    "run_id": run_id,
                 },
                 start_to_close_timeout=_ACTIVITY_TIMEOUT,
                 retry_policy=_ACTIVITY_RETRY,
@@ -598,14 +589,13 @@ class TableReconciliationWorkflow:
             self._next_plan_at = workflow.now() + self._interval
             return False
         self._interval = timedelta(seconds=plan["reconcile_interval_seconds"])
-        self._next_plan_at = self._next_plan_after(plan)
+        self._next_plan_at = workflow.now() + self._interval
         self._tag_table_name(plan["table_name"])
         record = {"reconciliation_id": reconciliation_id, "reconciled_at": now.isoformat(), "wake_reasons": reasons}
         if self._stopping:
             self._consume_manual(manual, "the workflow is stopping")
             if plan["status"] != "skip" and plan["operations"]:
                 workflow.logger.info("not recording reconciliation %s: the workflow is stopping", reconciliation_id)
-                await self._release_unstarted(plan, run_id)
             else:
                 await self._record(record, plan, run_id=None, run_start_failed=False)
             return False
@@ -617,13 +607,16 @@ class TableReconciliationWorkflow:
             self._consume_manual(manual, "nothing was planned")
             await self._record(record, plan, run_id=None, run_start_failed=False)
             return False
+        await self._await_closing()
+        if self._stopping:
+            self._consume_manual(manual, "the workflow is stopping")
+            workflow.logger.info("not recording reconciliation %s: the workflow is stopping", reconciliation_id)
+            return False
         started = await self._start_run(plan, manual is not None, run_id)
         if started:
             self._consume_manual(manual, None)
-        else:
-            if manual is not None:
-                workflow.logger.info("keeping manual trigger %s: its run did not start", manual)
-            await self._release_unstarted(plan, run_id)
+        elif manual is not None:
+            workflow.logger.info("keeping manual trigger %s: its run did not start", manual)
         await self._record(record, plan, run_id=run_id if started else None, run_start_failed=not started)
         return False
 
@@ -633,32 +626,6 @@ class TableReconciliationWorkflow:
         if not workflow.patched(_PREFIXED_IDS_PATCH):
             return str(workflow.uuid4()), str(workflow.uuid4())
         return mint_workflow_prefixed_id(_RECONCILIATION_ID_PREFIX), mint_workflow_prefixed_id(_RUN_ID_PREFIX)
-
-    def _next_plan_after(self, plan: dict[str, Any]) -> datetime:
-        """Return when to plan next: one interval on, or when the first candidate hold ends if that is sooner."""
-        at = workflow.now() + self._interval
-        next_check_at = plan.get("next_check_at")
-        if not next_check_at or not workflow.patched(_RECHECK_PATCH):
-            return at
-        return min(at, max(datetime.fromisoformat(next_check_at), workflow.now() + _MIN_RECHECK))
-
-    async def _release_unstarted(self, plan: dict[str, Any], run_id: str) -> None:
-        """Hand back the candidates the plan claimed for a run that was not started; a failure is logged."""
-        if not any(op.get("candidate_partitions") for op in plan["operations"]):
-            return
-        if not workflow.patched(_RELEASE_PATCH):
-            return
-        try:
-            await workflow.execute_activity(
-                TableReconciliationActivity.RELEASE_COMPACTION_CANDIDATES,
-                {"run_id": run_id, "now": workflow.now().isoformat()},
-                start_to_close_timeout=_ACTIVITY_TIMEOUT,
-                retry_policy=_ACTIVITY_RETRY,
-            )
-        except ActivityError as error:
-            if is_cancelled_exception(error):
-                raise asyncio.CancelledError from error
-            workflow.logger.error("releasing the candidates of run %s failed: %s", run_id, error)
 
     async def _record(
         self, record: dict[str, Any], plan: dict[str, Any], *, run_id: str | None, run_start_failed: bool
@@ -711,9 +678,8 @@ class TableReconciliationWorkflow:
 
         The child runs under the table's one maintenance workflow id: a run of the
         table still running refuses the start, and a closed one frees the id, so the
-        run that reported last is first awaited until it closed (``_await_closing``).
+        caller first awaits the run that reported last until it closed (``_await_closing``).
         """
-        await self._await_closing()
         child_id = table_maintenance_workflow_id(self._table_uuid)
         attempt_deadline_seconds = plan.get("attempt_deadline_seconds", DEFAULT_ATTEMPT_DEADLINE_SECONDS)
         max_attempts = plan.get("max_attempts", DEFAULT_MAX_ATTEMPTS)

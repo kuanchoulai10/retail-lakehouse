@@ -31,7 +31,6 @@ class Activities:
         return [
             reconciliation.plan_table_maintenance,
             reconciliation.record_table_reconciliation,
-            reconciliation.release_compaction_candidates,
             reconciliation.get_workflow_running,
             maintenance.create_table_maintenance_run,
             maintenance.record_table_maintenance_operation_result,

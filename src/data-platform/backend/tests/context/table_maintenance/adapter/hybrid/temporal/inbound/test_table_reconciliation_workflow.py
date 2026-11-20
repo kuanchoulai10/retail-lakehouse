@@ -53,9 +53,6 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_pl
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_record_activity import (
     ScriptedRecordActivity,
 )
-from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_release_activity import (
-    ScriptedReleaseActivity,
-)
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_stub_workflow import (
     TableMaintenanceStubWorkflow,
 )
@@ -126,7 +123,7 @@ def _planned(*operations: str, interval: int = 3600) -> dict[str, Any]:
 
 
 def _with_candidates(plan: dict[str, Any]) -> dict[str, Any]:
-    """Return ``plan`` with its compaction taking one candidate partition."""
+    """Return ``plan`` with its compaction naming a candidate partition, as plans did before whole-table compaction."""
     operations = [
         {**op, "candidate_partitions": [{"spec_id": 0, "values": ["eu"]}]} if op["operation"] == COMPACTION else op
         for op in plan["operations"]
@@ -134,13 +131,12 @@ def _with_candidates(plan: dict[str, Any]) -> dict[str, Any]:
     return {**plan, "operations": operations}
 
 
-def _all_held(next_check_in: int, interval: int = 3600) -> Callable[[dict[str, Any]], dict[str, Any]]:
-    """Return a plan whose due compaction found every candidate held, until ``next_check_in`` seconds pass."""
+def _with_next_check(next_check_in: int) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    """Return a plan carrying a ``next_check_at`` ``next_check_in`` seconds on, as plans did for held candidates."""
 
     def answer(request: dict[str, Any]) -> dict[str, Any]:
         at = datetime.fromisoformat(request["now"]) + timedelta(seconds=next_check_in)
-        held = {**_check(COMPACTION, "all_held"), "next_eligible_at": at.isoformat()}
-        return {**_planned(interval=interval), "checks": [held], "next_check_at": at.isoformat()}
+        return {**_planned(), "next_check_at": at.isoformat()}
 
     return answer
 
@@ -176,7 +172,6 @@ class Harness:
     client: Client
     plans: ScriptedPlanActivity
     recorder: ScriptedRecordActivity
-    releases: ScriptedReleaseActivity
     handle: WorkflowHandle | None = None
     sent: int = 0
 
@@ -289,6 +284,15 @@ class Harness:
                     found[initiated[child.initiated_event_id]] = child.workflow_execution.run_id
         return found
 
+    async def scheduled_activities(self) -> list[str]:
+        """Return the names of the activities the reconciliation's current execution scheduled, in order."""
+        history = await self.client.get_workflow_handle(WORKFLOW_ID).fetch_history()
+        return [
+            e.activity_task_scheduled_event_attributes.activity_type.name
+            for e in history.events
+            if e.HasField("activity_task_scheduled_event_attributes")
+        ]
+
     async def child(self, run_id: str) -> dict[str, Any]:
         """Query the stub child of a run for the input it started with."""
         return await (await self.child_handle(run_id)).query("started_with")
@@ -349,7 +353,6 @@ def _run(
             await register_table_search_attributes(env.client)
             plans = ScriptedPlanActivity(script)
             recorder = ScriptedRecordActivity()
-            releases = ScriptedReleaseActivity()
             lookups = table_reconciliation_activities_with_fakes(client=env.client)
             async with Worker(
                 env.client,
@@ -358,13 +361,12 @@ def _run(
                 activities=[
                     plans.plan_table_maintenance,
                     recorder.record_table_reconciliation,
-                    releases.release_compaction_candidates,
                     lookups.get_workflow_running,
                 ],
                 workflow_runner=runner or SandboxedWorkflowRunner(),
                 max_cached_workflows=max_cached_workflows,
             ):
-                await scenario(Harness(env, env.client, plans, recorder, releases))
+                await scenario(Harness(env, env.client, plans, recorder))
 
     asyncio.run(go())
 
@@ -1704,7 +1706,6 @@ def test_run_and_reconciliation_ids_survive_replay():
         record = (await h.records(1))[0]
         assert RUN_ID_SHAPE.fullmatch(run_id)
         assert RECONCILIATION_ID_SHAPE.fullmatch(record["reconciliation_id"])
-        assert h.plans.requests[0]["run_id"] == run_id
         assert record["run_id"] == run_id
         assert (await h.child(run_id))["run_id"] == run_id
         history = await h.client.get_workflow_handle(WORKFLOW_ID).fetch_history()
@@ -1715,23 +1716,22 @@ def test_run_and_reconciliation_ids_survive_replay():
     _run(scenario, script=lambda _: _planned(COMPACTION), max_cached_workflows=0)
 
 
-# --- compaction candidates ---
+# --- whole-table compaction, without compaction candidates ---
 
 
-def test_plan_names_the_run_it_starts():
-    """The plan is asked for the run it will start, so the candidates it claims belong to that run."""
+def test_plan_is_not_asked_for_a_run_id():
+    """The plan claims nothing for the run it starts, so it is not told the run id."""
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
-        assert h.plans.requests[0]["run_id"] == run_id
-        assert h.releases.requests == []
+        await h.in_flight()
+        assert "run_id" not in h.plans.requests[0]
 
-    _run(scenario, script=lambda _: _with_candidates(_planned(COMPACTION)))
+    _run(scenario, script=lambda _: _planned(COMPACTION))
 
 
-def test_start_failure_releases_the_claimed_candidates(monkeypatch: pytest.MonkeyPatch):
-    """A run that cannot be started hands back the candidates its plan claimed for it."""
+def test_unstarted_run_releases_nothing(monkeypatch: pytest.MonkeyPatch):
+    """A run that cannot be started is recorded as such and nothing is handed back, whatever its plan carried."""
     import temporalio.workflow
 
     async def failing_start(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
@@ -1743,33 +1743,14 @@ def test_start_failure_releases_the_claimed_candidates(monkeypatch: pytest.Monke
         await h.start()
         record = (await h.records(1))[0]
         assert record["run_start_failed"] is True
-        (release,) = h.releases.requests
-        assert release["run_id"] == h.plans.requests[0]["run_id"]
-        assert release["now"] is not None
+        await h.settle()
+        assert await h.scheduled_activities() == ["plan_table_maintenance", "record_table_reconciliation"]
 
     _run(scenario, script=lambda _: _with_candidates(_planned(COMPACTION)), runner=UnsandboxedWorkflowRunner())
 
 
-def test_start_failure_without_candidates_releases_nothing(monkeypatch: pytest.MonkeyPatch):
-    """A plan that claimed no candidates has nothing to hand back when its run cannot start."""
-    import temporalio.workflow
-
-    async def failing_start(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
-        raise WorkflowAlreadyStartedError(kwargs["id"], args[0])
-
-    monkeypatch.setattr(temporalio.workflow, "start_child_workflow", failing_start)
-
-    async def scenario(h: Harness) -> None:
-        await h.start()
-        await h.records(1)
-        await h.settle()
-        assert h.releases.requests == []
-
-    _run(scenario, script=lambda _: _planned(EXPIRE), runner=UnsandboxedWorkflowRunner())
-
-
-def test_stop_during_plan_releases_the_claimed_candidates():
-    """A plan not started because the workflow is stopping hands back the candidates it claimed."""
+def test_stop_during_plan_releases_nothing():
+    """A plan not started because the workflow is stopping is neither recorded nor handed back."""
 
     async def scenario(h: Harness) -> None:
         h.plans.gate = asyncio.Event()
@@ -1779,45 +1760,30 @@ def test_stop_during_plan_releases_the_claimed_candidates():
         await eventually(h.state, lambda s: s["stopping"])
         h.plans.gate.set()
         await h.ended()
-        assert [r["run_id"] for r in h.releases.requests] == [h.plans.requests[0]["run_id"]]
+        assert await h.scheduled_activities() == ["plan_table_maintenance"]
 
     _run(scenario, script=lambda _: _with_candidates(_planned(COMPACTION)))
 
 
-def test_all_held_plan_looks_again_when_the_first_hold_ends():
-    """A compaction waiting for writes to stop is planned again when the hold ends, not an interval later."""
+def test_next_plan_is_one_interval_on():
+    """A plan's ``next_check_at`` is ignored: the next plan comes one reconcile interval later."""
 
     async def scenario(h: Harness) -> None:
         await h.start()
         first = (await h.plan_count(1))[0]
         await h.settle()
         await h.env.sleep(timedelta(seconds=100))
+        assert len(h.plans.requests) == 1
+        await h.env.sleep(timedelta(seconds=3600))
         second = (await h.plan_count(2))[1]
         gap = datetime.fromisoformat(second["now"]) - datetime.fromisoformat(first["now"])
-        assert _within_a_second(gap, 90)
-        record = (await h.records(2))[1]
-        assert record["wake_reasons"] == {"schedule": 1}
+        assert _within_a_second(gap, 3600)
 
-    _run(scenario, script=_all_held(90))
+    _run(scenario, script=_with_next_check(90))
 
 
-def test_a_hold_ending_at_once_waits_a_little():
-    """A hold that already ended by the time the plan returns is looked at again after a short pause."""
-
-    async def scenario(h: Harness) -> None:
-        await h.start()
-        first = (await h.plan_count(1))[0]
-        await h.settle()
-        await h.env.sleep(timedelta(seconds=30))
-        second = (await h.plan_count(2))[1]
-        gap = datetime.fromisoformat(second["now"]) - datetime.fromisoformat(first["now"])
-        assert _within_a_second(gap, 10)
-
-    _run(scenario, script=_all_held(-5))
-
-
-def test_a_run_in_flight_past_its_candidates_lease_still_blocks_planning():
-    """However long a run takes (past its candidates' lease), nothing is planned until it ends or is given up."""
+def test_a_long_run_in_flight_still_blocks_planning():
+    """However long a run takes, nothing is planned until it ends or is given up."""
 
     async def scenario(h: Harness) -> None:
         await h.start()
@@ -1828,7 +1794,7 @@ def test_a_run_in_flight_past_its_candidates_lease_still_blocks_planning():
         assert state["in_flight_run_id"] == run_id
         assert len(h.plans.requests) == 1
 
-    _run(scenario, script=lambda _: _with_candidates(_planned(COMPACTION, EXPIRE)))
+    _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE))
 
 
 def test_history_from_before_compaction_candidates_replays():
@@ -2031,6 +1997,26 @@ def test_next_run_waits_for_the_reporting_run_to_close():
         assert [r["run_start_failed"] for r in records[:2]] == [False, False]
         assert (await h.child(second["in_flight_run_id"]))["run_id"] == second["in_flight_run_id"]
         assert second["closing_workflow_id"] is None
+
+    _run(scenario, script=lambda _: {**_planned(COMPACTION), "stub_lingers_seconds": int(LINGERS.total_seconds())})
+
+
+def test_stop_while_the_last_run_closes_starts_nothing():
+    """A stop that arrives while the next run waits for the last one to close starts no run and records nothing."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.complete_child(first)
+        await h.plan_count(2)
+        assert (await h.state())["closing_workflow_id"] == CHILD_ID
+        await h.signal(TableReconciliationSignal.STOP)
+        await eventually(h.state, lambda s: s["stopping"])
+        await h.env.sleep(LINGERS + timedelta(seconds=30))
+        await h.ended()
+        assert len(h.recorder.records) == 1
+        assert first in await h._started_children()  # noqa: SLF001
+        assert len(await h._started_children()) == 1  # noqa: SLF001
 
     _run(scenario, script=lambda _: {**_planned(COMPACTION), "stub_lingers_seconds": int(LINGERS.total_seconds())})
 

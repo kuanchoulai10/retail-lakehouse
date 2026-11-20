@@ -8,11 +8,9 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 from bootstrap.container import (
-    build_candidate_selection,
     build_connected_use_cases,
     build_engine,
     build_size_memory,
-    compaction_claim_lease,
     run_migrations,
 )
 from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
@@ -80,26 +78,6 @@ def test_the_recorder_knows_each_size_s_memory(tmp_path):
     assert recorder._size_memory == build_size_memory(settings.spark)  # noqa: SLF001
 
 
-def test_the_planner_knows_each_size_s_memory_and_the_claim_lease(tmp_path):
-    """The planner estimates costs with each size's memory and claims candidates for the worker's lease."""
-    settings = sqlite_settings()
-    settings.sqlite.path = str(tmp_path / "tm.db")
-
-    async def connect(_temporal: TemporalSettings):
-        return MagicMock(name="client")
-
-    bridge = AsyncLoopBridge()
-    try:
-        use_cases = build_connected_use_cases(settings, bridge, connect=connect, k8s_api_factory=MagicMock)
-    finally:
-        bridge.close()
-
-    planner = use_cases.plan_table_maintenance
-    assert isinstance(planner, PlanTableMaintenanceService)
-    assert planner._size_memory == build_size_memory(settings.spark)  # noqa: SLF001
-    assert planner._claim_lease == compaction_claim_lease(settings)  # noqa: SLF001
-
-
 def test_the_planner_and_the_health_report_cap_the_failure_backoff_as_the_settings_say(tmp_path):
     """Both the planner and the table health read the failure backoff cap the worker and the api are given."""
     settings = sqlite_settings(maintenance_failure_backoff_cap_seconds=7200)
@@ -142,12 +120,11 @@ def test_the_platform_settings_page_reads_the_settings_the_components_run_on(tmp
     assert values["maintenance_failure_backoff_cap_seconds"] == 7200
 
 
-def test_the_planner_and_the_candidate_list_use_the_compaction_settings(tmp_path):
-    """The planner selects candidates and the list counts partitions per run as the settings say."""
+def test_the_candidate_list_uses_the_compaction_settings(tmp_path):
+    """The candidate list counts partitions per run as the settings say."""
     settings = sqlite_settings()
     settings.sqlite.path = str(tmp_path / "tm.db")
     settings.compaction.partitions_per_run = 3
-    settings.compaction.quiet_seconds = 45
 
     async def connect(_temporal: TemporalSettings):
         return MagicMock(name="client")
@@ -158,9 +135,6 @@ def test_the_planner_and_the_candidate_list_use_the_compaction_settings(tmp_path
     finally:
         bridge.close()
 
-    planner = use_cases.plan_table_maintenance
     candidates = use_cases.list_compaction_candidates
-    assert isinstance(planner, PlanTableMaintenanceService)
     assert isinstance(candidates, ListCompactionCandidatesService)
-    assert planner._selection == build_candidate_selection(settings.compaction)  # noqa: SLF001
     assert candidates._partitions_per_run == 3  # noqa: SLF001

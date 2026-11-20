@@ -258,9 +258,9 @@ class TableReconciliationActivities:
     def record_table_reconciliation(self, request):
         return self._record.execute(request)
 
-    @activity.defn(name=TableReconciliationActivity.RELEASE_COMPACTION_CANDIDATES)
-    def release_compaction_candidates(self, request):
-        return self._release.execute(request)
+    @activity.defn(name=TableReconciliationActivity.ARCHIVE_RECONCILIATIONS)
+    def archive_reconciliations(self, request):
+        return self._archive.execute(request)
 """
 
 
@@ -272,7 +272,7 @@ def test_scan_reports_a_member_no_method_is_decorated_with(tmp_path: Path):
     (tmp_path / "activities" / "table_reconciliation_activities.py").write_text(_NAMED_BY_STRING)
     assert unscanned_activity_members(tmp_path / "contracts", tmp_path / "activities") == [
         "TableReconciliationActivity.RECORD_TABLE_RECONCILIATION is not a decorated activity",
-        "TableReconciliationActivity.RELEASE_COMPACTION_CANDIDATES is not an activity enum member",
+        "TableReconciliationActivity.ARCHIVE_RECONCILIATIONS is not an activity enum member",
     ]
 
 

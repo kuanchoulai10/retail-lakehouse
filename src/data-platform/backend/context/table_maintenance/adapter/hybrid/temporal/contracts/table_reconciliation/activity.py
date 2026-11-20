@@ -11,4 +11,3 @@ class TableReconciliationActivity(StrEnum):
     PLAN_TABLE_MAINTENANCE = "plan_table_maintenance"
     RECORD_TABLE_RECONCILIATION = "record_table_reconciliation"
     GET_WORKFLOW_RUNNING = "get_workflow_running"
-    RELEASE_COMPACTION_CANDIDATES = "release_compaction_candidates"
