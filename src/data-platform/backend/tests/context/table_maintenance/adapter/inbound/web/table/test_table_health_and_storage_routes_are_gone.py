@@ -14,4 +14,4 @@ def test_health_and_storage_routes_are_gone(path: str) -> None:
 
     response = client.get(f"/v1/tables/u-1/{path}")
 
-    assert response.status_code in (404, 405)
+    assert response.status_code == 404

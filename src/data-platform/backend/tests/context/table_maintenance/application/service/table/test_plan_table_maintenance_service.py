@@ -748,6 +748,39 @@ def test_unknown_table_loses_its_metrics(planner, metrics_store, now):
     assert _saved_metrics(metrics_store) is None
 
 
+def _forget_fails(_table_id):
+    raise RuntimeError("metrics database is down")
+
+
+@pytest.mark.parametrize(
+    ("setup", "reason"),
+    [
+        ("unmanaged", "unmanaged"),
+        ("dropped", "dropped"),
+        ("gone_from_catalog", "not_found"),
+        ("unknown", "dropped"),
+    ],
+)
+def test_a_metrics_delete_failure_leaves_the_skip_alone(
+    setup, reason, planner, tables_repo, metrics_store, monkeypatch, caplog, now
+):
+    """A metrics store that fails to forget a skipped table costs only a warning; the skip is returned as is."""
+    if setup == "unmanaged":
+        _table(tables_repo, now).unmanage(now)
+    elif setup == "dropped":
+        _table(tables_repo, now).mark_dropped(now)
+    elif setup == "gone_from_catalog":
+        _table(tables_repo, now)
+    expected = _plan(planner, now)
+    monkeypatch.setattr(metrics_store, "delete", _forget_fails)
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        plan = _plan(planner, now)
+    assert (plan.status, plan.reason) == ("skip", reason)
+    assert plan == expected
+    assert any("u-1" in record.getMessage() for record in caplog.records if record.levelname == "WARNING")
+
+
 def _record(plan, now, **overrides):
     repo = InMemoryTableReconciliationsRepo()
     fields = {

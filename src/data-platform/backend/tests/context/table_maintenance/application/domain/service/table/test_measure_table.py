@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
+
+from base import InvariantViolation
 from context.table_maintenance.application.domain.model.shared import (
     ManifestStats,
     PartitionStats,
@@ -86,6 +89,30 @@ def test_reducible_files_use_the_tables_target_size():
         properties={"write.target-file-size-bytes": "100"},
     )
     assert measure_table(TableId("t1"), observation, NOW).reducible_files == 1
+
+
+def test_reducible_files_are_summed_per_partition():
+    """Each partition of three 40-byte files needs two 100-byte files, so one goes from each: two in all.
+
+    The table's totals (six files, 240 bytes) would give three, but compaction never merges across partitions.
+    """
+    observation = observation_with(
+        partitions=(
+            stats(data=3, pos=0, eq=0, dv=0, size=120, data_rec=0, pos_rec=0, eq_rec=0),
+            stats(data=3, pos=0, eq=0, dv=0, size=120, data_rec=0, pos_rec=0, eq_rec=0),
+        ),
+        properties={"write.target-file-size-bytes": "100"},
+    )
+    assert measure_table(TableId("t1"), observation, NOW).reducible_files == 2
+
+
+def test_more_deletion_vectors_than_position_delete_files_is_refused():
+    """Deletion vectors are counted among the position-delete files, so more of them is an invariant violation."""
+    observation = observation_with(
+        partitions=(stats(data=1, pos=1, eq=0, dv=2, size=10, data_rec=1, pos_rec=2, eq_rec=0),),
+    )
+    with pytest.raises(InvariantViolation):
+        measure_table(TableId("t1"), observation, NOW)
 
 
 def test_reducible_files_default_to_the_platform_target_when_the_table_sets_none():

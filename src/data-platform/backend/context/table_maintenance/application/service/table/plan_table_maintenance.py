@@ -175,8 +175,14 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             logger.warning("could not save the metrics of table %s: %s", table.id.value, exc)
 
     def _forget_metrics(self, table_uuid: str) -> None:
-        """Delete the metrics kept for ``table_uuid``, since a table maintenance no longer observes has none to show."""
-        self._metrics_store.delete(TableId(table_uuid))
+        """Delete the metrics kept for ``table_uuid``; a table that is skipped shows none.
+
+        A failure to delete them is logged and nothing more, as for ``_save_metrics``: the skip stands.
+        """
+        try:
+            self._metrics_store.delete(TableId(table_uuid))
+        except Exception as exc:
+            logger.warning("could not delete the metrics of table %s: %s", table_uuid, exc)
 
     def _resolve(self, table: Table) -> ResolveApplicableTableMaintenancePolicyUseCaseOutput:
         return self._resolve_applicable_policy.execute(

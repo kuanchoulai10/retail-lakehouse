@@ -38,6 +38,8 @@ class GetTableMetricTrendsService(GetTableMetricTrendsUseCase):
         """Return one point per step of the range, ending at ``now`` rounded down to a step.
 
         The history is asked only for a table the repo knows. A key it has no data for is None in every point.
+        A known table that is not managed is still read, so it can show its stale series for up to the history's
+        6 h retention, while its current metrics are null.
         """
         try:
             time_range = MetricTimeRange(request.time_range)

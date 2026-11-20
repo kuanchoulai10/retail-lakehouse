@@ -11,8 +11,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
 )
 
 if TYPE_CHECKING:
-    from datetime import datetime
-
     from context.table_maintenance.application.domain.model.table import TableId
 
 
@@ -26,7 +24,3 @@ class TableMaintenanceRunsRepo(Repository[TableMaintenanceRun]):
     @abstractmethod
     def list_by_table(self, table_uuid: TableId, limit: int = 50) -> list[TableMaintenanceRun]:
         """Return up to ``limit`` runs of the table, newest first."""
-
-    @abstractmethod
-    def list_by_table_since(self, table_uuid: TableId, since: datetime) -> list[TableMaintenanceRun]:
-        """Return the table's runs created at or after since, newest first."""

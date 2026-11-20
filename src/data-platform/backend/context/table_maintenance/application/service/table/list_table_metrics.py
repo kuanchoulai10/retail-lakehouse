@@ -26,17 +26,19 @@ class ListTableMetricsService(ListTableMetricsUseCase):
     def execute(self, request: ListTableMetricsUseCaseInput) -> ListTableMetricsUseCaseOutput:
         """Return the metrics of every managed table by uuid; a row of any other table is left out."""
         managed = {t.id.value: t.name for t in self._tables_repo.list_by_statuses([TableStatus.MANAGED])}
-        return ListTableMetricsUseCaseOutput(
-            tables=tuple(
+        tables: list[ListTableMetricsUseCaseOutput.Table] = []
+        for metrics in self._metrics_store.list_all():
+            name = managed.get(metrics.table_id.value)
+            if name is None:
+                continue
+            tables.append(
                 ListTableMetricsUseCaseOutput.Table(
                     table_uuid=metrics.table_id.value,
-                    catalog=managed[metrics.table_id.value].catalog,
-                    namespace=managed[metrics.table_id.value].namespace,
-                    table=managed[metrics.table_id.value].table,
+                    catalog=name.catalog,
+                    namespace=name.namespace,
+                    table=name.table,
                     observed_at=metrics.observed_at,
                     counts={field: getattr(metrics, field) for field in TABLE_METRIC_COUNT_FIELDS},
                 )
-                for metrics in self._metrics_store.list_all()
-                if metrics.table_id.value in managed
             )
-        )
+        return ListTableMetricsUseCaseOutput(tables=tuple(tables))

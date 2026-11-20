@@ -76,6 +76,17 @@ def test_seventeen_samples_per_table() -> None:
     assert len(_samples(render_table_metrics_exposition(_output()))) == 17
 
 
+def test_two_tables_share_one_declaration_per_family() -> None:
+    """Two tables give 34 samples under the 12 families, each declared once by HELP and once by TYPE."""
+    first, second = _output("u1", "orders"), _output("u2", "customers")
+    text = render_table_metrics_exposition(ListTableMetricsUseCaseOutput(tables=first.tables + second.tables))
+    lines = text.splitlines()
+
+    assert sum(line.startswith("# HELP ") for line in lines) == 12
+    assert sum(line.startswith("# TYPE ") for line in lines) == 12
+    assert len(_samples(text)) == 34
+
+
 def test_nothing_managed_leaves_only_the_declarations() -> None:
     """Without a table the text keeps every family's HELP and TYPE and has no sample."""
     text = render_table_metrics_exposition(ListTableMetricsUseCaseOutput(tables=()))

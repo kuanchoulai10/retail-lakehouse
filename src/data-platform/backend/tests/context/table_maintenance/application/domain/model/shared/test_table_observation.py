@@ -45,21 +45,28 @@ def test_the_last_commit_is_the_newest_snapshot_whatever_the_order():
     assert observation.last_committed_at == newest
 
 
-def test_negative_record_count_is_refused():
-    """A negative record count is an invariant violation."""
-    with pytest.raises(InvariantViolation):
-        PartitionStats(
-            spec_id=0,
-            values=(),
-            data_file_count=1,
-            position_delete_file_count=0,
-            equality_delete_file_count=0,
-            total_data_file_size_bytes=10,
-            data_record_count=-1,
+@pytest.mark.parametrize(
+    "field",
+    ["data_record_count", "position_delete_record_count", "equality_delete_record_count", "deletion_vector_count"],
+)
+def test_negative_partition_count_is_refused(field):
+    """A negative record or deletion vector count is an invariant violation."""
+    with pytest.raises(InvariantViolation, match="greater than or equal to 0"):
+        PartitionStats.model_validate(
+            {
+                "spec_id": 0,
+                "values": (),
+                "data_file_count": 1,
+                "position_delete_file_count": 0,
+                "equality_delete_file_count": 0,
+                "total_data_file_size_bytes": 10,
+                field: -1,
+            }
         )
 
 
-def test_negative_manifest_entry_count_is_refused():
+@pytest.mark.parametrize("field", ["added_entries", "existing_entries", "deleted_entries"])
+def test_negative_manifest_entry_count_is_refused(field):
     """A negative manifest entry count is an invariant violation."""
-    with pytest.raises(InvariantViolation):
-        ManifestStats(length_bytes=10, added_entries=-1)
+    with pytest.raises(InvariantViolation, match="greater than or equal to 0"):
+        ManifestStats.model_validate({"length_bytes": 10, field: -1})

@@ -9,8 +9,6 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
 )
 
 if TYPE_CHECKING:
-    from datetime import datetime
-
     from base import EntityId
     from context.table_maintenance.application.domain.model.table import TableId
     from context.table_maintenance.application.domain.model.table_maintenance_run import (
@@ -50,9 +48,3 @@ class InMemoryTableMaintenanceRunsRepo(TableMaintenanceRunsRepo):
         runs = [r for r in self.items.values() if r.table_uuid == table_uuid]
         runs.sort(key=lambda r: r.created_at, reverse=True)
         return runs[:limit]
-
-    def list_by_table_since(self, table_uuid: TableId, since: datetime) -> list[TableMaintenanceRun]:
-        """Return the table's runs created at or after since, newest first."""
-        runs = [r for r in self.items.values() if r.table_uuid == table_uuid and r.created_at >= since]
-        runs.sort(key=lambda r: r.created_at, reverse=True)
-        return runs
