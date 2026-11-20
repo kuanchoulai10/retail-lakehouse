@@ -169,7 +169,7 @@ def test_invalid_name_is_422():
 def test_invalid_content_is_422():
     """Content that breaks an invariant is ValidationError."""
     bad = MaintenancePolicyContent.platform_default().to_primitives()
-    bad["operations"]["remove_orphan_files"]["execution_policy"]["older_than_seconds"] = 60
+    bad["remove_orphan_files"]["target"]["older_than_seconds"] = 60
     with pytest.raises(ValidationError):
         _create(InMemoryTableMaintenancePoliciesRepo(), content=bad)
 

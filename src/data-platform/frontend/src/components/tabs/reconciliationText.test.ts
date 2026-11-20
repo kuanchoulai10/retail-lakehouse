@@ -132,9 +132,9 @@ describe("reasonSentence", () => {
     expect(reasonSentence(op({ result: "would_start", measurements: [REDUCIBLE_MET] }))).toBe("Because reducible files 1,240 (needs ≥ 5).");
   });
 
-  it("an operation with nothing to measure is due whenever its cooldown allows", () => {
+  it("an operation with nothing to measure is due on the platform's interval", () => {
     expect(reasonSentence(op({ result: "started", operation: "remove_orphan_files", measurements: [] }))).toBe(
-      "Due whenever its cooldown allows.",
+      "Due on the platform's interval.",
     );
   });
 
@@ -239,8 +239,8 @@ describe("reasonSentence", () => {
     expect(sentence).not.toMatch(/\([^)]*\(/);
   });
 
-  it("off says it is turned off", () => {
-    expect(reasonSentence(op({ result: "off", measurements: [] }))).toBe("Turned off in the policy.");
+  it("off says the operation is not in the policy", () => {
+    expect(reasonSentence(op({ result: "off", measurements: [] }))).toBe("Not in the policy.");
   });
 
   it("not checked says the manual run did not name it", () => {

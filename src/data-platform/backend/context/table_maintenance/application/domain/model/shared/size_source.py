@@ -8,6 +8,5 @@ from enum import StrEnum
 class SizeSource(StrEnum):
     """Enumerate where a byte-size threshold of an operation was taken from."""
 
-    CONDITION = "condition"
     TABLE_PROPERTY = "table_property"
     DEFAULT = "default"

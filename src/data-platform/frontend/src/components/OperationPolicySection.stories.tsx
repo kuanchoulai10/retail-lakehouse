@@ -2,61 +2,44 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { PHONE } from "@/stories/phone";
+import { ON_OFF, OptionSelectField } from "./forms/OptionSelectField";
 import { WholeNumberField } from "./forms/WholeNumberField";
 import { OperationPolicySection } from "./OperationPolicySection";
-
-function field(label: string, value: string, unit?: "seconds" | "bytes") {
-  return { label, value, unit, onChange: fn() };
-}
 
 const meta = {
   title: "Components/Operation policy section",
   component: OperationPolicySection,
   args: {
     title: "Rewrite manifests",
-    enabled: true,
-    onEnabledChange: fn(),
-    cooldown: field("Cooldown (seconds)", "21600", "seconds"),
-    conditions: [
-      {
-        label: "Small manifests",
-        fields: [field("Small manifests at least", "5"), field("Smaller than (bytes)", "", "bytes")],
-      },
-      { label: "Manifest count", fields: [field("Manifests at least", "")] },
-    ],
+    included: true,
+    onIncludedChange: fn(),
+    target: <WholeNumberField label="Small manifests at most" value="5" onChange={fn()} />,
+    options: <OptionSelectField label="Use caching" value="" options={ON_OFF} onChange={fn()} />,
   },
 } satisfies Meta<typeof OperationPolicySection>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Two conditions to show the "or" between them; the real operations have one each today.
-export const Conditions: Story = {
+export const InThisPolicy: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByRole("group", { name: "Trigger" });
-    await expect(within(trigger).getByText("or", { exact: true })).toBeVisible();
-    await expect(within(trigger).getByText("6 h")).toBeVisible();
+    await expect(canvas.getByRole("group", { name: "Target" })).toBeVisible();
+    await expect(within(canvas.getByRole("group", { name: "Options" })).getByText("Empty: the procedure's default.")).toBeVisible();
+    await expect(canvas.getByRole("combobox", { name: "Use caching" })).toHaveTextContent("Procedure default");
     await userEvent.tab();
-    await expect(canvas.getByRole("switch", { name: "Enabled" })).toHaveFocus();
+    await expect(canvas.getByRole("switch", { name: "In this policy" })).toHaveFocus();
     await userEvent.keyboard(" ");
-    await expect(args.onEnabledChange).toHaveBeenCalledWith(false);
+    await expect(args.onIncludedChange).toHaveBeenCalledWith(false);
   },
 };
 
-export const WithScopeAndExecution: Story = {
-  args: {
-    title: "Rewrite data files",
-    scope: { value: "partition", onChange: fn() },
-    conditions: [{ label: "Reducible files", fields: [field("Reducible files at least", "5")] }],
-    children: <WholeNumberField label="Min input files" value="2" onChange={fn()} />,
-  },
-};
-
-export const NoConditions: Story = {
-  args: { title: "Remove orphan files", conditions: [] },
+export const NotInThisPolicy: Story = {
+  args: { included: false },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByText("No conditions: due once the cooldown has passed.")).toBeVisible();
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("Not in this policy: this operation does not run on a schedule.")).toBeVisible();
+    await expect(canvas.queryByRole("group", { name: "Target" })).toBeNull();
   },
 };
 

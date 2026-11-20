@@ -1,91 +1,127 @@
 import type {
-  CompactionScopeApiRequestUnit,
   CreateTableMaintenancePolicyApiRequest,
-  MaintenancePriorityApi,
+  ExpireSnapshotsSpecApiRequest,
+  RemoveOrphanFilesOptionsApiRequest,
+  RemoveOrphanFilesSpecApiRequest,
+  RewriteDataFilesOptionsApiRequest,
+  RewriteDataFilesSpecApiRequest,
+  RewriteDataFilesTargetApiRequestPer,
+  RewriteManifestsSpecApiRequest,
 } from "@/api/generated/model";
 
 // Everything a policy write carries except its name: the API takes it whole, always.
 export type PolicyContent = Omit<CreateTableMaintenancePolicyApiRequest, "name">;
 
-// A policy as the editor holds it. Numbers stay text until submit, so an empty optional
-// value (a condition not checked, a value left to the table) is kept apart from a zero.
+// An option the procedure decides when it is empty: "" is "Procedure default".
+export type OptionalBoolean = "" | "true" | "false";
+export type RewriteStrategy = "" | "binpack" | "sort";
+export type PrefixMismatchMode = "" | "ERROR" | "IGNORE" | "DELETE";
+
+// A policy as the editor holds it. Numbers stay text until submit, so an empty optional value
+// (an option left to the procedure, a retention left to the table) is kept apart from a zero.
+// An operation taken out of the policy keeps its values, so putting it back brings them back.
 export interface PolicyDraft {
   description: string;
-  reconcileInterval: string;
+  scheduleEvery: string;
+  catalogCommit: boolean;
+  debounce: string;
   dryRun: boolean;
-  priority: MaintenancePriorityApi;
   rewriteDataFiles: {
-    enabled: boolean;
-    scope: CompactionScopeApiRequestUnit;
-    cooldown: string;
-    reducibleFiles: string;
-    targetFileSizeBytes: string;
+    included: boolean;
+    reducibleFilesAtMost: string;
+    per: RewriteDataFilesTargetApiRequestPer;
+    strategy: RewriteStrategy;
+    sortOrder: string;
     minInputFiles: string;
-    partialProgress: boolean;
-    maxCommits: string;
+    partialProgressEnabled: OptionalBoolean;
+    partialProgressMaxCommits: string;
+    maxConcurrentFileGroupRewrites: string;
+    rewriteAll: OptionalBoolean;
+    deleteFileThreshold: string;
+    removeDanglingDeletes: OptionalBoolean;
+    maxFileGroupSizeBytes: string;
   };
   rewriteManifests: {
-    enabled: boolean;
-    cooldown: string;
-    smallManifests: string;
-    smallerThanBytes: string;
+    included: boolean;
+    smallManifestsAtMost: string;
+    useCaching: OptionalBoolean;
   };
   expireSnapshots: {
-    enabled: boolean;
-    cooldown: string;
-    expirableSnapshots: string;
-    olderThan: string;
-    retainLast: string;
+    included: boolean;
+    minSnapshotsToKeep: string;
+    maxSnapshotAge: string;
+    maxConcurrentDeletes: string;
+    streamResults: OptionalBoolean;
   };
   removeOrphanFiles: {
-    enabled: boolean;
-    cooldown: string;
+    included: boolean;
     olderThan: string;
+    maxConcurrentDeletes: string;
+    prefixMismatchMode: PrefixMismatchMode;
   };
 }
 
 export const POLICY_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
-function text(value: number | null | undefined): string {
+// What the API applies when a policy names catalog commits without a debounce.
+export const DEFAULT_DEBOUNCE_SECONDS = 300;
+const SCHEDULE_SECONDS = { min: 60, max: 604_800 };
+const DEBOUNCE_SECONDS = { min: 0, max: 86_400 };
+
+function text(value: number | string | null | undefined): string {
   return value === null || value === undefined ? "" : String(value);
 }
 
+function booleanText(value: boolean | null | undefined): OptionalBoolean {
+  if (value === null || value === undefined) return "";
+  return value ? "true" : "false";
+}
+
 export function draftFromContent(content: PolicyContent): PolicyDraft {
-  const { rewrite_data_files: data, rewrite_manifests: manifests, expire_snapshots: snapshots, remove_orphan_files: orphans } =
-    content.operations;
+  const data = content.rewrite_data_files ?? null;
+  const manifests = content.rewrite_manifests ?? null;
+  const snapshots = content.expire_snapshots ?? null;
+  const orphans = content.remove_orphan_files ?? null;
+  const dataOptions = data?.options ?? {};
+  const commit = content.on.catalog_commit ?? null;
   return {
     description: content.description,
-    reconcileInterval: text(content.reconcile_interval_seconds),
-    dryRun: content.dry_run,
-    // A policy saved before priorities existed has none; the API reads it as P2.
-    priority: content.priority ?? "P2",
+    scheduleEvery: text(content.on.schedule.every_seconds),
+    catalogCommit: commit !== null,
+    debounce: text(commit === null ? DEFAULT_DEBOUNCE_SECONDS : (commit.debounce_seconds ?? DEFAULT_DEBOUNCE_SECONDS)),
+    dryRun: content.dry_run ?? false,
     rewriteDataFiles: {
-      enabled: data.enabled,
-      scope: data.scope.unit,
-      cooldown: text(data.trigger_policy.cooldown_seconds),
-      reducibleFiles: text(data.trigger_policy.conditions.reducible_files?.at_least),
-      targetFileSizeBytes: text(data.execution_policy.target_file_size_bytes),
-      minInputFiles: text(data.execution_policy.min_input_files),
-      partialProgress: data.execution_policy.partial_progress.enabled,
-      maxCommits: text(data.execution_policy.partial_progress.max_commits),
+      included: data !== null,
+      reducibleFilesAtMost: text(data?.target.reducible_files.at_most),
+      per: data?.target.per ?? "partition",
+      strategy: dataOptions.strategy ?? "",
+      sortOrder: dataOptions.sort_order ?? "",
+      minInputFiles: text(dataOptions.min_input_files),
+      partialProgressEnabled: booleanText(dataOptions.partial_progress_enabled),
+      partialProgressMaxCommits: text(dataOptions.partial_progress_max_commits),
+      maxConcurrentFileGroupRewrites: text(dataOptions.max_concurrent_file_group_rewrites),
+      rewriteAll: booleanText(dataOptions.rewrite_all),
+      deleteFileThreshold: text(dataOptions.delete_file_threshold),
+      removeDanglingDeletes: booleanText(dataOptions.remove_dangling_deletes),
+      maxFileGroupSizeBytes: text(dataOptions.max_file_group_size_bytes),
     },
     rewriteManifests: {
-      enabled: manifests.enabled,
-      cooldown: text(manifests.trigger_policy.cooldown_seconds),
-      smallManifests: text(manifests.trigger_policy.conditions.small_manifests?.at_least),
-      smallerThanBytes: text(manifests.trigger_policy.conditions.small_manifests?.smaller_than_bytes),
+      included: manifests !== null,
+      smallManifestsAtMost: text(manifests?.target.small_manifests.at_most),
+      useCaching: booleanText(manifests?.options?.use_caching),
     },
     expireSnapshots: {
-      enabled: snapshots.enabled,
-      cooldown: text(snapshots.trigger_policy.cooldown_seconds),
-      expirableSnapshots: text(snapshots.trigger_policy.conditions.expirable_snapshots?.at_least),
-      olderThan: text(snapshots.execution_policy.older_than_seconds),
-      retainLast: text(snapshots.execution_policy.retain_last),
+      included: snapshots !== null,
+      minSnapshotsToKeep: text(snapshots?.target.min_snapshots_to_keep),
+      maxSnapshotAge: text(snapshots?.target.max_snapshot_age_seconds),
+      maxConcurrentDeletes: text(snapshots?.options?.max_concurrent_deletes),
+      streamResults: booleanText(snapshots?.options?.stream_results),
     },
     removeOrphanFiles: {
-      enabled: orphans.enabled,
-      cooldown: text(orphans.trigger_policy.cooldown_seconds),
-      olderThan: text(orphans.execution_policy.older_than_seconds),
+      included: orphans !== null,
+      olderThan: text(orphans?.target.older_than_seconds),
+      maxConcurrentDeletes: text(orphans?.options?.max_concurrent_deletes),
+      prefixMismatchMode: orphans?.options?.prefix_mismatch_mode ?? "",
     },
   };
 }
@@ -101,9 +137,11 @@ function whole(value: string, label: string, where?: string): number {
   return Number(trimmed);
 }
 
-function positive(value: string, label: string): number {
+function secondsWithin(value: string, label: string, range: { min: number; max: number }): number {
   const number = whole(value, label);
-  if (number === 0) throw new InvalidDraft(`${label} must be greater than zero.`);
+  if (number < range.min || number > range.max) {
+    throw new InvalidDraft(`${label} must be ${range.min} to ${range.max} seconds.`);
+  }
   return number;
 }
 
@@ -111,73 +149,95 @@ function optionalWhole(value: string, label: string, where: string): number | nu
   return value.trim() === "" ? null : whole(value, label, where);
 }
 
-function atLeast(value: string, label: string, where: string): { at_least: number } | null {
-  const number = optionalWhole(value, label, where);
-  return number === null ? null : { at_least: number };
+function optionalBoolean(value: OptionalBoolean): boolean | null {
+  return value === "" ? null : value === "true";
 }
 
-function smallManifests(draft: PolicyDraft["rewriteManifests"]) {
-  const where = "Rewrite manifests";
-  const at = optionalWhole(draft.smallManifests, "Small manifests at least", where);
-  const smallerThan = optionalWhole(draft.smallerThanBytes, "Smaller than (bytes)", where);
-  if (at === null && smallerThan !== null) {
-    throw new InvalidDraft(`${where}: set Small manifests at least to use Smaller than.`);
-  }
-  return at === null ? null : { at_least: at, smaller_than_bytes: smallerThan };
+// The options that are set, or null when none is: the API leaves every other one to the procedure.
+function setOptions<Options extends object>(options: { [K in keyof Options]: Options[K] | null }): Options | null {
+  const set = Object.fromEntries(Object.entries(options).filter(([, value]) => value !== null));
+  return Object.keys(set).length === 0 ? null : (set as Options);
+}
+
+function rewriteDataFiles(draft: PolicyDraft["rewriteDataFiles"]): RewriteDataFilesSpecApiRequest {
+  const where = "Rewrite data files";
+  const sortOrder = draft.sortOrder.trim();
+  return {
+    target: {
+      reducible_files: { at_most: whole(draft.reducibleFilesAtMost, "Reducible files at most", where) },
+      per: draft.per,
+    },
+    options: setOptions<RewriteDataFilesOptionsApiRequest>({
+      strategy: draft.strategy === "" ? null : draft.strategy,
+      sort_order: sortOrder === "" ? null : sortOrder,
+      min_input_files: optionalWhole(draft.minInputFiles, "Min input files", where),
+      partial_progress_enabled: optionalBoolean(draft.partialProgressEnabled),
+      partial_progress_max_commits: optionalWhole(draft.partialProgressMaxCommits, "Partial progress max commits", where),
+      max_concurrent_file_group_rewrites: optionalWhole(
+        draft.maxConcurrentFileGroupRewrites,
+        "Max concurrent file group rewrites",
+        where,
+      ),
+      rewrite_all: optionalBoolean(draft.rewriteAll),
+      delete_file_threshold: optionalWhole(draft.deleteFileThreshold, "Delete file threshold", where),
+      remove_dangling_deletes: optionalBoolean(draft.removeDanglingDeletes),
+      max_file_group_size_bytes: optionalWhole(draft.maxFileGroupSizeBytes, "Max file group size", where),
+    }),
+  };
+}
+
+function rewriteManifests(draft: PolicyDraft["rewriteManifests"]): RewriteManifestsSpecApiRequest {
+  return {
+    target: { small_manifests: { at_most: whole(draft.smallManifestsAtMost, "Small manifests at most", "Rewrite manifests") } },
+    options: setOptions({ use_caching: optionalBoolean(draft.useCaching) }),
+  };
+}
+
+function expireSnapshots(draft: PolicyDraft["expireSnapshots"]): ExpireSnapshotsSpecApiRequest {
+  const where = "Expire snapshots";
+  return {
+    // An empty retention value is sent as null: the table's property, else Iceberg's default, applies.
+    target: {
+      min_snapshots_to_keep: optionalWhole(draft.minSnapshotsToKeep, "Min snapshots to keep", where),
+      max_snapshot_age_seconds: optionalWhole(draft.maxSnapshotAge, "Max snapshot age", where),
+    },
+    options: setOptions({
+      max_concurrent_deletes: optionalWhole(draft.maxConcurrentDeletes, "Max concurrent deletes", where),
+      stream_results: optionalBoolean(draft.streamResults),
+    }),
+  };
+}
+
+function removeOrphanFiles(draft: PolicyDraft["removeOrphanFiles"]): RemoveOrphanFilesSpecApiRequest {
+  const where = "Remove orphan files";
+  return {
+    target: { older_than_seconds: whole(draft.olderThan, "Older than", where) },
+    options: setOptions<RemoveOrphanFilesOptionsApiRequest>({
+      max_concurrent_deletes: optionalWhole(draft.maxConcurrentDeletes, "Max concurrent deletes", where),
+      prefix_mismatch_mode: draft.prefixMismatchMode === "" ? null : draft.prefixMismatchMode,
+    }),
+  };
+}
+
+// An operation out of the policy is sent as null, and its fields are not checked.
+function block<Draft extends { included: boolean }, Spec>(draft: Draft, build: (draft: Draft) => Spec): Spec | null {
+  return draft.included ? build(draft) : null;
 }
 
 function buildContent(draft: PolicyDraft): PolicyContent {
-  const { rewriteDataFiles: data, rewriteManifests: manifests, expireSnapshots: snapshots, removeOrphanFiles: orphans } =
-    draft;
   return {
     description: draft.description.trim(),
-    reconcile_interval_seconds: positive(draft.reconcileInterval, "Reconcile interval"),
-    dry_run: draft.dryRun,
-    priority: draft.priority,
-    operations: {
-      rewrite_data_files: {
-        enabled: data.enabled,
-        scope: { unit: data.scope },
-        trigger_policy: {
-          cooldown_seconds: whole(data.cooldown, "Cooldown", "Rewrite data files"),
-          conditions: { reducible_files: atLeast(data.reducibleFiles, "Reducible files at least", "Rewrite data files") },
-        },
-        execution_policy: {
-          target_file_size_bytes: optionalWhole(data.targetFileSizeBytes, "Target file size", "Rewrite data files"),
-          min_input_files: whole(data.minInputFiles, "Min input files", "Rewrite data files"),
-          partial_progress: {
-            enabled: data.partialProgress,
-            max_commits: optionalWhole(data.maxCommits, "Max commits", "Rewrite data files"),
-          },
-        },
-      },
-      rewrite_manifests: {
-        enabled: manifests.enabled,
-        trigger_policy: {
-          cooldown_seconds: whole(manifests.cooldown, "Cooldown", "Rewrite manifests"),
-          conditions: { small_manifests: smallManifests(manifests) },
-        },
-        execution_policy: {},
-      },
-      expire_snapshots: {
-        enabled: snapshots.enabled,
-        trigger_policy: {
-          cooldown_seconds: whole(snapshots.cooldown, "Cooldown", "Expire snapshots"),
-          conditions: {
-            expirable_snapshots: atLeast(snapshots.expirableSnapshots, "Expirable snapshots at least", "Expire snapshots"),
-          },
-        },
-        execution_policy: {
-          older_than_seconds: whole(snapshots.olderThan, "Older than", "Expire snapshots"),
-          retain_last: whole(snapshots.retainLast, "Retain last", "Expire snapshots"),
-        },
-      },
-      remove_orphan_files: {
-        enabled: orphans.enabled,
-        trigger_policy: { cooldown_seconds: whole(orphans.cooldown, "Cooldown", "Remove orphan files"), conditions: {} },
-        execution_policy: { older_than_seconds: whole(orphans.olderThan, "Older than", "Remove orphan files") },
-      },
+    on: {
+      schedule: { every_seconds: secondsWithin(draft.scheduleEvery, "Check every", SCHEDULE_SECONDS) },
+      catalog_commit: draft.catalogCommit
+        ? { debounce_seconds: secondsWithin(draft.debounce, "Debounce", DEBOUNCE_SECONDS) }
+        : null,
     },
+    dry_run: draft.dryRun,
+    rewrite_data_files: block(draft.rewriteDataFiles, rewriteDataFiles),
+    rewrite_manifests: block(draft.rewriteManifests, rewriteManifests),
+    expire_snapshots: block(draft.expireSnapshots, expireSnapshots),
+    remove_orphan_files: block(draft.removeOrphanFiles, removeOrphanFiles),
   };
 }
 

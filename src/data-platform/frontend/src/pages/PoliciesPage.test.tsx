@@ -21,7 +21,7 @@ const POLICIES = [
     description: "Nightly compaction",
     version: 4,
     attachment_count: 2,
-    priority: "P0",
+    on: { schedule: { every_seconds: 86400 }, catalog_commit: null },
   }),
   policyFixture({ name: "default", description: "Platform default", version: 3, attachment_count: 0 }),
   policyFixture({ id: SCRATCH_POLICY_ID, name: "scratch", description: "", version: 1, attachment_count: 0 }),
@@ -81,13 +81,15 @@ describe("PoliciesPage", () => {
     expect(within(policyRow("nightly")).getByText("4")).toBeInTheDocument();
   });
 
-  it("shows each policy's priority as it is", async () => {
+  it("shows when each policy checks its tables", async () => {
     stubApi();
     renderPage();
     await screen.findByText("Nightly compaction");
-    expect(screen.getAllByRole("columnheader").map((h) => h.textContent)).toContain("Priority");
-    expect(await within(policyRow("nightly")).findByText("P0")).toBeInTheDocument();
-    expect(within(policyRow("default")).getByText("P2")).toBeInTheDocument();
+    const headers = screen.getAllByRole("columnheader").map((h) => h.textContent);
+    expect(headers).toContain("Checks");
+    expect(headers).not.toContain("Priority");
+    expect(within(policyRow("nightly")).getByText("Every 1 d")).toBeInTheDocument();
+    expect(within(policyRow("default")).getByText("Every 1 h, and 5 min after a commit")).toBeInTheDocument();
   });
 
   it("shows where each policy is attached, marking a target no longer in the catalog", async () => {

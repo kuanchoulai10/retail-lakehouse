@@ -18,17 +18,16 @@ from context.table_maintenance.application.domain.model.shared import (
 )
 from context.table_maintenance.application.domain.model.table import DEFAULT_OPERATION_COOLDOWNS
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-    AtLeast,
     CompactionUnit,
-    ExpireSnapshotsPolicy,
+    ExpireSnapshotsSpec,
     MaintenancePolicyContent,
-    RewriteDataFilesPolicy,
-    RewriteManifestsPolicy,
-    SmallManifestsCondition,
+    RewriteDataFilesSpec,
+    RewriteManifestsSpec,
 )
 from context.table_maintenance.application.domain.service.shared import (
     TARGET_FILE_SIZE_PROPERTY,
     positive_int_property,
+    resolve_snapshot_retention,
     resolve_target_file_size,
 )
 from context.table_maintenance.application.domain.service.table.any_condition_holds import (
@@ -55,14 +54,16 @@ def assess_maintenance(
     *,
     cooldowns: OperationCooldowns = DEFAULT_OPERATION_COOLDOWNS,
 ) -> MaintenanceAssessment:
-    """Evaluate every operation of a table against a policy, regardless of the table's status.
+    """Evaluate every operation of a table against a policy's target state, regardless of the table's status.
 
-    An operation is due when it is enabled, its cooldown (with the failure backoff)
-    has passed, and its conditions are empty or any of them holds. An enabled operation
-    marked as needing attention is never due, whatever its cooldown; a mark set under an
-    earlier applicable policy is lifted by the plan, not ignored here. The cooldown is the
-    platform's (``cooldowns``), not the policy's; the failure backoff doubles it per
-    consecutive failure up to ``cooldowns.failure_backoff_cap``.
+    An operation whose block the policy leaves out is disabled. Compaction, manifest rewriting and
+    snapshot expiry are due when the table is off their target: more reducible files or small
+    manifests than ``at_most``, or any snapshot outside the retention. Orphan file removal has no
+    target the platform can measure, so its block alone makes it due and the platform interval holds
+    it back. An operation marked as needing attention is never due, whatever its cooldown; a mark set
+    under an earlier applicable policy is lifted by the plan, not ignored here. The cooldown is the
+    platform's (``cooldowns``); the failure backoff doubles it per consecutive failure up to
+    ``cooldowns.failure_backoff_cap``.
     """
     return MaintenanceAssessment(
         operations=tuple(
@@ -79,12 +80,10 @@ def _assess(
     now: datetime,
     cooldowns: OperationCooldowns,
 ) -> OperationAssessment:
-    operation_policy = policy.operations.for_operation(op)
-    if not operation_policy.enabled:
+    if policy.spec_for(op) is None:
         return OperationAssessment(operation=op, verdict=OperationVerdict.DISABLED)
     measured, planned = _measure(op, policy, observation, now)
-    conditions = operation_policy.trigger_policy.conditions
-    if conditions.is_empty() or any_condition_holds(measured.measurements):
+    if op == MaintenanceOperation.REMOVE_ORPHAN_FILES or any_condition_holds(measured.measurements):
         assessment = measured.with_changes(
             verdict=OperationVerdict.DUE,
             planned=PlannedOperation(operation=op) if planned is None else planned,
@@ -119,38 +118,42 @@ def _measure(
     A planned operation of None means the whole table.
     """
     match op:
-        case MaintenanceOperation.REWRITE_DATA_FILES:
-            return _measure_compaction(policy.operations.rewrite_data_files, observation)
-        case MaintenanceOperation.REWRITE_MANIFESTS:
-            return _measure_manifests(policy.operations.rewrite_manifests, observation), None
-        case MaintenanceOperation.EXPIRE_SNAPSHOTS:
-            return _measure_snapshots(policy.operations.expire_snapshots, observation, now), None
+        case MaintenanceOperation.REWRITE_DATA_FILES if policy.rewrite_data_files is not None:
+            return _measure_compaction(policy.rewrite_data_files, observation)
+        case MaintenanceOperation.REWRITE_MANIFESTS if policy.rewrite_manifests is not None:
+            return _measure_manifests(policy.rewrite_manifests, observation), None
+        case MaintenanceOperation.EXPIRE_SNAPSHOTS if policy.expire_snapshots is not None:
+            return _measure_snapshots(policy.expire_snapshots, observation, now), None
         case MaintenanceOperation.REMOVE_ORPHAN_FILES:
+            # No target the platform can measure: nothing to compare, the block alone makes it due.
             return OperationAssessment(operation=op, verdict=OperationVerdict.NOT_DUE), None
+        case _:
+            # The policy leaves the operation out: nothing to measure. ``_assess`` reports it
+            # disabled before measuring, so this keeps the same verdict.
+            return OperationAssessment(operation=op, verdict=OperationVerdict.DISABLED), None
 
 
-def _at_least(condition: AtLeast | SmallManifestsCondition | None) -> int | None:
-    return None if condition is None else condition.at_least
-
-
-def _count(key: str, observed: int, at_least: int | None) -> Measurement:
-    """Return a count, compared with the condition's threshold when there is one."""
-    if at_least is None:
-        return Measurement(key=key, observed=observed, unit=MeasurementUnit.COUNT)
+def _over(key: str, observed: int, at_most: int) -> Measurement:
+    """Return a count compared with its target: met (due) when it is over ``at_most``."""
     return Measurement(
         key=key,
         observed=observed,
         unit=MeasurementUnit.COUNT,
-        threshold=at_least,
-        comparison=MeasurementComparison.AT_LEAST,
+        threshold=at_most,
+        comparison=MeasurementComparison.MORE_THAN,
     )
 
 
 def _measure_compaction(
-    policy: RewriteDataFilesPolicy, observation: TableObservation
+    spec: RewriteDataFilesSpec, observation: TableObservation
 ) -> tuple[OperationAssessment, PlannedOperation | None]:
+    """Measure the reducible files against the target, per partition or across the table.
+
+    Per partition, each partition is compared on its own; the reducible files are the sum over the
+    partitions over the target, which are the qualifying partitions.
+    """
     op = MaintenanceOperation.REWRITE_DATA_FILES
-    condition = policy.trigger_policy.conditions.reducible_files
+    at_most = spec.target.reducible_files.at_most
     target = resolve_target_file_size(observation.properties)
     source = (
         SizeSource.TABLE_PROPERTY
@@ -161,24 +164,24 @@ def _measure_compaction(
     base = OperationAssessment(
         operation=op,
         verdict=OperationVerdict.NOT_DUE,
-        threshold=_at_least(condition),
+        threshold=at_most,
         size_bytes=target,
         size_source=source,
     )
     target_size = Measurement(key="target_file_size", observed=target, unit=MeasurementUnit.BYTES)
-    if policy.scope.unit == CompactionUnit.TABLE or condition is None:
+    if spec.target.per == CompactionUnit.TABLE:
         total = sum(r for _, r in reducible)
         measured = base.with_changes(
-            measured=total, measurements=(_count("reducible_files", total, _at_least(condition)), target_size)
+            measured=total, measurements=(_over("reducible_files", total, at_most), target_size)
         )
         return measured, None
-    qualifying = [(p, r) for p, r in reducible if r >= condition.at_least]
+    qualifying = [(p, r) for p, r in reducible if r > at_most]
     total = sum(r for _, r in qualifying)
     measured = base.with_changes(
         measured=total,
         qualifying_partitions=len(qualifying),
         measurements=(
-            _count("reducible_files", total, _at_least(condition)),
+            _over("reducible_files", total, at_most),
             target_size,
             Measurement(key="qualifying_partitions", observed=len(qualifying), unit=MeasurementUnit.COUNT),
         ),
@@ -190,12 +193,11 @@ def _measure_compaction(
     return measured, PlannedOperation(operation=op, partitions=selected)
 
 
-def _measure_manifests(policy: RewriteManifestsPolicy, observation: TableObservation) -> OperationAssessment:
-    condition = policy.trigger_policy.conditions.small_manifests
+def _measure_manifests(spec: RewriteManifestsSpec, observation: TableObservation) -> OperationAssessment:
+    """Count the manifests under the table's manifest target size, else under 8 MiB, against the target."""
+    at_most = spec.target.small_manifests.at_most
     prop = positive_int_property(observation.properties, MANIFEST_TARGET_SIZE_PROPERTY)
-    if condition is not None and condition.smaller_than_bytes is not None:
-        threshold, source = condition.smaller_than_bytes, SizeSource.CONDITION
-    elif prop is not None:
+    if prop is not None:
         threshold, source = prop, SizeSource.TABLE_PROPERTY
     else:
         threshold, source = DEFAULT_SMALL_MANIFEST_BYTES, SizeSource.DEFAULT
@@ -204,30 +206,27 @@ def _measure_manifests(policy: RewriteManifestsPolicy, observation: TableObserva
         operation=MaintenanceOperation.REWRITE_MANIFESTS,
         verdict=OperationVerdict.NOT_DUE,
         measured=small,
-        threshold=_at_least(condition),
+        threshold=at_most,
         size_bytes=threshold,
         size_source=source,
-        measurements=(_count("small_manifests", small, _at_least(condition)),),
+        measurements=(_over("small_manifests", small, at_most),),
     )
 
 
-def _measure_snapshots(
-    policy: ExpireSnapshotsPolicy, observation: TableObservation, now: datetime
-) -> OperationAssessment:
-    """Count the snapshots the execution policy would expire: the one condition that reads execution values."""
-    execution = policy.execution_policy
-    condition = policy.trigger_policy.conditions.expirable_snapshots
+def _measure_snapshots(spec: ExpireSnapshotsSpec, observation: TableObservation, now: datetime) -> OperationAssessment:
+    """Count the snapshots outside the resolved retention, the same retention the procedure is run with."""
+    retention = resolve_snapshot_retention(spec.target, observation.properties)
     newest_first = sorted(observation.snapshots, key=lambda s: s.committed_at, reverse=True)
-    cutoff = now - execution.older_than
+    cutoff = now - retention.max_snapshot_age
     expirable = sum(
         1
-        for s in newest_first[execution.retain_last :]
+        for s in newest_first[retention.min_snapshots_to_keep :]
         if s.committed_at < cutoff and s.snapshot_id != observation.current_snapshot_id
     )
     return OperationAssessment(
         operation=MaintenanceOperation.EXPIRE_SNAPSHOTS,
         verdict=OperationVerdict.NOT_DUE,
         measured=expirable,
-        threshold=_at_least(condition),
-        measurements=(_count("expirable_snapshots", expirable, _at_least(condition)),),
+        threshold=0,
+        measurements=(_over("expirable_snapshots", expirable, 0),),
     )

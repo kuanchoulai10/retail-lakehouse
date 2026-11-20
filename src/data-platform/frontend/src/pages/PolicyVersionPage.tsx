@@ -52,13 +52,7 @@ export function PolicyVersionPage() {
   return (
     <section>
       {header}
-      <PolicySummary
-        description={policy.description}
-        reconcileIntervalSeconds={policy.reconcile_interval_seconds}
-        dryRun={policy.dry_run}
-        priority={policy.priority}
-        operations={policy.operations}
-      />
+      <PolicySummary content={policy} />
     </section>
   );
 }

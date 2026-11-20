@@ -4,8 +4,11 @@
  * Data Platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { MaintenancePriorityApi } from './maintenancePriorityApi';
-import type { OperationPoliciesApiRequest } from './operationPoliciesApiRequest';
+import type { ExpireSnapshotsSpecApiRequest } from './expireSnapshotsSpecApiRequest';
+import type { MaintenanceTriggersApiRequest } from './maintenanceTriggersApiRequest';
+import type { RemoveOrphanFilesSpecApiRequest } from './removeOrphanFilesSpecApiRequest';
+import type { RewriteDataFilesSpecApiRequest } from './rewriteDataFilesSpecApiRequest';
+import type { RewriteManifestsSpecApiRequest } from './rewriteManifestsSpecApiRequest';
 
 /**
  * Describe one stored version of a policy; ``created_at`` is when that version was written.
@@ -14,12 +17,14 @@ export interface TableMaintenancePolicyVersionApiResponse {
   created_at: string;
   description: string;
   dry_run: boolean;
+  expire_snapshots: ExpireSnapshotsSpecApiRequest | null;
   id: string;
   /** Whether this is the platform default policy, which applies where nothing is attached. */
   is_default: boolean;
   name: string;
-  operations: OperationPoliciesApiRequest;
-  priority: MaintenancePriorityApi;
-  reconcile_interval_seconds: number;
+  on: MaintenanceTriggersApiRequest;
+  remove_orphan_files: RemoveOrphanFilesSpecApiRequest | null;
+  rewrite_data_files: RewriteDataFilesSpecApiRequest | null;
+  rewrite_manifests: RewriteManifestsSpecApiRequest | null;
   version: number;
 }

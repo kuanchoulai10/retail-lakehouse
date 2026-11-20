@@ -78,6 +78,46 @@ def test_roundtrip_of_a_policy_and_two_versions(repo: TableMaintenancePoliciesSq
     assert repo.get_version(policy.id, 3) is None
 
 
+def test_sql_round_trip_keeps_every_block(repo: TableMaintenancePoliciesSqlRepo):
+    """A content with every option set and one block left out reads back equal."""
+    content = MaintenancePolicyContent.from_primitives(
+        {
+            "description": "everything",
+            "on": {"schedule": {"every_seconds": 600}, "catalog_commit": {"debounce_seconds": 0}},
+            "dry_run": True,
+            "rewrite_data_files": {
+                "target": {"reducible_files": {"at_most": 0}, "per": "table"},
+                "options": {
+                    "strategy": "sort",
+                    "sort_order": "id DESC NULLS LAST",
+                    "min_input_files": 3,
+                    "partial_progress_enabled": True,
+                    "partial_progress_max_commits": 4,
+                    "max_concurrent_file_group_rewrites": 5,
+                    "rewrite_all": False,
+                    "delete_file_threshold": 6,
+                    "remove_dangling_deletes": True,
+                    "max_file_group_size_bytes": 1073741824,
+                },
+            },
+            "rewrite_manifests": {"target": {"small_manifests": {"at_most": 2}}, "options": {"use_caching": False}},
+            "expire_snapshots": {
+                "target": {"max_snapshot_age_seconds": 7200},
+                "options": {"max_concurrent_deletes": 8, "stream_results": True},
+            },
+        }
+    )
+    policy = TableMaintenancePolicy.create(NAME, content, NOW)
+    repo.create(policy)
+    loaded = repo.get(policy.id)
+    assert loaded is not None
+    assert loaded.content == content
+    assert loaded.content.remove_orphan_files is None
+    version = repo.get_version(policy.id, 1)
+    assert version is not None
+    assert version.content.to_primitives() == content.to_primitives()
+
+
 def test_get_missing_returns_none(repo: TableMaintenancePoliciesSqlRepo):
     """Getting an unknown policy returns None."""
     assert repo.get(TableMaintenancePolicyId.new()) is None

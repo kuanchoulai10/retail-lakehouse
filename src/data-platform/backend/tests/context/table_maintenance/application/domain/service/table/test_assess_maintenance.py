@@ -37,26 +37,22 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_ID,
-    AtLeast,
-    CompactionScope,
+    AtMost,
     CompactionUnit,
-    ExpireSnapshotsConditions,
-    ExpireSnapshotsExecutionPolicy,
-    ExpireSnapshotsTriggerPolicy,
+    ExpireSnapshotsSpec,
+    ExpireSnapshotsTarget,
     MaintenancePolicyContent,
-    PartialProgress,
-    RewriteDataFilesConditions,
-    RewriteDataFilesExecutionPolicy,
-    RewriteDataFilesTriggerPolicy,
-    RewriteManifestsConditions,
-    RewriteManifestsTriggerPolicy,
-    SmallManifestsCondition,
+    RewriteDataFilesSpec,
+    RewriteDataFilesTarget,
+    RewriteManifestsSpec,
+    RewriteManifestsTarget,
     TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.domain.service.table import (
     any_condition_holds,
     assess_maintenance,
 )
+from context.table_maintenance.application.service.table_maintenance_run import maintenance_procedure_args
 from tests.context.table_maintenance.fakes.policy_with_operation import policy_with_operation
 
 NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)
@@ -135,79 +131,55 @@ def assess(
     return next(a for a in assessment.operations if a.operation == op)
 
 
-def compaction(
-    *,
-    at_least: int | None = 5,
-    unit: CompactionUnit = CompactionUnit.PARTITION,
-    enabled: bool = True,
-    target_file_size_bytes: int | None = None,
-) -> MaintenancePolicyContent:
-    """Build a policy with the given data file compaction values."""
+def compaction(*, at_most: int = 5, per: CompactionUnit = CompactionUnit.PARTITION) -> MaintenancePolicyContent:
+    """Build a policy with the given compaction target."""
     return policy_with_operation(
         DEFAULT,
         Op.REWRITE_DATA_FILES,
-        enabled=enabled,
-        scope=CompactionScope(unit=unit),
-        trigger_policy=RewriteDataFilesTriggerPolicy(
-            cooldown=timedelta(hours=1),
-            conditions=RewriteDataFilesConditions(
-                reducible_files=None if at_least is None else AtLeast(at_least=at_least)
-            ),
-        ),
-        execution_policy=RewriteDataFilesExecutionPolicy(
-            target_file_size_bytes=target_file_size_bytes,
-            min_input_files=2,
-            partial_progress=PartialProgress(enabled=True),
-        ),
+        RewriteDataFilesSpec(target=RewriteDataFilesTarget(reducible_files=AtMost(at_most=at_most), per=per)),
     )
 
 
-def manifests(*, at_least: int = 5, smaller_than_bytes: int | None = None) -> MaintenancePolicyContent:
-    """Build a policy with the given small manifests condition."""
+def manifests(*, at_most: int = 5) -> MaintenancePolicyContent:
+    """Build a policy with the given small manifests target."""
     return policy_with_operation(
         DEFAULT,
         Op.REWRITE_MANIFESTS,
-        trigger_policy=RewriteManifestsTriggerPolicy(
-            cooldown=timedelta(hours=6),
-            conditions=RewriteManifestsConditions(
-                small_manifests=SmallManifestsCondition(at_least=at_least, smaller_than_bytes=smaller_than_bytes)
-            ),
+        RewriteManifestsSpec(target=RewriteManifestsTarget(small_manifests=AtMost(at_most=at_most))),
+    )
+
+
+def retention(
+    *, min_snapshots_to_keep: int | None = 10, max_snapshot_age: timedelta | None = timedelta(days=1)
+) -> MaintenancePolicyContent:
+    """Build a policy with the given snapshot retention target."""
+    return policy_with_operation(
+        DEFAULT,
+        Op.EXPIRE_SNAPSHOTS,
+        ExpireSnapshotsSpec(
+            target=ExpireSnapshotsTarget(min_snapshots_to_keep=min_snapshots_to_keep, max_snapshot_age=max_snapshot_age)
         ),
     )
 
 
-def snapshots(*, retain_last: int = 10, at_least: int | None = 1) -> MaintenancePolicyContent:
-    """Build a policy with the given snapshot expiry values."""
-    return policy_with_operation(
-        DEFAULT,
-        Op.EXPIRE_SNAPSHOTS,
-        trigger_policy=ExpireSnapshotsTriggerPolicy(
-            cooldown=timedelta(hours=6),
-            conditions=ExpireSnapshotsConditions(
-                expirable_snapshots=None if at_least is None else AtLeast(at_least=at_least)
-            ),
-        ),
-        execution_policy=ExpireSnapshotsExecutionPolicy(older_than=timedelta(days=1), retain_last=retain_last),
+def over(key: str, observed: int, at_most: int) -> Measurement:
+    """Build the measurement of a count compared with its target."""
+    return Measurement(
+        key=key,
+        observed=observed,
+        unit=MeasurementUnit.COUNT,
+        threshold=at_most,
+        comparison=MeasurementComparison.MORE_THAN,
     )
 
 
 TWO_PARTITIONS = (part(6, value=1), part(2, value=2))
 
 
-def _condition(key: str, observed: int, threshold: int) -> Measurement:
-    return Measurement(
-        key=key,
-        observed=observed,
-        unit=MeasurementUnit.COUNT,
-        threshold=threshold,
-        comparison=MeasurementComparison.AT_LEAST,
-    )
-
-
 def test_any_condition_holding_makes_operation_due():
-    """Conditions combine with OR: one holding is enough, none holding or none at all is not."""
-    holding = _condition("a", 5, 5)
-    failing = _condition("b", 1, 5)
+    """One measurement over its target is enough; none over or none at all is not."""
+    holding = over("a", 6, 5)
+    failing = over("b", 5, 5)
     context = Measurement(key="c", observed=1, unit=MeasurementUnit.BYTES)
     assert any_condition_holds((failing, holding, context))
     assert not any_condition_holds((failing, failing, context))
@@ -215,78 +187,73 @@ def test_any_condition_holding_makes_operation_due():
     assert not any_condition_holds((context,))
 
 
-def test_due_when_reducible_files_reaches_threshold():
-    """Compaction is due once the reducible files reach the condition's threshold."""
-    a = assess(table(), obs(partitions=(part(5),)), Op.REWRITE_DATA_FILES, compaction(at_least=5))
-    assert a.verdict == OperationVerdict.DUE
-
-
-def test_not_due_when_reducible_files_below_threshold():
-    """Compaction is not due while the reducible files stay below the condition's threshold."""
-    a = assess(table(), obs(partitions=(part(4),)), Op.REWRITE_DATA_FILES, compaction(at_least=5))
-    assert a.verdict == OperationVerdict.NOT_DUE
+@pytest.mark.parametrize("op", list(Op.ordered()))
+def test_an_absent_block_is_disabled(op: Op):
+    """An operation whose block the policy leaves out is not done: no measures, no eligibility time."""
+    t = table()
+    t.operation_states[op] = OperationState(last_attempt_at=NOW)
+    o = obs(partitions=(part(10),), manifests=(ManifestStats(length_bytes=MIB),) * 9, snapshots=snaps(14, 14))
+    a = assess(t, o, op, policy_with_operation(DEFAULT, op, None))
+    assert a.verdict == OperationVerdict.DISABLED
+    assert a.measurements == ()
+    assert (a.measured, a.threshold, a.size_bytes, a.size_source, a.next_eligible_at) == (None,) * 5
     assert a.planned is None
 
 
-def test_empty_conditions_due_after_cooldown():
-    """An operation without conditions is due as soon as its cooldown has passed."""
-    t = table()
-    assert assess(t, obs(), Op.REMOVE_ORPHAN_FILES).verdict == OperationVerdict.DUE
-    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=6))
-    assert assess(t, obs(), Op.REMOVE_ORPHAN_FILES).verdict == OperationVerdict.COOLDOWN
-    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=7))
-    assert assess(t, obs(), Op.REMOVE_ORPHAN_FILES).verdict == OperationVerdict.DUE
+def test_reducible_files_at_the_target_is_not_due():
+    """Per table, a total at the target is on target."""
+    a = assess(table(), obs(partitions=(part(5),)), Op.REWRITE_DATA_FILES, compaction(per=CompactionUnit.TABLE))
+    assert a.verdict == OperationVerdict.NOT_DUE
+    assert a.measurements[0] == over("reducible_files", 5, 5)
+    assert a.measurements[0].comparison == MeasurementComparison.MORE_THAN
+    assert a.planned is None
 
 
-def test_compaction_without_condition_is_due_on_whole_table():
-    """Compaction without a condition is due after its cooldown and compacts the whole table."""
-    a = assess(table(), obs(partitions=TWO_PARTITIONS), Op.REWRITE_DATA_FILES, compaction(at_least=None))
+def test_reducible_files_over_the_target_is_due():
+    """Per table, a total over the target is due and compacts the whole table."""
+    a = assess(table(), obs(partitions=(part(6),)), Op.REWRITE_DATA_FILES, compaction(per=CompactionUnit.TABLE))
     assert a.verdict == OperationVerdict.DUE
+    assert (a.measured, a.threshold) == (6, 5)
     assert a.planned is not None
     assert a.planned.partitions == ()
-    assert a.threshold is None
 
 
-def test_expire_snapshots_not_due_without_expirable_snapshot():
-    """Snapshot expiry is not due when no snapshot is old enough and outside the retained ones."""
-    a = assess(table(), obs(snapshots=snaps(10, 10)), Op.EXPIRE_SNAPSHOTS)
-    assert (a.measured, a.verdict) == (0, OperationVerdict.NOT_DUE)
+def test_per_partition_compares_each_partition():
+    """Per partition, two partitions of 3 stay on a target of 5 although they total 6."""
+    a = assess(table(), obs(partitions=(part(3, value=1), part(3, value=2))), Op.REWRITE_DATA_FILES, compaction())
+    assert a.verdict == OperationVerdict.NOT_DUE
+    assert (a.measured, a.qualifying_partitions) == (0, 0)
 
 
-def test_expire_snapshots_threshold_comes_from_condition():
-    """The expirable snapshots threshold is the condition's ``at_least``."""
-    o = obs(snapshots=snaps(14, 14))
-    a = assess(table(), o, Op.EXPIRE_SNAPSHOTS, snapshots(at_least=5))
-    assert (a.measured, a.threshold, a.verdict) == (4, 5, OperationVerdict.NOT_DUE)
-
-
-def test_reducible_files_measured_with_table_property_not_execution_value():
-    """Compaction measures with the table's target size even when the execution policy sets its own."""
-    policy = compaction(target_file_size_bytes=1024 * MIB)
-    o = obs(properties={"write.target-file-size-bytes": str(128 * MIB)}, partitions=(part(6),))
-    a = assess(table(), o, Op.REWRITE_DATA_FILES, policy)
-    target = next(m for m in a.measurements if m.key == "target_file_size")
-    assert target.observed == 134217728
-    assert (a.size_bytes, a.size_source) == (134217728, SizeSource.TABLE_PROPERTY)
-
-
-def test_partition_scope_counts_qualifying_partitions():
-    """With partition scope, the measure counts the partitions that qualify for compaction."""
-    a = assess(table(), obs(partitions=TWO_PARTITIONS), Op.REWRITE_DATA_FILES, compaction(at_least=5))
+def test_per_partition_counts_the_partitions_over_target():
+    """Per partition, the reducible files are the sum over the partitions over the target."""
+    o = obs(partitions=(part(7, value=1), part(1, value=2), part(9, value=3)))
+    a = assess(table(), o, Op.REWRITE_DATA_FILES, compaction())
     assert a.verdict == OperationVerdict.DUE
-    assert a.measured == 6
-    assert a.qualifying_partitions == 1
-    assert a.threshold == 5
+    assert a.measurements == (
+        over("reducible_files", 16, 5),
+        Measurement(key="target_file_size", observed=536870912, unit=MeasurementUnit.BYTES),
+        Measurement(key="qualifying_partitions", observed=2, unit=MeasurementUnit.COUNT),
+    )
+    assert (a.measured, a.qualifying_partitions, a.threshold) == (16, 2, 5)
     assert a.planned is not None
-    assert a.planned.partitions == TWO_PARTITIONS[:1]
+    assert a.planned.partitions == (o.partitions[0], o.partitions[2])
 
 
-def test_table_scope_sums_every_partition():
-    """With table scope, the measure sums the reducible files of every partition."""
-    policy = compaction(unit=CompactionUnit.TABLE, at_least=5)
-    a = assess(table(), obs(partitions=TWO_PARTITIONS), Op.REWRITE_DATA_FILES, policy)
+def test_a_target_of_zero_makes_any_reducible_file_due():
+    """``at_most: 0`` is due as soon as one file could be removed."""
+    a = assess(table(), obs(partitions=(part(1),)), Op.REWRITE_DATA_FILES, compaction(at_most=0))
     assert a.verdict == OperationVerdict.DUE
-    assert a.measured == 8
+
+
+def test_table_scope_has_no_qualifying_partitions_measurement():
+    """Per table, the assessment reports the total and the target size only."""
+    policy = compaction(per=CompactionUnit.TABLE)
+    a = assess(table(), obs(partitions=TWO_PARTITIONS), Op.REWRITE_DATA_FILES, policy)
+    assert a.measurements == (
+        over("reducible_files", 8, 5),
+        Measurement(key="target_file_size", observed=536870912, unit=MeasurementUnit.BYTES),
+    )
     assert a.qualifying_partitions is None
 
 
@@ -299,110 +266,146 @@ def test_table_scope_sums_every_partition():
 )
 def test_target_size_source(properties, expected):
     """The measured target file size comes from the table property or the default, and its source is reported."""
-    a = assess(table(), obs(properties=properties), Op.REWRITE_DATA_FILES, compaction(target_file_size_bytes=1024))
+    a = assess(table(), obs(properties=properties), Op.REWRITE_DATA_FILES)
     assert (a.size_bytes, a.size_source) == expected
 
 
-def test_manifest_size_source():
-    """The manifest size is taken from the condition, the table property or the default, and its source is reported."""
+def test_small_manifests_use_the_table_property():
+    """A manifest is small under the table's manifest target size, else under 8 MiB."""
     o = obs(
-        properties={"commit.manifest.target-size-bytes": str(MIB)},
-        manifests=(ManifestStats(length_bytes=MIB // 2),) * 2,
+        properties={"commit.manifest.target-size-bytes": "1024"},
+        manifests=(ManifestStats(length_bytes=512),) * 6 + (ManifestStats(length_bytes=2048),),
     )
     a = assess(table(), o, Op.REWRITE_MANIFESTS)
-    assert (a.size_bytes, a.size_source) == (MIB, SizeSource.TABLE_PROPERTY)
-    assert (a.measured, a.threshold, a.verdict) == (2, 5, OperationVerdict.NOT_DUE)
-    d = assess(table(), obs(), Op.REWRITE_MANIFESTS)
-    assert (d.size_bytes, d.size_source) == (8 * MIB, SizeSource.DEFAULT)
-    s = assess(table(), o, Op.REWRITE_MANIFESTS, manifests(smaller_than_bytes=MIB // 4))
-    assert (s.size_bytes, s.size_source, s.measured) == (MIB // 4, SizeSource.CONDITION, 0)
+    assert (a.size_bytes, a.size_source) == (1024, SizeSource.TABLE_PROPERTY)
+    assert (a.measured, a.threshold, a.verdict) == (6, 5, OperationVerdict.DUE)
+    assert a.measurements == (over("small_manifests", 6, 5),)
+    d = assess(table(), obs(manifests=(ManifestStats(length_bytes=MIB),) * 5), Op.REWRITE_MANIFESTS)
+    assert (d.size_bytes, d.size_source, d.measured, d.verdict) == (
+        8 * MIB,
+        SizeSource.DEFAULT,
+        5,
+        OperationVerdict.NOT_DUE,
+    )
 
 
-def test_expire_snapshots_counts_expirable():
-    """The snapshot expiry measure counts the snapshots that can be expired."""
+def test_small_manifests_follow_the_target():
+    """The small manifests are compared with the policy's ``at_most``."""
+    o = obs(manifests=(ManifestStats(length_bytes=MIB),) * 4)
+    assert assess(table(), o, Op.REWRITE_MANIFESTS, manifests(at_most=3)).verdict == OperationVerdict.DUE
+    assert assess(table(), o, Op.REWRITE_MANIFESTS, manifests(at_most=4)).verdict == OperationVerdict.NOT_DUE
+
+
+def test_expirable_snapshots_over_zero_are_due():
+    """Snapshot expiry is due once one snapshot falls outside the retention."""
     o = obs(snapshots=snaps(14, 14))
-    a = assess(table(), o, Op.EXPIRE_SNAPSHOTS, snapshots(retain_last=10))
-    assert (a.measured, a.threshold, a.verdict) == (4, 1, OperationVerdict.DUE)
-    b = assess(table(), o, Op.EXPIRE_SNAPSHOTS, snapshots(retain_last=20))
+    a = assess(table(), o, Op.EXPIRE_SNAPSHOTS, retention(min_snapshots_to_keep=10))
+    assert (a.measured, a.threshold, a.verdict) == (4, 0, OperationVerdict.DUE)
+    assert a.measurements == (over("expirable_snapshots", 4, 0),)
+    b = assess(table(), o, Op.EXPIRE_SNAPSHOTS, retention(min_snapshots_to_keep=20))
     assert (b.measured, b.verdict) == (0, OperationVerdict.NOT_DUE)
     assert b.planned is None
 
 
+def test_expire_snapshots_not_due_without_expirable_snapshot():
+    """Snapshot expiry is not due when no snapshot is old enough and outside the retained ones."""
+    a = assess(table(), obs(snapshots=snaps(10, 10)), Op.EXPIRE_SNAPSHOTS)
+    assert (a.measured, a.verdict) == (0, OperationVerdict.NOT_DUE)
+
+
+def test_assessment_and_args_agree_on_retention():
+    """A target silent on the count keeps the table's ``history.expire.min-snapshots-to-keep``, measured and run."""
+    policy = retention(min_snapshots_to_keep=None, max_snapshot_age=timedelta(days=1))
+    o = obs(properties={"history.expire.min-snapshots-to-keep": "3"}, snapshots=snaps(5, 5))
+    a = assess(table(), o, Op.EXPIRE_SNAPSHOTS, policy)
+    assert (a.measured, a.verdict) == (2, OperationVerdict.DUE)
+    assert maintenance_procedure_args(Op.EXPIRE_SNAPSHOTS, policy, o.properties, NOW) == {
+        "older_than": (NOW - timedelta(days=1)).isoformat(),
+        "retain_last": 3,
+    }
+
+
+def test_retention_age_comes_from_the_target():
+    """Snapshots younger than the target's age are kept."""
+    policy = retention(min_snapshots_to_keep=1, max_snapshot_age=timedelta(days=3))
+    a = assess(table(), obs(snapshots=snaps(5, 5)), Op.EXPIRE_SNAPSHOTS, policy)
+    assert (a.measured, a.verdict) == (0, OperationVerdict.NOT_DUE)
+
+
+def test_orphan_files_are_due_when_their_block_exists():
+    """Orphan file removal has no target to measure: its block makes it due, the platform interval holds it back."""
+    a = assess(table(), obs(), Op.REMOVE_ORPHAN_FILES)
+    assert a.verdict == OperationVerdict.DUE
+    assert a.measurements == ()
+    assert a.threshold is None
+
+
+def test_orphan_files_are_due_on_the_platform_interval():
+    """Orphan file removal is due once the platform interval has passed since the last attempt."""
+    t = table()
+    weekly = PLATFORM.with_changes(remove_orphan_files=timedelta(days=7))
+    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=8))
+    assert assess(t, obs(), Op.REMOVE_ORPHAN_FILES, cooldowns=weekly).verdict == OperationVerdict.DUE
+    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=6))
+    assert assess(t, obs(), Op.REMOVE_ORPHAN_FILES, cooldowns=weekly).verdict == OperationVerdict.COOLDOWN
+    daily = PLATFORM.with_changes(remove_orphan_files=timedelta(days=1))
+    assert assess(t, obs(), Op.REMOVE_ORPHAN_FILES, cooldowns=daily).verdict == OperationVerdict.DUE
+
+
 def test_cooldown_reports_next_eligible_time():
-    """An operation in cooldown reports when it is next eligible and has no plan."""
+    """An operation in cooldown reports when it is next eligible, keeps its measures and has no plan."""
     t = table()
     t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(minutes=30))
-    a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
+    two_hours = PLATFORM.with_changes(rewrite_data_files=timedelta(hours=2))
+    a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, cooldowns=two_hours)
     assert a.verdict == OperationVerdict.COOLDOWN
-    assert a.next_eligible_at == NOW + timedelta(minutes=30)
+    assert a.next_eligible_at == NOW + timedelta(minutes=90)
     assert a.planned is None
     assert a.measured == 10
-
-
-def test_cooldown_backs_off_after_failures():
-    """Consecutive failures double the cooldown."""
-    t = table()
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
-        last_attempt_at=NOW - timedelta(hours=3), consecutive_failures=2
-    )
-    assert assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES).verdict == OperationVerdict.COOLDOWN
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
-        last_attempt_at=NOW - timedelta(hours=4), consecutive_failures=2
-    )
-    assert assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES).verdict == OperationVerdict.DUE
+    assert a.measurements[0] == over("reducible_files", 10, 5)
 
 
 def test_the_platform_cooldown_holds_an_operation_back():
-    """The cooldown of the platform settings holds an operation back, whatever the policy says."""
+    """The cooldown of the platform settings holds an operation back; a zero one frees it."""
     t = table()
     t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(minutes=30))
-    a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, cooldowns=PLATFORM)
+    hour = PLATFORM.with_changes(rewrite_data_files=timedelta(hours=1))
+    a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, cooldowns=hour)
     assert a.verdict == OperationVerdict.COOLDOWN
     assert a.next_eligible_at == NOW + timedelta(minutes=30)
     free = PLATFORM.with_changes(rewrite_data_files=timedelta(0))
     assert assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, cooldowns=free).verdict == OperationVerdict.DUE
 
 
-def test_a_policy_cooldown_of_zero_no_longer_frees_it():
-    """The policy's own cooldown is not read: a zero there leaves the platform's hour in force."""
-    zero = policy_with_operation(
-        compaction(at_least=5),
-        Op.REWRITE_DATA_FILES,
-        trigger_policy=RewriteDataFilesTriggerPolicy(
-            cooldown=timedelta(0),
-            conditions=RewriteDataFilesConditions(reducible_files=AtLeast(at_least=5)),
-        ),
-    )
+def test_cooldown_backs_off_after_failures():
+    """Consecutive failures double the platform cooldown."""
     t = table()
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(minutes=30))
-    a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, zero)
-    assert a.verdict == OperationVerdict.COOLDOWN
+    hour = PLATFORM.with_changes(rewrite_data_files=timedelta(hours=1))
+    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
+        last_attempt_at=NOW - timedelta(hours=3), consecutive_failures=2
+    )
+    o = obs(partitions=(part(10),))
+    assert assess(t, o, Op.REWRITE_DATA_FILES, cooldowns=hour).verdict == OperationVerdict.COOLDOWN
+    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
+        last_attempt_at=NOW - timedelta(hours=4), consecutive_failures=2
+    )
+    assert assess(t, o, Op.REWRITE_DATA_FILES, cooldowns=hour).verdict == OperationVerdict.DUE
 
 
 def test_failures_double_the_platform_cooldown_up_to_the_cap():
-    """Two failures make the hour four hours; ten failures stop at the cap."""
+    """Two failures make a 90-minute cooldown six hours; ten failures stop at the cap."""
     t = table()
+    cooldowns = PLATFORM.with_changes(rewrite_data_files=timedelta(minutes=90), failure_backoff_cap=timedelta(hours=10))
     t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
         last_attempt_at=NOW - timedelta(hours=1), consecutive_failures=2
     )
-    two = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
-    assert two.next_eligible_at == NOW - timedelta(hours=1) + timedelta(hours=4)
+    two = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, cooldowns=cooldowns)
+    assert two.next_eligible_at == NOW - timedelta(hours=1) + timedelta(hours=6)
     t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
         last_attempt_at=NOW - timedelta(hours=1), consecutive_failures=10
     )
-    ten = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
-    assert ten.next_eligible_at == NOW - timedelta(hours=1) + PLATFORM.failure_backoff_cap
-
-
-def test_orphan_files_are_due_on_the_platform_interval():
-    """Orphan file removal is due once the platform interval has passed since the last attempt."""
-    t = table()
-    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=8))
-    assert assess(t, obs(), Op.REMOVE_ORPHAN_FILES).verdict == OperationVerdict.DUE
-    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=6))
-    assert assess(t, obs(), Op.REMOVE_ORPHAN_FILES).verdict == OperationVerdict.COOLDOWN
-    daily = PLATFORM.with_changes(remove_orphan_files=timedelta(days=1))
-    assert assess(t, obs(), Op.REMOVE_ORPHAN_FILES, cooldowns=daily).verdict == OperationVerdict.DUE
+    ten = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, cooldowns=cooldowns)
+    assert ten.next_eligible_at == NOW - timedelta(hours=1) + timedelta(hours=10)
 
 
 def test_failure_backoff_stops_at_the_given_cap():
@@ -412,33 +415,14 @@ def test_failure_backoff_stops_at_the_given_cap():
         last_attempt_at=NOW - timedelta(hours=1), consecutive_failures=10
     )
     default = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
-    capped = next(
-        a
-        for a in assess_maintenance(
-            t,
-            DEFAULT,
-            obs(partitions=(part(10),)),
-            NOW,
-            cooldowns=PLATFORM.with_changes(failure_backoff_cap=timedelta(hours=3)),
-        ).operations
-        if a.operation == Op.REWRITE_DATA_FILES
+    capped = assess(
+        t,
+        obs(partitions=(part(10),)),
+        Op.REWRITE_DATA_FILES,
+        cooldowns=PLATFORM.with_changes(failure_backoff_cap=timedelta(hours=3)),
     )
     assert default.next_eligible_at == NOW - timedelta(hours=1) + timedelta(hours=24)
     assert capped.next_eligible_at == NOW - timedelta(hours=1) + timedelta(hours=3)
-
-
-def test_disabled_operation_has_no_measures():
-    """A disabled operation reports no measure and no eligibility time."""
-    policy = policy_with_operation(compaction(enabled=False), Op.REMOVE_ORPHAN_FILES, enabled=False)
-    t = table()
-    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW)
-    a = assess(t, obs(), Op.REMOVE_ORPHAN_FILES, policy)
-    assert a.verdict == OperationVerdict.DISABLED
-    assert a.measured is None
-    assert a.next_eligible_at is None
-    c = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, policy)
-    assert c.verdict == OperationVerdict.DISABLED
-    assert (c.measured, c.threshold, c.size_bytes, c.size_source) == (None, None, None, None)
 
 
 def test_assessment_ignores_status():
@@ -455,10 +439,10 @@ def test_plan_equals_due_operations():
     t.operation_states[Op.REWRITE_MANIFESTS] = OperationState(last_attempt_at=NOW - timedelta(minutes=10))
     o = obs(
         partitions=(part(10, value=1), part(1, value=2)),
-        manifests=(ManifestStats(length_bytes=MIB),) * 5,
+        manifests=(ManifestStats(length_bytes=MIB),) * 6,
         snapshots=snaps(12, 11),
     )
-    assessment = assess_maintenance(t, DEFAULT, o, NOW)
+    assessment = assess_maintenance(t, DEFAULT, o, NOW, cooldowns=PLATFORM)
     assert [a.verdict for a in assessment.operations] == [
         OperationVerdict.DUE,
         OperationVerdict.COOLDOWN,
@@ -470,66 +454,6 @@ def test_plan_equals_due_operations():
         Op.EXPIRE_SNAPSHOTS,
         Op.REMOVE_ORPHAN_FILES,
     ]
-
-
-def test_compaction_reports_reducible_files_and_context():
-    """Partition-scope compaction reports reducible files, the target size and qualifying partitions."""
-    a = assess(table(), obs(partitions=TWO_PARTITIONS), Op.REWRITE_DATA_FILES, compaction(at_least=5))
-    assert a.measurements == (
-        _condition("reducible_files", 6, 5),
-        Measurement(key="target_file_size", observed=536870912, unit=MeasurementUnit.BYTES),
-        Measurement(key="qualifying_partitions", observed=1, unit=MeasurementUnit.COUNT),
-    )
-
-
-def test_compaction_table_scope_has_no_qualifying_partitions_measurement():
-    """Table-scope compaction reports no qualifying partitions."""
-    policy = compaction(unit=CompactionUnit.TABLE, at_least=5)
-    a = assess(table(), obs(partitions=TWO_PARTITIONS), Op.REWRITE_DATA_FILES, policy)
-    assert a.measurements == (
-        _condition("reducible_files", 8, 5),
-        Measurement(key="target_file_size", observed=536870912, unit=MeasurementUnit.BYTES),
-    )
-
-
-def test_manifests_report_small_manifests():
-    """Manifest rewriting reports the small manifests against the minimum."""
-    o = obs(manifests=(ManifestStats(length_bytes=MIB),) * 4)
-    a = assess(table(), o, Op.REWRITE_MANIFESTS, manifests(at_least=3))
-    assert a.measurements == (_condition("small_manifests", 4, 3),)
-
-
-def test_snapshots_report_expirable_snapshots():
-    """Snapshot expiry reports the expirable snapshots against the condition's threshold."""
-    a = assess(table(), obs(snapshots=snaps(14, 14)), Op.EXPIRE_SNAPSHOTS)
-    assert a.measurements == (_condition("expirable_snapshots", 4, 1),)
-
-
-def test_snapshots_without_condition_report_context_only():
-    """Without a condition, snapshot expiry reports the expirable count as context and is due."""
-    a = assess(table(), obs(snapshots=snaps(10, 10)), Op.EXPIRE_SNAPSHOTS, snapshots(at_least=None))
-    assert a.measurements == (Measurement(key="expirable_snapshots", observed=0, unit=MeasurementUnit.COUNT),)
-    assert a.verdict == OperationVerdict.DUE
-
-
-def test_orphans_have_no_measurements():
-    """Orphan file removal has no measurements."""
-    assert assess(table(), obs(), Op.REMOVE_ORPHAN_FILES).measurements == ()
-
-
-def test_disabled_operation_has_no_measurements():
-    """A disabled operation has no measurements."""
-    a = assess(table(), obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, compaction(enabled=False))
-    assert a.measurements == ()
-
-
-def test_cooldown_keeps_the_measurements():
-    """An operation in cooldown keeps its measurements."""
-    t = table()
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(minutes=30))
-    a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
-    assert a.verdict == OperationVerdict.COOLDOWN
-    assert a.measurements[0] == _condition("reducible_files", 10, 5)
 
 
 POLICY_V1 = AppliedPolicyRef(policy_id=DEFAULT_POLICY_ID, version=1, target=None)
@@ -572,12 +496,8 @@ def test_needs_attention_wins_over_cooldown():
 
 
 def test_disabled_wins_over_needs_attention():
-    """A disabled operation stays disabled even when it needs attention."""
+    """An operation the policy leaves out stays disabled even when it needs attention."""
     t = _needing_attention(Op.REWRITE_DATA_FILES)
-    policy = compaction(enabled=False)
-    a = next(
-        a
-        for a in assess_maintenance(t, policy, obs(partitions=(part(10),)), NOW).operations
-        if a.operation == Op.REWRITE_DATA_FILES
-    )
+    policy = policy_with_operation(DEFAULT, Op.REWRITE_DATA_FILES, None)
+    a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, policy)
     assert a.verdict == OperationVerdict.DISABLED

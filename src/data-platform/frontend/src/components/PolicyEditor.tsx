@@ -1,6 +1,7 @@
-import { Button, Switch, TextField } from "@retail-lakehouse/design-system";
+import { Button, Switch, TextField, TextLink } from "@retail-lakehouse/design-system";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Link } from "react-router";
 import {
   createTableMaintenancePolicy,
   getGetTableMaintenancePolicyQueryKey,
@@ -8,9 +9,8 @@ import {
   getTableMaintenancePolicy,
   updateTableMaintenancePolicy,
 } from "@/api/generated/maintenance-policies/maintenance-policies";
-import type { MaintenancePriorityApi, TableMaintenancePolicyApiResponse } from "@/api/generated/model";
+import type { RewriteDataFilesTargetApiRequestPer, TableMaintenancePolicyApiResponse } from "@/api/generated/model";
 import { errorMessage } from "@/format";
-import { priorityText } from "@/lib/priorityText";
 import {
   contentFromDraft,
   draftFromContent,
@@ -19,15 +19,27 @@ import {
   type PolicyDraft,
 } from "@/lib/policyDraft";
 import { isConflict } from "@/lib/updateErrorMessage";
-import { CheckboxField } from "./forms/CheckboxField";
 import { FormDialog } from "./forms/FormDialog";
+import { ON_OFF, OptionSelectField } from "./forms/OptionSelectField";
 import { SelectField, type SelectOption } from "./forms/SelectField";
 import { OperationPolicySection } from "./OperationPolicySection";
 import { WholeNumberField } from "./forms/WholeNumberField";
 
 const CONFLICT_MESSAGE = "Someone else changed this policy. Reload to see their version.";
 const NAME_MESSAGE = "A name uses letters, digits, - and _ only, at most 64 characters.";
-const PRIORITIES: MaintenancePriorityApi[] = ["P0", "P1", "P2"];
+const PER: SelectOption<RewriteDataFilesTargetApiRequestPer>[] = [
+  { value: "partition", label: "Each partition" },
+  { value: "table", label: "Whole table" },
+];
+const STRATEGIES: SelectOption<"binpack" | "sort">[] = [
+  { value: "binpack", label: "Binpack" },
+  { value: "sort", label: "Sort" },
+];
+const PREFIX_MISMATCH_MODES: SelectOption<"ERROR" | "IGNORE" | "DELETE">[] = [
+  { value: "ERROR", label: "Error" },
+  { value: "IGNORE", label: "Ignore" },
+  { value: "DELETE", label: "Delete" },
+];
 
 interface Props {
   // The policy being edited, at the version `content` was read at; without one the editor
@@ -51,10 +63,6 @@ export function PolicyEditor({ policy, content, onClose }: Props) {
     policy === undefined ? null : { name: policy.name, version: policy.version },
   );
   const [draft, setDraft] = useState<PolicyDraft>(() => draftFromContent(content));
-  const priorityOptions: SelectOption<MaintenancePriorityApi>[] = PRIORITIES.map((value) => ({
-    value,
-    label: priorityText(value),
-  }));
   const [name, setName] = useState("");
   const [invalid, setInvalid] = useState<string | null>(null);
 
@@ -163,168 +171,215 @@ export function PolicyEditor({ policy, content, onClose }: Props) {
         onChange={(event) => update("description", event.target.value)}
       />
       <WholeNumberField
-        label="Reconcile interval (seconds)"
+        label="Check every (seconds)"
         unit="seconds"
-        hint="How often each table is checked"
-        value={draft.reconcileInterval}
-        onChange={(value) => update("reconcileInterval", value)}
+        hint="Each table is checked at least this often, from 60 seconds to 7 days"
+        value={draft.scheduleEvery}
+        onChange={(value) => update("scheduleEvery", value)}
       />
+      <Switch
+        label="Check after catalog commits"
+        checked={draft.catalogCommit}
+        onCheckedChange={(catalogCommit) => update("catalogCommit", catalogCommit)}
+      />
+      {draft.catalogCommit && (
+        <WholeNumberField
+          label="Debounce (seconds)"
+          unit="seconds"
+          hint="The check runs this long after the first commit; later commits join it"
+          value={draft.debounce}
+          onChange={(value) => update("debounce", value)}
+        />
+      )}
       <div className="flex flex-col gap-1">
         <Switch label="Dry run" checked={draft.dryRun} onCheckedChange={(dryRun) => update("dryRun", dryRun)} />
         <p className="type-body-small text-on-surface-variant">
-          Reconcile and record what would run, but run nothing.
+          Check and record what would run, but run nothing.
         </p>
       </div>
-      <div className="flex flex-col gap-1">
-        <SelectField
-          label="Priority"
-          value={draft.priority}
-          options={priorityOptions}
-          onChange={(priority) => update("priority", priority)}
-        />
-        <p className="type-body-small text-on-surface-variant">
-          Compaction rounds are gone: this priority no longer orders maintenance. A table&apos;s own priority (on its
-          Overview tab) does. KCL-91 removes this field.
-        </p>
-      </div>
+      <p className="type-body-small text-on-surface-variant">
+        Cooldowns and failure back-off are{" "}
+        <TextLink asChild inline>
+          <Link to="/platform-settings">platform settings</Link>
+        </TextLink>
+        .
+      </p>
 
       <OperationPolicySection
         title="Rewrite data files"
-        enabled={data.enabled}
-        onEnabledChange={(enabled) => update("rewriteDataFiles", { enabled })}
-        scope={{ value: data.scope, onChange: (scope) => update("rewriteDataFiles", { scope }) }}
-        cooldown={{
-          label: "Cooldown (seconds)",
-          unit: "seconds",
-          value: data.cooldown,
-          onChange: (cooldown) => update("rewriteDataFiles", { cooldown }),
-        }}
-        conditions={[
-          {
-            label: "Reducible files",
-            fields: [
-              {
-                label: "Reducible files at least",
-                hint: "Files compaction would remove, counted per partition or across the table by scope",
-                value: data.reducibleFiles,
-                onChange: (reducibleFiles) => update("rewriteDataFiles", { reducibleFiles }),
-              },
-            ],
-          },
-        ]}
-      >
-        <WholeNumberField
-          label="Target file size (bytes)"
-          unit="bytes"
-          hint="Empty: the table's write.target-file-size-bytes, else 512 MiB"
-          value={data.targetFileSizeBytes}
-          onChange={(targetFileSizeBytes) => update("rewriteDataFiles", { targetFileSizeBytes })}
-        />
-        <WholeNumberField
-          label="Min input files"
-          value={data.minInputFiles}
-          onChange={(minInputFiles) => update("rewriteDataFiles", { minInputFiles })}
-        />
-        <CheckboxField
-          label="Partial progress"
-          checked={data.partialProgress}
-          onChange={(partialProgress) => update("rewriteDataFiles", { partialProgress })}
-        />
-        <WholeNumberField
-          label="Max commits"
-          hint="Empty: the procedure's default"
-          value={data.maxCommits}
-          onChange={(maxCommits) => update("rewriteDataFiles", { maxCommits })}
-        />
-      </OperationPolicySection>
+        included={data.included}
+        onIncludedChange={(included) => update("rewriteDataFiles", { included })}
+        target={
+          <>
+            <WholeNumberField
+              label="Reducible files at most"
+              hint="Files compaction would remove; a table over this is due"
+              value={data.reducibleFilesAtMost}
+              onChange={(reducibleFilesAtMost) => update("rewriteDataFiles", { reducibleFilesAtMost })}
+            />
+            <SelectField label="Per" value={data.per} options={PER} onChange={(per) => update("rewriteDataFiles", { per })} />
+            <p className="type-body-small text-on-surface-variant">
+              Files are sized to the table&apos;s <span className="font-mono">write.target-file-size-bytes</span>, else
+              512 MiB.
+            </p>
+          </>
+        }
+        options={
+          <>
+            <OptionSelectField
+              label="Strategy"
+              value={data.strategy}
+              options={STRATEGIES}
+              onChange={(strategy) => update("rewriteDataFiles", { strategy })}
+            />
+            <TextField
+              label="Sort order"
+              description="Only with the sort strategy, such as id DESC NULLS LAST"
+              autoComplete="off"
+              className="font-mono"
+              value={data.sortOrder}
+              onChange={(event) => update("rewriteDataFiles", { sortOrder: event.target.value })}
+            />
+            <WholeNumberField
+              label="Min input files"
+              value={data.minInputFiles}
+              onChange={(minInputFiles) => update("rewriteDataFiles", { minInputFiles })}
+            />
+            <OptionSelectField
+              label="Partial progress"
+              value={data.partialProgressEnabled}
+              options={ON_OFF}
+              onChange={(partialProgressEnabled) => update("rewriteDataFiles", { partialProgressEnabled })}
+            />
+            <WholeNumberField
+              label="Partial progress max commits"
+              hint="Only with partial progress on"
+              value={data.partialProgressMaxCommits}
+              onChange={(partialProgressMaxCommits) => update("rewriteDataFiles", { partialProgressMaxCommits })}
+            />
+            <WholeNumberField
+              label="Max concurrent file group rewrites"
+              value={data.maxConcurrentFileGroupRewrites}
+              onChange={(maxConcurrentFileGroupRewrites) =>
+                update("rewriteDataFiles", { maxConcurrentFileGroupRewrites })
+              }
+            />
+            <OptionSelectField
+              label="Rewrite all"
+              value={data.rewriteAll}
+              options={ON_OFF}
+              onChange={(rewriteAll) => update("rewriteDataFiles", { rewriteAll })}
+            />
+            <WholeNumberField
+              label="Delete file threshold"
+              value={data.deleteFileThreshold}
+              onChange={(deleteFileThreshold) => update("rewriteDataFiles", { deleteFileThreshold })}
+            />
+            <OptionSelectField
+              label="Remove dangling deletes"
+              value={data.removeDanglingDeletes}
+              options={ON_OFF}
+              onChange={(removeDanglingDeletes) => update("rewriteDataFiles", { removeDanglingDeletes })}
+            />
+            <WholeNumberField
+              label="Max file group size (bytes)"
+              unit="bytes"
+              value={data.maxFileGroupSizeBytes}
+              onChange={(maxFileGroupSizeBytes) => update("rewriteDataFiles", { maxFileGroupSizeBytes })}
+            />
+          </>
+        }
+      />
 
       <OperationPolicySection
         title="Rewrite manifests"
-        enabled={manifests.enabled}
-        onEnabledChange={(enabled) => update("rewriteManifests", { enabled })}
-        cooldown={{
-          label: "Cooldown (seconds)",
-          unit: "seconds",
-          value: manifests.cooldown,
-          onChange: (cooldown) => update("rewriteManifests", { cooldown }),
-        }}
-        conditions={[
-          {
-            label: "Small manifests",
-            fields: [
-              {
-                label: "Small manifests at least",
-                value: manifests.smallManifests,
-                onChange: (smallManifests) => update("rewriteManifests", { smallManifests }),
-              },
-              {
-                label: "Smaller than (bytes)",
-                unit: "bytes",
-                hint: "Empty: derived from the table's manifest target size",
-                value: manifests.smallerThanBytes,
-                onChange: (smallerThanBytes) => update("rewriteManifests", { smallerThanBytes }),
-              },
-            ],
-          },
-        ]}
+        included={manifests.included}
+        onIncludedChange={(included) => update("rewriteManifests", { included })}
+        target={
+          <WholeNumberField
+            label="Small manifests at most"
+            hint="Manifests under the table's commit.manifest.target-size-bytes, else 8 MiB"
+            value={manifests.smallManifestsAtMost}
+            onChange={(smallManifestsAtMost) => update("rewriteManifests", { smallManifestsAtMost })}
+          />
+        }
+        options={
+          <OptionSelectField
+            label="Use caching"
+            value={manifests.useCaching}
+            options={ON_OFF}
+            onChange={(useCaching) => update("rewriteManifests", { useCaching })}
+          />
+        }
       />
 
       <OperationPolicySection
         title="Expire snapshots"
-        enabled={snapshots.enabled}
-        onEnabledChange={(enabled) => update("expireSnapshots", { enabled })}
-        cooldown={{
-          label: "Cooldown (seconds)",
-          unit: "seconds",
-          value: snapshots.cooldown,
-          onChange: (cooldown) => update("expireSnapshots", { cooldown }),
-        }}
-        conditions={[
-          {
-            label: "Expirable snapshots",
-            fields: [
-              {
-                label: "Expirable snapshots at least",
-                hint: "Snapshots older than Older than and outside Retain last, below",
-                value: snapshots.expirableSnapshots,
-                onChange: (expirableSnapshots) => update("expireSnapshots", { expirableSnapshots }),
-              },
-            ],
-          },
-        ]}
-      >
-        <WholeNumberField
-          label="Older than (seconds)"
-          unit="seconds"
-          value={snapshots.olderThan}
-          onChange={(olderThan) => update("expireSnapshots", { olderThan })}
-        />
-        <WholeNumberField
-          label="Retain last"
-          value={snapshots.retainLast}
-          onChange={(retainLast) => update("expireSnapshots", { retainLast })}
-        />
-      </OperationPolicySection>
+        included={snapshots.included}
+        onIncludedChange={(included) => update("expireSnapshots", { included })}
+        target={
+          <>
+            <WholeNumberField
+              label="Min snapshots to keep"
+              hint="Empty: the table's history.expire.min-snapshots-to-keep, else 1"
+              value={snapshots.minSnapshotsToKeep}
+              onChange={(minSnapshotsToKeep) => update("expireSnapshots", { minSnapshotsToKeep })}
+            />
+            <WholeNumberField
+              label="Max snapshot age (seconds)"
+              unit="seconds"
+              hint="Empty: the table's history.expire.max-snapshot-age-ms, else 5 days"
+              value={snapshots.maxSnapshotAge}
+              onChange={(maxSnapshotAge) => update("expireSnapshots", { maxSnapshotAge })}
+            />
+          </>
+        }
+        options={
+          <>
+            <WholeNumberField
+              label="Max concurrent deletes"
+              value={snapshots.maxConcurrentDeletes}
+              onChange={(maxConcurrentDeletes) => update("expireSnapshots", { maxConcurrentDeletes })}
+            />
+            <OptionSelectField
+              label="Stream results"
+              value={snapshots.streamResults}
+              options={ON_OFF}
+              onChange={(streamResults) => update("expireSnapshots", { streamResults })}
+            />
+          </>
+        }
+      />
 
       <OperationPolicySection
         title="Remove orphan files"
-        enabled={orphans.enabled}
-        onEnabledChange={(enabled) => update("removeOrphanFiles", { enabled })}
-        cooldown={{
-          label: "Cooldown (seconds)",
-          unit: "seconds",
-          value: orphans.cooldown,
-          onChange: (cooldown) => update("removeOrphanFiles", { cooldown }),
-        }}
-        conditions={[]}
-      >
-        <WholeNumberField
-          label="Older than (seconds)"
-          unit="seconds"
-          value={orphans.olderThan}
-          onChange={(olderThan) => update("removeOrphanFiles", { olderThan })}
-        />
-      </OperationPolicySection>
+        included={orphans.included}
+        onIncludedChange={(included) => update("removeOrphanFiles", { included })}
+        target={
+          <WholeNumberField
+            label="Older than (seconds)"
+            unit="seconds"
+            hint="Files no snapshot references, older than this; at least 1 day"
+            value={orphans.olderThan}
+            onChange={(olderThan) => update("removeOrphanFiles", { olderThan })}
+          />
+        }
+        options={
+          <>
+            <WholeNumberField
+              label="Max concurrent deletes"
+              value={orphans.maxConcurrentDeletes}
+              onChange={(maxConcurrentDeletes) => update("removeOrphanFiles", { maxConcurrentDeletes })}
+            />
+            <OptionSelectField
+              label="Prefix mismatch mode"
+              value={orphans.prefixMismatchMode}
+              options={PREFIX_MISMATCH_MODES}
+              onChange={(prefixMismatchMode) => update("removeOrphanFiles", { prefixMismatchMode })}
+            />
+          </>
+        }
+      />
     </FormDialog>
   );
 }

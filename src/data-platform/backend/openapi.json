@@ -12,6 +12,16 @@
             "title": "Dry Run",
             "type": "boolean"
           },
+          "expire_snapshots": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExpireSnapshotsSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -20,12 +30,38 @@
             "title": "Name",
             "type": "string"
           },
-          "operations": {
-            "$ref": "#/components/schemas/OperationPoliciesApiRequest"
+          "on": {
+            "$ref": "#/components/schemas/MaintenanceTriggersApiRequest"
           },
-          "reconcile_interval_seconds": {
-            "title": "Reconcile Interval Seconds",
-            "type": "integer"
+          "remove_orphan_files": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemoveOrphanFilesSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rewrite_data_files": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RewriteDataFilesSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rewrite_manifests": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RewriteManifestsSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "target": {
             "anyOf": [
@@ -47,27 +83,30 @@
           "name",
           "version",
           "description",
-          "reconcile_interval_seconds",
+          "on",
           "dry_run",
-          "operations",
+          "rewrite_data_files",
+          "rewrite_manifests",
+          "expire_snapshots",
+          "remove_orphan_files",
           "target"
         ],
         "title": "ApplicableTableMaintenancePolicyApiResponse",
         "type": "object"
       },
-      "AtLeastApiRequest": {
+      "AtMostApiRequest": {
         "additionalProperties": false,
-        "description": "Carry a count condition: due when at least this many are found.",
+        "description": "Carry a count target: the table is on target while the count stays at or under ``at_most``.",
         "properties": {
-          "at_least": {
-            "title": "At Least",
+          "at_most": {
+            "title": "At Most",
             "type": "integer"
           }
         },
         "required": [
-          "at_least"
+          "at_most"
         ],
-        "title": "AtLeastApiRequest",
+        "title": "AtMostApiRequest",
         "type": "object"
       },
       "AttachTableMaintenancePolicyApiRequest": {
@@ -413,6 +452,19 @@
         "title": "CatalogApiResponse",
         "type": "object"
       },
+      "CatalogCommitTriggerApiRequest": {
+        "additionalProperties": false,
+        "description": "Check the table once the debounce window opened by the first catalog commit closes (0 to 86400 seconds).",
+        "properties": {
+          "debounce_seconds": {
+            "default": 300,
+            "title": "Debounce Seconds",
+            "type": "integer"
+          }
+        },
+        "title": "CatalogCommitTriggerApiRequest",
+        "type": "object"
+      },
       "CatalogTableApiResponse": {
         "description": "Describe an Iceberg table: everything the table page's Overview, Schema, Snapshots and Properties show.",
         "properties": {
@@ -611,25 +663,6 @@
           "description"
         ],
         "title": "CatalogTablePropertyApiResponse",
-        "type": "object"
-      },
-      "CompactionScopeApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry whether compaction measures and rewrites per partition or across the table.",
-        "properties": {
-          "unit": {
-            "enum": [
-              "partition",
-              "table"
-            ],
-            "title": "Unit",
-            "type": "string"
-          }
-        },
-        "required": [
-          "unit"
-        ],
-        "title": "CompactionScopeApiRequest",
         "type": "object"
       },
       "ConnectionConfigApiRequest": {
@@ -898,38 +931,69 @@
       },
       "CreateTableMaintenancePolicyApiRequest": {
         "additionalProperties": false,
-        "description": "Carry a new policy's name and its whole content.",
+        "description": "Carry a new policy's name and its whole content; an operation block left out is not done.",
         "properties": {
           "description": {
             "title": "Description",
             "type": "string"
           },
           "dry_run": {
+            "default": false,
             "title": "Dry Run",
             "type": "boolean"
+          },
+          "expire_snapshots": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExpireSnapshotsSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "name": {
             "title": "Name",
             "type": "string"
           },
-          "operations": {
-            "$ref": "#/components/schemas/OperationPoliciesApiRequest"
+          "on": {
+            "$ref": "#/components/schemas/MaintenanceTriggersApiRequest"
           },
-          "priority": {
-            "$ref": "#/components/schemas/MaintenancePriorityApi",
-            "default": "P2"
+          "remove_orphan_files": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemoveOrphanFilesSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          "reconcile_interval_seconds": {
-            "title": "Reconcile Interval Seconds",
-            "type": "integer"
+          "rewrite_data_files": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RewriteDataFilesSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rewrite_manifests": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RewriteManifestsSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "name",
           "description",
-          "reconcile_interval_seconds",
-          "dry_run",
-          "operations"
+          "on"
         ],
         "title": "CreateTableMaintenancePolicyApiRequest",
         "type": "object"
@@ -1012,84 +1076,88 @@
         "title": "DetachTableMaintenancePolicyApiRequest",
         "type": "object"
       },
-      "ExpireSnapshotsConditionsApiRequest": {
+      "ExpireSnapshotsOptionsApiRequest": {
         "additionalProperties": false,
-        "description": "Carry the snapshot expiry conditions; a missing one is not checked.",
+        "description": "Carry the ``expire_snapshots`` options; one left out is left to the procedure.",
         "properties": {
-          "expirable_snapshots": {
+          "max_concurrent_deletes": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/AtLeastApiRequest"
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Concurrent Deletes"
+          },
+          "stream_results": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stream Results"
+          }
+        },
+        "title": "ExpireSnapshotsOptionsApiRequest",
+        "type": "object"
+      },
+      "ExpireSnapshotsSpecApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the snapshot expiry block: its target and its options.",
+        "properties": {
+          "options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExpireSnapshotsOptionsApiRequest"
               },
               {
                 "type": "null"
               }
             ]
-          }
-        },
-        "title": "ExpireSnapshotsConditionsApiRequest",
-        "type": "object"
-      },
-      "ExpireSnapshotsExecutionPolicyApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the values snapshot expiry is run with.",
-        "properties": {
-          "older_than_seconds": {
-            "title": "Older Than Seconds",
-            "type": "integer"
           },
-          "retain_last": {
-            "title": "Retain Last",
-            "type": "integer"
+          "target": {
+            "$ref": "#/components/schemas/ExpireSnapshotsTargetApiRequest"
           }
         },
         "required": [
-          "older_than_seconds",
-          "retain_last"
+          "target"
         ],
-        "title": "ExpireSnapshotsExecutionPolicyApiRequest",
+        "title": "ExpireSnapshotsSpecApiRequest",
         "type": "object"
       },
-      "ExpireSnapshotsPolicyApiRequest": {
+      "ExpireSnapshotsTargetApiRequest": {
         "additionalProperties": false,
-        "description": "Carry the snapshot expiry policy.",
+        "description": "Carry the retention target; a value left out falls back to the table property, then Iceberg's default.",
         "properties": {
-          "enabled": {
-            "title": "Enabled",
-            "type": "boolean"
+          "max_snapshot_age_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Snapshot Age Seconds"
           },
-          "execution_policy": {
-            "$ref": "#/components/schemas/ExpireSnapshotsExecutionPolicyApiRequest"
-          },
-          "trigger_policy": {
-            "$ref": "#/components/schemas/ExpireSnapshotsTriggerPolicyApiRequest"
+          "min_snapshots_to_keep": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Snapshots To Keep"
           }
         },
-        "required": [
-          "enabled",
-          "trigger_policy",
-          "execution_policy"
-        ],
-        "title": "ExpireSnapshotsPolicyApiRequest",
-        "type": "object"
-      },
-      "ExpireSnapshotsTriggerPolicyApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry when snapshot expiry is due.",
-        "properties": {
-          "conditions": {
-            "$ref": "#/components/schemas/ExpireSnapshotsConditionsApiRequest"
-          },
-          "cooldown_seconds": {
-            "title": "Cooldown Seconds",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "cooldown_seconds",
-          "conditions"
-        ],
-        "title": "ExpireSnapshotsTriggerPolicyApiRequest",
+        "title": "ExpireSnapshotsTargetApiRequest",
         "type": "object"
       },
       "GenericTableApiResponse": {
@@ -1216,6 +1284,16 @@
             "title": "Dry Run",
             "type": "boolean"
           },
+          "expire_snapshots": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExpireSnapshotsSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -1229,15 +1307,38 @@
             "title": "Name",
             "type": "string"
           },
-          "operations": {
-            "$ref": "#/components/schemas/OperationPoliciesApiRequest"
+          "on": {
+            "$ref": "#/components/schemas/MaintenanceTriggersApiRequest"
           },
-          "priority": {
-            "$ref": "#/components/schemas/MaintenancePriorityApi"
+          "remove_orphan_files": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemoveOrphanFilesSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          "reconcile_interval_seconds": {
-            "title": "Reconcile Interval Seconds",
-            "type": "integer"
+          "rewrite_data_files": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RewriteDataFilesSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rewrite_manifests": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RewriteManifestsSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "updated_at": {
             "format": "date-time",
@@ -1255,10 +1356,12 @@
           "is_default",
           "version",
           "description",
-          "reconcile_interval_seconds",
+          "on",
           "dry_run",
-          "priority",
-          "operations",
+          "rewrite_data_files",
+          "rewrite_manifests",
+          "expire_snapshots",
+          "remove_orphan_files",
           "created_at",
           "updated_at",
           "attachment_count"
@@ -1300,13 +1403,29 @@
         "title": "ListedTableMaintenancePolicyMappingApiResponse",
         "type": "object"
       },
-      "MaintenancePriorityApi": {
-        "enum": [
-          "P0",
-          "P1",
-          "P2"
+      "MaintenanceTriggersApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry when a table is checked; without ``catalog_commit`` commits do not trigger a check.",
+        "properties": {
+          "catalog_commit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CatalogCommitTriggerApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/ScheduleTriggerApiRequest"
+          }
+        },
+        "required": [
+          "schedule"
         ],
-        "type": "string"
+        "title": "MaintenanceTriggersApiRequest",
+        "type": "object"
       },
       "NamespaceApiResponse": {
         "description": "Describe a namespace: its catalog, its parts and its properties.",
@@ -1358,58 +1477,6 @@
           "namespace"
         ],
         "title": "NamespaceSummaryApiResponse",
-        "type": "object"
-      },
-      "OperationPoliciesApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry one policy per maintenance operation.",
-        "properties": {
-          "expire_snapshots": {
-            "$ref": "#/components/schemas/ExpireSnapshotsPolicyApiRequest"
-          },
-          "remove_orphan_files": {
-            "$ref": "#/components/schemas/RemoveOrphanFilesPolicyApiRequest"
-          },
-          "rewrite_data_files": {
-            "$ref": "#/components/schemas/RewriteDataFilesPolicyApiRequest"
-          },
-          "rewrite_manifests": {
-            "$ref": "#/components/schemas/RewriteManifestsPolicyApiRequest"
-          }
-        },
-        "required": [
-          "rewrite_data_files",
-          "rewrite_manifests",
-          "expire_snapshots",
-          "remove_orphan_files"
-        ],
-        "title": "OperationPoliciesApiRequest",
-        "type": "object"
-      },
-      "PartialProgressApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry whether compaction commits in parts, and at most how many.",
-        "properties": {
-          "enabled": {
-            "title": "Enabled",
-            "type": "boolean"
-          },
-          "max_commits": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Commits"
-          }
-        },
-        "required": [
-          "enabled"
-        ],
-        "title": "PartialProgressApiRequest",
         "type": "object"
       },
       "PartitionFieldApiRequest": {
@@ -1835,16 +1902,68 @@
         "title": "ReconciliationPolicyTargetApiResponse",
         "type": "object"
       },
-      "RemoveOrphanFilesConditionsApiRequest": {
+      "RemoveOrphanFilesOptionsApiRequest": {
         "additionalProperties": false,
-        "description": "Carry the orphan file removal conditions; there are none, so it is due once its cooldown passed.",
-        "properties": {},
-        "title": "RemoveOrphanFilesConditionsApiRequest",
+        "description": "Carry the ``remove_orphan_files`` options; one left out is left to the procedure.",
+        "properties": {
+          "max_concurrent_deletes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Concurrent Deletes"
+          },
+          "prefix_mismatch_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ERROR",
+                  "IGNORE",
+                  "DELETE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prefix Mismatch Mode"
+          }
+        },
+        "title": "RemoveOrphanFilesOptionsApiRequest",
         "type": "object"
       },
-      "RemoveOrphanFilesExecutionPolicyApiRequest": {
+      "RemoveOrphanFilesSpecApiRequest": {
         "additionalProperties": false,
-        "description": "Carry the values orphan file removal is run with.",
+        "description": "Carry the orphan file removal block: its target and its options.",
+        "properties": {
+          "options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemoveOrphanFilesOptionsApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target": {
+            "$ref": "#/components/schemas/RemoveOrphanFilesTargetApiRequest"
+          }
+        },
+        "required": [
+          "target"
+        ],
+        "title": "RemoveOrphanFilesSpecApiRequest",
+        "type": "object"
+      },
+      "RemoveOrphanFilesTargetApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the orphan file target: files older than this many seconds, at least 86400.",
         "properties": {
           "older_than_seconds": {
             "title": "Older Than Seconds",
@@ -1854,49 +1973,7 @@
         "required": [
           "older_than_seconds"
         ],
-        "title": "RemoveOrphanFilesExecutionPolicyApiRequest",
-        "type": "object"
-      },
-      "RemoveOrphanFilesPolicyApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the orphan file removal policy.",
-        "properties": {
-          "enabled": {
-            "title": "Enabled",
-            "type": "boolean"
-          },
-          "execution_policy": {
-            "$ref": "#/components/schemas/RemoveOrphanFilesExecutionPolicyApiRequest"
-          },
-          "trigger_policy": {
-            "$ref": "#/components/schemas/RemoveOrphanFilesTriggerPolicyApiRequest"
-          }
-        },
-        "required": [
-          "enabled",
-          "trigger_policy",
-          "execution_policy"
-        ],
-        "title": "RemoveOrphanFilesPolicyApiRequest",
-        "type": "object"
-      },
-      "RemoveOrphanFilesTriggerPolicyApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry when orphan file removal is due.",
-        "properties": {
-          "conditions": {
-            "$ref": "#/components/schemas/RemoveOrphanFilesConditionsApiRequest"
-          },
-          "cooldown_seconds": {
-            "title": "Cooldown Seconds",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "cooldown_seconds",
-          "conditions"
-        ],
-        "title": "RemoveOrphanFilesTriggerPolicyApiRequest",
+        "title": "RemoveOrphanFilesTargetApiRequest",
         "type": "object"
       },
       "RenameTableApiRequest": {
@@ -1968,36 +2045,11 @@
         "title": "ResetTablePropertiesApiRequest",
         "type": "object"
       },
-      "RewriteDataFilesConditionsApiRequest": {
+      "RewriteDataFilesOptionsApiRequest": {
         "additionalProperties": false,
-        "description": "Carry the compaction conditions; a missing one is not checked, the others combine with OR.",
+        "description": "Carry the ``rewrite_data_files`` options; one left out is left to the procedure.",
         "properties": {
-          "reducible_files": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AtLeastApiRequest"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "title": "RewriteDataFilesConditionsApiRequest",
-        "type": "object"
-      },
-      "RewriteDataFilesExecutionPolicyApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the values compaction is run with; a null target size falls back to the table property.",
-        "properties": {
-          "min_input_files": {
-            "title": "Min Input Files",
-            "type": "integer"
-          },
-          "partial_progress": {
-            "$ref": "#/components/schemas/PartialProgressApiRequest"
-          },
-          "target_file_size_bytes": {
+          "delete_file_threshold": {
             "anyOf": [
               {
                 "type": "integer"
@@ -2006,127 +2058,232 @@
                 "type": "null"
               }
             ],
-            "title": "Target File Size Bytes"
-          }
-        },
-        "required": [
-          "min_input_files",
-          "partial_progress"
-        ],
-        "title": "RewriteDataFilesExecutionPolicyApiRequest",
-        "type": "object"
-      },
-      "RewriteDataFilesPolicyApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the compaction policy: its switch, scope, trigger and execution.",
-        "properties": {
-          "enabled": {
-            "title": "Enabled",
-            "type": "boolean"
+            "title": "Delete File Threshold"
           },
-          "execution_policy": {
-            "$ref": "#/components/schemas/RewriteDataFilesExecutionPolicyApiRequest"
-          },
-          "scope": {
-            "$ref": "#/components/schemas/CompactionScopeApiRequest"
-          },
-          "trigger_policy": {
-            "$ref": "#/components/schemas/RewriteDataFilesTriggerPolicyApiRequest"
-          }
-        },
-        "required": [
-          "enabled",
-          "scope",
-          "trigger_policy",
-          "execution_policy"
-        ],
-        "title": "RewriteDataFilesPolicyApiRequest",
-        "type": "object"
-      },
-      "RewriteDataFilesTriggerPolicyApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry when compaction is due.",
-        "properties": {
-          "conditions": {
-            "$ref": "#/components/schemas/RewriteDataFilesConditionsApiRequest"
-          },
-          "cooldown_seconds": {
-            "title": "Cooldown Seconds",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "cooldown_seconds",
-          "conditions"
-        ],
-        "title": "RewriteDataFilesTriggerPolicyApiRequest",
-        "type": "object"
-      },
-      "RewriteManifestsConditionsApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the manifest rewrite conditions; a missing one is not checked.",
-        "properties": {
-          "small_manifests": {
+          "max_concurrent_file_group_rewrites": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/SmallManifestsConditionApiRequest"
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Concurrent File Group Rewrites"
+          },
+          "max_file_group_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max File Group Size Bytes"
+          },
+          "min_input_files": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Input Files"
+          },
+          "partial_progress_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partial Progress Enabled"
+          },
+          "partial_progress_max_commits": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partial Progress Max Commits"
+          },
+          "remove_dangling_deletes": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remove Dangling Deletes"
+          },
+          "rewrite_all": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rewrite All"
+          },
+          "sort_order": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sort Order"
+          },
+          "strategy": {
+            "anyOf": [
+              {
+                "enum": [
+                  "binpack",
+                  "sort"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy"
+          }
+        },
+        "title": "RewriteDataFilesOptionsApiRequest",
+        "type": "object"
+      },
+      "RewriteDataFilesSpecApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the compaction block: its target and its options.",
+        "properties": {
+          "options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RewriteDataFilesOptionsApiRequest"
               },
               {
                 "type": "null"
               }
             ]
-          }
-        },
-        "title": "RewriteManifestsConditionsApiRequest",
-        "type": "object"
-      },
-      "RewriteManifestsExecutionPolicyApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the values a manifest rewrite is run with; there are none.",
-        "properties": {},
-        "title": "RewriteManifestsExecutionPolicyApiRequest",
-        "type": "object"
-      },
-      "RewriteManifestsPolicyApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the manifest rewrite policy.",
-        "properties": {
-          "enabled": {
-            "title": "Enabled",
-            "type": "boolean"
           },
-          "execution_policy": {
-            "$ref": "#/components/schemas/RewriteManifestsExecutionPolicyApiRequest"
-          },
-          "trigger_policy": {
-            "$ref": "#/components/schemas/RewriteManifestsTriggerPolicyApiRequest"
+          "target": {
+            "$ref": "#/components/schemas/RewriteDataFilesTargetApiRequest"
           }
         },
         "required": [
-          "enabled",
-          "trigger_policy",
-          "execution_policy"
+          "target"
         ],
-        "title": "RewriteManifestsPolicyApiRequest",
+        "title": "RewriteDataFilesSpecApiRequest",
         "type": "object"
       },
-      "RewriteManifestsTriggerPolicyApiRequest": {
+      "RewriteDataFilesTargetApiRequest": {
         "additionalProperties": false,
-        "description": "Carry when a manifest rewrite is due.",
+        "description": "Carry the compaction target: reducible files at most this many, per partition or across the table.",
         "properties": {
-          "conditions": {
-            "$ref": "#/components/schemas/RewriteManifestsConditionsApiRequest"
+          "per": {
+            "default": "partition",
+            "enum": [
+              "partition",
+              "table"
+            ],
+            "title": "Per",
+            "type": "string"
           },
-          "cooldown_seconds": {
-            "title": "Cooldown Seconds",
+          "reducible_files": {
+            "$ref": "#/components/schemas/AtMostApiRequest"
+          }
+        },
+        "required": [
+          "reducible_files"
+        ],
+        "title": "RewriteDataFilesTargetApiRequest",
+        "type": "object"
+      },
+      "RewriteManifestsOptionsApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the ``rewrite_manifests`` options; one left out is left to the procedure.",
+        "properties": {
+          "use_caching": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Caching"
+          }
+        },
+        "title": "RewriteManifestsOptionsApiRequest",
+        "type": "object"
+      },
+      "RewriteManifestsSpecApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the manifest rewrite block: its target and its options.",
+        "properties": {
+          "options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RewriteManifestsOptionsApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target": {
+            "$ref": "#/components/schemas/RewriteManifestsTargetApiRequest"
+          }
+        },
+        "required": [
+          "target"
+        ],
+        "title": "RewriteManifestsSpecApiRequest",
+        "type": "object"
+      },
+      "RewriteManifestsTargetApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the manifest target: manifests under the table's manifest target size at most this many.",
+        "properties": {
+          "small_manifests": {
+            "$ref": "#/components/schemas/AtMostApiRequest"
+          }
+        },
+        "required": [
+          "small_manifests"
+        ],
+        "title": "RewriteManifestsTargetApiRequest",
+        "type": "object"
+      },
+      "ScheduleTriggerApiRequest": {
+        "additionalProperties": false,
+        "description": "Check the table at least this often, from 60 seconds to 7 days.",
+        "properties": {
+          "every_seconds": {
+            "title": "Every Seconds",
             "type": "integer"
           }
         },
         "required": [
-          "cooldown_seconds",
-          "conditions"
+          "every_seconds"
         ],
-        "title": "RewriteManifestsTriggerPolicyApiRequest",
+        "title": "ScheduleTriggerApiRequest",
         "type": "object"
       },
       "SchemaApiResponse": {
@@ -2247,32 +2404,6 @@
           "priority"
         ],
         "title": "SetTablePriorityApiRequest",
-        "type": "object"
-      },
-      "SmallManifestsConditionApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the small-manifests condition; a null size falls back to the table's manifest target size.",
-        "properties": {
-          "at_least": {
-            "title": "At Least",
-            "type": "integer"
-          },
-          "smaller_than_bytes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Smaller Than Bytes"
-          }
-        },
-        "required": [
-          "at_least"
-        ],
-        "title": "SmallManifestsConditionApiRequest",
         "type": "object"
       },
       "SnapshotApiResponse": {
@@ -3311,6 +3442,16 @@
             "title": "Dry Run",
             "type": "boolean"
           },
+          "expire_snapshots": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExpireSnapshotsSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -3324,15 +3465,38 @@
             "title": "Name",
             "type": "string"
           },
-          "operations": {
-            "$ref": "#/components/schemas/OperationPoliciesApiRequest"
+          "on": {
+            "$ref": "#/components/schemas/MaintenanceTriggersApiRequest"
           },
-          "priority": {
-            "$ref": "#/components/schemas/MaintenancePriorityApi"
+          "remove_orphan_files": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemoveOrphanFilesSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          "reconcile_interval_seconds": {
-            "title": "Reconcile Interval Seconds",
-            "type": "integer"
+          "rewrite_data_files": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RewriteDataFilesSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rewrite_manifests": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RewriteManifestsSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "updated_at": {
             "format": "date-time",
@@ -3350,10 +3514,12 @@
           "is_default",
           "version",
           "description",
-          "reconcile_interval_seconds",
+          "on",
           "dry_run",
-          "priority",
-          "operations",
+          "rewrite_data_files",
+          "rewrite_manifests",
+          "expire_snapshots",
+          "remove_orphan_files",
           "created_at",
           "updated_at"
         ],
@@ -3422,6 +3588,16 @@
             "title": "Dry Run",
             "type": "boolean"
           },
+          "expire_snapshots": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExpireSnapshotsSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -3435,15 +3611,38 @@
             "title": "Name",
             "type": "string"
           },
-          "operations": {
-            "$ref": "#/components/schemas/OperationPoliciesApiRequest"
+          "on": {
+            "$ref": "#/components/schemas/MaintenanceTriggersApiRequest"
           },
-          "priority": {
-            "$ref": "#/components/schemas/MaintenancePriorityApi"
+          "remove_orphan_files": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemoveOrphanFilesSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          "reconcile_interval_seconds": {
-            "title": "Reconcile Interval Seconds",
-            "type": "integer"
+          "rewrite_data_files": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RewriteDataFilesSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rewrite_manifests": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RewriteManifestsSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "version": {
             "title": "Version",
@@ -3456,10 +3655,12 @@
           "is_default",
           "version",
           "description",
-          "reconcile_interval_seconds",
+          "on",
           "dry_run",
-          "priority",
-          "operations",
+          "rewrite_data_files",
+          "rewrite_manifests",
+          "expire_snapshots",
+          "remove_orphan_files",
           "created_at"
         ],
         "title": "TableMaintenancePolicyVersionApiResponse",
@@ -4075,26 +4276,59 @@
       },
       "UpdateTableMaintenancePolicyApiRequest": {
         "additionalProperties": false,
-        "description": "Carry a policy's whole new content and the version it was edited from.",
+        "description": "Carry a policy's whole new content and the version it was edited from; a block left out is removed.",
         "properties": {
           "description": {
             "title": "Description",
             "type": "string"
           },
           "dry_run": {
+            "default": false,
             "title": "Dry Run",
             "type": "boolean"
           },
-          "operations": {
-            "$ref": "#/components/schemas/OperationPoliciesApiRequest"
+          "expire_snapshots": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExpireSnapshotsSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          "priority": {
-            "$ref": "#/components/schemas/MaintenancePriorityApi",
-            "default": "P2"
+          "on": {
+            "$ref": "#/components/schemas/MaintenanceTriggersApiRequest"
           },
-          "reconcile_interval_seconds": {
-            "title": "Reconcile Interval Seconds",
-            "type": "integer"
+          "remove_orphan_files": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemoveOrphanFilesSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rewrite_data_files": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RewriteDataFilesSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rewrite_manifests": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RewriteManifestsSpecApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "version": {
             "title": "Version",
@@ -4104,9 +4338,7 @@
         "required": [
           "version",
           "description",
-          "reconcile_interval_seconds",
-          "dry_run",
-          "operations"
+          "on"
         ],
         "title": "UpdateTableMaintenancePolicyApiRequest",
         "type": "object"

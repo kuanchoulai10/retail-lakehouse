@@ -1,8 +1,8 @@
 import { Panel } from "@retail-lakehouse/design-system";
 import type { ReactNode } from "react";
-import type { MaintenancePriorityApi, OperationPoliciesApiRequest } from "@/api/generated/model";
-import { PriorityText } from "@/components/PriorityText";
 import { formatBytes, formatCount, formatSeconds } from "@/format";
+import { policyChecksText } from "@/lib/policyChecksText";
+import type { PolicyContent } from "@/lib/policyDraft";
 
 interface Fact {
   label: string;
@@ -22,118 +22,168 @@ function Facts({ facts }: { facts: Fact[] }) {
   );
 }
 
-// Conditions combine with OR; with none, the operation is due once its cooldown has passed.
-function conditions(texts: (string | null)[]): string {
-  const set = texts.filter((text): text is string => text !== null);
-  return set.length === 0 ? "None: due once the cooldown has passed" : set.join(", or ");
+const RETENTION_UNSET = "The table's history.expire.* / Iceberg default";
+
+function onOff(value: boolean): string {
+  return value ? "On" : "Off";
 }
 
-function seconds(value: number): string {
-  return `${formatCount(value)} s (${formatSeconds(value)})`;
+// The options a block sets, one line each, as "Min input files: 2" (a text value is an identifier
+// or SQL, so it is set in mono); unset ones are the procedure's.
+function Options({ options }: { options: [string, string | number | boolean | null | undefined][] }) {
+  const set = options.filter((option): option is [string, string | number | boolean] => option[1] != null);
+  if (set.length === 0) return "Procedure defaults";
+  return (
+    <ul className="flex flex-col gap-1">
+      {set.map(([label, value]) => (
+        <li key={label}>
+          {label}:{" "}
+          {typeof value === "boolean" ? (
+            onOff(value)
+          ) : typeof value === "number" ? (
+            formatCount(value)
+          ) : (
+            <span className="font-mono">{value}</span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
-function bytes(value: number | null | undefined, unset: string): string {
-  return value === null || value === undefined ? unset : formatBytes(value);
-}
-
-function Operation({ title, enabled, facts }: { title: string; enabled: boolean; facts: Fact[] }) {
+// An operation the policy leaves out says only that; one it holds shows its target and options.
+function Operation({ title, facts }: { title: string; facts: Fact[] | null }) {
   return (
     <Panel title={title}>
-      <Facts facts={enabled ? [{ label: "Enabled", value: "On" }, ...facts] : [{ label: "Enabled", value: "Off" }]} />
+      {facts === null ? <p className="text-on-surface-variant">Not in this policy</p> : <Facts facts={facts} />}
     </Panel>
   );
 }
 
-interface Props {
-  description: string;
-  reconcileIntervalSeconds: number;
-  dryRun: boolean;
-  priority: MaintenancePriorityApi;
-  operations: OperationPoliciesApiRequest;
-}
-
-// A policy's content to read, not edit: the editor's fields as plain facts, one panel per
-// operation. An operation that is off shows only that.
-export function PolicySummary({ description, reconcileIntervalSeconds, dryRun, priority, operations }: Props) {
-  const { rewrite_data_files: data, rewrite_manifests: manifests, expire_snapshots: snapshots, remove_orphan_files: orphans } =
-    operations;
-  const smallManifests = manifests.trigger_policy.conditions.small_manifests;
-  const reducible = data.trigger_policy.conditions.reducible_files;
-  const expirable = snapshots.trigger_policy.conditions.expirable_snapshots;
+// A policy's content to read, not edit: the editor's fields as plain facts, one panel per operation.
+export function PolicySummary({ content }: { content: PolicyContent }) {
+  const data = content.rewrite_data_files ?? null;
+  const manifests = content.rewrite_manifests ?? null;
+  const snapshots = content.expire_snapshots ?? null;
+  const orphans = content.remove_orphan_files ?? null;
   return (
     <div className="type-body-medium flex flex-col gap-6">
       <Panel title="Policy">
         <Facts
           facts={[
-            { label: "Description", value: description === "" ? "—" : description },
-            { label: "Reconcile interval", value: seconds(reconcileIntervalSeconds) },
-            { label: "Dry run", value: dryRun ? "On: nothing is started" : "Off" },
-            { label: "Compaction priority", value: <PriorityText priority={priority} /> },
+            { label: "Description", value: content.description === "" ? "—" : content.description },
+            { label: "Checks", value: policyChecksText(content.on) },
+            { label: "Dry run", value: content.dry_run === true ? "On: nothing is started" : "Off" },
           ]}
         />
       </Panel>
       <Operation
         title="Rewrite data files"
-        enabled={data.enabled}
-        facts={[
-          { label: "Scope", value: data.scope.unit === "table" ? "Whole table" : "Each partition" },
-          { label: "Cooldown", value: seconds(data.trigger_policy.cooldown_seconds) },
-          {
-            label: "Conditions",
-            value: conditions([reducible ? `Reducible files at least ${formatCount(reducible.at_least)}` : null]),
-          },
-          { label: "Target file size", value: bytes(data.execution_policy.target_file_size_bytes, "The table's own") },
-          { label: "Min input files", value: formatCount(data.execution_policy.min_input_files) },
-          {
-            label: "Partial progress",
-            value: data.execution_policy.partial_progress.enabled
-              ? `On${
-                  data.execution_policy.partial_progress.max_commits == null
-                    ? ""
-                    : `, at most ${formatCount(data.execution_policy.partial_progress.max_commits)} commits`
-                }`
-              : "Off",
-          },
-        ]}
+        facts={
+          data === null
+            ? null
+            : [
+                {
+                  label: "Target",
+                  value: `Reducible files at most ${formatCount(data.target.reducible_files.at_most)}, ${
+                    data.target.per === "table" ? "across the table" : "per partition"
+                  }`,
+                },
+                {
+                  label: "Options",
+                  value: (
+                    <Options
+                      options={[
+                        ["Strategy", data.options?.strategy],
+                        ["Sort order", data.options?.sort_order],
+                        ["Min input files", data.options?.min_input_files],
+                        ["Partial progress", data.options?.partial_progress_enabled],
+                        ["Partial progress max commits", data.options?.partial_progress_max_commits],
+                        ["Max concurrent file group rewrites", data.options?.max_concurrent_file_group_rewrites],
+                        ["Rewrite all", data.options?.rewrite_all],
+                        ["Delete file threshold", data.options?.delete_file_threshold],
+                        ["Remove dangling deletes", data.options?.remove_dangling_deletes],
+                        [
+                          "Max file group size",
+                          data.options?.max_file_group_size_bytes == null
+                            ? null
+                            : formatBytes(data.options.max_file_group_size_bytes),
+                        ],
+                      ]}
+                    />
+                  ),
+                },
+              ]
+        }
       />
       <Operation
         title="Rewrite manifests"
-        enabled={manifests.enabled}
-        facts={[
-          { label: "Cooldown", value: seconds(manifests.trigger_policy.cooldown_seconds) },
-          {
-            label: "Conditions",
-            value: conditions([
-              smallManifests
-                ? `Small manifests at least ${formatCount(smallManifests.at_least)}${
-                    smallManifests.smaller_than_bytes == null ? "" : `, smaller than ${formatBytes(smallManifests.smaller_than_bytes)}`
-                  }`
-                : null,
-            ]),
-          },
-        ]}
+        facts={
+          manifests === null
+            ? null
+            : [
+                { label: "Target", value: `Small manifests at most ${formatCount(manifests.target.small_manifests.at_most)}` },
+                { label: "Options", value: <Options options={[["Use caching", manifests.options?.use_caching]]} /> },
+              ]
+        }
       />
       <Operation
         title="Expire snapshots"
-        enabled={snapshots.enabled}
-        facts={[
-          { label: "Cooldown", value: seconds(snapshots.trigger_policy.cooldown_seconds) },
-          {
-            label: "Conditions",
-            value: conditions([expirable ? `Expirable snapshots at least ${formatCount(expirable.at_least)}` : null]),
-          },
-          { label: "Older than", value: seconds(snapshots.execution_policy.older_than_seconds) },
-          { label: "Retain last", value: formatCount(snapshots.execution_policy.retain_last) },
-        ]}
+        facts={
+          snapshots === null
+            ? null
+            : [
+                {
+                  label: "Snapshots to keep",
+                  value:
+                    snapshots.target.min_snapshots_to_keep == null
+                      ? RETENTION_UNSET
+                      : `Keep at least ${formatCount(snapshots.target.min_snapshots_to_keep)} snapshots`,
+                },
+                {
+                  label: "Snapshot age",
+                  value:
+                    snapshots.target.max_snapshot_age_seconds == null
+                      ? RETENTION_UNSET
+                      : `Expire snapshots older than ${formatSeconds(snapshots.target.max_snapshot_age_seconds)}`,
+                },
+                {
+                  label: "Options",
+                  value: (
+                    <Options
+                      options={[
+                        ["Max concurrent deletes", snapshots.options?.max_concurrent_deletes],
+                        ["Stream results", snapshots.options?.stream_results],
+                      ]}
+                    />
+                  ),
+                },
+              ]
+        }
       />
       <Operation
         title="Remove orphan files"
-        enabled={orphans.enabled}
-        facts={[
-          { label: "Cooldown", value: seconds(orphans.trigger_policy.cooldown_seconds) },
-          { label: "Conditions", value: conditions([]) },
-          { label: "Older than", value: seconds(orphans.execution_policy.older_than_seconds) },
-        ]}
+        facts={
+          orphans === null
+            ? null
+            : [
+                {
+                  label: "Target",
+                  value: `Remove orphan files older than ${formatSeconds(orphans.target.older_than_seconds)}`,
+                },
+                {
+                  label: "Options",
+                  value: (
+                    <Options
+                      options={[
+                        ["Max concurrent deletes", orphans.options?.max_concurrent_deletes],
+                        ["Prefix mismatch mode", orphans.options?.prefix_mismatch_mode],
+                      ]}
+                    />
+                  ),
+                },
+              ]
+        }
       />
     </div>
   );

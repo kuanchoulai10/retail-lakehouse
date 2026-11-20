@@ -6,9 +6,11 @@ import pytest
 
 from shared_kernel import prefixed_id_pattern
 from tests.context.table_maintenance.adapter.inbound.web.policy_web_world import PolicyWebWorld, policy_body
+from tests.context.table_maintenance.fakes.default_content_json import DEFAULT_CONTENT_JSON
 
 MP_ID = prefixed_id_pattern("mp")
 DEFAULT_POLICY_ID = "mp-00000000000000000000000000"
+OPERATIONS = ("rewrite_data_files", "rewrite_manifests", "expire_snapshots", "remove_orphan_files")
 
 
 @pytest.fixture
@@ -26,13 +28,103 @@ def test_create_then_get_answers_the_content_flat_with_server_fields(world: Poli
     assert body["name"] == "gold"
     assert body["description"] == "Gold tier"
     assert body["dry_run"] is True
-    assert body["reconcile_interval_seconds"] == 3600
-    assert body["operations"]["rewrite_data_files"]["scope"] == {"unit": "partition"}
-    assert body["operations"]["rewrite_data_files"]["trigger_policy"] == {
-        "cooldown_seconds": 3600,
-        "conditions": {"reducible_files": {"at_least": 5}},
+    assert body["on"] == {"schedule": {"every_seconds": 3600}, "catalog_commit": {"debounce_seconds": 300}}
+    assert body["rewrite_data_files"] == {
+        "target": {"reducible_files": {"at_most": 5}, "per": "partition"},
+        "options": {"min_input_files": 2, "partial_progress_enabled": True},
     }
-    assert body["operations"]["remove_orphan_files"]["execution_policy"] == {"older_than_seconds": 259200}
+    assert body["remove_orphan_files"] == {"target": {"older_than_seconds": 259200}, "options": None}
+
+
+def test_create_accepts_the_new_shape(world: PolicyWebWorld) -> None:
+    """The documented content creates a policy and comes back unchanged beside the server's fields."""
+    response = world.client.post("/v1/maintenance-policies", json={"name": "gold", **DEFAULT_CONTENT_JSON})
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert {key: body[key] for key in DEFAULT_CONTENT_JSON} == DEFAULT_CONTENT_JSON
+    assert "operations" not in body
+    assert "priority" not in body
+    assert "reconcile_interval_seconds" not in body
+
+
+def test_create_defaults_dry_run_and_the_debounce(world: PolicyWebWorld) -> None:
+    """``dry_run`` defaults to false and a catalog commit trigger to a five-minute debounce."""
+    content = {key: value for key, value in DEFAULT_CONTENT_JSON.items() if key != "dry_run"}
+    content["on"] = {"schedule": {"every_seconds": 600}, "catalog_commit": {}}
+    response = world.client.post("/v1/maintenance-policies", json={"name": "gold", **content})
+    assert response.status_code == 201, response.text
+    assert response.json()["dry_run"] is False
+    assert response.json()["on"] == {"schedule": {"every_seconds": 600}, "catalog_commit": {"debounce_seconds": 300}}
+
+
+def test_create_accepts_a_policy_without_blocks(world: PolicyWebWorld) -> None:
+    """A policy may hold no operation block: it is checked and does nothing."""
+    body = {"name": "idle", "description": "nothing", "on": {"schedule": {"every_seconds": 3600}}}
+    response = world.client.post("/v1/maintenance-policies", json=body)
+    assert response.status_code == 201, response.text
+    created = response.json()
+    assert [created[op] for op in OPERATIONS] == [None] * 4
+    assert created["on"] == {"schedule": {"every_seconds": 3600}, "catalog_commit": None}
+
+
+def test_create_refuses_an_option_that_repeats_the_target(world: PolicyWebWorld) -> None:
+    """``retain_last`` is the target's ``min_snapshots_to_keep``, so it is no option."""
+    content = policy_body()
+    content["expire_snapshots"] = {"target": {"min_snapshots_to_keep": 3}, "options": {"retain_last": 3}}
+    response = world.client.post("/v1/maintenance-policies", json={"name": "gold", **content})
+    assert response.status_code == 422
+    assert [(e["type"], e["loc"]) for e in response.json()["detail"]] == [
+        ("extra_forbidden", ["body", "expire_snapshots", "options", "retain_last"])
+    ]
+    assert world.client.get("/v1/maintenance-policies/gold").status_code == 404
+
+
+def test_update_refuses_an_option_that_repeats_the_target(world: PolicyWebWorld) -> None:
+    """The target file size is the table's, so PUT with it as an option is 422 and the version stays."""
+    world.create("gold")
+    content = policy_body()
+    content["rewrite_data_files"]["options"] = {"target_file_size_bytes": 1024}
+    response = world.client.put("/v1/maintenance-policies/gold", json={"version": 1, **content})
+    assert response.status_code == 422
+    assert [(e["type"], e["loc"]) for e in response.json()["detail"]] == [
+        ("extra_forbidden", ["body", "rewrite_data_files", "options", "target_file_size_bytes"])
+    ]
+    assert world.client.get("/v1/maintenance-policies/gold").json()["version"] == 1
+
+
+@pytest.mark.parametrize(
+    "removed",
+    [{"priority": "P2"}, {"reconcile_interval_seconds": 3600}, {"operations": {}}],
+)
+def test_create_refuses_the_old_fields(world: PolicyWebWorld, removed: dict[str, object]) -> None:
+    """The fields of the shape before targets are unknown."""
+    response = world.client.post("/v1/maintenance-policies", json={"name": "gold", **policy_body(**removed)})
+    assert response.status_code == 422
+
+
+def test_update_without_a_block_removes_it(world: PolicyWebWorld) -> None:
+    """PUT replaces the whole content: a block left out is gone and reads back as null."""
+    world.create("gold")
+    content = policy_body()
+    del content["remove_orphan_files"]
+    response = world.client.put("/v1/maintenance-policies/gold", json={"version": 1, **content})
+    assert response.status_code == 200, response.text
+    current = world.client.get("/v1/maintenance-policies/gold").json()
+    assert current["remove_orphan_files"] is None
+    assert current["expire_snapshots"] == DEFAULT_CONTENT_JSON["expire_snapshots"]
+    assert world.client.get("/v1/maintenance-policies/gold/versions/1").json()["remove_orphan_files"] is not None
+
+
+def test_responses_leave_unset_options_out(world: PolicyWebWorld) -> None:
+    """An option not set is not written; an options object not given is null."""
+    content = policy_body()
+    content["remove_orphan_files"] = {"target": {"older_than_seconds": 86400}, "options": {"max_concurrent_deletes": 4}}
+    content["rewrite_manifests"] = {"target": {"small_manifests": {"at_most": 2}}}
+    created = world.client.post("/v1/maintenance-policies", json={"name": "gold", **content}).json()
+    assert created["remove_orphan_files"]["options"] == {"max_concurrent_deletes": 4}
+    assert created["rewrite_manifests"]["options"] is None
+    listed = next(p for p in world.client.get("/v1/maintenance-policies").json()["policies"] if p["name"] == "gold")
+    assert listed["remove_orphan_files"]["options"] == {"max_concurrent_deletes": 4}
 
 
 def test_policy_routes_still_use_names(world: PolicyWebWorld) -> None:
@@ -63,16 +155,6 @@ def test_every_policy_answer_says_whether_it_is_the_default(world: PolicyWebWorl
     assert {p["name"]: p["is_default"] for p in listed} == {"default": True, "gold": False}
 
 
-def test_create_accepts_a_missing_condition_as_not_checked(world: PolicyWebWorld) -> None:
-    """A condition left out of the body is not checked."""
-    content = policy_body()
-    content["operations"]["rewrite_data_files"]["trigger_policy"]["conditions"] = {}
-    response = world.client.post("/v1/maintenance-policies", json={"name": "lazy", **content})
-    assert response.status_code == 201, response.text
-    conditions = response.json()["operations"]["rewrite_data_files"]["trigger_policy"]["conditions"]
-    assert conditions.get("reducible_files") is None
-
-
 def test_list_policies_carries_attachment_counts(world: PolicyWebWorld) -> None:
     """GET lists every policy with how many targets it is attached to."""
     world.create("gold")
@@ -89,19 +171,11 @@ def test_create_duplicate_name_is_409(world: PolicyWebWorld) -> None:
 
 
 def _with_orphan_older_than(seconds: int) -> dict[str, object]:
-    content = policy_body()
-    content["operations"]["remove_orphan_files"]["execution_policy"]["older_than_seconds"] = seconds
-    return content
+    return policy_body(remove_orphan_files={"target": {"older_than_seconds": seconds}})
 
 
-def _with_reconcile_interval(seconds: int) -> dict[str, object]:
-    return {**policy_body(), "reconcile_interval_seconds": seconds}
-
-
-def _with_cooldown(seconds: int) -> dict[str, object]:
-    content = policy_body()
-    content["operations"]["expire_snapshots"]["trigger_policy"]["cooldown_seconds"] = seconds
-    return content
+def _with_schedule(seconds: int) -> dict[str, object]:
+    return policy_body(on={"schedule": {"every_seconds": seconds}})
 
 
 @pytest.mark.parametrize(
@@ -110,9 +184,20 @@ def _with_cooldown(seconds: int) -> dict[str, object]:
         {"name": "bad name", **policy_body()},
         {"name": "gold", **_with_orphan_older_than(3600)},
         {"name": "gold", **policy_body(unknown=1)},
-        {"name": "gold", **_with_reconcile_interval(0)},
-        {"name": "gold", **_with_reconcile_interval(-60)},
-        {"name": "gold", **_with_cooldown(-1)},
+        {"name": "gold", **_with_schedule(59)},
+        {"name": "gold", **_with_schedule(604801)},
+        {
+            "name": "gold",
+            **policy_body(on={"schedule": {"every_seconds": 3600}, "catalog_commit": {"debounce_seconds": -1}}),
+        },
+        {"name": "gold", **policy_body(on={})},
+        {"name": "gold", **policy_body(rewrite_data_files={"target": {"reducible_files": {"at_most": -1}}})},
+        {
+            "name": "gold",
+            **policy_body(
+                rewrite_data_files={"target": {"reducible_files": {"at_most": 5}}, "options": {"strategy": "zorder"}}
+            ),
+        },
     ],
 )
 def test_create_broken_invariant_is_422(world: PolicyWebWorld, body: dict[str, object]) -> None:
@@ -123,10 +208,10 @@ def test_create_broken_invariant_is_422(world: PolicyWebWorld, body: dict[str, o
 
 def test_broken_invariant_detail_names_the_dotted_field(world: PolicyWebWorld) -> None:
     """A broken invariant deep in the content answers 422 with one line naming the dotted field."""
-    response = world.client.post("/v1/maintenance-policies", json={"name": "gold", **_with_cooldown(-1)})
+    response = world.client.post("/v1/maintenance-policies", json={"name": "gold", **_with_orphan_older_than(3600)})
     assert (response.status_code, response.json()) == (
         422,
-        {"detail": "operations.expire_snapshots.trigger_policy.cooldown_seconds: must not be negative"},
+        {"detail": "remove_orphan_files.target.older_than_seconds: must be at least 1 day"},
     )
 
 
@@ -203,35 +288,3 @@ def test_delete_default_is_409(world: PolicyWebWorld) -> None:
 def test_delete_missing_is_404(world: PolicyWebWorld) -> None:
     """DELETE of an unknown policy answers 404."""
     assert world.client.delete("/v1/maintenance-policies/nope").status_code == 404
-
-
-def test_create_with_a_priority_answers_it(world: PolicyWebWorld) -> None:
-    """A policy created as P1 reads back as P1, on the policy and on its version."""
-    world.create("gold", priority="P1")
-    assert world.client.get("/v1/maintenance-policies/gold").json()["priority"] == "P1"
-    assert world.client.get("/v1/maintenance-policies/gold/versions/1").json()["priority"] == "P1"
-
-
-def test_create_without_a_priority_answers_p2(world: PolicyWebWorld) -> None:
-    """A body without a priority creates a P2 policy."""
-    content = policy_body()
-    content.pop("priority", None)
-    response = world.client.post("/v1/maintenance-policies", json={"name": "plain", **content})
-    assert response.status_code == 201, response.text
-    assert response.json()["priority"] == "P2"
-    listed = {p["name"]: p["priority"] for p in world.client.get("/v1/maintenance-policies").json()["policies"]}
-    assert listed["plain"] == "P2"
-
-
-def test_create_with_an_unknown_priority_is_422(world: PolicyWebWorld) -> None:
-    """Only P0, P1 and P2 exist."""
-    response = world.client.post("/v1/maintenance-policies", json={"name": "gold", **policy_body(priority="P3")})
-    assert response.status_code == 422
-
-
-def test_put_changes_the_priority(world: PolicyWebWorld) -> None:
-    """PUT carries the priority into the new version."""
-    world.create("gold")
-    response = world.client.put("/v1/maintenance-policies/gold", json={"version": 1, **policy_body(priority="P0")})
-    assert response.status_code == 200, response.text
-    assert response.json()["priority"] == "P0"

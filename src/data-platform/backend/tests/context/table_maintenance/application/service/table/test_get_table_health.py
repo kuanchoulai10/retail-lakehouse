@@ -126,7 +126,7 @@ def test_managed_table_reports_each_operation_in_order(service, tables_repo, cat
 def test_health_assesses_with_the_applicable_policy(service, tables_repo, catalog, policies_repo, now):
     """The operations are assessed against the policy that applies to the table, not its settings."""
     content = policy_with_operation(
-        MaintenancePolicyContent.platform_default(), MaintenanceOperation.REWRITE_DATA_FILES, enabled=False
+        MaintenancePolicyContent.platform_default(), MaintenanceOperation.REWRITE_DATA_FILES, None
     )
     UpdateTableMaintenancePolicyService(
         policies_repo,

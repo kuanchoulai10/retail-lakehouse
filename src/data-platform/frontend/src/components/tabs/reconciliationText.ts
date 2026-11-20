@@ -233,7 +233,7 @@ export function reasonSentence(op: ReconciliationOperationApiResponse, { manualR
     case "started":
     case "would_start":
       if (manualRun) return "Asked for in a manual run.";
-      return met.length > 0 ? `Because ${citeAll(met, op)}.` : "Due whenever its cooldown allows.";
+      return met.length > 0 ? `Because ${citeAll(met, op)}.` : "Due on the platform's interval.";
     case "start_failed":
       return met.length > 0
         ? `Due: ${citeAll(met, op)}, but the run could not be started.`
@@ -252,7 +252,7 @@ export function reasonSentence(op: ReconciliationOperationApiResponse, { manualR
     case "needs_attention":
       return "Not started: it ran out of memory at the largest size and waits for a manual run or a policy change.";
     case "off":
-      return "Turned off in the policy.";
+      return "Not in the policy.";
     case "not_checked":
       return "Not part of this manual run.";
     default:

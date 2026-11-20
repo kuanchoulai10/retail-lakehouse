@@ -12,9 +12,9 @@ from tests.context.table_maintenance.fakes.policy_with_operation import policy_w
 def policy_with_only_operation(
     operation: MaintenanceOperation, content: MaintenancePolicyContent | None = None
 ) -> MaintenancePolicyContent:
-    """Return ``content`` (the platform default by default) with every other operation disabled."""
+    """Return ``content`` (the platform default by default) with the blocks of every other operation removed."""
     result = content or MaintenancePolicyContent.platform_default()
     for other in MaintenanceOperation.ordered():
         if other != operation:
-            result = policy_with_operation(result, other, enabled=False)
+            result = policy_with_operation(result, other, None)
     return result

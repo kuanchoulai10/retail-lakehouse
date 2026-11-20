@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.domain.service.shared.default_orphan_older_than import (
+    DEFAULT_ORPHAN_OLDER_THAN,
+)
 from context.table_maintenance.application.domain.service.shared.positive_int_property import (
     positive_int_property,
 )
-from context.table_maintenance.application.domain.service.shared.resolve_execution_target_file_size import (
-    resolve_execution_target_file_size,
+from context.table_maintenance.application.domain.service.shared.resolve_snapshot_retention import (
+    resolve_snapshot_retention,
 )
 from context.table_maintenance.application.domain.service.shared.resolve_target_file_size import (
     TARGET_FILE_SIZE_PROPERTY,
@@ -14,8 +17,9 @@ from context.table_maintenance.application.domain.service.shared.resolve_target_
 )
 
 __all__ = [
+    "DEFAULT_ORPHAN_OLDER_THAN",
     "TARGET_FILE_SIZE_PROPERTY",
     "positive_int_property",
-    "resolve_execution_target_file_size",
+    "resolve_snapshot_retention",
     "resolve_target_file_size",
 ]

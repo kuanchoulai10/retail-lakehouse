@@ -29,23 +29,47 @@ describe("PolicyVersionPage", () => {
           name: "nightly",
           version: 2,
           dry_run: true,
-          priority: "P1",
           created_at: "2026-11-05T09:00:00Z",
-          operations: { ...content.operations, remove_orphan_files: { ...content.operations.remove_orphan_files, enabled: false } },
+          remove_orphan_files: null,
         }),
     });
     renderAt("/policies/nightly/versions/2");
     expect(await screen.findByRole("heading", { level: 1, name: "nightly v2" })).toBeInTheDocument();
     const orphans = screen.getByRole("region", { name: "Remove orphan files" });
-    expect(within(orphans).getByText("Off")).toBeInTheDocument();
+    expect(within(orphans).getByText("Not in this policy")).toBeInTheDocument();
     const data = screen.getByRole("region", { name: "Rewrite data files" });
-    expect(within(data).getByText("Reducible files at least 5")).toBeInTheDocument();
-    expect(screen.getByText("On: nothing is started")).toBeInTheDocument();
+    expect(within(data).getByText("Reducible files at most 5, per partition")).toBeInTheDocument();
+    expect(within(data).getByText("Min input files: 2")).toBeInTheDocument();
+    const manifests = screen.getByRole("region", { name: "Rewrite manifests" });
+    expect(within(manifests).getByText("Small manifests at most 5")).toBeInTheDocument();
+    expect(within(manifests).getByText("Procedure defaults")).toBeInTheDocument();
+    const snapshots = screen.getByRole("region", { name: "Expire snapshots" });
+    expect(within(snapshots).getByText("Keep at least 10 snapshots")).toBeInTheDocument();
+    expect(within(snapshots).getByText("Expire snapshots older than 1 d")).toBeInTheDocument();
     const facts = screen.getByRole("region", { name: "Policy" });
-    expect(within(facts).getByText("Compaction priority")).toBeInTheDocument();
-    expect(await within(facts).findByText("P1")).toBeInTheDocument();
+    expect(within(facts).getByText("Every 1 h, and 5 min after a commit")).toBeInTheDocument();
+    expect(within(facts).getByText("On: nothing is started")).toBeInTheDocument();
+    expect(within(facts).queryByText(/priority/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Save|Edit/ })).not.toBeInTheDocument();
+  });
+
+  it("says a retention value the policy leaves out falls to the table", async () => {
+    const content = policyContentFixture();
+    stubCatalogApi({
+      "GET /v1/maintenance-policies/nightly/versions/3": () =>
+        jsonResponse({
+          ...content,
+          name: "nightly",
+          version: 3,
+          created_at: "2026-11-05T09:00:00Z",
+          expire_snapshots: { target: { min_snapshots_to_keep: null, max_snapshot_age_seconds: 604800 }, options: null },
+        }),
+    });
+    renderAt("/policies/nightly/versions/3");
+    const snapshots = await screen.findByRole("region", { name: "Expire snapshots" });
+    expect(within(snapshots).getByText("The table's history.expire.* / Iceberg default")).toBeInTheDocument();
+    expect(within(snapshots).getByText("Expire snapshots older than 7 d")).toBeInTheDocument();
   });
 
   it("says when the version does not exist", async () => {

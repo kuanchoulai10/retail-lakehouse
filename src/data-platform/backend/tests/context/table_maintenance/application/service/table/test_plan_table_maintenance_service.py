@@ -28,12 +28,11 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_ID,
     DEFAULT_POLICY_NAME,
-    AtLeast,
+    AtMost,
     MaintenancePolicyContent,
-    PartialProgress,
-    RewriteDataFilesConditions,
-    RewriteDataFilesExecutionPolicy,
-    RewriteDataFilesTriggerPolicy,
+    RewriteDataFilesSpec,
+    RewriteDataFilesTarget,
+    ScheduleTrigger,
     TableMaintenancePolicyId,
     TableMaintenancePolicyName,
 )
@@ -90,6 +89,11 @@ OPS = MaintenanceOperation
 DEFAULT = MaintenancePolicyContent.platform_default()
 
 
+def _every(content: MaintenancePolicyContent, interval: timedelta) -> MaintenancePolicyContent:
+    """Return ``content`` checked on a schedule of ``interval``."""
+    return content.with_changes(on=content.on.with_changes(schedule=ScheduleTrigger(every=interval)))
+
+
 def _table(repo, now, uuid="u-1", name=NAME):
     table = Table.register(TableId(uuid), name, TableDiscoveryRuleId.new(), now)
     repo.create(table)
@@ -126,7 +130,7 @@ def _observe(catalog, now, **overrides):
             {"spec_id": 1, "fields": [_field("country")]},
         ],
         "partitions": [_partition(0, ["eu"]), _partition(1, ["de"])],
-        "manifests": [{"length_bytes": 100}] * 5,
+        "manifests": [{"length_bytes": 100}] * 6,
         "snapshots": [
             {
                 "snapshot_id": i,
@@ -275,9 +279,11 @@ def test_due_compaction_targets_the_whole_table(planner, tables_repo, catalog, n
     assert compaction.operation == "rewrite_data_files"
     assert compaction.filters == ()
     assert compaction.procedure_args == {
-        "target-file-size-bytes": 536870912,
-        "min-input-files": 2,
-        "partial-progress.enabled": True,
+        "options": {
+            "target-file-size-bytes": 536870912,
+            "min-input-files": 2,
+            "partial-progress.enabled": True,
+        }
     }
 
 
@@ -326,29 +332,23 @@ def test_plan_orders_operations_and_renders_procedure_args(planner, tables_repo,
     assert plan.reconcile_interval_seconds == 3600
 
 
-def test_plan_target_file_size_comes_from_the_policy(planner, tables_repo, catalog, policies, now):
-    """The target file size and reconcile interval in the plan come from the applicable policy."""
+def test_plan_target_file_size_comes_from_the_table(planner, tables_repo, catalog, policies, now):
+    """The target file size is the table's property; the interval is the applicable policy's schedule."""
+    target = RewriteDataFilesTarget(reducible_files=AtMost(at_most=0))
     policy = policy_with_operation(
-        DEFAULT.with_changes(reconcile_interval=timedelta(minutes=5)),
-        OPS.REWRITE_DATA_FILES,
-        trigger_policy=RewriteDataFilesTriggerPolicy(
-            cooldown=timedelta(hours=1),
-            conditions=RewriteDataFilesConditions(reducible_files=AtLeast(at_least=1)),
-        ),
-        execution_policy=RewriteDataFilesExecutionPolicy(
-            target_file_size_bytes=1024, min_input_files=2, partial_progress=PartialProgress(enabled=True)
-        ),
+        _every(DEFAULT, timedelta(minutes=5)), OPS.REWRITE_DATA_FILES, RewriteDataFilesSpec(target=target)
     )
     _use_policy(policies, now, policy)
     _table(tables_repo, now)
     _observe(
         catalog,
         now,
+        properties={"write.target-file-size-bytes": "1024"},
         specs=[{"spec_id": 0, "fields": []}],
         partitions=[_partition(0, [], files=20, size=2000)],
     )
     plan = _plan(planner, now)
-    assert plan.operations[0].procedure_args["target-file-size-bytes"] == 1024
+    assert plan.operations[0].procedure_args == {"options": {"target-file-size-bytes": 1024}}
     assert plan.reconcile_interval_seconds == 300
 
 
@@ -396,8 +396,8 @@ def test_plan_uses_the_injected_cooldowns(tables_repo, catalog, resolve_applicab
 
 
 def test_manual_plan_ignores_disabled_and_cooldown(planner, tables_repo, catalog, policies, now):
-    """A manual plan ignores both a disabled operation and the cooldown."""
-    _use_policy(policies, now, policy_with_operation(DEFAULT, OPS.REWRITE_DATA_FILES, enabled=False))
+    """A manual plan ignores both an operation the policy leaves out and the cooldown."""
+    _use_policy(policies, now, policy_with_operation(DEFAULT, OPS.REWRITE_DATA_FILES, None))
     table = _table(tables_repo, now)
     table.record_operation_result(OPS.REMOVE_ORPHAN_FILES, True, now)
     _observe(catalog, now)
@@ -408,6 +408,7 @@ def test_manual_plan_ignores_disabled_and_cooldown(planner, tables_repo, catalog
         "remove_orphan_files",
     ]
     assert plan.operations[0].filters == ()
+    assert plan.operations[0].procedure_args == {"options": {"target-file-size-bytes": 536870912}}
     assert plan.operations[1].procedure_args == {"older_than": "2026-10-21T12:00:00+00:00"}
 
 
@@ -451,7 +452,7 @@ def test_plan_output_names_resolved_policy(planner, tables_repo, catalog, polici
     """The plan names the policy it applied, its version and where it is attached."""
     _table(tables_repo, now)
     _observe(catalog, now)
-    gold = DEFAULT.with_changes(reconcile_interval=timedelta(minutes=10), dry_run=True)
+    gold = _every(DEFAULT, timedelta(minutes=10)).with_changes(dry_run=True)
     created = CreateTableMaintenancePolicyService(policies, clock=lambda: now).execute(
         CreateTableMaintenancePolicyUseCaseInput(name="gold", content=gold.to_primitives())
     )
@@ -476,7 +477,7 @@ def test_plan_without_attachment_names_the_default_policy(planner, tables_repo, 
 
 def test_skipped_plan_names_the_policy_for_its_interval(planner, tables_repo, policies, now):
     """A skipped plan of a known table takes its interval from the applicable policy."""
-    _use_policy(policies, now, DEFAULT.with_changes(reconcile_interval=timedelta(minutes=2)))
+    _use_policy(policies, now, _every(DEFAULT, timedelta(minutes=2)))
     _table(tables_repo, now).unmanage(now)
     plan = _plan(planner, now)
     assert (plan.reason, plan.reconcile_interval_seconds, plan.policy_id, plan.policy_name, plan.policy_version) == (
@@ -497,7 +498,7 @@ def _checks(plan):
 
 def test_scheduled_plan_reports_a_check_per_operation(planner, tables_repo, catalog, policies, now):
     """A scheduled plan reports one check per operation with its verdict and measurements."""
-    _use_policy(policies, now, policy_with_operation(DEFAULT, OPS.REWRITE_MANIFESTS, enabled=False))
+    _use_policy(policies, now, policy_with_operation(DEFAULT, OPS.REWRITE_MANIFESTS, None))
     table = _table(tables_repo, now)
     table.record_operation_result(OPS.EXPIRE_SNAPSHOTS, True, now - timedelta(minutes=1))
     _observe(catalog, now)
@@ -510,7 +511,7 @@ def test_scheduled_plan_reports_a_check_per_operation(planner, tables_repo, cata
     assert checks["expire_snapshots"].next_eligible_at is not None
     assert checks["rewrite_data_files"].next_eligible_at is None
     first = checks["rewrite_data_files"].measurements[0]
-    assert (first.key, first.unit, first.comparison, first.met) == ("reducible_files", "count", ">=", True)
+    assert (first.key, first.unit, first.comparison, first.met) == ("reducible_files", "count", ">", True)
     assert isinstance(first.observed, int)
     assert [o.operation for o in plan.operations] == [c.operation for c in plan.checks if c.verdict == "due"]
     assert plan.dry_run is False
@@ -596,7 +597,7 @@ def _record(plan, now, **overrides):
 
 def test_scheduled_plan_checks_can_be_recorded(planner, tables_repo, catalog, policies, now):
     """The checks of a scheduled plan (due, off, cooling down, not needed) are accepted by the record service."""
-    _use_policy(policies, now, policy_with_operation(DEFAULT, OPS.REWRITE_MANIFESTS, enabled=False))
+    _use_policy(policies, now, policy_with_operation(DEFAULT, OPS.REWRITE_MANIFESTS, None))
     table = _table(tables_repo, now)
     table.record_operation_result(OPS.EXPIRE_SNAPSHOTS, True, now - timedelta(minutes=1))
     _observe(catalog, now)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 import pytest
@@ -24,9 +24,6 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_ID,
-    MaintenancePolicyContent,
-    PartialProgress,
-    RewriteDataFilesExecutionPolicy,
     TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
@@ -55,9 +52,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
     ListTableMaintenanceRunsService,
     ProcessTableMaintenanceCallbackService,
     RecordTableMaintenanceOperationResultService,
-    maintenance_procedure_args,
 )
-from tests.context.table_maintenance.fakes.policy_with_operation import policy_with_operation
 from tests.context.table_maintenance.fakes.scripted_read_maintenance_event_log_gateway import (
     ScriptedReadMaintenanceEventLogGateway,
 )
@@ -387,69 +382,6 @@ def test_list_runs_newest_first_with_limit(runs_repo, table, now):
     limited = service.execute(ListTableMaintenanceRunsUseCaseInput(table_uuid="u-1", limit=1))
     assert [i.run_id for i in limited.items] == [RUN_2]
     assert service.execute(ListTableMaintenanceRunsUseCaseInput(table_uuid="other")).items == ()
-
-
-# --- procedure arguments ---
-
-POLICY = MaintenancePolicyContent.platform_default()
-AT = datetime(2026, 10, 24, 12, tzinfo=UTC)
-
-
-def _compaction(
-    *,
-    target_file_size_bytes: int | None = None,
-    min_input_files: int = 2,
-    partial_progress: PartialProgress | None = None,
-) -> MaintenancePolicyContent:
-    execution = RewriteDataFilesExecutionPolicy(
-        target_file_size_bytes=target_file_size_bytes,
-        min_input_files=min_input_files,
-        partial_progress=partial_progress or PartialProgress(enabled=True),
-    )
-    return policy_with_operation(POLICY, RDF, execution_policy=execution)
-
-
-def test_procedure_args_take_min_input_files_and_partial_progress_from_policy():
-    """Compaction arguments come from the execution policy, max commits only when set."""
-    policy = _compaction(min_input_files=7, partial_progress=PartialProgress(enabled=True, max_commits=3))
-    assert maintenance_procedure_args(RDF, policy, {}, AT) == {
-        "target-file-size-bytes": 536870912,
-        "min-input-files": 7,
-        "partial-progress.enabled": True,
-        "partial-progress.max-commits": 3,
-    }
-    off = _compaction(partial_progress=PartialProgress(enabled=False))
-    assert maintenance_procedure_args(RDF, off, {}, AT) == {
-        "target-file-size-bytes": 536870912,
-        "min-input-files": 2,
-        "partial-progress.enabled": False,
-    }
-
-
-def test_procedure_target_file_size_prefers_execution_policy_then_property():
-    """The executed target file size is the policy's, then the table property's, then 512 MiB."""
-    props = {"write.target-file-size-bytes": "1000"}
-    assert maintenance_procedure_args(RDF, POLICY, props, AT)["target-file-size-bytes"] == 1000
-    explicit = _compaction(target_file_size_bytes=4096)
-    assert maintenance_procedure_args(RDF, explicit, props, AT)["target-file-size-bytes"] == 4096
-
-
-def test_procedure_args_of_other_operations_come_from_their_execution_policies():
-    """Manifest, snapshot and orphan arguments render as before from the execution policies."""
-    assert maintenance_procedure_args(OPS.REWRITE_MANIFESTS, POLICY, {}, AT) == {}
-    assert maintenance_procedure_args(OPS.EXPIRE_SNAPSHOTS, POLICY, {}, AT) == {
-        "older_than": "2026-10-23T12:00:00+00:00",
-        "retain_last": 10,
-    }
-    assert maintenance_procedure_args(OPS.REMOVE_ORPHAN_FILES, POLICY, {}, AT) == {
-        "older_than": "2026-10-21T12:00:00+00:00"
-    }
-
-
-def test_procedure_args_need_an_aware_time():
-    """A naive time is rejected."""
-    with pytest.raises(ValueError, match="timezone-aware"):
-        maintenance_procedure_args(RDF, POLICY, {}, datetime(2026, 1, 1))  # noqa: DTZ001
 
 
 def test_run_output_lists_every_attempt(runs_repo, started_run, now):

@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { bodyOf, callsTo, stubCatalogApi, type StubbedCall } from "../test/catalogApiStub";
 import { jsonResponse, policyContentFixture, policyFixture } from "../test/fixtures";
@@ -16,7 +17,11 @@ function writesOf(calls: StubbedCall[]): StubbedCall[] {
 
 function renderEditor(element: ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}>{element}</QueryClientProvider>);
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter>{element}</MemoryRouter>
+    </QueryClientProvider>,
+  );
 }
 
 function section(name: string): HTMLElement {
@@ -29,7 +34,7 @@ async function replace(user: ReturnType<typeof userEvent.setup>, field: HTMLElem
 }
 
 describe("PolicyEditor", () => {
-  it("creates a policy with its full content", async () => {
+  it("creates a policy with its full content and no priority", async () => {
     const calls = stubCatalogApi({
       "POST /v1/maintenance-policies": () => jsonResponse(policyFixture({ name: "weekly", version: 1 }), 201),
     });
@@ -39,51 +44,24 @@ describe("PolicyEditor", () => {
     const dialog = await screen.findByRole("dialog", { name: "New policy" });
     await user.type(within(dialog).getByRole("textbox", { name: "Name" }), "weekly");
     await replace(user, within(dialog).getByRole("textbox", { name: "Description" }), "Weekly tidy-up");
-    await replace(user, within(dialog).getByRole("textbox", { name: "Reconcile interval (seconds)" }), "7200");
+    await replace(user, within(dialog).getByRole("textbox", { name: "Check every (seconds)" }), "7200");
+    await user.click(within(dialog).getByRole("switch", { name: "Check after catalog commits" }));
     await user.click(within(dialog).getByRole("switch", { name: "Dry run" }));
-    const expire = section("Expire snapshots");
-    await replace(user, within(expire).getByRole("textbox", { name: "Retain last" }), "3");
-    await user.click(within(section("Remove orphan files")).getByRole("switch", { name: "Enabled" }));
     await user.click(within(dialog).getByRole("button", { name: "Create policy" }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    const expected = policyContentFixture();
-    expected.operations.expire_snapshots.execution_policy.retain_last = 3;
-    expected.operations.remove_orphan_files.enabled = false;
-    expect(bodyOf(calls, "POST", "/v1/maintenance-policies")).toEqual({
-      ...expected,
+    const body = bodyOf(calls, "POST", "/v1/maintenance-policies");
+    expect(body).toEqual({
+      ...policyContentFixture(),
       name: "weekly",
       description: "Weekly tidy-up",
-      reconcile_interval_seconds: 7200,
+      on: { schedule: { every_seconds: 7200 }, catalog_commit: null },
       dry_run: true,
     });
+    expect(body).not.toHaveProperty("priority");
   });
 
-  it("sends a condition left empty as not checked and optional values left empty as null", async () => {
-    const calls = stubCatalogApi({
-      "PUT /v1/maintenance-policies/nightly": () => jsonResponse({ ...NIGHTLY, version: 5 }),
-    });
-    const user = userEvent.setup();
-    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
-    const rewrite = section("Rewrite data files");
-    await replace(user, within(rewrite).getByRole("textbox", { name: "Reducible files at least" }), "");
-    await replace(user, within(rewrite).getByRole("textbox", { name: "Target file size (bytes)" }), "134217728");
-    const manifests = section("Rewrite manifests");
-    await replace(user, within(manifests).getByRole("textbox", { name: "Smaller than (bytes)" }), "8388608");
-    await user.click(screen.getByRole("button", { name: "Save" }));
-
-    await waitFor(() => expect(callsTo(calls, "PUT", "/v1/maintenance-policies/nightly")).toHaveLength(1));
-    const body = bodyOf(calls, "PUT", "/v1/maintenance-policies/nightly") as {
-      operations: ReturnType<typeof policyContentFixture>["operations"];
-    };
-    expect(body.operations.rewrite_data_files.trigger_policy.conditions).toEqual({ reducible_files: null });
-    expect(body.operations.rewrite_data_files.execution_policy.target_file_size_bytes).toBe(134217728);
-    expect(body.operations.rewrite_manifests.trigger_policy.conditions).toEqual({
-      small_manifests: { at_least: 5, smaller_than_bytes: 8388608 },
-    });
-  });
-
-  it("sends the version it read when saving an edit", async () => {
+  it("sends an operation taken out of the policy as null, with the version it read", async () => {
     const calls = stubCatalogApi({
       "PUT /v1/maintenance-policies/nightly": () => jsonResponse({ ...NIGHTLY, version: 5 }),
     });
@@ -92,21 +70,58 @@ describe("PolicyEditor", () => {
     renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={onClose} />);
     const dialog = await screen.findByRole("dialog", { name: "Edit policy" });
     expect(within(dialog).queryByRole("textbox", { name: "Name" })).not.toBeInTheDocument();
-    await user.click(within(section("Rewrite manifests")).getByRole("switch", { name: "Enabled" }));
+    await user.click(within(section("Expire snapshots")).getByRole("switch", { name: "In this policy" }));
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    const content = policyContentFixture();
-    content.operations.rewrite_manifests.enabled = false;
     expect(bodyOf(calls, "PUT", "/v1/maintenance-policies/nightly")).toEqual({
-      ...content,
+      ...policyContentFixture(),
       description: "Nightly compaction",
+      expire_snapshots: null,
       version: 4,
     });
   });
 
+  it("sends the options chosen and leaves one set back to the procedure default out", async () => {
+    const calls = stubCatalogApi({
+      "PUT /v1/maintenance-policies/nightly": () => jsonResponse({ ...NIGHTLY, version: 5 }),
+    });
+    const user = userEvent.setup();
+    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
+    const rewrite = section("Rewrite data files");
+    expect(within(rewrite).getByRole("combobox", { name: "Partial progress" })).toHaveTextContent("On");
+    await user.click(within(rewrite).getByRole("combobox", { name: "Partial progress" }));
+    await user.click(await screen.findByRole("option", { name: "Procedure default" }));
+    await user.click(within(rewrite).getByRole("combobox", { name: "Rewrite all" }));
+    await user.click(await screen.findByRole("option", { name: "On" }));
+    await replace(user, within(section("Rewrite manifests")).getByRole("textbox", { name: "Small manifests at most" }), "8");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(callsTo(calls, "PUT", "/v1/maintenance-policies/nightly")).toHaveLength(1));
+    const body = bodyOf(calls, "PUT", "/v1/maintenance-policies/nightly") as ReturnType<typeof policyContentFixture>;
+    expect(body.rewrite_data_files?.options).toEqual({ min_input_files: 2, rewrite_all: true });
+    expect(body.rewrite_manifests).toEqual({ target: { small_manifests: { at_most: 8 } }, options: null });
+  });
+
+  it("shows the API's refusal of a value in the dialog", async () => {
+    stubCatalogApi({
+      "PUT /v1/maintenance-policies/nightly": () =>
+        jsonResponse({ detail: "expire_snapshots.target.min_snapshots_to_keep must be at least 1" }, 422),
+    });
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={onClose} />);
+    await replace(user, within(section("Expire snapshots")).getByRole("textbox", { name: "Min snapshots to keep" }), "0");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit policy" });
+    expect(
+      await within(dialog).findByText("expire_snapshots.target.min_snapshots_to_keep must be at least 1"),
+    ).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("shows the conflict copy on a stale version and reloads their version", async () => {
-    const theirs = { ...NIGHTLY, version: 6, reconcile_interval_seconds: 600 };
+    const theirs = { ...NIGHTLY, version: 6, on: { schedule: { every_seconds: 600 }, catalog_commit: null } };
     const calls = stubCatalogApi({
       "PUT /v1/maintenance-policies/nightly": () => jsonResponse({ detail: "stale version" }, 409),
       "GET /v1/maintenance-policies/nightly": () => jsonResponse(theirs),
@@ -121,9 +136,8 @@ describe("PolicyEditor", () => {
     ).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Reload" }));
-    await waitFor(() =>
-      expect(screen.getByRole("textbox", { name: "Reconcile interval (seconds)" })).toHaveValue("600"),
-    );
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Check every (seconds)" })).toHaveValue("600"));
+    expect(screen.getByRole("switch", { name: "Check after catalog commits" })).not.toBeChecked();
     expect(screen.queryByText(/Someone else changed this policy/)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -154,95 +168,74 @@ describe("PolicyEditor", () => {
     expect(writesOf(calls)).toEqual([]);
   });
 
-  it("refuses a value that is not a whole number, naming the field", async () => {
+  it("refuses a check interval under a minute, without sending it", async () => {
     const calls = stubCatalogApi({});
     const user = userEvent.setup();
     renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
-    await replace(user, within(section("Expire snapshots")).getByRole("textbox", { name: "Retain last" }), "");
+    await replace(user, screen.getByRole("textbox", { name: "Check every (seconds)" }), "30");
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(screen.getByText("Expire snapshots: Retain last must be a whole number.")).toBeInTheDocument();
+    expect(screen.getByText("Check every must be 60 to 604800 seconds.")).toBeInTheDocument();
     expect(writesOf(calls)).toEqual([]);
   });
 
-  it("refuses a reconcile interval of zero, without sending it", async () => {
+  it("refuses a value that is not a whole number, naming the section and the field", async () => {
     const calls = stubCatalogApi({});
     const user = userEvent.setup();
     renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
-    await replace(user, screen.getByRole("textbox", { name: "Reconcile interval (seconds)" }), "0");
+    await replace(user, within(section("Expire snapshots")).getByRole("textbox", { name: "Min snapshots to keep" }), "1e");
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(screen.getByText("Reconcile interval must be greater than zero.")).toBeInTheDocument();
+    expect(screen.getByText("Expire snapshots: Min snapshots to keep must be a whole number.")).toBeInTheDocument();
     expect(writesOf(calls)).toEqual([]);
   });
 
-  it("refuses a negative cooldown, without sending it", async () => {
-    const calls = stubCatalogApi({});
-    const user = userEvent.setup();
-    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
-    await replace(user, within(section("Expire snapshots")).getByRole("textbox", { name: "Cooldown (seconds)" }), "-60");
-    await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(screen.getByText("Expire snapshots: Cooldown must be a whole number.")).toBeInTheDocument();
-    expect(writesOf(calls)).toEqual([]);
-  });
-
-  it("refuses a half-typed optional threshold instead of sending it as not checked", async () => {
-    const calls = stubCatalogApi({});
-    const user = userEvent.setup();
-    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
-    const reducible = within(section("Rewrite data files")).getByLabelText("Reducible files at least");
-    await replace(user, reducible, "1e");
-    await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(
-      screen.getByText("Rewrite data files: Reducible files at least must be a whole number."),
-    ).toBeInTheDocument();
-    expect(writesOf(calls)).toEqual([]);
-  });
-
-  it("shows each operation with its scope only on rewrite data files", () => {
+  it("shows each operation with a target and an options group, and no priority", () => {
     stubCatalogApi({});
     renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
     for (const name of ["Rewrite data files", "Rewrite manifests", "Expire snapshots", "Remove orphan files"]) {
-      expect(within(section(name)).getByRole("group", { name: "Trigger" })).toBeInTheDocument();
-      expect(within(section(name)).getByRole("group", { name: "Execution" })).toBeInTheDocument();
+      expect(within(section(name)).getByRole("group", { name: "Target" })).toBeInTheDocument();
+      expect(within(section(name)).getByRole("group", { name: "Options" })).toBeInTheDocument();
     }
-    expect(within(section("Rewrite data files")).getByRole("combobox", { name: "Scope" })).toBeInTheDocument();
-    expect(within(section("Expire snapshots")).queryByRole("combobox", { name: "Scope" })).not.toBeInTheDocument();
+    expect(within(section("Rewrite data files")).getByRole("combobox", { name: "Per" })).toHaveTextContent(
+      "Each partition",
+    );
+    expect(screen.queryByRole("combobox", { name: "Priority" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: /Cooldown/ })).not.toBeInTheDocument();
   });
 
-  it("sends the priority chosen", async () => {
-    const calls = stubCatalogApi({
-      "PUT /v1/maintenance-policies/nightly": () => jsonResponse({ ...NIGHTLY, version: 5, priority: "P0" }),
-    });
-    const user = userEvent.setup();
-    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
-    const dialog = await screen.findByRole("dialog", { name: "Edit policy" });
-    await user.click(within(dialog).getByRole("combobox", { name: "Priority" }));
-    await user.click(await screen.findByRole("option", { name: "P0" }));
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
-
-    await waitFor(() => expect(callsTo(calls, "PUT", "/v1/maintenance-policies/nightly")).toHaveLength(1));
-    expect(bodyOf(calls, "PUT", "/v1/maintenance-policies/nightly")).toMatchObject({ priority: "P0", version: 4 });
-  });
-
-  it("offers each priority as it is and says compaction rounds no longer order maintenance", async () => {
+  it("points to the platform settings for cooldowns and failure back-off", () => {
     stubCatalogApi({});
-    const user = userEvent.setup();
     renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
-    const dialog = await screen.findByRole("dialog", { name: "Edit policy" });
-    expect(within(dialog).getByRole("combobox", { name: "Priority" })).toHaveTextContent("P2");
-    await user.click(within(dialog).getByRole("combobox", { name: "Priority" }));
-    expect(await screen.findByRole("option", { name: "P0" })).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(
-        "Compaction rounds are gone: this priority no longer orders maintenance. A table's own priority (on its Overview tab) does. KCL-91 removes this field.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "platform settings" })).toHaveAttribute("href", "/platform-settings");
   });
 
-  it("starts a policy without a priority at P2", () => {
+  it("is operated with the keyboard", async () => {
     stubCatalogApi({});
-    const content = policyContentFixture();
-    delete content.priority;
-    renderEditor(<PolicyEditor content={content} onClose={vi.fn()} />);
-    expect(screen.getByRole("combobox", { name: "Priority" })).toHaveTextContent("P2");
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={onClose} />);
+    const dialog = await screen.findByRole("dialog", { name: "Edit policy" });
+    within(dialog).getByRole("textbox", { name: "Description" }).focus();
+    await user.tab();
+    expect(within(dialog).getByRole("textbox", { name: "Check every (seconds)" })).toHaveFocus();
+
+    await user.tab();
+    const commits = within(dialog).getByRole("switch", { name: "Check after catalog commits" });
+    expect(commits).toHaveFocus();
+    await user.keyboard(" ");
+    expect(commits).not.toBeChecked();
+    expect(within(dialog).queryByRole("textbox", { name: "Debounce (seconds)" })).not.toBeInTheDocument();
+    await user.keyboard(" ");
+    expect(within(dialog).getByRole("textbox", { name: "Debounce (seconds)" })).toHaveValue("300");
+
+    const expire = section("Expire snapshots");
+    const included = within(expire).getByRole("switch", { name: "In this policy" });
+    included.focus();
+    await user.keyboard(" ");
+    expect(within(expire).queryByRole("textbox", { name: "Min snapshots to keep" })).not.toBeInTheDocument();
+    await user.keyboard(" ");
+    expect(within(expire).getByRole("textbox", { name: "Min snapshots to keep" })).toHaveValue("10");
+
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
   });
 });

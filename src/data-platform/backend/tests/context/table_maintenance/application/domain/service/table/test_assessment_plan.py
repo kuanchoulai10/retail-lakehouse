@@ -17,6 +17,7 @@ from context.table_maintenance.application.domain.model.shared import (
     TableObservation,
 )
 from context.table_maintenance.application.domain.model.table import (
+    OperationCooldowns,
     OperationState,
     Table,
     TableId,
@@ -26,13 +27,13 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
     TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-    CompactionScope,
+    AtMost,
     CompactionUnit,
-    ExpireSnapshotsExecutionPolicy,
+    ExpireSnapshotsSpec,
+    ExpireSnapshotsTarget,
     MaintenancePolicyContent,
-    RewriteManifestsConditions,
-    RewriteManifestsTriggerPolicy,
-    SmallManifestsCondition,
+    RewriteDataFilesSpec,
+    RewriteDataFilesTarget,
 )
 from context.table_maintenance.application.domain.service.table import assess_maintenance
 from tests.context.table_maintenance.fakes.policy_with_only_operation import policy_with_only_operation
@@ -41,6 +42,7 @@ from tests.context.table_maintenance.fakes.policy_with_operation import policy_w
 NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)
 MIB = 1024 * 1024
 DEFAULT = MaintenancePolicyContent.platform_default()
+PLATFORM = OperationCooldowns.platform_default()
 DAY_SPEC = PartitionSpecInfo(
     spec_id=0,
     fields=(PartitionFieldInfo(field_id=1000, name="d", source_column="ts", source_type="timestamp", transform="day"),),
@@ -92,10 +94,14 @@ def obs(
 
 
 def plan_of(
-    table: Table, policy: MaintenancePolicyContent, observation: TableObservation, now: datetime
+    table: Table,
+    policy: MaintenancePolicyContent,
+    observation: TableObservation,
+    now: datetime,
+    cooldowns: OperationCooldowns = PLATFORM,
 ) -> MaintenancePlan:
     """Return the plan of the table's maintenance assessment, as the planner builds it."""
-    return assess_maintenance(table, policy, observation, now).plan()
+    return assess_maintenance(table, policy, observation, now, cooldowns=cooldowns).plan()
 
 
 def ops(plan):
@@ -104,19 +110,21 @@ def ops(plan):
 
 
 def compact_only(unit: CompactionUnit = CompactionUnit.PARTITION) -> MaintenancePolicyContent:
-    """Return a policy with only data file compaction enabled, over the given unit."""
+    """Return a policy with only data file compaction, at most 5 reducible files per the given unit."""
+    target = RewriteDataFilesTarget(reducible_files=AtMost(at_most=5), per=unit)
     return policy_with_operation(
-        policy_with_only_operation(Op.REWRITE_DATA_FILES), Op.REWRITE_DATA_FILES, scope=CompactionScope(unit=unit)
+        policy_with_only_operation(Op.REWRITE_DATA_FILES), Op.REWRITE_DATA_FILES, RewriteDataFilesSpec(target=target)
     )
 
 
 def retain_last(policy: MaintenancePolicyContent, n: int) -> MaintenancePolicyContent:
     """Return the policy with snapshot expiry retaining the last ``n`` snapshots."""
-    execution = ExpireSnapshotsExecutionPolicy(older_than=timedelta(days=1), retain_last=n)
-    return policy_with_operation(policy, Op.EXPIRE_SNAPSHOTS, execution_policy=execution)
+    target = ExpireSnapshotsTarget(min_snapshots_to_keep=n, max_snapshot_age=timedelta(days=1))
+    return policy_with_operation(policy, Op.EXPIRE_SNAPSHOTS, ExpireSnapshotsSpec(target=target))
 
 
 P = compact_only()
+HOURLY = PLATFORM.with_changes(rewrite_data_files=timedelta(hours=1))
 
 
 def snaps(n, old):
@@ -131,10 +139,10 @@ def snaps(n, old):
 
 def test_partition_scope_selects_only_partitions_over_threshold():
     """With partition scope only the partitions over the threshold are planned for compaction."""
-    o = obs(partitions=(part(2, value=1), part(5, value=2), part(9, value=3)))
+    o = obs(partitions=(part(2, value=1), part(5, value=2), part(6, value=3), part(9, value=4)))
     plan = plan_of(table(), compact_only(), o, NOW)
     assert ops(plan) == [Op.REWRITE_DATA_FILES]
-    assert plan.operations[0].partitions == (o.partitions[1], o.partitions[2])
+    assert plan.operations[0].partitions == (o.partitions[2], o.partitions[3])
 
 
 def test_table_scope_sums_partitions():
@@ -215,24 +223,24 @@ def test_no_partition_over_threshold_plans_nothing():
 
 
 def test_cooldown_skips_operation():
-    """An operation in cooldown is not planned until the cooldown ends."""
+    """An operation in its platform cooldown is not planned until the cooldown ends."""
     o = obs(partitions=(part(10),))
     t = table()
     t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(minutes=30))
-    assert plan_of(t, P, o, NOW).is_empty
+    assert plan_of(t, P, o, NOW, HOURLY).is_empty
     t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
         last_attempt_at=NOW - timedelta(hours=3), consecutive_failures=2
     )
-    assert plan_of(t, P, o, NOW).is_empty
+    assert plan_of(t, P, o, NOW, HOURLY).is_empty
     t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
         last_attempt_at=NOW - timedelta(hours=5), consecutive_failures=2
     )
-    assert not plan_of(t, P, o, NOW).is_empty
+    assert not plan_of(t, P, o, NOW, HOURLY).is_empty
 
 
 def test_disabled_operation_never_planned():
-    """A disabled operation is never planned."""
-    s = policy_with_operation(policy_with_only_operation(Op.REMOVE_ORPHAN_FILES), Op.REMOVE_ORPHAN_FILES, enabled=False)
+    """An operation the policy leaves out is never planned."""
+    s = policy_with_operation(policy_with_only_operation(Op.REMOVE_ORPHAN_FILES), Op.REMOVE_ORPHAN_FILES, None)
     assert plan_of(table(), s, obs(partitions=(part(10),)), NOW).is_empty
 
 
@@ -255,46 +263,40 @@ def test_current_snapshot_is_never_expirable():
 
 
 def test_rewrite_manifests_due_on_small_manifest_count():
-    """Manifest rewriting is planned when enough small manifests exist."""
+    """Manifest rewriting is planned when there are more small manifests than the target."""
     s = policy_with_only_operation(Op.REWRITE_MANIFESTS)
     small = ManifestStats(length_bytes=MIB)
     big = ManifestStats(length_bytes=9 * MIB)
-    assert ops(plan_of(table(), s, obs(manifests=(small,) * 5 + (big,)), NOW)) == [Op.REWRITE_MANIFESTS]
-    assert plan_of(table(), s, obs(manifests=(small,) * 4), NOW).is_empty
+    assert ops(plan_of(table(), s, obs(manifests=(small,) * 6 + (big,)), NOW)) == [Op.REWRITE_MANIFESTS]
+    assert plan_of(table(), s, obs(manifests=(small,) * 5 + (big,)), NOW).is_empty
 
 
-def test_manifest_threshold_from_settings_and_property():
-    """The small manifest threshold comes from the condition and the table property."""
-    m = (ManifestStats(length_bytes=2 * MIB),) * 5
+def test_manifest_threshold_from_the_table_property():
+    """A manifest is small under the table's manifest target size, else under 8 MiB."""
+    m = (ManifestStats(length_bytes=2 * MIB),) * 6
     s = policy_with_only_operation(Op.REWRITE_MANIFESTS)
     assert not plan_of(table(), s, obs(manifests=m), NOW).is_empty
     prop = obs(manifests=m, properties={"commit.manifest.target-size-bytes": str(MIB)})
     assert plan_of(table(), s, prop, NOW).is_empty
-    trigger = RewriteManifestsTriggerPolicy(
-        cooldown=timedelta(hours=6),
-        conditions=RewriteManifestsConditions(
-            small_manifests=SmallManifestsCondition(at_least=5, smaller_than_bytes=MIB)
-        ),
-    )
-    s2 = policy_with_operation(s, Op.REWRITE_MANIFESTS, trigger_policy=trigger)
-    assert plan_of(table(), s2, obs(manifests=m), NOW).is_empty
 
 
 def test_remove_orphan_files_due_after_interval():
-    """Orphan file removal is planned again once its cooldown has passed."""
+    """Orphan file removal is planned again once the platform interval has passed."""
     s = policy_with_only_operation(Op.REMOVE_ORPHAN_FILES)
+    weekly = PLATFORM.with_changes(remove_orphan_files=timedelta(days=7))
     t = table()
-    assert ops(plan_of(t, s, obs(), NOW)) == [Op.REMOVE_ORPHAN_FILES]
+    assert ops(plan_of(t, s, obs(), NOW, weekly)) == [Op.REMOVE_ORPHAN_FILES]
     t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=6))
-    assert plan_of(t, s, obs(), NOW).is_empty
-    assert DEFAULT.operations.remove_orphan_files.trigger_policy.cooldown == timedelta(days=7)
+    assert plan_of(t, s, obs(), NOW, weekly).is_empty
+    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=7))
+    assert ops(plan_of(t, s, obs(), NOW, weekly)) == [Op.REMOVE_ORPHAN_FILES]
 
 
 def test_plan_order_is_canonical():
     """Planned operations follow the canonical order."""
     o = obs(
         partitions=(part(10),),
-        manifests=(ManifestStats(length_bytes=MIB),) * 5,
+        manifests=(ManifestStats(length_bytes=MIB),) * 6,
         snapshots=snaps(12, 11),
     )
     assert ops(plan_of(table(), DEFAULT, o, NOW)) == list(Op.ordered())
@@ -305,13 +307,13 @@ def test_cooldown_boundary_is_inclusive():
     t = table()
     o = obs(partitions=(part(10),))
     t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(hours=1))
-    assert ops(plan_of(t, P, o, NOW)) == [Op.REWRITE_DATA_FILES]
+    assert ops(plan_of(t, P, o, NOW, HOURLY)) == [Op.REWRITE_DATA_FILES]
 
 
 def test_manifest_equal_to_threshold_is_not_small():
     """A manifest exactly at the size threshold is not counted as small."""
     s = policy_with_only_operation(Op.REWRITE_MANIFESTS)
-    m = (ManifestStats(length_bytes=8 * MIB),) * 5
+    m = (ManifestStats(length_bytes=8 * MIB),) * 6
     assert plan_of(table(), s, obs(manifests=m), NOW).is_empty
 
 
@@ -325,10 +327,11 @@ def test_snapshot_committed_exactly_at_cutoff_is_not_expirable():
     assert plan_of(table(), s, obs(snapshots=snaps_), NOW).is_empty
 
 
-def test_table_scope_sum_equal_to_threshold_is_planned():
-    """A table scope sum equal to the threshold is planned."""
+def test_table_scope_sum_at_the_target_is_not_planned():
+    """A table scope sum at the target is on target; one more file is planned."""
     s = compact_only(CompactionUnit.TABLE)
-    o = obs(partitions=(part(2, value=1), part(3, value=2)))
+    assert plan_of(table(), s, obs(partitions=(part(2, value=1), part(3, value=2))), NOW).is_empty
+    o = obs(partitions=(part(3, value=1), part(3, value=2)))
     assert ops(plan_of(table(), s, o, NOW)) == [Op.REWRITE_DATA_FILES]
 
 
@@ -361,7 +364,7 @@ def test_malformed_target_file_size_property_falls_back_to_default():
 def test_malformed_manifest_size_property_falls_back_to_default():
     """A malformed manifest size property falls back to the default."""
     s = policy_with_only_operation(Op.REWRITE_MANIFESTS)
-    m = (ManifestStats(length_bytes=MIB),) * 5
+    m = (ManifestStats(length_bytes=MIB),) * 6
     for bad in ("abc", "0", "-5"):
         o = obs(properties={"commit.manifest.target-size-bytes": bad}, manifests=m)
         assert ops(plan_of(table(), s, o, NOW)) == [Op.REWRITE_MANIFESTS]

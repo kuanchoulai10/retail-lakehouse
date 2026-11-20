@@ -38,6 +38,9 @@ export const Default: Story = {
     await expect(within(nightly).getByText("No longer in the catalog")).toBeVisible();
     await expect(within(row(canvasElement, "default")).getByText("Default")).toBeVisible();
     await expect(within(row(canvasElement, "default")).getByRole("button", { name: "Delete default" })).toBeDisabled();
+    await expect(canvas.getByRole("columnheader", { name: "Checks" })).toBeVisible();
+    await expect(within(row(canvasElement, "default")).getByText("Every 1 h, and 5 min after a commit")).toBeVisible();
+    await expect(within(nightly).getByText("Every 1 d")).toBeVisible();
   },
 };
 
@@ -84,9 +87,10 @@ export const Editor: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Edit retail-nightly" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit policy" });
     const rewrite = within(dialog).getByRole("group", { name: "Rewrite data files" });
-    await expect(within(rewrite).getByRole("combobox", { name: "Scope" })).toHaveTextContent("Whole table");
-    await expect(within(rewrite).getByRole("textbox", { name: "Reducible files at least" })).toHaveValue("20");
-    await expect(within(dialog).getByRole("combobox", { name: "Priority" })).toHaveTextContent("P0");
+    await expect(within(rewrite).getByRole("combobox", { name: "Per" })).toHaveTextContent("Whole table");
+    await expect(within(rewrite).getByRole("textbox", { name: "Reducible files at most" })).toHaveValue("20");
+    await expect(within(dialog).getByRole("switch", { name: "Check after catalog commits" })).not.toBeChecked();
+    await expect(within(dialog).queryByRole("combobox", { name: "Priority" })).toBeNull();
   },
 };
 

@@ -12,9 +12,9 @@ import type { ListedTableMaintenancePolicyApiResponse } from "@/api/generated/mo
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { PolicyAttachments } from "@/components/PolicyAttachments";
 import { PolicyEditor } from "@/components/PolicyEditor";
-import { PriorityText } from "@/components/PriorityText";
 import { ResourceListPage } from "@/components/ResourceListPage";
 import { errorMessage } from "@/format";
+import { policyChecksText } from "@/lib/policyChecksText";
 import type { PolicyContent } from "@/lib/policyDraft";
 
 // The server always seeds the default policy and flags it with `is_default` (its name is only
@@ -28,10 +28,12 @@ type Policy = ListedTableMaintenancePolicyApiResponse;
 function contentOf(policy: Policy): PolicyContent {
   return {
     description: policy.description,
-    reconcile_interval_seconds: policy.reconcile_interval_seconds,
+    on: policy.on,
     dry_run: policy.dry_run,
-    priority: policy.priority,
-    operations: policy.operations,
+    rewrite_data_files: policy.rewrite_data_files,
+    rewrite_manifests: policy.rewrite_manifests,
+    expire_snapshots: policy.expire_snapshots,
+    remove_orphan_files: policy.remove_orphan_files,
   };
 }
 
@@ -91,7 +93,7 @@ export function PoliciesPage() {
             cell: (row) =>
               row.description === "" ? <span className="text-on-surface-variant">—</span> : row.description,
           },
-          { header: "Priority", cell: (row) => <PriorityText priority={row.priority} /> },
+          { header: "Checks", cell: (row) => policyChecksText(row.on) },
           { header: "Version", cell: (row) => <span className="tabular-nums">{row.version}</span> },
           {
             header: "Attached to",

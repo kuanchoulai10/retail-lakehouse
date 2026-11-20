@@ -126,7 +126,19 @@ def test_table_applicable_policy_names_where_it_came_from(world: PolicyWebWorld)
     body = world.client.get("/v1/tables/u-1/applicable-policy").json()
     assert (body["id"], body["name"], body["version"]) == (_gold_id(world), "gold", 1)
     assert body["target"] == {"type": "namespace", "path": ["prod", "sales"], "table_uuid": None}
-    assert body["operations"]["rewrite_data_files"]["enabled"] is True
+    assert body["rewrite_data_files"]["target"] == {"reducible_files": {"at_most": 5}, "per": "partition"}
+
+
+def test_applicable_policy_shows_the_new_shape(world: PolicyWebWorld) -> None:
+    """The applicable policy carries ``on`` and the blocks at the top level, an absent one as null."""
+    body = world.client.get("/v1/tables/u-1/applicable-policy").json()
+    assert body["on"] == {"schedule": {"every_seconds": 3600}, "catalog_commit": {"debounce_seconds": 300}}
+    assert body["expire_snapshots"] == {
+        "target": {"min_snapshots_to_keep": 10, "max_snapshot_age_seconds": 86400},
+        "options": None,
+    }
+    assert "operations" not in body
+    assert "reconcile_interval_seconds" not in body
 
 
 def test_table_applicable_policy_falls_back_to_default(world: PolicyWebWorld) -> None:

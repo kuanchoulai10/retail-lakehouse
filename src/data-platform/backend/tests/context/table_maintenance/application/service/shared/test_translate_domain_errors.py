@@ -8,7 +8,7 @@ import pytest
 
 from base import UseCaseOutput
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-    RemoveOrphanFilesExecutionPolicy,
+    RemoveOrphanFilesTarget,
 )
 from context.table_maintenance.application.exceptions import (
     NotFoundError,
@@ -22,14 +22,14 @@ from context.table_maintenance.application.service.shared import (
 def test_an_invalid_value_object_becomes_a_one_line_validation_error() -> None:
     """A broken invariant reads as one line naming the field."""
     with pytest.raises(ValidationError) as caught, translate_domain_errors():
-        RemoveOrphanFilesExecutionPolicy.from_primitives({"older_than_seconds": 60})
+        RemoveOrphanFilesTarget.from_primitives({"older_than_seconds": 60})
     assert str(caught.value) == "older_than_seconds: must be at least 1 day"
 
 
 def test_an_invalid_construction_becomes_a_validation_error() -> None:
     """Building a value object with a broken invariant in code is a validation error too."""
     with pytest.raises(ValidationError) as caught, translate_domain_errors():
-        RemoveOrphanFilesExecutionPolicy(older_than=timedelta(0))
+        RemoveOrphanFilesTarget(older_than=timedelta(0))
     assert str(caught.value) == "older_than: must be at least 1 day"
 
 

@@ -29,36 +29,20 @@ export function tableFixture(overrides: Partial<TableApiResponse> = {}): TableAp
   };
 }
 
-// The platform default policy's content, as the spec gives it.
-export function policyContentFixture(): Omit<CreateTableMaintenancePolicyApiRequest, "name"> {
+// The platform default policy's content, as the API returns it (every block and option key
+// present or null).
+export function policyContentFixture(): Required<Omit<CreateTableMaintenancePolicyApiRequest, "name">> {
   return {
     description: "Platform default",
-    reconcile_interval_seconds: 3600,
+    on: { schedule: { every_seconds: 3600 }, catalog_commit: { debounce_seconds: 300 } },
     dry_run: false,
-    priority: "P2",
-    operations: {
-      rewrite_data_files: {
-        enabled: true,
-        scope: { unit: "partition" },
-        trigger_policy: { cooldown_seconds: 3600, conditions: { reducible_files: { at_least: 5 } } },
-        execution_policy: { target_file_size_bytes: null, min_input_files: 2, partial_progress: { enabled: true, max_commits: null } },
-      },
-      rewrite_manifests: {
-        enabled: true,
-        trigger_policy: { cooldown_seconds: 21600, conditions: { small_manifests: { at_least: 5, smaller_than_bytes: null } } },
-        execution_policy: {},
-      },
-      expire_snapshots: {
-        enabled: true,
-        trigger_policy: { cooldown_seconds: 21600, conditions: { expirable_snapshots: { at_least: 1 } } },
-        execution_policy: { older_than_seconds: 86400, retain_last: 10 },
-      },
-      remove_orphan_files: {
-        enabled: true,
-        trigger_policy: { cooldown_seconds: 604800, conditions: {} },
-        execution_policy: { older_than_seconds: 259200 },
-      },
+    rewrite_data_files: {
+      target: { reducible_files: { at_most: 5 }, per: "partition" },
+      options: { min_input_files: 2, partial_progress_enabled: true },
     },
+    rewrite_manifests: { target: { small_manifests: { at_most: 5 } }, options: null },
+    expire_snapshots: { target: { min_snapshots_to_keep: 10, max_snapshot_age_seconds: 86400 }, options: null },
+    remove_orphan_files: { target: { older_than_seconds: 259200 }, options: null },
   };
 }
 
@@ -80,7 +64,6 @@ export function policyFixture(
     created_at: "2026-11-01T09:00:00Z",
     updated_at: "2026-11-02T09:00:00Z",
     ...policyContentFixture(),
-    priority: "P2",
     ...overrides,
   };
 }

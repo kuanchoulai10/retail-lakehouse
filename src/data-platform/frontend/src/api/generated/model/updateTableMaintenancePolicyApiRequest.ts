@@ -4,17 +4,22 @@
  * Data Platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { MaintenancePriorityApi } from './maintenancePriorityApi';
-import type { OperationPoliciesApiRequest } from './operationPoliciesApiRequest';
+import type { ExpireSnapshotsSpecApiRequest } from './expireSnapshotsSpecApiRequest';
+import type { MaintenanceTriggersApiRequest } from './maintenanceTriggersApiRequest';
+import type { RemoveOrphanFilesSpecApiRequest } from './removeOrphanFilesSpecApiRequest';
+import type { RewriteDataFilesSpecApiRequest } from './rewriteDataFilesSpecApiRequest';
+import type { RewriteManifestsSpecApiRequest } from './rewriteManifestsSpecApiRequest';
 
 /**
- * Carry a policy's whole new content and the version it was edited from.
+ * Carry a policy's whole new content and the version it was edited from; a block left out is removed.
  */
 export interface UpdateTableMaintenancePolicyApiRequest {
   description: string;
-  dry_run: boolean;
-  operations: OperationPoliciesApiRequest;
-  priority?: MaintenancePriorityApi;
-  reconcile_interval_seconds: number;
+  dry_run?: boolean;
+  expire_snapshots?: ExpireSnapshotsSpecApiRequest | null;
+  on: MaintenanceTriggersApiRequest;
+  remove_orphan_files?: RemoveOrphanFilesSpecApiRequest | null;
+  rewrite_data_files?: RewriteDataFilesSpecApiRequest | null;
+  rewrite_manifests?: RewriteManifestsSpecApiRequest | null;
   version: number;
 }

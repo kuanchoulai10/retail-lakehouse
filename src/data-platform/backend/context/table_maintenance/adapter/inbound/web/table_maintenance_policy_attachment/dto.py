@@ -12,7 +12,13 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from context.table_maintenance.adapter.inbound.web.table_maintenance_policy import OperationPoliciesApiRequest
+from context.table_maintenance.adapter.inbound.web.table_maintenance_policy import (
+    ExpireSnapshotsSpecApiRequest,
+    MaintenanceTriggersApiRequest,
+    RemoveOrphanFilesSpecApiRequest,
+    RewriteDataFilesSpecApiRequest,
+    RewriteManifestsSpecApiRequest,
+)
 
 PolicyTargetKind = Literal["catalog", "namespace", "table"]
 
@@ -92,7 +98,10 @@ class ApplicableTableMaintenancePolicyApiResponse(BaseModel):
     name: str
     version: int
     description: str
-    reconcile_interval_seconds: int
+    on: MaintenanceTriggersApiRequest
     dry_run: bool
-    operations: OperationPoliciesApiRequest
+    rewrite_data_files: RewriteDataFilesSpecApiRequest | None
+    rewrite_manifests: RewriteManifestsSpecApiRequest | None
+    expire_snapshots: ExpireSnapshotsSpecApiRequest | None
+    remove_orphan_files: RemoveOrphanFilesSpecApiRequest | None
     target: PolicyTargetApiResponse | None

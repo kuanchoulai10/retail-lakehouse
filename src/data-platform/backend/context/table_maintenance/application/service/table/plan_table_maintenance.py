@@ -88,14 +88,15 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         time. The result is a skip with a reason when the table is dropped, unmanaged
         or gone from the catalog; otherwise it is planned, possibly empty.
         Every plan of a known table resolves the policy that applies to it, whose
-        reconcile interval, dry run and operation policies it follows. A plan of a
+        schedule interval, dry run and operation blocks it follows. A plan of a
         managed table first lifts the needs-attention marks set under an earlier
         applicable policy and saves the table when it lifted any. A plan that
         observes the table saves its newest commit when that moves its last commit.
 
         Every planned operation targets the whole table (no filters) and starts at
         the size the table remembers for it; a due compaction rewrites the whole
-        table with the policy's rewrite options, however many partitions qualify.
+        table with the policy's rewrite options, however many partitions qualify; an operation
+        the policy leaves out is never due, and a manual run of it runs with the platform's defaults.
         """
         manual = self._parse_manual(request.manual_operations)
         manual_priority = self._parse_manual_priority(request.manual_priority)
@@ -224,7 +225,8 @@ def _priority_of(table: Table, manual_priority: TablePriority | None) -> str:
 
 
 def _interval(policy: MaintenancePolicyContent) -> int:
-    return int(policy.reconcile_interval.total_seconds())
+    """Return the schedule interval of ``policy`` in seconds, which the reconciliation waits between checks."""
+    return int(policy.on.schedule.every.total_seconds())
 
 
 _VERDICTS = {

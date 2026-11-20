@@ -4,8 +4,12 @@
  * Data Platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { OperationPoliciesApiRequest } from './operationPoliciesApiRequest';
+import type { ExpireSnapshotsSpecApiRequest } from './expireSnapshotsSpecApiRequest';
+import type { MaintenanceTriggersApiRequest } from './maintenanceTriggersApiRequest';
 import type { PolicyTargetApiResponse } from './policyTargetApiResponse';
+import type { RemoveOrphanFilesSpecApiRequest } from './removeOrphanFilesSpecApiRequest';
+import type { RewriteDataFilesSpecApiRequest } from './rewriteDataFilesSpecApiRequest';
+import type { RewriteManifestsSpecApiRequest } from './rewriteManifestsSpecApiRequest';
 
 /**
  * Describe the policy that applies after inheritance and the target it is attached to, null for the default.
@@ -13,10 +17,13 @@ import type { PolicyTargetApiResponse } from './policyTargetApiResponse';
 export interface ApplicableTableMaintenancePolicyApiResponse {
   description: string;
   dry_run: boolean;
+  expire_snapshots: ExpireSnapshotsSpecApiRequest | null;
   id: string;
   name: string;
-  operations: OperationPoliciesApiRequest;
-  reconcile_interval_seconds: number;
+  on: MaintenanceTriggersApiRequest;
+  remove_orphan_files: RemoveOrphanFilesSpecApiRequest | null;
+  rewrite_data_files: RewriteDataFilesSpecApiRequest | null;
+  rewrite_manifests: RewriteManifestsSpecApiRequest | null;
   target: PolicyTargetApiResponse | null;
   version: number;
 }

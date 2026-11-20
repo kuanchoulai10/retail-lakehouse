@@ -65,6 +65,9 @@ from context.table_maintenance.application.domain.model.shared.size_source impor
 from context.table_maintenance.application.domain.model.shared.snapshot_info import (
     SnapshotInfo,
 )
+from context.table_maintenance.application.domain.model.shared.snapshot_retention import (
+    SnapshotRetention,
+)
 from context.table_maintenance.application.domain.model.shared.spec_filter import (
     SpecFilter,
 )
@@ -100,6 +103,7 @@ __all__ = [
     "SizeMemory",
     "SizeSource",
     "SnapshotInfo",
+    "SnapshotRetention",
     "SpecFilter",
     "TableObservation",
     "TablePriority",

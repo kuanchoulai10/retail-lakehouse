@@ -18,15 +18,48 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
+// retail-nightly: checked once a day, not after commits, compacting whole tables with a sort.
+export const WithoutCatalogCommits: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole("heading", { level: 1, name: "retail-nightly v4" })).toBeVisible();
+    await expect(within(canvas.getByRole("region", { name: "Policy" })).getByText("Every 1 d")).toBeVisible();
     const data = within(canvas.getByRole("region", { name: "Rewrite data files" }));
-    await expect(data.getByText("Whole table")).toBeVisible();
-    await expect(data.getByText("Reducible files at least 20")).toBeVisible();
-    await expect(await within(canvas.getByRole("region", { name: "Policy" })).findByText("P0")).toBeVisible();
+    await expect(data.getByText("Reducible files at most 20, across the table")).toBeVisible();
+    await expect(data.getByText("order_date DESC NULLS LAST")).toBeVisible();
     await expect(canvas.queryByRole("textbox")).toBeNull();
+  },
+};
+
+export const DefaultPolicy: Story = {
+  args: { route: "/policies/default/versions/3" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole("heading", { level: 1, name: "default v3" })).toBeVisible();
+    await expect(
+      within(canvas.getByRole("region", { name: "Policy" })).getByText("Every 1 h, and 5 min after a commit"),
+    ).toBeVisible();
+    const snapshots = within(canvas.getByRole("region", { name: "Expire snapshots" }));
+    await expect(snapshots.getByText("Keep at least 10 snapshots")).toBeVisible();
+    await expect(snapshots.getByText("Expire snapshots older than 1 d")).toBeVisible();
+    await expect(
+      within(canvas.getByRole("region", { name: "Remove orphan files" })).getByText("Remove orphan files older than 3 d"),
+    ).toBeVisible();
+  },
+};
+
+export const OnlyRewriteDataFiles: Story = {
+  args: { route: "/policies/scratch/versions/1" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole("heading", { level: 1, name: "scratch v1" })).toBeVisible();
+    for (const name of ["Rewrite manifests", "Expire snapshots", "Remove orphan files"]) {
+      await expect(within(canvas.getByRole("region", { name })).getByText("Not in this policy")).toBeVisible();
+    }
+    await expect(
+      within(canvas.getByRole("region", { name: "Rewrite data files" })).getByText("Reducible files at most 5, per partition"),
+    ).toBeVisible();
+    await expect(within(canvas.getByRole("region", { name: "Policy" })).getByText("On: nothing is started")).toBeVisible();
   },
 };
 
