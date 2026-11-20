@@ -260,10 +260,10 @@ def test_unknown_priority_is_refused_and_nothing_is_rendered(priority: str):
 @pytest.mark.parametrize(
     ("priority", "priority_class"), [("P0", "table-maintenance-p0"), ("P3", "table-maintenance-p3")]
 )
-def test_driver_and_executor_pods_carry_the_priority_class_of_the_pod_group(priority: str, priority_class: str):
-    """The operator copies the class only to the PodGroup, so the pods are given it too."""
+def test_only_the_pod_group_carries_the_priority_class(priority: str, priority_class: str):
+    """The class orders the queue; the pods keep no class, so eviction does not favour them over the platform."""
     spec = build_spark_application(CONFIG, replace(INPUT, priority=priority), "app")["spec"]
 
     assert spec["batchSchedulerOptions"]["priorityClassName"] == priority_class
-    assert spec["driver"]["priorityClassName"] == priority_class
-    assert spec["executor"]["priorityClassName"] == priority_class
+    assert "priorityClassName" not in spec["driver"]
+    assert "priorityClassName" not in spec["executor"]
