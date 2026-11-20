@@ -35,6 +35,8 @@ const METRICS: TableMetricValuesApiResponse = {
   manifest_deleted_entries: 6,
 };
 
+const VALUES = { ...METRICS, manifest_average_size_bytes: 64 * 1024, manifest_average_entries: 127 };
+
 const CURRENT: TableCurrentMetricsApiResponse = { observed_at: "2026-11-20T09:58:00Z", metrics: METRICS };
 
 function trends(range: string): TableMetricTrendsApiResponse {
@@ -46,8 +48,8 @@ function trends(range: string): TableMetricTrendsApiResponse {
     step_seconds: 180,
     points: [
       { at: at(0), values: { data_files: null, snapshots: null } },
-      { at: at(1), values: { ...METRICS, data_files: 1180, snapshots: 19 } },
-      { at: at(2), values: { ...METRICS } },
+      { at: at(1), values: { ...VALUES, data_files: 1180, snapshots: 19 } },
+      { at: at(2), values: { ...VALUES } },
     ],
   };
 }
@@ -116,6 +118,14 @@ describe("TableMetricsDashboard", () => {
     expect(await within(screen.getByRole("group", { name: "Data files" })).findByText("1,174")).toBeInTheDocument();
   });
 
+  it("says the current metrics are unavailable, shows a dash on every card, and still draws the trends", async () => {
+    renderDashboard({ [`GET ${CURRENT_PATH}`]: () => jsonResponse({ detail: "database down" }, 502) });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load the current metrics: database down");
+    expect(cards().map((card) => card.querySelectorAll("p")[1]?.textContent)).toEqual(CARDS.map(() => "—"));
+    await waitFor(() => expect(screen.getAllByRole("img", { name: / over the last 6 hours$/ })).toHaveLength(7));
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+  });
+
   it("asks for the last 6 hours by default and keeps the url clean", async () => {
     const calls = renderDashboard();
     await screen.findByText("1,174");
@@ -131,6 +141,7 @@ describe("TableMetricsDashboard", () => {
     await user.click(screen.getByRole("radio", { name: "Last 1 hour" }));
     await waitFor(() => expect(trendRequests(calls)).toContain(`${TRENDS_PATH}1h`));
     expect(screen.getByTestId("location")).toHaveTextContent("?range=1h");
+    expect(calls.filter((call) => call.path === CURRENT_PATH)).toHaveLength(1);
     await user.click(screen.getByRole("radio", { name: "Last 6 hours" }));
     await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent(/^$/));
   });

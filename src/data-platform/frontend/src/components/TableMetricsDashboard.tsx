@@ -12,6 +12,7 @@ import type { GetTableMetricTrendsRange, TableMetricValuesApiResponse } from "@/
 import { useGetTableCurrentMetrics, useGetTableMetricTrends } from "@/api/generated/tables/tables";
 import { useMetricRange } from "@/components/tabs/useMetricRange";
 import { errorMessage, formatBytes, formatCount } from "@/format";
+import { formatTrendTime } from "@/lib/formatTrendTime";
 import { metricDelta, metricTrendRows, type MetricTrendRow } from "@/lib/metricTrendRows";
 
 const REFETCH_MS = 60_000;
@@ -57,13 +58,6 @@ const MANIFESTS: readonly ChartSeries[] = [
 const MANIFEST_SIZE: readonly ChartSeries[] = [{ key: "manifest_average_size_bytes", name: "Average manifest size" }];
 const SNAPSHOTS: readonly ChartSeries[] = [{ key: "snapshots", name: "Snapshots" }];
 
-function formatTime(value: unknown): string {
-  const date = new Date(String(value));
-  return Number.isNaN(date.getTime())
-    ? String(value)
-    : date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-}
-
 function numbers(rows: readonly MetricTrendRow[], key: string): number[] {
   return rows.map((row) => row[key]).filter((value): value is number => typeof value === "number");
 }
@@ -94,7 +88,7 @@ export function TableMetricsDashboard({ tableUuid }: { tableUuid: string }) {
   const chart = (series: readonly ChartSeries[]) => ({
     data: chartRows(rows, series),
     index: "time",
-    indexFormatter: formatTime,
+    indexFormatter: (value: unknown) => formatTrendTime(value, range),
     series,
     loading: trends.isPending,
     error: trends.isError ? `Trends unavailable: ${errorMessage(trends.error)}` : undefined,
@@ -103,7 +97,7 @@ export function TableMetricsDashboard({ tableUuid }: { tableUuid: string }) {
   let note: ReactNode = null;
   if (current.isError) {
     note = (
-      <p className="type-body-medium text-negative-text">
+      <p role="alert" className="type-body-medium text-negative-text">
         {`Could not load the current metrics: ${errorMessage(current.error)}`}
       </p>
     );

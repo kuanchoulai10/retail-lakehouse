@@ -85,6 +85,7 @@ export const Keyboard: Story = {
       await expect(chart).toHaveFocus();
       const tooltip = await tooltipOf(chart);
       const first = tooltip.textContent;
+      await expect(tooltip).toHaveTextContent(/\d{2}:\d{2}:\d{2}/);
       await userEvent.keyboard("{ArrowRight}");
       await waitFor(() => expect(tooltip.textContent).not.toBe(first));
       await userEvent.keyboard("{ArrowLeft}");

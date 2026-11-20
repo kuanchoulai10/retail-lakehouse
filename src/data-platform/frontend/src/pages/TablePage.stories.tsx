@@ -86,6 +86,22 @@ export const OverviewNotReconciledYet: Story = {
   },
 };
 
+export const OverviewCurrentUnavailable: Story = {
+  beforeEach({ msw }) {
+    msw.use(apiError("get", "/v1/tables/:tableUuid/metrics/current", "database down", 502));
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole("alert")).toHaveTextContent("Could not load the current metrics: database down");
+    for (const label of METRIC_CARDS) {
+      await expect(canvas.getByRole("group", { name: label })).toHaveTextContent("—");
+    }
+    await waitFor(() =>
+      expect(canvasElement.querySelectorAll('svg.recharts-surface[tabindex="0"]')).toHaveLength(7),
+    );
+  },
+};
+
 export const OverviewPhone: Story = {
   globals: PHONE,
   play: async ({ canvasElement }) => {
