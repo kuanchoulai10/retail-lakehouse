@@ -48,6 +48,7 @@ class ScriptedMaintenanceActivities:
     ``driver_starts[app_name]`` is ``(reported_after, started_after)``: polls less than
     ``reported_after`` past the submit report no start, later ones report the submit plus
     ``started_after`` (negative for a clock before the submit); ``None`` never reports one.
+    An app in ``naive_driver_starts`` reports its start without a time zone.
     ``running_records`` keeps each record of a running attempt, and the attempts in
     ``running_record_errors`` fail that record non-retryably.
     """
@@ -79,6 +80,7 @@ class ScriptedMaintenanceActivities:
         self.delete_failures: dict[str, int] = {}
         self.driver_starts: dict[str, tuple[timedelta, timedelta] | None] = {}
         self.submitted_at: dict[str, datetime] = {}
+        self.naive_driver_starts: set[str] = set()
         self.running_records: list[dict] = []
         self.running_record_errors: set[tuple[str, int]] = set()
 
@@ -149,7 +151,8 @@ class ScriptedMaintenanceActivities:
         start = self.driver_starts.get(app_name, (timedelta(0), timedelta(0)))
         if start is None or polled_at - submitted_at < start[0]:
             return None
-        return (submitted_at + start[1]).isoformat()
+        started = submitted_at + start[1]
+        return (started.replace(tzinfo=None) if app_name in self.naive_driver_starts else started).isoformat()
 
     @activity.defn(name=TableMaintenanceActivity.RECORD_MAINTENANCE_ATTEMPT_RUNNING)
     async def record_maintenance_attempt_running(self, request: dict) -> dict:

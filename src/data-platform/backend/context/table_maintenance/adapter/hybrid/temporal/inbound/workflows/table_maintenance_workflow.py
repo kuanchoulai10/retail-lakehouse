@@ -35,6 +35,7 @@ _ACTIVITY_RETRY = RetryPolicy(maximum_attempts=5, initial_interval=timedelta(sec
 FAST_POLL_INTERVAL = timedelta(seconds=30)
 FAST_POLL_WINDOW = timedelta(minutes=10)
 SLOW_POLL_INTERVAL = timedelta(minutes=5)
+QUEUED_POLL_INTERVAL = timedelta(minutes=10)
 _CALLBACK_GRACE = timedelta(seconds=120)
 _TIMED_OUT = "spark job timed out"
 _MISSING = "spark job missing"
@@ -63,8 +64,8 @@ class TableMaintenanceWorkflow:
     spent waiting in the queue does not count toward it. An attempt still queued
     ``queue_wait_limit_seconds`` (input, 24 h by default) after its submit is fenced and ends
     ``queue_timed_out``. Polling runs every 30 s for the first 10 minutes of an attempt's queue
-    wait and again for the first 10 minutes after its driver starts, and every 5 minutes
-    otherwise, which bounds the history. A timed-out attempt is
+    wait and again for the first 10 minutes after its driver starts, then every 10 minutes while
+    it is queued and every 5 minutes once it runs, which bounds the history. A timed-out attempt is
     fenced before the next one is submitted: its Spark job is deleted and its pods are
     polled until none is live (see
     ``TableMaintenanceFencingPolicy``); pods still live after the confirm bound fail
@@ -212,7 +213,7 @@ class TableMaintenanceWorkflow:
             if now >= deadline:
                 return await self._past_deadline(name, attempt, running=running_since is not None)
             in_fast_window = now - (running_since or submitted_at) < FAST_POLL_WINDOW
-            interval = FAST_POLL_INTERVAL if in_fast_window else SLOW_POLL_INTERVAL
+            interval = _poll_interval(in_fast_window=in_fast_window, running=running_since is not None)
             try:
                 await workflow.wait_condition(lambda: key in self._results, timeout=min(interval, deadline - now))
                 return self._results[key]
@@ -469,6 +470,13 @@ class TableMaintenanceWorkflow:
             start_to_close_timeout=_ACTIVITY_TIMEOUT,
             retry_policy=_ACTIVITY_RETRY,
         )
+
+
+def _poll_interval(*, in_fast_window: bool, running: bool) -> timedelta:
+    """Return the wait before the next status poll: fast first, then slow once running, slower while queued."""
+    if in_fast_window:
+        return FAST_POLL_INTERVAL
+    return SLOW_POLL_INTERVAL if running else QUEUED_POLL_INTERVAL
 
 
 def _now() -> str:

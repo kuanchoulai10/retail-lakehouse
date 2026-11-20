@@ -347,16 +347,22 @@ def test_job_status_of_a_missing_job_reads_no_pods(read_job):
 
 
 def test_job_status_survives_a_failed_pods_read(read_job, caplog):
-    """A pods read that fails keeps the state and leaves the driver start out, with a warning."""
+    """A pods read that fails keeps the state and leaves the driver start out, logged as an error with its traceback.
+
+    Without the driver start the attempt stays queued, so the error must be visible.
+    """
     pods = ScriptedReadMaintenanceJobPodsGateway()
     pods.error = RuntimeError("k8s down")
     read_job.set_state(RUN_1, "rewrite_data_files", 1, "RUNNING")
 
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.ERROR):
         out = GetMaintenanceJobStatusService(read_job, pods).execute(_status_input())
 
     assert (out.state, out.driver_started_at) == ("RUNNING", None)
-    assert "k8s down" in caplog.text
+    [record] = [r for r in caplog.records if "cannot read the pods" in r.getMessage()]
+    assert record.levelno == logging.ERROR
+    assert record.exc_info is not None
+    assert record.exc_info[1] is pods.error
 
 
 def test_delete_job_forwards_the_attempt_to_the_gateway(delete_job):

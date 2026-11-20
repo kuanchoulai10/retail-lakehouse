@@ -75,13 +75,12 @@ class GetMaintenanceJobStatusService(GetMaintenanceJobStatusUseCase):
                     run_id=request.run_id, operation=operation.value, attempt=request.attempt
                 )
             )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "cannot read the pods of attempt %s of %s in run %s: %s",
+        except Exception:
+            logger.exception(
+                "cannot read the pods of attempt %s of %s in run %s; its driver start stays unknown",
                 request.attempt,
                 operation.value,
                 request.run_id,
-                exc,
             )
             return None
         return None if pods.driver_started_at is None else datetime.fromisoformat(pods.driver_started_at)

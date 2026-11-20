@@ -1265,3 +1265,73 @@ def test_failed_running_record_still_starts_the_deadline():
         assert QUEUED_FOR + SHORT_DEADLINE <= second - first < QUEUED_FOR + SHORT_DEADLINE + timedelta(minutes=3)
 
     _run(scenario)
+
+
+def test_queued_attempt_polls_slowly_after_the_fast_window():
+    """A queued attempt polls every 30 s for 10 minutes, then every 10 minutes until the queue wait limit.
+
+    Over the 24 h limit that is at most 20 + (24 h - 10 min) / 10 min = 163 status polls, which keeps
+    the history of a queued-out attempt small.
+    """
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.record_replies[(COMPACTION, 1)] = {"next_step": "not_retried"}
+        await h.run_maintenance(COMPACTION)
+
+        submitted = h.submit_times()[0]
+        polls = [t for t, name in zip(h.fakes.status_times, h.fakes.status_calls, strict=True) if name == FIRST_APP]
+        bound = 20 + (timedelta(hours=24) - timedelta(minutes=10)) // timedelta(minutes=10)
+        assert len(polls) <= bound
+        gaps = [b - a for a, b in zip(polls, polls[1:], strict=False)]
+        late = [g for p, g in zip(polls, gaps, strict=False) if p - submitted >= timedelta(minutes=10)]
+        assert late
+        assert all(g >= timedelta(minutes=10) for g in late)
+
+    _run(scenario)
+
+
+def test_fast_poll_window_restarts_at_the_driver_start():
+    """After the driver starts, polls run every 30 s again for 10 minutes from that start."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = (timedelta(minutes=30), timedelta(minutes=30))
+        await _run_with_a_short_deadline(h)
+
+        started = h.submit_times()[0] + timedelta(minutes=30)
+        polls = [t for t, name in zip(h.fakes.status_times, h.fakes.status_calls, strict=True) if name == FIRST_APP]
+        window = [t for t in polls if started <= t < started + timedelta(minutes=10)]
+        assert len(window) >= 19
+        assert all(b - a < timedelta(seconds=60) for a, b in zip(window, window[1:], strict=False))
+
+    _run(scenario)
+
+
+def test_driver_start_in_the_future_is_clamped_to_now():
+    """A driver clock that reads after the poll starts the attempt running at the poll, not later."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = (timedelta(0), timedelta(minutes=10))
+        await _run_with_a_short_deadline(h)
+
+        record = h.fakes.running_records[0]
+        assert record["started_running_at"] == record["now"]
+        first, second = h.submit_times()
+        assert SHORT_DEADLINE <= second - first < SHORT_DEADLINE + timedelta(minutes=3)
+
+    _run(scenario)
+
+
+def test_driver_start_without_a_time_zone_is_read_as_utc():
+    """A driver start reported without a time zone is taken as UTC."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = (QUEUED_FOR, QUEUED_FOR)
+        h.fakes.naive_driver_starts = {FIRST_APP}
+        await _run_with_a_short_deadline(h)
+
+        first, second = h.submit_times()
+        assert datetime.fromisoformat(h.fakes.running_records[0]["started_running_at"]) == first + QUEUED_FOR
+        assert QUEUED_FOR + SHORT_DEADLINE <= second - first < QUEUED_FOR + SHORT_DEADLINE + timedelta(minutes=3)
+
+    _run(scenario)
