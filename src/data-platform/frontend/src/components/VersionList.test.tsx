@@ -33,6 +33,16 @@ describe("VersionList", () => {
     expect(screen.queryByRole("button", { name: /earlier version/ })).not.toBeInTheDocument();
   });
 
+  it("stays expanded when a visible version is chosen after opening on a folded one", () => {
+    const { rerender } = render(
+      <VersionList label="Schema versions" versions={versions(12)} selectedId={0} onSelect={vi.fn()} />,
+    );
+    expect(screen.getAllByRole("listitem")).toHaveLength(12);
+    rerender(<VersionList label="Schema versions" versions={versions(12)} selectedId={11} onSelect={vi.fn()} />);
+    expect(screen.getAllByRole("listitem")).toHaveLength(12);
+    expect(screen.queryByRole("button", { name: /earlier version/ })).not.toBeInTheDocument();
+  });
+
   it("marks the selected version and shows its badge and description", () => {
     render(<VersionList label="Schema versions" versions={versions(4)} selectedId={3} onSelect={vi.fn()} />);
     const [newest] = screen.getAllByRole("listitem");

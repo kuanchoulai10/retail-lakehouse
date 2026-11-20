@@ -16,15 +16,17 @@ interface Props {
 // selected (from a link, say) is never hidden.
 export function VersionList({ label, versions, selectedId, onSelect, visibleCount = 10 }: Props) {
   const list = useRef<HTMLUListElement>(null);
-  const [revealed, setRevealed] = useState(false);
+  const focusRevealed = useRef(false);
   const hidden = versions.slice(visibleCount);
   const selectedIsHidden = hidden.some((version) => version.id === selectedId);
+  // Opening on a folded version expands the list for good: choosing a visible one does not fold it again.
+  const [revealed, setRevealed] = useState(selectedIsHidden);
   const showAll = revealed || selectedIsHidden;
   const shown = showAll ? versions : versions.slice(0, visibleCount);
 
   // The button that revealed the rest is gone, so focus moves to the first version it revealed.
   useEffect(() => {
-    if (revealed) list.current?.querySelectorAll("button")[visibleCount]?.focus();
+    if (revealed && focusRevealed.current) list.current?.querySelectorAll("button")[visibleCount]?.focus();
   }, [revealed, visibleCount]);
 
   return (
@@ -42,7 +44,15 @@ export function VersionList({ label, versions, selectedId, onSelect, visibleCoun
         ))}
       </List>
       {showAll || hidden.length === 0 ? null : (
-        <Button type="button" styleType="ghost" size="small" onClick={() => setRevealed(true)}>
+        <Button
+          type="button"
+          styleType="ghost"
+          size="small"
+          onClick={() => {
+            focusRevealed.current = true;
+            setRevealed(true);
+          }}
+        >
           {`Show ${hidden.length} earlier version${hidden.length === 1 ? "" : "s"}`}
         </Button>
       )}

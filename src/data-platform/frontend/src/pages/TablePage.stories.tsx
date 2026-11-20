@@ -138,20 +138,23 @@ export const Actions: Story = {
   },
 };
 
+// The row button of a version in a panel's version list (a version's name is the text inside its button).
+async function versionButton(panel: ReturnType<typeof within>, version: string): Promise<HTMLElement> {
+  const list = within(await panel.findByRole("list", { name: /versions$/ }));
+  return list.getByText(version).closest("button") as HTMLElement;
+}
+
 export const Schema: Story = {
   args: { route: `${ORDERS}/schema` },
   play: async ({ canvasElement }) => {
     const schema = within(await within(canvasElement).findByRole("region", { name: "Schema" }));
-    const newest = await schema.findByRole("button", { name: /^v1(?!\d)/ });
+    const newest = await versionButton(schema, "v1");
     await expect(newest).toHaveTextContent("Current");
     await expect(newest).toHaveTextContent("+5 added · 1 doc changed");
     await expect(await schema.findByText("customer_id")).toBeVisible();
     await expect(await schema.findByText("shipping.zip")).toBeVisible();
-    await expect(
-      within(await within(canvasElement).findByRole("region", { name: "Partition spec" })).getByRole("button", {
-        name: /^v0(?!\d)/,
-      }),
-    ).toHaveTextContent("Default");
+    const spec = within(await within(canvasElement).findByRole("region", { name: "Partition spec" }));
+    await expect(await versionButton(spec, "v0")).toHaveTextContent("Default");
   },
 };
 
@@ -193,9 +196,10 @@ export const SchemaManyVersions: Story = {
   play: async ({ canvasElement }) => {
     const schema = within(await within(canvasElement).findByRole("region", { name: "Schema" }));
     const more = await schema.findByRole("button", { name: "Show 2 earlier versions" });
-    await expect(schema.queryByRole("button", { name: /^v0(?!\d)/ })).toBeNull();
+    const list = within(schema.getByRole("list", { name: "Schema versions" }));
+    await expect(list.queryByText("v0")).toBeNull();
     await userEvent.click(more);
-    await expect(await schema.findByRole("button", { name: /^v0(?!\d)/ })).toBeVisible();
+    await expect(await list.findByText("v0")).toBeVisible();
   },
 };
 
@@ -209,7 +213,7 @@ export const SchemaPartitionTransformChange: Story = {
   },
   play: async ({ canvasElement }) => {
     const spec = within(await within(canvasElement).findByRole("region", { name: "Partition spec" }));
-    await expect(await spec.findByRole("button", { name: /^v1/ })).toHaveTextContent("Default");
+    await expect(await versionButton(spec, "v1")).toHaveTextContent("Default");
     const row = (await spec.findByText("ordered_at_hour")).closest("li") as HTMLElement;
     await expect(row).toHaveTextContent("Transform changed");
     await expect(row).toHaveTextContent("day(ordered_at)");

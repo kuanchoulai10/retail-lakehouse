@@ -180,10 +180,10 @@ function paths(calls: StubbedCall[]): string[] {
   return calls.map((call) => call.path);
 }
 
-function versionButton(region: HTMLElement, version: string): HTMLElement {
-  return within(region).getByRole("button", { name: new RegExp(`^${version}(?!\\d)`) });
+async function versionButton(region: HTMLElement, version: string): Promise<HTMLElement> {
+  const list = await within(region).findByRole("list", { name: /versions$/ });
+  return within(list).getByText(version).closest("button") as HTMLElement;
 }
-
 
 describe("SchemaTab", () => {
   let calls: StubbedCall[];
@@ -195,11 +195,11 @@ describe("SchemaTab", () => {
   it("opens on the current version and asks for its comparison with the previous one", async () => {
     renderTab();
     const schema = screen.getByRole("region", { name: "Schema" });
-    const newest = await within(schema).findByRole("button", { name: /^v1(?!\d)/ });
+    const newest = await versionButton(schema, "v1");
     expect(newest).toHaveTextContent("Current");
     expect(newest).toHaveTextContent("+5 added · 1 doc changed");
     expect(newest).toHaveAttribute("aria-current", "true");
-    expect(versionButton(schema, "v0")).toHaveTextContent("First version");
+    expect(await versionButton(schema, "v0")).toHaveTextContent("First version");
     expect(await within(schema).findByRole("list", { name: "Changes in schema v1" })).toBeInTheDocument();
     expect(paths(calls)).toContain(`${TABLE}/schema-versions/1/comparison`);
     expect(paths(calls).filter((path) => path.includes("base="))).toEqual([]);
@@ -209,7 +209,7 @@ describe("SchemaTab", () => {
     const user = userEvent.setup();
     renderTab();
     const schema = screen.getByRole("region", { name: "Schema" });
-    await user.click(await within(schema).findByRole("button", { name: /^v0(?!\d)/ }));
+    await user.click(await versionButton(schema, "v0"));
     expect(screen.getByTestId("location")).toHaveTextContent("?schema=0");
     expect(await within(schema).findByRole("list", { name: "Changes in schema v0" })).toBeInTheDocument();
     expect(paths(calls)).toContain(`${TABLE}/schema-versions/0/comparison`);
@@ -275,8 +275,8 @@ describe("SchemaTab", () => {
     });
     renderTab();
     const schema = screen.getByRole("region", { name: "Schema" });
-    await within(schema).findByRole("button", { name: /^v1(?!\d)/ });
-    const buttons = within(schema).getAllByRole("button", { name: /^v\d/ });
+    await versionButton(schema, "v1");
+    const buttons = within(within(schema).getByRole("list", { name: "Schema versions" })).getAllByRole("button");
     expect(buttons.map((button) => button.textContent?.slice(0, 2))).toEqual(["v2", "v1", "v0"]);
     expect(buttons[0]).not.toHaveTextContent("Current");
     expect(buttons[1]).toHaveTextContent("Current");
@@ -293,6 +293,16 @@ describe("SchemaTab", () => {
     ).toBeInTheDocument();
     expect(await within(schema).findByRole("list", { name: "Changes in schema v1" })).toBeInTheDocument();
     expect(paths(calls).some((path) => path.includes("/schema-versions/9/"))).toBe(false);
+  });
+
+  it("ignores a base equal to the chosen version and asks for the previous one", async () => {
+    renderTab("?schema=1&base=1");
+    const schema = screen.getByRole("region", { name: "Schema" });
+    expect(await within(schema).findByRole("list", { name: "Changes in schema v1" })).toBeInTheDocument();
+    expect(paths(calls).filter((path) => path.includes("/schema-versions/1/comparison"))).toEqual([
+      `${TABLE}/schema-versions/1/comparison`,
+    ]);
+    expect(within(schema).getByRole("combobox", { name: "Compare with" })).toHaveTextContent("Previous version (v0)");
   });
 
   it("reads a url value that is not a number as no choice, without a line about it", async () => {
@@ -317,7 +327,7 @@ describe("SchemaTab", () => {
     it("marks the default spec and writes a transform change as before and after", async () => {
       renderTab();
       const spec = screen.getByRole("region", { name: "Partition spec" });
-      const newest = await within(spec).findByRole("button", { name: /^v1/ });
+      const newest = await versionButton(spec, "v1");
       expect(newest).toHaveTextContent("Default");
       expect(newest).toHaveTextContent("1 transform changed");
       const list = await within(spec).findByRole("list", { name: "Changes in partition spec v1" });
@@ -328,11 +338,58 @@ describe("SchemaTab", () => {
       expect(paths(calls)).toContain(`${TABLE}/partition-spec-versions/1/comparison`);
     });
 
+    it("opens on the default spec when it is not the highest id", async () => {
+      calls = stubSchemaTab({
+        [`GET ${TABLE}/partition-spec-versions`]: () =>
+          jsonResponse({
+            default_spec_id: 1,
+            versions: [
+              { spec_id: 2, previous_spec_id: 1, default: false, field_count: 2, changes: null },
+              ...SPEC_VERSIONS.versions,
+            ],
+          }),
+      });
+      renderTab();
+      const spec = screen.getByRole("region", { name: "Partition spec" });
+      expect(await within(spec).findByRole("list", { name: "Changes in partition spec v1" })).toBeInTheDocument();
+      const list = within(spec).getByRole("list", { name: "Partition spec versions" });
+      const buttons = within(list).getAllByRole("button");
+      expect(buttons).toHaveLength(3);
+      expect(buttons[0]).not.toHaveTextContent("Default");
+      expect(buttons[1]).toHaveTextContent("Default");
+      expect(buttons[1]).toHaveAttribute("aria-current", "true");
+      expect(paths(calls).some((path) => path.includes("/partition-spec-versions/2/"))).toBe(false);
+    });
+
+    it("opens on the default spec when the url names one the table does not have", async () => {
+      renderTab("?spec=9");
+      const spec = screen.getByRole("region", { name: "Partition spec" });
+      expect(
+        await within(spec).findByText(
+          "Partition spec v9 is not in this table's history; showing the default spec (v1).",
+        ),
+      ).toBeInTheDocument();
+      expect(await within(spec).findByRole("list", { name: "Changes in partition spec v1" })).toBeInTheDocument();
+      expect(paths(calls).some((path) => path.includes("/partition-spec-versions/9/"))).toBe(false);
+    });
+
+    it("compares with the spec named by spec_base", async () => {
+      calls = stubSchemaTab({
+        [`GET ${TABLE}/partition-spec-versions/0/comparison?base=1`]: () =>
+          jsonResponse({ spec_id: 0, base_spec_id: 1, fields: [] }),
+      });
+      renderTab("?spec=0&spec_base=1");
+      const spec = screen.getByRole("region", { name: "Partition spec" });
+      expect(await within(spec).findByText("Unpartitioned.")).toBeInTheDocument();
+      expect(paths(calls)).toContain(`${TABLE}/partition-spec-versions/0/comparison?base=1`);
+      expect(within(spec).getByRole("combobox", { name: "Compare with" })).toHaveTextContent("v1");
+    });
+
     it("keeps the spec choice in its own url parameters", async () => {
       const user = userEvent.setup();
       renderTab("?schema=0");
       const spec = screen.getByRole("region", { name: "Partition spec" });
-      await user.click(await within(spec).findByRole("button", { name: /^v0(?!\d)/ }));
+      await user.click(await versionButton(spec, "v0"));
       expect(screen.getByTestId("location")).toHaveTextContent("?schema=0&spec=0");
       await user.click(within(spec).getByRole("switch", { name: "Show changes only" }));
       expect(screen.getByTestId("location")).toHaveTextContent("?schema=0&spec=0&spec_only_changes=1");
