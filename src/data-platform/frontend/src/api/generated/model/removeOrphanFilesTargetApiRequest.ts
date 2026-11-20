@@ -6,7 +6,7 @@
  */
 
 /**
- * Carry the orphan file target: files older than this many seconds, at least 86400.
+ * Carry the orphan file target: files older than this many seconds, from 86400 to 3153600000 (100 years).
  */
 export interface RemoveOrphanFilesTargetApiRequest {
   older_than_seconds: number;

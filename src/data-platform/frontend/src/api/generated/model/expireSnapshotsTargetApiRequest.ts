@@ -7,6 +7,8 @@
 
 /**
  * Carry the retention target; a value left out falls back to the table property, then Iceberg's default.
+ *
+ * The count is at most 2147483647 and the age at most 3153600000 seconds (100 years).
  */
 export interface ExpireSnapshotsTargetApiRequest {
   max_snapshot_age_seconds?: number | null;

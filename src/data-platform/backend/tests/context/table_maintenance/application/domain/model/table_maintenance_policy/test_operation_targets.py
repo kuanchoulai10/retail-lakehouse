@@ -7,6 +7,7 @@ from datetime import timedelta
 import pytest
 
 from base import InvariantViolation
+from context.table_maintenance.application.domain.model.shared import MAX_AGE
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     AtMost,
     CompactionUnit,
@@ -79,3 +80,27 @@ def test_orphan_older_than_under_a_day_is_refused() -> None:
 def test_orphan_older_than_a_day_is_allowed() -> None:
     """Check exactly a day is allowed."""
     assert RemoveOrphanFilesTarget.from_primitives({"older_than_seconds": 86400}).older_than == timedelta(days=1)
+
+
+def test_expire_target_refuses_an_age_over_a_hundred_years() -> None:
+    """Check a snapshot age over the maximum age is refused, so ``now - age`` stays a date."""
+    target = ExpireSnapshotsTarget.from_primitives({"max_snapshot_age_seconds": 36500 * 86400})
+    assert target.max_snapshot_age == MAX_AGE
+    with pytest.raises(InvariantViolation, match="must be at most 100 years"):
+        ExpireSnapshotsTarget.from_primitives({"max_snapshot_age_seconds": 36500 * 86400 + 1})
+
+
+def test_expire_target_refuses_a_count_over_an_int() -> None:
+    """Check a count Iceberg's ``retain_last`` cannot hold is refused."""
+    assert (
+        ExpireSnapshotsTarget.from_primitives({"min_snapshots_to_keep": 2147483647}).min_snapshots_to_keep == 2147483647
+    )
+    with pytest.raises(InvariantViolation):
+        ExpireSnapshotsTarget.from_primitives({"min_snapshots_to_keep": 2147483648})
+
+
+def test_orphan_older_than_over_a_hundred_years_is_refused() -> None:
+    """Check an orphan age over the maximum age is refused."""
+    assert RemoveOrphanFilesTarget.from_primitives({"older_than_seconds": 36500 * 86400}).older_than == MAX_AGE
+    with pytest.raises(InvariantViolation, match="must be at most 100 years"):
+        RemoveOrphanFilesTarget.from_primitives({"older_than_seconds": 36500 * 86400 + 1})

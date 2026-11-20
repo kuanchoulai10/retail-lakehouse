@@ -100,7 +100,10 @@ class RewriteManifestsOptionsApiRequest(BaseModel):
 
 
 class ExpireSnapshotsTargetApiRequest(BaseModel):
-    """Carry the retention target; a value left out falls back to the table property, then Iceberg's default."""
+    """Carry the retention target; a value left out falls back to the table property, then Iceberg's default.
+
+    The count is at most 2147483647 and the age at most 3153600000 seconds (100 years).
+    """
 
     model_config = _CONTENT_CONFIG
 
@@ -118,7 +121,7 @@ class ExpireSnapshotsOptionsApiRequest(BaseModel):
 
 
 class RemoveOrphanFilesTargetApiRequest(BaseModel):
-    """Carry the orphan file target: files older than this many seconds, at least 86400."""
+    """Carry the orphan file target: files older than this many seconds, from 86400 to 3153600000 (100 years)."""
 
     model_config = _CONTENT_CONFIG
 

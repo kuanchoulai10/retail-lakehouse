@@ -17,6 +17,12 @@ from context.table_maintenance.application.domain.model.shared.maintenance_plan 
 from context.table_maintenance.application.domain.model.shared.manifest_stats import (
     ManifestStats,
 )
+from context.table_maintenance.application.domain.model.shared.max_age import (
+    MAX_AGE,
+)
+from context.table_maintenance.application.domain.model.shared.max_snapshots_to_keep import (
+    MAX_SNAPSHOTS_TO_KEEP,
+)
 from context.table_maintenance.application.domain.model.shared.measurement import (
     Measurement,
 )
@@ -82,6 +88,8 @@ from context.table_maintenance.application.domain.model.shared.whole_seconds imp
 )
 
 __all__ = [
+    "MAX_AGE",
+    "MAX_SNAPSHOTS_TO_KEEP",
     "ComputeSize",
     "MaintenanceAssessment",
     "MaintenanceOperation",

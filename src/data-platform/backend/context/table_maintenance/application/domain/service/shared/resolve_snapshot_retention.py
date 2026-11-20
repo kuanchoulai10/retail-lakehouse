@@ -5,7 +5,11 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.shared import SnapshotRetention
+from context.table_maintenance.application.domain.model.shared import (
+    MAX_AGE,
+    MAX_SNAPSHOTS_TO_KEEP,
+    SnapshotRetention,
+)
 from context.table_maintenance.application.domain.service.shared.positive_int_property import (
     positive_int_property,
 )
@@ -25,11 +29,13 @@ def resolve_snapshot_retention(target: ExpireSnapshotsTarget | None, properties:
     """Return the retention of a table: each value the target's, else the table property's, else Iceberg's default.
 
     The age property is in milliseconds; it is floored to whole seconds, and an age under one second
-    is ignored like a malformed one.
+    is ignored like a malformed one. A property over what Iceberg and a date can hold is clamped, not
+    ignored: an age over 100 years (Iceberg's ``Long.MAX`` "never by age") to 100 years, a count over
+    a Java ``int`` to the largest one.
     """
     minimum = None if target is None else target.min_snapshots_to_keep
     if minimum is None:
-        minimum = positive_int_property(properties, MIN_SNAPSHOTS_TO_KEEP_PROPERTY) or DEFAULT_MIN_SNAPSHOTS_TO_KEEP
+        minimum = _property_count(properties) or DEFAULT_MIN_SNAPSHOTS_TO_KEEP
     age = None if target is None else target.max_snapshot_age
     if age is None:
         age = _property_age(properties) or DEFAULT_MAX_SNAPSHOT_AGE
@@ -40,4 +46,9 @@ def _property_age(properties: dict[str, str]) -> timedelta | None:
     millis = positive_int_property(properties, MAX_SNAPSHOT_AGE_MS_PROPERTY)
     if millis is None or millis < 1000:
         return None
-    return timedelta(seconds=millis // 1000)
+    return timedelta(seconds=min(millis // 1000, MAX_AGE // timedelta(seconds=1)))
+
+
+def _property_count(properties: dict[str, str]) -> int | None:
+    count = positive_int_property(properties, MIN_SNAPSHOTS_TO_KEEP_PROPERTY)
+    return None if count is None else min(count, MAX_SNAPSHOTS_TO_KEEP)

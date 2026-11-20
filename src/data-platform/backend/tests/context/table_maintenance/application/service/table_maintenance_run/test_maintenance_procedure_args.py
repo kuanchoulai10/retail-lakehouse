@@ -153,3 +153,25 @@ def test_procedure_args_need_an_aware_time():
     """A naive time is rejected."""
     with pytest.raises(ValueError, match="timezone-aware"):
         maintenance_procedure_args(RDF, POLICY, {}, datetime(2026, 1, 1))  # noqa: DTZ001
+
+
+NEVER_BY_AGE = {"history.expire.max-snapshot-age-ms": "9223372036854775807"}
+
+
+def test_expire_args_clamp_a_never_by_age_property():
+    """Long.MAX, Iceberg's "never by age", is clamped to 100 years instead of overflowing ``now - age``."""
+    spec = ExpireSnapshotsSpec(target=ExpireSnapshotsTarget(min_snapshots_to_keep=4), options=None)
+    policy = policy_with_operation(POLICY, OPS.EXPIRE_SNAPSHOTS, spec)
+    assert maintenance_procedure_args(OPS.EXPIRE_SNAPSHOTS, policy, NEVER_BY_AGE, NOW) == {
+        "older_than": (NOW - timedelta(days=36500)).isoformat(),
+        "retain_last": 4,
+    }
+
+
+def test_expire_args_of_an_absent_block_clamp_a_never_by_age_property():
+    """A manual run of an absent expire block clamps the table's Long.MAX age the same way."""
+    policy = policy_with_operation(POLICY, OPS.EXPIRE_SNAPSHOTS, None)
+    assert maintenance_procedure_args(OPS.EXPIRE_SNAPSHOTS, policy, NEVER_BY_AGE, NOW) == {
+        "older_than": (NOW - timedelta(days=36500)).isoformat(),
+        "retain_last": 1,
+    }

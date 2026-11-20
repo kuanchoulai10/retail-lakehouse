@@ -288,3 +288,38 @@ def test_delete_default_is_409(world: PolicyWebWorld) -> None:
 def test_delete_missing_is_404(world: PolicyWebWorld) -> None:
     """DELETE of an unknown policy answers 404."""
     assert world.client.delete("/v1/maintenance-policies/nope").status_code == 404
+
+
+HUNDRED_YEARS_SECONDS = 36500 * 86400
+
+
+@pytest.mark.parametrize(
+    ("body", "detail"),
+    [
+        (
+            _with_orphan_older_than(HUNDRED_YEARS_SECONDS + 1),
+            "remove_orphan_files.target.older_than_seconds: must be at most 100 years",
+        ),
+        (
+            policy_body(expire_snapshots={"target": {"max_snapshot_age_seconds": HUNDRED_YEARS_SECONDS + 1}}),
+            "expire_snapshots.target.max_snapshot_age_seconds: must be at most 100 years",
+        ),
+        (
+            policy_body(expire_snapshots={"target": {"max_snapshot_age_seconds": 9223372036854775807}}),
+            "expire_snapshots.target.max_snapshot_age_seconds: too large for a duration",
+        ),
+    ],
+)
+def test_create_refuses_an_age_over_a_hundred_years(
+    world: PolicyWebWorld, body: dict[str, object], detail: str
+) -> None:
+    """An age whose cutoff ``now - age`` would be no date answers 422 instead of stopping the table's maintenance."""
+    response = world.client.post("/v1/maintenance-policies", json={"name": "gold", **body})
+    assert (response.status_code, response.json()) == (422, {"detail": detail})
+
+
+def test_create_refuses_a_snapshot_count_over_an_int(world: PolicyWebWorld) -> None:
+    """A count Iceberg's ``retain_last`` cannot hold answers 422."""
+    body = policy_body(expire_snapshots={"target": {"min_snapshots_to_keep": 2147483648}})
+    response = world.client.post("/v1/maintenance-policies", json={"name": "gold", **body})
+    assert response.status_code == 422

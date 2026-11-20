@@ -1132,7 +1132,7 @@
       },
       "ExpireSnapshotsTargetApiRequest": {
         "additionalProperties": false,
-        "description": "Carry the retention target; a value left out falls back to the table property, then Iceberg's default.",
+        "description": "Carry the retention target; a value left out falls back to the table property, then Iceberg's default.\n\nThe count is at most 2147483647 and the age at most 3153600000 seconds (100 years).",
         "properties": {
           "max_snapshot_age_seconds": {
             "anyOf": [
@@ -1963,7 +1963,7 @@
       },
       "RemoveOrphanFilesTargetApiRequest": {
         "additionalProperties": false,
-        "description": "Carry the orphan file target: files older than this many seconds, at least 86400.",
+        "description": "Carry the orphan file target: files older than this many seconds, from 86400 to 3153600000 (100 years).",
         "properties": {
           "older_than_seconds": {
             "title": "Older Than Seconds",

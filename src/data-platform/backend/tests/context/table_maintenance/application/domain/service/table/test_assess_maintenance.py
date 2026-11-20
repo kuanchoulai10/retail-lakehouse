@@ -325,6 +325,18 @@ def test_assessment_and_args_agree_on_retention():
     }
 
 
+def test_a_never_by_age_property_still_assesses_and_runs():
+    """Long.MAX in the table's age property, under a target silent on the age, is clamped to 100 years."""
+    policy = retention(min_snapshots_to_keep=1, max_snapshot_age=None)
+    o = obs(properties={"history.expire.max-snapshot-age-ms": "9223372036854775807"}, snapshots=snaps(5, 5))
+    a = assess(table(), o, Op.EXPIRE_SNAPSHOTS, policy)
+    assert (a.measured, a.verdict) == (0, OperationVerdict.NOT_DUE)
+    assert maintenance_procedure_args(Op.EXPIRE_SNAPSHOTS, policy, o.properties, NOW) == {
+        "older_than": (NOW - timedelta(days=36500)).isoformat(),
+        "retain_last": 1,
+    }
+
+
 def test_retention_age_comes_from_the_target():
     """Snapshots younger than the target's age are kept."""
     policy = retention(min_snapshots_to_keep=1, max_snapshot_age=timedelta(days=3))

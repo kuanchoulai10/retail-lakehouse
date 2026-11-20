@@ -7,7 +7,7 @@ from datetime import timedelta
 import pytest
 
 from base import InvariantViolation
-from context.table_maintenance.application.domain.model.shared import SnapshotRetention
+from context.table_maintenance.application.domain.model.shared import MAX_AGE, SnapshotRetention
 from context.table_maintenance.application.domain.model.table_maintenance_policy import ExpireSnapshotsTarget
 from context.table_maintenance.application.domain.service.shared import resolve_snapshot_retention
 
@@ -68,3 +68,14 @@ def test_a_retention_keeps_at_least_one_snapshot():
     """A retention keeping no snapshot is refused."""
     with pytest.raises(InvariantViolation):
         SnapshotRetention(min_snapshots_to_keep=0, max_snapshot_age=timedelta(days=1))
+
+
+@pytest.mark.parametrize("raw", ["9223372036854775807", "100000000000000", str(36500 * 86400 * 1000 + 1000)])
+def test_retention_clamps_an_age_property_over_a_hundred_years(raw: str):
+    """An age property over the maximum age (Long.MAX is Iceberg's "never by age") is clamped to it, not ignored."""
+    assert resolve_snapshot_retention(None, {AGE_KEY: raw}).max_snapshot_age == MAX_AGE
+
+
+def test_retention_clamps_a_count_property_over_an_int():
+    """A count property Iceberg's ``retain_last`` cannot hold is clamped to the largest int."""
+    assert resolve_snapshot_retention(None, {MIN_KEY: "9223372036854775807"}).min_snapshots_to_keep == 2147483647
