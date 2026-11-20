@@ -71,6 +71,12 @@ export type { ChartSeries } from "./lib/chart/ChartSeries";
 export { AreaChart, type AreaChartProps } from "./components/AreaChart/AreaChart";
 export { BarChart, type BarChartProps } from "./components/BarChart/BarChart";
 export { BarList, type BarListItem, type BarListProps } from "./components/BarList/BarList";
+export {
+  DiffList,
+  type DiffChange,
+  type DiffListItem,
+  type DiffListProps,
+} from "./components/DiffList/DiffList";
 export { ChartLegend, type ChartLegendItem, type ChartLegendProps } from "./components/ChartLegend/ChartLegend";
 export { ChartState, type ChartStateProps } from "./components/ChartState/ChartState";
 export { ChartTooltip, type ChartTooltipEntry, type ChartTooltipProps } from "./components/ChartTooltip/ChartTooltip";
