@@ -14,6 +14,8 @@ import { errorMessage } from "@/format";
 import {
   contentFromDraft,
   draftFromContent,
+  includeOperation,
+  type OperationKey,
   POLICY_NAME_PATTERN,
   type PolicyContent,
   type PolicyDraft,
@@ -48,6 +50,9 @@ interface Props {
   // What the form starts from: the edited policy's content, or for a new policy the default
   // policy's, as the page passes it. The editor never makes values up.
   content: PolicyContent;
+  // The platform default policy's content: an operation put into the policy with no target yet
+  // starts from its target and options. Without it such an operation starts empty.
+  defaults?: PolicyContent;
   onClose: () => void;
 }
 
@@ -55,7 +60,7 @@ type Write =
   | { kind: "create"; name: string; content: PolicyContent }
   | { kind: "update"; name: string; version: number; content: PolicyContent };
 
-export function PolicyEditor({ policy, content, onClose }: Props) {
+export function PolicyEditor({ policy, content, defaults, onClose }: Props) {
   const queryClient = useQueryClient();
   // The version the edit started from; a refetch while the dialog is open must not move it
   // forward, or the save would overwrite a change made meanwhile. Reload moves it on purpose.
@@ -63,6 +68,7 @@ export function PolicyEditor({ policy, content, onClose }: Props) {
     policy === undefined ? null : { name: policy.name, version: policy.version },
   );
   const [draft, setDraft] = useState<PolicyDraft>(() => draftFromContent(content));
+  const [defaultDraft] = useState(() => (defaults === undefined ? null : draftFromContent(defaults)));
   const [name, setName] = useState("");
   const [invalid, setInvalid] = useState<string | null>(null);
 
@@ -96,6 +102,11 @@ export function PolicyEditor({ policy, content, onClose }: Props) {
       ...current,
       [key]: typeof change === "object" ? { ...(current[key] as object), ...change } : change,
     }));
+  }
+
+  function include(key: OperationKey, included: boolean) {
+    if (included) setDraft((current) => includeOperation(current, key, defaultDraft));
+    else update(key, { included });
   }
 
   function submit() {
@@ -194,7 +205,7 @@ export function PolicyEditor({ policy, content, onClose }: Props) {
       <div className="flex flex-col gap-1">
         <Switch label="Dry run" checked={draft.dryRun} onCheckedChange={(dryRun) => update("dryRun", dryRun)} />
         <p className="type-body-small text-on-surface-variant">
-          Check and record what would run, but run nothing.
+          Scheduled checks record what would run and start nothing; a manual run still runs.
         </p>
       </div>
       <p className="type-body-small text-on-surface-variant">
@@ -208,7 +219,7 @@ export function PolicyEditor({ policy, content, onClose }: Props) {
       <OperationPolicySection
         title="Rewrite data files"
         included={data.included}
-        onIncludedChange={(included) => update("rewriteDataFiles", { included })}
+        onIncludedChange={(included) => include("rewriteDataFiles", included)}
         target={
           <>
             <WholeNumberField
@@ -294,11 +305,16 @@ export function PolicyEditor({ policy, content, onClose }: Props) {
       <OperationPolicySection
         title="Rewrite manifests"
         included={manifests.included}
-        onIncludedChange={(included) => update("rewriteManifests", { included })}
+        onIncludedChange={(included) => include("rewriteManifests", included)}
         target={
           <WholeNumberField
             label="Small manifests at most"
-            hint="Manifests under the table's commit.manifest.target-size-bytes, else 8 MiB"
+            hint={
+              <>
+                Manifests under the table&apos;s <span className="font-mono">commit.manifest.target-size-bytes</span>,
+                else 8 MiB
+              </>
+            }
             value={manifests.smallManifestsAtMost}
             onChange={(smallManifestsAtMost) => update("rewriteManifests", { smallManifestsAtMost })}
           />
@@ -316,19 +332,28 @@ export function PolicyEditor({ policy, content, onClose }: Props) {
       <OperationPolicySection
         title="Expire snapshots"
         included={snapshots.included}
-        onIncludedChange={(included) => update("expireSnapshots", { included })}
+        onIncludedChange={(included) => include("expireSnapshots", included)}
         target={
           <>
             <WholeNumberField
               label="Min snapshots to keep"
-              hint="Empty: the table's history.expire.min-snapshots-to-keep, else 1"
+              hint={
+                <>
+                  Empty: the table&apos;s <span className="font-mono">history.expire.min-snapshots-to-keep</span>, else 1
+                </>
+              }
               value={snapshots.minSnapshotsToKeep}
               onChange={(minSnapshotsToKeep) => update("expireSnapshots", { minSnapshotsToKeep })}
             />
             <WholeNumberField
               label="Max snapshot age (seconds)"
               unit="seconds"
-              hint="Empty: the table's history.expire.max-snapshot-age-ms, else 5 days"
+              hint={
+                <>
+                  Empty: the table&apos;s <span className="font-mono">history.expire.max-snapshot-age-ms</span>, else 5
+                  days
+                </>
+              }
               value={snapshots.maxSnapshotAge}
               onChange={(maxSnapshotAge) => update("expireSnapshots", { maxSnapshotAge })}
             />
@@ -354,7 +379,7 @@ export function PolicyEditor({ policy, content, onClose }: Props) {
       <OperationPolicySection
         title="Remove orphan files"
         included={orphans.included}
-        onIncludedChange={(included) => update("removeOrphanFiles", { included })}
+        onIncludedChange={(included) => include("removeOrphanFiles", included)}
         target={
           <WholeNumberField
             label="Older than (seconds)"

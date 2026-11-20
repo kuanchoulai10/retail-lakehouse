@@ -45,6 +45,24 @@ export const Default: Story = {
   },
 };
 
+export const DescriptionWithIdentifier: Story = {
+  args: {
+    label: "Min snapshots to keep",
+    description: (
+      <>
+        Empty: the table&apos;s <span className="font-mono">history.expire.min-snapshots-to-keep</span>, else 1
+      </>
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("history.expire.min-snapshots-to-keep")).toHaveClass("font-mono");
+    await expect(canvas.getByLabelText("Min snapshots to keep")).toHaveAccessibleDescription(
+      "Empty: the table's history.expire.min-snapshots-to-keep, else 1",
+    );
+  },
+};
+
 export const Invalid: Story = {
   args: { invalid: true, invalidMessage: "Table name must include a namespace" },
   play: async ({ canvasElement }) => {

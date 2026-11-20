@@ -126,6 +126,29 @@ export function draftFromContent(content: PolicyContent): PolicyDraft {
   };
 }
 
+export type OperationKey = "rewriteDataFiles" | "rewriteManifests" | "expireSnapshots" | "removeOrphanFiles";
+
+// The target fields of each operation; all empty means the loaded policy did not hold it.
+const TARGET_FIELDS = {
+  rewriteDataFiles: ["reducibleFilesAtMost"],
+  rewriteManifests: ["smallManifestsAtMost"],
+  expireSnapshots: ["minSnapshotsToKeep", "maxSnapshotAge"],
+  removeOrphanFiles: ["olderThan"],
+} as const satisfies { [K in OperationKey]: readonly (keyof PolicyDraft[K])[] };
+
+// Puts an operation into the policy. One with no target yet (the loaded policy left it out) is
+// seeded from the platform default's target and options, filling only the fields that are empty;
+// without a default, or with a target, the operation keeps what it holds.
+export function includeOperation(draft: PolicyDraft, key: OperationKey, defaults: PolicyDraft | null): PolicyDraft {
+  const current = draft[key] as unknown as Record<string, unknown>;
+  const targetless = TARGET_FIELDS[key].every((field) => current[field] === "");
+  const seed = defaults === null || !targetless ? {} : (defaults[key] as unknown as Record<string, unknown>);
+  const filled = Object.fromEntries(
+    Object.entries(current).map(([field, value]) => [field, value === "" && field in seed ? seed[field] : value]),
+  );
+  return { ...draft, [key]: { ...filled, included: true } };
+}
+
 class InvalidDraft extends Error {}
 
 // Reads one field; `where` and `label` name it in the message the editor shows.

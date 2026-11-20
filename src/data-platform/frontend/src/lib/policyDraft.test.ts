@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { policyContentFixture } from "@/test/fixtures";
-import { contentFromDraft, draftFromContent, type PolicyContent, type PolicyDraft } from "./policyDraft";
+import {
+  contentFromDraft,
+  draftFromContent,
+  includeOperation,
+  type PolicyContent,
+  type PolicyDraft,
+} from "./policyDraft";
 
 function contentOf(draft: PolicyDraft): PolicyContent {
   const result = contentFromDraft(draft);
@@ -42,9 +48,49 @@ describe("policyDraft", () => {
     const excluded: PolicyDraft = { ...draft, expireSnapshots: { ...draft.expireSnapshots, included: false } };
     const content = contentOf(excluded);
     expect(content.expire_snapshots).toBeNull();
-    // The draft keeps what the operation held, so switching it back on brings the values back.
-    expect(excluded.expireSnapshots.minSnapshotsToKeep).toBe("10");
+    // The draft keeps what the operation held, so switching it back on brings the values back
+    // (PolicyEditor's keyboard test switches it off and on).
     expect(draftFromContent(content).expireSnapshots.included).toBe(false);
+  });
+
+  it("seeds an operation put into the policy with no target from the platform default", () => {
+    const content: PolicyContent = policyContentFixture();
+    delete content.remove_orphan_files;
+    const draft = draftFromContent(content);
+    const defaults = draftFromContent(policyContentFixture());
+    const typed: PolicyDraft = {
+      ...draft,
+      removeOrphanFiles: { ...draft.removeOrphanFiles, prefixMismatchMode: "IGNORE" },
+    };
+    expect(includeOperation(typed, "removeOrphanFiles", defaults).removeOrphanFiles).toEqual({
+      included: true,
+      olderThan: "259200",
+      maxConcurrentDeletes: "",
+      prefixMismatchMode: "IGNORE",
+    });
+  });
+
+  it("puts an operation with a target back as it was, without seeding", () => {
+    const draft = draftFromContent(policyContentFixture());
+    const excluded: PolicyDraft = {
+      ...draft,
+      expireSnapshots: { ...draft.expireSnapshots, included: false, minSnapshotsToKeep: "3", maxSnapshotAge: "" },
+    };
+    const defaults = draftFromContent(policyContentFixture());
+    expect(includeOperation(excluded, "expireSnapshots", defaults).expireSnapshots).toEqual({
+      ...excluded.expireSnapshots,
+      included: true,
+    });
+  });
+
+  it("puts an operation back without seeding when there is no default", () => {
+    const content: PolicyContent = policyContentFixture();
+    delete content.rewrite_manifests;
+    const draft = draftFromContent(content);
+    expect(includeOperation(draft, "rewriteManifests", null).rewriteManifests).toEqual({
+      ...draft.rewriteManifests,
+      included: true,
+    });
   });
 
   it("reads an absent block as excluded", () => {

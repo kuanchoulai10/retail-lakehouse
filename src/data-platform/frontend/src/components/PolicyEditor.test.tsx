@@ -82,6 +82,26 @@ describe("PolicyEditor", () => {
     });
   });
 
+  it("seeds an operation the policy left out from the platform default when it is put in", async () => {
+    const calls = stubCatalogApi({
+      "PUT /v1/maintenance-policies/nightly": () => jsonResponse({ ...NIGHTLY, version: 5 }),
+    });
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    const without = { ...NIGHTLY, remove_orphan_files: null };
+    renderEditor(
+      <PolicyEditor policy={without} content={without} defaults={policyContentFixture()} onClose={onClose} />,
+    );
+    const orphans = section("Remove orphan files");
+    await user.click(within(orphans).getByRole("switch", { name: "In this policy" }));
+    expect(within(orphans).getByRole("textbox", { name: "Older than (seconds)" })).toHaveValue("259200");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    const body = bodyOf(calls, "PUT", "/v1/maintenance-policies/nightly") as ReturnType<typeof policyContentFixture>;
+    expect(body.remove_orphan_files).toEqual(policyContentFixture().remove_orphan_files);
+  });
+
   it("sends the options chosen and leaves one set back to the procedure default out", async () => {
     const calls = stubCatalogApi({
       "PUT /v1/maintenance-policies/nightly": () => jsonResponse({ ...NIGHTLY, version: 5 }),
@@ -200,6 +220,28 @@ describe("PolicyEditor", () => {
     );
     expect(screen.queryByRole("combobox", { name: "Priority" })).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: /Cooldown/ })).not.toBeInTheDocument();
+  });
+
+  it("says a dry run records scheduled checks and still runs a manual run", () => {
+    stubCatalogApi({});
+    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
+    expect(screen.getByText("Scheduled checks record what would run and start nothing; a manual run still runs.")).toBeInTheDocument();
+  });
+
+  it("sets the table property keys of its hints in mono", () => {
+    stubCatalogApi({});
+    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
+    for (const key of [
+      "write.target-file-size-bytes",
+      "commit.manifest.target-size-bytes",
+      "history.expire.min-snapshots-to-keep",
+      "history.expire.max-snapshot-age-ms",
+    ]) {
+      expect(screen.getByText(key)).toHaveClass("font-mono");
+    }
+    expect(
+      within(section("Expire snapshots")).getByRole("textbox", { name: "Min snapshots to keep" }),
+    ).toHaveAccessibleDescription("Empty: the table's history.expire.min-snapshots-to-keep, else 1");
   });
 
   it("points to the platform settings for cooldowns and failure back-off", () => {

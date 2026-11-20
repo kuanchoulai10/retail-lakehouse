@@ -59,7 +59,7 @@ export const OnlyRewriteDataFiles: Story = {
     await expect(
       within(canvas.getByRole("region", { name: "Rewrite data files" })).getByText("Reducible files at most 5, per partition"),
     ).toBeVisible();
-    await expect(within(canvas.getByRole("region", { name: "Policy" })).getByText("On: nothing is started")).toBeVisible();
+    await expect(within(canvas.getByRole("region", { name: "Policy" })).getByText("On. Scheduled checks record what would run and start nothing; a manual run still runs.")).toBeVisible();
   },
 };
 

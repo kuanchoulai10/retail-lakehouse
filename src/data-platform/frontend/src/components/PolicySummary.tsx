@@ -22,26 +22,34 @@ function Facts({ facts }: { facts: Fact[] }) {
   );
 }
 
-const RETENTION_UNSET = "The table's history.expire.* / Iceberg default";
+const RETENTION_UNSET: ReactNode = (
+  <>
+    The table&apos;s <span className="font-mono">history.expire.*</span> / Iceberg default
+  </>
+);
 
 function onOff(value: boolean): string {
   return value ? "On" : "Off";
 }
 
+type OptionValue = string | number | boolean;
+type Option = [label: string, value: OptionValue | null | undefined, unit?: "bytes"];
+
 // The options a block sets, one line each, as "Min input files: 2" (a text value is an identifier
-// or SQL, so it is set in mono); unset ones are the procedure's.
-function Options({ options }: { options: [string, string | number | boolean | null | undefined][] }) {
-  const set = options.filter((option): option is [string, string | number | boolean] => option[1] != null);
+// or SQL, so it is set in mono; a size in bytes is read back as plain text); unset ones are the
+// procedure's.
+function Options({ options }: { options: Option[] }) {
+  const set = options.filter((option): option is [string, OptionValue, "bytes"?] => option[1] != null);
   if (set.length === 0) return "Procedure defaults";
   return (
     <ul className="flex flex-col gap-1">
-      {set.map(([label, value]) => (
+      {set.map(([label, value, unit]) => (
         <li key={label}>
           {label}:{" "}
           {typeof value === "boolean" ? (
             onOff(value)
           ) : typeof value === "number" ? (
-            formatCount(value)
+            unit === "bytes" ? formatBytes(value) : formatCount(value)
           ) : (
             <span className="font-mono">{value}</span>
           )}
@@ -73,7 +81,10 @@ export function PolicySummary({ content }: { content: PolicyContent }) {
           facts={[
             { label: "Description", value: content.description === "" ? "—" : content.description },
             { label: "Checks", value: policyChecksText(content.on) },
-            { label: "Dry run", value: content.dry_run === true ? "On: nothing is started" : "Off" },
+            {
+              label: "Dry run",
+              value: content.dry_run === true ? "On. Scheduled checks record what would run and start nothing; a manual run still runs." : "Off",
+            },
           ]}
         />
       </Panel>
@@ -103,12 +114,7 @@ export function PolicySummary({ content }: { content: PolicyContent }) {
                         ["Rewrite all", data.options?.rewrite_all],
                         ["Delete file threshold", data.options?.delete_file_threshold],
                         ["Remove dangling deletes", data.options?.remove_dangling_deletes],
-                        [
-                          "Max file group size",
-                          data.options?.max_file_group_size_bytes == null
-                            ? null
-                            : formatBytes(data.options.max_file_group_size_bytes),
-                        ],
+                        ["Max file group size", data.options?.max_file_group_size_bytes, "bytes"],
                       ]}
                     />
                   ),

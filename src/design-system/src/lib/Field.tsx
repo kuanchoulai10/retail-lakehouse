@@ -3,7 +3,8 @@ import { cn } from "./cn";
 
 export type FieldProps = {
   label: ReactNode;
-  description?: string;
+  // Text under the label; it may hold inline markup, such as an identifier in mono.
+  description?: ReactNode;
   invalid?: boolean;
   invalidMessage?: string;
   required?: boolean;

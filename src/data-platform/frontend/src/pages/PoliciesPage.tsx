@@ -108,7 +108,11 @@ export function PoliciesPage() {
         errors={defaultPolicy === undefined ? [NO_DEFAULT_MESSAGE] : []}
         renderForm={({ onClose }) =>
           defaultPolicy !== undefined && (
-            <PolicyEditor content={{ ...contentOf(defaultPolicy), description: "" }} onClose={onClose} />
+            <PolicyEditor
+              content={{ ...contentOf(defaultPolicy), description: "" }}
+              defaults={contentOf(defaultPolicy)}
+              onClose={onClose}
+            />
           )
         }
         rowActions={(row) => (
@@ -137,7 +141,12 @@ export function PoliciesPage() {
         }}
       />
       {editing !== null && (
-        <PolicyEditor policy={editing} content={contentOf(editing)} onClose={() => setEditing(null)} />
+        <PolicyEditor
+          policy={editing}
+          content={contentOf(editing)}
+          defaults={defaultPolicy === undefined ? undefined : contentOf(defaultPolicy)}
+          onClose={() => setEditing(null)}
+        />
       )}
     </>
   );
