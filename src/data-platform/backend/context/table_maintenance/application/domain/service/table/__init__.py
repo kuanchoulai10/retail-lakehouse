@@ -17,6 +17,9 @@ from context.table_maintenance.application.domain.service.table.compute_reducibl
 from context.table_maintenance.application.domain.service.table.decide_table_management import (
     decide_table_management,
 )
+from context.table_maintenance.application.domain.service.table.derive_metric_trend_values import (
+    derive_metric_trend_values,
+)
 from context.table_maintenance.application.domain.service.table.fits_smaller_size import (
     fits_smaller_size,
 )
@@ -33,6 +36,7 @@ __all__ = [
     "build_partition_filters",
     "compute_reducible_files",
     "decide_table_management",
+    "derive_metric_trend_values",
     "fits_smaller_size",
     "measure_table",
     "plan_manual_maintenance",

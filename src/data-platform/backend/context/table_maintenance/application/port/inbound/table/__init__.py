@@ -20,6 +20,15 @@ from context.table_maintenance.application.port.inbound.table.get_table_current_
 from context.table_maintenance.application.port.inbound.table.get_table_current_metrics.use_case import (
     GetTableCurrentMetricsUseCase,
 )
+from context.table_maintenance.application.port.inbound.table.get_table_metric_trends.input import (
+    GetTableMetricTrendsUseCaseInput,
+)
+from context.table_maintenance.application.port.inbound.table.get_table_metric_trends.output import (
+    GetTableMetricTrendsUseCaseOutput,
+)
+from context.table_maintenance.application.port.inbound.table.get_table_metric_trends.use_case import (
+    GetTableMetricTrendsUseCase,
+)
 from context.table_maintenance.application.port.inbound.table.list_table_commits.input import (
     ListTableCommitsUseCaseInput,
 )
@@ -109,6 +118,9 @@ __all__ = [
     "GetTableCurrentMetricsUseCase",
     "GetTableCurrentMetricsUseCaseInput",
     "GetTableCurrentMetricsUseCaseOutput",
+    "GetTableMetricTrendsUseCase",
+    "GetTableMetricTrendsUseCaseInput",
+    "GetTableMetricTrendsUseCaseOutput",
     "ListTableCommitsUseCase",
     "ListTableCommitsUseCaseInput",
     "ListTableCommitsUseCaseOutput",

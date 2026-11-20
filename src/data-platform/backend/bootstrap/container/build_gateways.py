@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import httpx
+
 from bootstrap.container.build_event_log_filesystem import build_event_log_filesystem
 from bootstrap.container.build_spark_config import build_spark_config
 from bootstrap.container.event_log_base import event_log_base
@@ -14,6 +16,9 @@ from context.table_maintenance.adapter.hybrid.temporal.outbound.table import (
 )
 from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
     SendMaintenanceResultTemporalGateway,
+)
+from context.table_maintenance.adapter.outbound.table.prometheus import (
+    ReadTableMetricHistoryPrometheusGateway,
 )
 from context.table_maintenance.adapter.outbound.table.pyiceberg import (
     ReadTableMetadataPyIcebergGateway,
@@ -68,6 +73,10 @@ def build_gateways(
         delete_maintenance_job=DeleteMaintenanceJobK8sGateway(k8s_api, spark_config),
         read_maintenance_job_pods=ReadMaintenanceJobPodsK8sGateway(k8s_core_api, spark_config),
         read_maintenance_job_evidence=ReadMaintenanceJobEvidenceK8sGateway(k8s_api, k8s_core_api, spark_config),
+        read_table_metric_history=ReadTableMetricHistoryPrometheusGateway(
+            settings.metrics.prometheus_url,
+            httpx.Client(timeout=settings.metrics.query_timeout_seconds),
+        ),
         read_maintenance_event_log=ReadMaintenanceEventLogS3Gateway(
             lambda: build_event_log_filesystem(settings), event_log_base(settings)
         ),

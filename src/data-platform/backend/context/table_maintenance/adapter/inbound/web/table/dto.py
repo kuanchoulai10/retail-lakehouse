@@ -66,6 +66,32 @@ class TableCurrentMetricsApiResponse(BaseModel):
     metrics: TableMetricValuesApiResponse | None
 
 
+class TableMetricTrendPointApiResponse(BaseModel):
+    """Carry one moment of a table's metric trend."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    at: datetime
+    values: dict[str, float | None] = Field(
+        description=(
+            "Every metric count and the two manifest averages (`manifest_average_size_bytes`, "
+            "`manifest_average_entries`) at this moment; null where there is no value."
+        )
+    )
+
+
+class TableMetricTrendsApiResponse(BaseModel):
+    """Carry a table's metric trend: one point per step from `start` to `end` inclusive."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    time_range: str
+    step_seconds: int
+    start: datetime
+    end: datetime
+    points: list[TableMetricTrendPointApiResponse]
+
+
 class TableCommitApiResponse(BaseModel):
     """Describe one commit of a table."""
 

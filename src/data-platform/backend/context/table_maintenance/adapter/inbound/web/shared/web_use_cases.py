@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.table import (
         GetTableCurrentMetricsUseCase,
+        GetTableMetricTrendsUseCase,
         GetTableUseCase,
         ListTableCommitsUseCase,
         ListTableMetricsUseCase,
@@ -66,6 +67,7 @@ class WebUseCases:
     list_tables: ListTablesUseCase
     get_table: GetTableUseCase
     get_table_current_metrics: GetTableCurrentMetricsUseCase
+    get_table_metric_trends: GetTableMetricTrendsUseCase
     list_table_commits: ListTableCommitsUseCase
     list_table_metrics: ListTableMetricsUseCase
     set_table_priority: SetTablePriorityUseCase

@@ -324,3 +324,22 @@ def test_volcano_reads_env(monkeypatch: pytest.MonkeyPatch):
     volcano = AppSettings().spark.volcano
 
     assert (volcano.queue, volcano.urgent_queue, volcano.priority_class_prefix) == ("q", "uq", "pc")
+
+
+def test_metrics_settings_default_to_the_cluster_prometheus():
+    """Without an environment the trends are read from the table metrics Prometheus, within ten seconds."""
+    settings = AppSettings()
+
+    assert settings.metrics.prometheus_url == "http://table-metrics-prometheus.table-metrics.svc.cluster.local:9090"
+    assert settings.metrics.query_timeout_seconds == 10.0
+
+
+def test_metrics_settings_read_env(monkeypatch: pytest.MonkeyPatch):
+    """The Prometheus url and the query timeout come from GLAC_METRICS__* variables."""
+    monkeypatch.setenv("GLAC_METRICS__PROMETHEUS_URL", "http://prom:9090")
+    monkeypatch.setenv("GLAC_METRICS__QUERY_TIMEOUT_SECONDS", "2.5")
+
+    settings = AppSettings()
+
+    assert settings.metrics.prometheus_url == "http://prom:9090"
+    assert settings.metrics.query_timeout_seconds == 2.5

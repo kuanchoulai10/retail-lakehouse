@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
+        ReadTableMetricHistoryGateway,
         SendDiscoveryRequestGateway,
         SendTableChangeGateway,
     )
@@ -36,3 +37,4 @@ class Gateways:
     read_maintenance_job_pods: ReadMaintenanceJobPodsGateway
     read_maintenance_job_evidence: ReadMaintenanceJobEvidenceGateway
     read_maintenance_event_log: ReadMaintenanceEventLogGateway
+    read_table_metric_history: ReadTableMetricHistoryGateway

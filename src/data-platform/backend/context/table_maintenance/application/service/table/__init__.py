@@ -14,6 +14,9 @@ from context.table_maintenance.application.service.table.get_table import (
 from context.table_maintenance.application.service.table.get_table_current_metrics import (
     GetTableCurrentMetricsService,
 )
+from context.table_maintenance.application.service.table.get_table_metric_trends import (
+    GetTableMetricTrendsService,
+)
 from context.table_maintenance.application.service.table.known_table_outcome import (
     KnownTableOutcome,
 )
@@ -76,6 +79,7 @@ __all__ = [
     "attention_policy_names",
     "GetTableService",
     "GetTableCurrentMetricsService",
+    "GetTableMetricTrendsService",
     "ListTableCommitsService",
     "ListTableMetricsService",
     "ListTablesService",

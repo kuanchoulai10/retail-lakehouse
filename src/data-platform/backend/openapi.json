@@ -3856,6 +3856,76 @@
         "title": "TableMaintenanceRunOperationApiResponse",
         "type": "object"
       },
+      "TableMetricTrendPointApiResponse": {
+        "description": "Carry one moment of a table's metric trend.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "values": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "description": "Every metric count and the two manifest averages (`manifest_average_size_bytes`, `manifest_average_entries`) at this moment; null where there is no value.",
+            "title": "Values",
+            "type": "object"
+          }
+        },
+        "required": [
+          "at",
+          "values"
+        ],
+        "title": "TableMetricTrendPointApiResponse",
+        "type": "object"
+      },
+      "TableMetricTrendsApiResponse": {
+        "description": "Carry a table's metric trend: one point per step from `start` to `end` inclusive.",
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/TableMetricTrendPointApiResponse"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "step_seconds": {
+            "title": "Step Seconds",
+            "type": "integer"
+          },
+          "time_range": {
+            "title": "Time Range",
+            "type": "string"
+          }
+        },
+        "required": [
+          "time_range",
+          "step_seconds",
+          "start",
+          "end",
+          "points"
+        ],
+        "title": "TableMetricTrendsApiResponse",
+        "type": "object"
+      },
       "TableMetricValuesApiResponse": {
         "description": "Carry the measured counts of a table's files, manifests and snapshots.",
         "properties": {
@@ -6895,6 +6965,64 @@
           }
         },
         "summary": "Trigger Table Maintenance",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/metrics": {
+      "get": {
+        "description": "Return how a table's metrics changed over the last 1, 3 or 6 hours; 502 when the history is unavailable.",
+        "operationId": "get_table_metric_trends",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "required": false,
+            "schema": {
+              "default": "6h",
+              "enum": [
+                "1h",
+                "3h",
+                "6h"
+              ],
+              "title": "Range",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableMetricTrendsApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Metric Trends",
         "tags": [
           "tables"
         ]

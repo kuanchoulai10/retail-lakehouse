@@ -13,7 +13,10 @@ from context.table_maintenance.application.exceptions import (
     NotFoundError,
     ValidationError,
 )
-from context.table_maintenance.application.port.outbound.table import CatalogNotFoundError
+from context.table_maintenance.application.port.outbound.table import (
+    CatalogNotFoundError,
+    MetricHistoryUnavailableError,
+)
 
 if TYPE_CHECKING:
     from fastapi import FastAPI, Request
@@ -22,6 +25,7 @@ _STATUS_BY_ERROR: dict[type[Exception], int] = {
     NotFoundError: status.HTTP_404_NOT_FOUND,
     CatalogNotFoundError: status.HTTP_404_NOT_FOUND,
     ConflictError: status.HTTP_409_CONFLICT,
+    MetricHistoryUnavailableError: status.HTTP_502_BAD_GATEWAY,
     ValidationError: status.HTTP_422_UNPROCESSABLE_CONTENT,
     InvariantViolation: status.HTTP_422_UNPROCESSABLE_CONTENT,
 }

@@ -9,6 +9,7 @@ from bootstrap.configs.component import Component
 from bootstrap.configs.database_backend import DatabaseBackend
 from bootstrap.configs.get_settings import get_settings
 from bootstrap.configs.kafka_settings import KafkaSettings
+from bootstrap.configs.metrics_settings import MetricsSettings
 from bootstrap.configs.postgres_settings import PostgresSettings
 from bootstrap.configs.spark_settings import SparkSettings
 from bootstrap.configs.spark_size_settings import SparkSizeSettings
@@ -23,6 +24,7 @@ __all__ = [
     "Component",
     "DatabaseBackend",
     "KafkaSettings",
+    "MetricsSettings",
     "PostgresSettings",
     "SparkSettings",
     "SparkSizeSettings",

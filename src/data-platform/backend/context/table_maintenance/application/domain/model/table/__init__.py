@@ -17,6 +17,9 @@ from context.table_maintenance.application.domain.model.table.default_operation_
 from context.table_maintenance.application.domain.model.table.invalid_table_transition import (
     InvalidTableTransition,
 )
+from context.table_maintenance.application.domain.model.table.metric_time_range import (
+    MetricTimeRange,
+)
 from context.table_maintenance.application.domain.model.table.operation_cooldowns import (
     OperationCooldowns,
 )
@@ -55,6 +58,7 @@ __all__ = [
     "AppliedPolicyRef",
     "AttentionMark",
     "InvalidTableTransition",
+    "MetricTimeRange",
     "OperationCooldowns",
     "OperationState",
     "PeakHeapUse",

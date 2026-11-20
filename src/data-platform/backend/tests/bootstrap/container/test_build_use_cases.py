@@ -30,6 +30,7 @@ from context.table_maintenance.adapter.hybrid.temporal.outbound.table import (
 from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
     SendMaintenanceResultTemporalGateway,
 )
+from context.table_maintenance.adapter.outbound.table.prometheus import ReadTableMetricHistoryPrometheusGateway
 from context.table_maintenance.adapter.outbound.table.pyiceberg import (
     ReadTableMetadataPyIcebergGateway,
 )
@@ -122,6 +123,7 @@ def test_gateways_are_built_without_connecting():
     assert isinstance(gateways.read_maintenance_job_pods, ReadMaintenanceJobPodsK8sGateway)
     assert isinstance(gateways.read_maintenance_job_evidence, ReadMaintenanceJobEvidenceK8sGateway)
     assert isinstance(gateways.read_maintenance_event_log, ReadMaintenanceEventLogS3Gateway)
+    assert isinstance(gateways.read_table_metric_history, ReadTableMetricHistoryPrometheusGateway)
     assert loaded == []
     assert client.mock_calls == []
     assert k8s_api.mock_calls == []

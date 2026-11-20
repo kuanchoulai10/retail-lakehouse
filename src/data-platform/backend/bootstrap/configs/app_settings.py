@@ -10,6 +10,7 @@ from bootstrap.configs.catalog_settings import CatalogSettings
 from bootstrap.configs.component import Component
 from bootstrap.configs.database_backend import DatabaseBackend
 from bootstrap.configs.kafka_settings import KafkaSettings
+from bootstrap.configs.metrics_settings import MetricsSettings
 from bootstrap.configs.postgres_settings import PostgresSettings
 from bootstrap.configs.spark_settings import SparkSettings
 from bootstrap.configs.sqlite_settings import SqliteSettings
@@ -36,6 +37,7 @@ class AppSettings(BaseSettings):
     temporal: TemporalSettings = Field(default_factory=TemporalSettings)
     catalog: CatalogSettings = Field(default_factory=CatalogSettings)
     kafka: KafkaSettings = Field(default_factory=KafkaSettings)
+    metrics: MetricsSettings = Field(default_factory=MetricsSettings)
     spark: SparkSettings = Field(default_factory=SparkSettings)
     api: ApiSettings = Field(default_factory=ApiSettings)
     callback_base_url: str = "http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000"

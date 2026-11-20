@@ -27,6 +27,7 @@ import type {
   CatalogTableApiResponse,
   CatalogTablePropertiesApiResponse,
   CreateTableApiRequest,
+  GetTableMetricTrendsParams,
   HTTPValidationError,
   ListTableCommitsParams,
   ListTablesParams,
@@ -37,6 +38,7 @@ import type {
   TableCommitsApiResponse,
   TableCurrentMetricsApiResponse,
   TableIdentifierApiResponse,
+  TableMetricTrendsApiResponse,
   TriggerTableMaintenanceApiRequest,
   TriggerTableMaintenanceApiResponse,
   TriggerTableReconciliationApiResponse,
@@ -1270,7 +1272,123 @@ export const useTriggerTableMaintenance = <TError = HTTPValidationError,
       > => {
       return useMutation(getTriggerTableMaintenanceMutationOptions(options), queryClient);
     }
-    export const getGetTableCurrentMetricsUrl = (tableUuid: string,) => {
+    export const getGetTableMetricTrendsUrl = (tableUuid: string,
+    params?: GetTableMetricTrendsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/tables/${encodeURIComponent(String(tableUuid))}/metrics?${stringifiedParams}` : `/v1/tables/${encodeURIComponent(String(tableUuid))}/metrics`
+}
+
+/**
+ * Return how a table's metrics changed over the last 1, 3 or 6 hours; 502 when the history is unavailable.
+ * @summary Get Table Metric Trends
+ */
+export const getTableMetricTrends = async (tableUuid: string,
+    params?: GetTableMetricTrendsParams, options?: Parameters<typeof apiFetch>[1]): Promise<TableMetricTrendsApiResponse> => {
+
+  return apiFetch<TableMetricTrendsApiResponse>(getGetTableMetricTrendsUrl(tableUuid,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTableMetricTrendsQueryKey = (tableUuid: string,
+    params?: GetTableMetricTrendsParams,) => {
+    return [
+    `/v1/tables/${tableUuid}/metrics`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetTableMetricTrendsQueryOptions = <TData = Awaited<ReturnType<typeof getTableMetricTrends>>, TError = HTTPValidationError>(tableUuid: string,
+    params?: GetTableMetricTrendsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableMetricTrends>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTableMetricTrendsQueryKey(tableUuid,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTableMetricTrends>>> = ({ signal }) => getTableMetricTrends(tableUuid,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: tableUuid !== null && tableUuid !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTableMetricTrends>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTableMetricTrendsQueryResult = NonNullable<Awaited<ReturnType<typeof getTableMetricTrends>>>
+export type GetTableMetricTrendsQueryError = HTTPValidationError
+
+
+export function useGetTableMetricTrends<TData = Awaited<ReturnType<typeof getTableMetricTrends>>, TError = HTTPValidationError>(
+ tableUuid: string,
+    params: undefined |  GetTableMetricTrendsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableMetricTrends>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTableMetricTrends>>,
+          TError,
+          Awaited<ReturnType<typeof getTableMetricTrends>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTableMetricTrends<TData = Awaited<ReturnType<typeof getTableMetricTrends>>, TError = HTTPValidationError>(
+ tableUuid: string,
+    params?: GetTableMetricTrendsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableMetricTrends>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTableMetricTrends>>,
+          TError,
+          Awaited<ReturnType<typeof getTableMetricTrends>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTableMetricTrends<TData = Awaited<ReturnType<typeof getTableMetricTrends>>, TError = HTTPValidationError>(
+ tableUuid: string,
+    params?: GetTableMetricTrendsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableMetricTrends>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Table Metric Trends
+ */
+
+export function useGetTableMetricTrends<TData = Awaited<ReturnType<typeof getTableMetricTrends>>, TError = HTTPValidationError>(
+ tableUuid: string,
+    params?: GetTableMetricTrendsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableMetricTrends>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTableMetricTrendsQueryOptions(tableUuid,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetTableCurrentMetricsUrl = (tableUuid: string,) => {
 
 
 

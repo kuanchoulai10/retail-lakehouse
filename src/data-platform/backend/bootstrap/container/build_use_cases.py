@@ -9,6 +9,7 @@ from bootstrap.container.use_cases import UseCases
 from context.table_maintenance.application.domain.model.table import DEFAULT_OPERATION_COOLDOWNS
 from context.table_maintenance.application.service.table import (
     GetTableCurrentMetricsService,
+    GetTableMetricTrendsService,
     GetTableService,
     ListTableCommitsService,
     ListTableMetricsService,
@@ -135,6 +136,7 @@ def build_use_cases(
         ),
         get_table=GetTableService(tables, discoveries, policies),
         get_table_current_metrics=GetTableCurrentMetricsService(tables, repos.table_metrics),
+        get_table_metric_trends=GetTableMetricTrendsService(tables, gateways.read_table_metric_history),
         list_table_commits=ListTableCommitsService(tables, catalog),
         list_table_metrics=ListTableMetricsService(tables, repos.table_metrics),
         list_tables=ListTablesService(tables, discoveries, policies),

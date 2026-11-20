@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime  # noqa: TC003
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
@@ -16,6 +16,7 @@ from context.table_maintenance.adapter.inbound.web.table.dto import (
     TableApiResponse,
     TableCommitsApiResponse,
     TableCurrentMetricsApiResponse,
+    TableMetricTrendsApiResponse,
     TableMetricValuesApiResponse,
     TriggerTableMaintenanceApiRequest,
     TriggerTableMaintenanceApiResponse,
@@ -23,6 +24,7 @@ from context.table_maintenance.adapter.inbound.web.table.dto import (
 )
 from context.table_maintenance.application.port.inbound.table import (
     GetTableCurrentMetricsUseCaseInput,
+    GetTableMetricTrendsUseCaseInput,
     GetTableUseCaseInput,
     ListTableCommitsUseCaseInput,
     ListTablesUseCaseInput,
@@ -58,6 +60,19 @@ def get_table_current_metrics(table_uuid: str, use_cases: UseCases) -> TableCurr
         observed_at=output.observed_at,
         metrics=None if output.counts is None else TableMetricValuesApiResponse(**output.counts),
     )
+
+
+@router.get("/{table_uuid}/metrics")
+def get_table_metric_trends(
+    table_uuid: str,
+    use_cases: UseCases,
+    time_range: Annotated[Literal["1h", "3h", "6h"], Query(alias="range")] = "6h",
+) -> TableMetricTrendsApiResponse:
+    """Return how a table's metrics changed over the last 1, 3 or 6 hours; 502 when the history is unavailable."""
+    output = use_cases.get_table_metric_trends.execute(
+        GetTableMetricTrendsUseCaseInput(uuid=table_uuid, time_range=time_range, now=datetime.now(UTC))
+    )
+    return TableMetricTrendsApiResponse.model_validate(output)
 
 
 @router.get("/{table_uuid}/commits")

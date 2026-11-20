@@ -38,6 +38,9 @@ from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_evidenc
 from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_pods_gateway import (
     ScriptedReadMaintenanceJobPodsGateway,
 )
+from tests.context.table_maintenance.fakes.scripted_read_table_metric_history_gateway import (
+    ScriptedReadTableMetricHistoryGateway,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
@@ -77,6 +80,7 @@ def fake_gateways() -> Gateways:
         read_maintenance_job_pods=ScriptedReadMaintenanceJobPodsGateway(),
         read_maintenance_job_evidence=ScriptedReadMaintenanceJobEvidenceGateway(),
         read_maintenance_event_log=ScriptedReadMaintenanceEventLogGateway(),
+        read_table_metric_history=ScriptedReadTableMetricHistoryGateway(),
     )
 
 

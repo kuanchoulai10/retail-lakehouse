@@ -50,6 +50,18 @@ from context.table_maintenance.application.port.outbound.table.read_table_metada
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata_ref import (
     TableMetadataRef,
 )
+from context.table_maintenance.application.port.outbound.table.read_table_metric_history.gateway import (
+    ReadTableMetricHistoryGateway,
+)
+from context.table_maintenance.application.port.outbound.table.read_table_metric_history.input import (
+    ReadTableMetricHistoryGatewayInput,
+)
+from context.table_maintenance.application.port.outbound.table.read_table_metric_history.metric_history_unavailable_error import (  # noqa: E501
+    MetricHistoryUnavailableError,
+)
+from context.table_maintenance.application.port.outbound.table.read_table_metric_history.output import (
+    ReadTableMetricHistoryGatewayOutput,
+)
 from context.table_maintenance.application.port.outbound.table.send_discovery_request.gateway import (
     SendDiscoveryRequestGateway,
 )
@@ -76,6 +88,7 @@ __all__ = [
     "ComputeSize",
     "CatalogNotFoundError",
     "MaintenanceOperation",
+    "MetricHistoryUnavailableError",
     "OperationState",
     "RecordedAttempt",
     "TableDiscoveryRuleId",
@@ -83,6 +96,9 @@ __all__ = [
     "TableMaintenancePolicyId",
     "TableMaintenancePolicyName",
     "ReadTableMetadataGateway",
+    "ReadTableMetricHistoryGateway",
+    "ReadTableMetricHistoryGatewayInput",
+    "ReadTableMetricHistoryGatewayOutput",
     "TableCommitSelection",
     "ReadTableMetadataGatewayListInput",
     "SendDiscoveryRequestGateway",

@@ -28,6 +28,7 @@ import type {
   TableCommitsApiResponse,
   TableCurrentMetricsApiResponse,
   TableIdentifierApiResponse,
+  TableMetricTrendsApiResponse,
   TriggerTableMaintenanceApiRequest,
   TriggerTableMaintenanceApiResponse,
   TriggerTableReconciliationApiResponse,
@@ -74,6 +75,10 @@ export const getListTableCommitsResponseMock = (overrideResponse: Partial<Extrac
       }, writer: faker.string.alpha({length: {min: 10, max: 20}})})), truncated: faker.datatype.boolean(), ...overrideResponse})
 
 export const getTriggerTableMaintenanceResponseMock = (overrideResponse: Partial<Extract<TriggerTableMaintenanceApiResponse, object>> = {}): TriggerTableMaintenanceApiResponse => ({accepted: faker.datatype.boolean(), ...overrideResponse})
+
+export const getGetTableMetricTrendsResponseMock = (overrideResponse: Partial<Extract<TableMetricTrendsApiResponse, object>> = {}): TableMetricTrendsApiResponse => ({end: faker.date.past().toISOString().slice(0, 19) + 'Z', points: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({at: faker.date.past().toISOString().slice(0, 19) + 'Z', values: {
+        [faker.string.alphanumeric(5)]: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}),null,])
+      }})), start: faker.date.past().toISOString().slice(0, 19) + 'Z', step_seconds: faker.number.int(), time_range: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
 export const getGetTableCurrentMetricsResponseMock = (overrideResponse: Partial<Extract<TableCurrentMetricsApiResponse, object>> = {}): TableCurrentMetricsApiResponse => ({metrics: faker.helpers.arrayElement([{data_files: faker.number.int(), data_records: faker.number.int(), data_size_bytes: faker.number.int(), deletion_vectors: faker.number.int(), equality_delete_files: faker.number.int(), equality_delete_records: faker.number.int(), manifest_added_entries: faker.number.int(), manifest_deleted_entries: faker.number.int(), manifest_existing_entries: faker.number.int(), manifests: faker.number.int(), manifests_size_bytes: faker.number.int(), position_delete_files: faker.number.int(), position_delete_records: faker.number.int(), reducible_files: faker.number.int(), snapshots: faker.number.int()},null,]), observed_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), ...overrideResponse})
 
@@ -226,6 +231,18 @@ export const getTriggerTableMaintenanceMockHandler = (overrideResponse?: Trigger
   }, options)
 }
 
+export const getGetTableMetricTrendsMockHandler = (overrideResponse?: TableMetricTrendsApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TableMetricTrendsApiResponse> | TableMetricTrendsApiResponse), options?: RequestHandlerOptions) => {
+  return http.get<{ tableUuid: string }>('*/v1/tables/:tableUuid/metrics', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetTableMetricTrendsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getGetTableCurrentMetricsMockHandler = (overrideResponse?: TableCurrentMetricsApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TableCurrentMetricsApiResponse> | TableCurrentMetricsApiResponse), options?: RequestHandlerOptions) => {
   return http.get<{ tableUuid: string }>('*/v1/tables/:tableUuid/metrics/current', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
 
@@ -274,6 +291,7 @@ export const getTablesMock = () => [
   getGetTableMockHandler(),
   getListTableCommitsMockHandler(),
   getTriggerTableMaintenanceMockHandler(),
+  getGetTableMetricTrendsMockHandler(),
   getGetTableCurrentMetricsMockHandler(),
   getSetTablePriorityMockHandler(),
   getTriggerTableReconciliationMockHandler()
