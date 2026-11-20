@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from datetime import timedelta
 from typing import Any
 
 import pytest
@@ -427,3 +428,38 @@ def test_needs_attention_is_marked_under_the_policy_the_run_was_planned_under(
     assert mark.policy == AppliedPolicyRef(policy_id=NIGHTLY, version=2, target=target)
     assert mark.policy_name.value == "nightly"
     assert resolve_calls == []
+
+
+def test_a_result_takes_the_driver_start_from_the_evidence(recorder, runs_repo, table, evidence, now):
+    """A queued attempt that succeeds takes the driver's start the job evidence reports as its running time."""
+    _run(runs_repo, table, now, ComputeSize.S)
+    started = now + timedelta(minutes=30)
+    evidence.set_evidence(
+        RUN_1,
+        "rewrite_data_files",
+        1,
+        ReadMaintenanceJobEvidenceGatewayOutput(execution_id=APP_ID, error=None, driver_started_at=started.isoformat()),
+    )
+    _record(recorder, now + timedelta(hours=1), succeeded=True, error=None)
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1).started_running_at == started
+
+
+def test_a_failure_takes_the_driver_start_from_the_evidence(recorder, runs_repo, table, evidence, now):
+    """A queued attempt that fails takes the driver's start the job evidence reports as its running time."""
+    _run(runs_repo, table, now, ComputeSize.S)
+    started = now + timedelta(minutes=30)
+    evidence.set_evidence(
+        RUN_1,
+        "rewrite_data_files",
+        1,
+        ReadMaintenanceJobEvidenceGatewayOutput(execution_id=APP_ID, error=None, driver_started_at=started.isoformat()),
+    )
+    _record(recorder, now + timedelta(hours=1), ended_by="job_failed")
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1).started_running_at == started
+
+
+def test_a_result_without_driver_evidence_leaves_the_running_time_unset(recorder, runs_repo, table, now):
+    """An attempt whose job left no driver start has no running time."""
+    _run(runs_repo, table, now, ComputeSize.S)
+    _record(recorder, now + timedelta(hours=1), succeeded=True, error=None)
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1).started_running_at is None

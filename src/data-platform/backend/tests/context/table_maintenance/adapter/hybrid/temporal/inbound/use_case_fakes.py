@@ -27,6 +27,9 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     GetMaintenanceJobStatusUseCase,
     GetMaintenanceJobStatusUseCaseInput,
     GetMaintenanceJobStatusUseCaseOutput,
+    RecordMaintenanceAttemptRunningUseCase,
+    RecordMaintenanceAttemptRunningUseCaseInput,
+    RecordMaintenanceAttemptRunningUseCaseOutput,
     RecordTableMaintenanceOperationResultUseCase,
     RecordTableMaintenanceOperationResultUseCaseInput,
     RecordTableMaintenanceOperationResultUseCaseOutput,
@@ -203,3 +206,20 @@ class FakeSync(SyncDiscoveredTablesUseCase):
         """Record the request and return fixed registered, renamed, dropped and skipped counts."""
         self.requests.append(request)
         return SyncDiscoveredTablesUseCaseOutput(registered=1, renamed=2, dropped=3, skipped=4)
+
+
+class FakeRecordRunning(RecordMaintenanceAttemptRunningUseCase):
+    """Record running use case fake that records its requests."""
+
+    def __init__(self) -> None:
+        """Start with no recorded requests."""
+        self.requests: list[RecordMaintenanceAttemptRunningUseCaseInput] = []
+
+    def execute(
+        self, request: RecordMaintenanceAttemptRunningUseCaseInput
+    ) -> RecordMaintenanceAttemptRunningUseCaseOutput:
+        """Record the request and return the attempt as running since the time it was given."""
+        self.requests.append(request)
+        return RecordMaintenanceAttemptRunningUseCaseOutput(
+            status="running", started_running_at=request.started_running_at
+        )

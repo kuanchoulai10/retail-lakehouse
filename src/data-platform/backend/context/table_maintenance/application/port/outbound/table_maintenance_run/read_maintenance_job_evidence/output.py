@@ -13,8 +13,12 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class ReadMaintenanceJobEvidenceGatewayOutput:
-    """Carry the execution id, the job error and the terminated containers of one attempt."""
+    """Carry the execution id, the job error, the terminated containers and the driver start of one attempt.
+
+    ``driver_started_at`` is an ISO-8601 time, None when the driver never started or its pod is gone.
+    """
 
     execution_id: str | None
     error: str | None
     containers: tuple[JobContainerExit, ...] = field(default_factory=tuple)
+    driver_started_at: str | None = None

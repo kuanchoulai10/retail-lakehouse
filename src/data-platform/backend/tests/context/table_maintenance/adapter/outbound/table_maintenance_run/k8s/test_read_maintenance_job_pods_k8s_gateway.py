@@ -6,7 +6,15 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock, call
 
 import pytest
-from kubernetes.client import V1ObjectMeta, V1Pod, V1PodList, V1PodStatus
+from kubernetes.client import (
+    V1ContainerState,
+    V1ContainerStateRunning,
+    V1ContainerStatus,
+    V1ObjectMeta,
+    V1Pod,
+    V1PodList,
+    V1PodStatus,
+)
 from kubernetes.client.exceptions import ApiException
 
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
@@ -115,3 +123,34 @@ def test_read_pods_propagates_api_errors():
 
     with pytest.raises(ApiException):
         ReadMaintenanceJobPodsK8sGateway(api, CONFIG).read(INPUT)
+
+
+def test_read_pods_reports_when_the_driver_started():
+    """The driver container's start is read from the attempt's driver pod."""
+    started = datetime(2026, 11, 20, 3, 0, 5, tzinfo=UTC)
+    driver = V1Pod(
+        metadata=V1ObjectMeta(name="driver", labels={"spark-role": "driver"}),
+        status=V1PodStatus(
+            phase="Running",
+            container_statuses=[
+                V1ContainerStatus(
+                    name="spark-kubernetes-driver",
+                    image="i",
+                    image_id="i",
+                    ready=True,
+                    restart_count=0,
+                    state=V1ContainerState(running=V1ContainerStateRunning(started_at=started)),
+                )
+            ],
+        ),
+    )
+    gateway, _ = _gateway(driver)
+
+    assert gateway.read(INPUT).driver_started_at == started.isoformat()
+
+
+def test_read_pods_without_a_started_driver_has_no_driver_start():
+    """A driver that has not started leaves the driver start out."""
+    gateway, _ = _gateway(_pod("driver", "Pending"))
+
+    assert gateway.read(INPUT).driver_started_at is None

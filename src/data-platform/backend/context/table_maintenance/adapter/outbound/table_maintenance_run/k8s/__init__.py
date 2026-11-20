@@ -5,6 +5,7 @@ from __future__ import annotations
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.delete_maintenance_job_k8s_gateway import (
     DeleteMaintenanceJobK8sGateway,
 )
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.driver_started_at import driver_started_at
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.list_maintenance_job_pods import (
     list_maintenance_job_pods,
 )
@@ -71,6 +72,7 @@ __all__ = [
     "VERSION",
     "VolcanoSettings",
     "build_spark_application",
+    "driver_started_at",
     "list_maintenance_job_pods",
     "maintenance_job_pod_labels",
     "pod_group_resources",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -176,3 +177,21 @@ def test_pods_found_by_either_selector_are_listed_once():
     out = gateway.read(INPUT)
     assert [c.role for c in out.containers] == ["driver", "executor"]
     assert core.list_namespaced_pod.call_count == 2
+
+
+def test_evidence_reports_when_the_driver_started():
+    """The driver container's start is read from the pods the evidence already lists."""
+    started = datetime(2026, 11, 20, 3, 0, 5, tzinfo=UTC)
+    ended = V1ContainerState(terminated=V1ContainerStateTerminated(exit_code=1, started_at=started))
+    gateway, _, _ = _gateway(
+        FAILED_APP, _pod("driver", "driver", state=ended), _pod("exec-1", "executor", state=_terminated("Error", 52))
+    )
+
+    assert gateway.read(INPUT).driver_started_at == started.isoformat()
+
+
+def test_evidence_without_a_started_driver_has_no_driver_start():
+    """An attempt whose driver never started leaves the driver start out."""
+    gateway, _, _ = _gateway(FAILED_APP, _pod("exec-1", "executor", state=_terminated("Error", 52)))
+
+    assert gateway.read(INPUT).driver_started_at is None

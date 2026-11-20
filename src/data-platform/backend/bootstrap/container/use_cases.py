@@ -57,6 +57,7 @@ if TYPE_CHECKING:
         GetTableMaintenanceRunUseCase,
         ListTableMaintenanceRunsUseCase,
         ProcessTableMaintenanceCallbackUseCase,
+        RecordMaintenanceAttemptRunningUseCase,
         RecordTableMaintenanceOperationResultUseCase,
         SubmitMaintenanceOperationUseCase,
     )
@@ -101,6 +102,7 @@ class UseCases:
     delete_maintenance_job: DeleteMaintenanceJobUseCase
     get_maintenance_job_status: GetMaintenanceJobStatusUseCase
     get_maintenance_job_pods: GetMaintenanceJobPodsUseCase
+    record_maintenance_attempt_running: RecordMaintenanceAttemptRunningUseCase
     plan_table_maintenance: PlanTableMaintenanceUseCase
     submit_maintenance_operation: SubmitMaintenanceOperationUseCase
     list_table_reconciliations: ListTableReconciliationsUseCase

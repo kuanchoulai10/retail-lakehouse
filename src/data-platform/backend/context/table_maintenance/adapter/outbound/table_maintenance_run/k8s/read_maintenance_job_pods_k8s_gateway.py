@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.driver_started_at import (
+    driver_started_at,
+)
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.list_maintenance_job_pods import (
     list_maintenance_job_pods,
 )
@@ -43,7 +46,7 @@ class ReadMaintenanceJobPodsK8sGateway(ReadMaintenanceJobPodsGateway):
         self,
         input: ReadMaintenanceJobPodsGatewayInput,  # noqa: A002
     ) -> ReadMaintenanceJobPodsGatewayOutput:
-        """Return every pod whose containers can still run.
+        """Return every pod whose containers can still run, and when the driver container started.
 
         A pod is live unless its phase is Succeeded or Failed: Pending, Running,
         Unknown and a phase not reported yet all count, and so does a Running pod
@@ -56,5 +59,6 @@ class ReadMaintenanceJobPodsK8sGateway(ReadMaintenanceJobPodsGateway):
         return ReadMaintenanceJobPodsGatewayOutput(
             live_pods=tuple(
                 pod.metadata.name for pod in pods if pod.status is None or pod.status.phase not in STOPPED_PHASES
-            )
+            ),
+            driver_started_at=driver_started_at(pods),
         )

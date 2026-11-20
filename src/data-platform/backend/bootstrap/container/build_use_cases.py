@@ -62,6 +62,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
     GetTableMaintenanceRunService,
     ListTableMaintenanceRunsService,
     ProcessTableMaintenanceCallbackService,
+    RecordMaintenanceAttemptRunningService,
     RecordTableMaintenanceOperationResultService,
     SubmitMaintenanceOperationService,
 )
@@ -184,8 +185,11 @@ def build_use_cases(
             candidates_repo=candidates,
         ),
         delete_maintenance_job=DeleteMaintenanceJobService(gateways.delete_maintenance_job),
-        get_maintenance_job_status=GetMaintenanceJobStatusService(gateways.read_maintenance_job),
+        get_maintenance_job_status=GetMaintenanceJobStatusService(
+            gateways.read_maintenance_job, gateways.read_maintenance_job_pods
+        ),
         get_maintenance_job_pods=GetMaintenanceJobPodsService(gateways.read_maintenance_job_pods),
+        record_maintenance_attempt_running=RecordMaintenanceAttemptRunningService(runs),
         plan_table_maintenance=PlanTableMaintenanceService(
             tables,
             catalog,

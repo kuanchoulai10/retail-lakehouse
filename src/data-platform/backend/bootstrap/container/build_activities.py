@@ -38,6 +38,7 @@ def build_activities(use_cases: UseCases, client: Client, settings: AppSettings)
             status=use_cases.get_maintenance_job_status,
             delete=use_cases.delete_maintenance_job,
             pods=use_cases.get_maintenance_job_pods,
+            record_running=use_cases.record_maintenance_attempt_running,
             client=client,
             callback_base_url=settings.callback_base_url,
             admission_limit=settings.admission_limit,

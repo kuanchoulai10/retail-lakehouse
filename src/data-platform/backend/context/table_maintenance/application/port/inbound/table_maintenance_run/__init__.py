@@ -70,6 +70,15 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run.pr
 from context.table_maintenance.application.port.inbound.table_maintenance_run.process_table_maintenance_callback.use_case import (  # noqa: E501
     ProcessTableMaintenanceCallbackUseCase,
 )
+from context.table_maintenance.application.port.inbound.table_maintenance_run.record_maintenance_attempt_running.input import (  # noqa: E501
+    RecordMaintenanceAttemptRunningUseCaseInput,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_run.record_maintenance_attempt_running.output import (  # noqa: E501
+    RecordMaintenanceAttemptRunningUseCaseOutput,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_run.record_maintenance_attempt_running.use_case import (  # noqa: E501
+    RecordMaintenanceAttemptRunningUseCase,
+)
 from context.table_maintenance.application.port.inbound.table_maintenance_run.record_table_maintenance_operation_result.input import (  # noqa: E501
     RecordTableMaintenanceOperationResultUseCaseInput,
 )
@@ -114,6 +123,9 @@ __all__ = [
     "ProcessTableMaintenanceCallbackUseCase",
     "ProcessTableMaintenanceCallbackUseCaseInput",
     "ProcessTableMaintenanceCallbackUseCaseOutput",
+    "RecordMaintenanceAttemptRunningUseCase",
+    "RecordMaintenanceAttemptRunningUseCaseInput",
+    "RecordMaintenanceAttemptRunningUseCaseOutput",
     "RecordTableMaintenanceOperationResultUseCase",
     "RecordTableMaintenanceOperationResultUseCaseInput",
     "RecordTableMaintenanceOperationResultUseCaseOutput",

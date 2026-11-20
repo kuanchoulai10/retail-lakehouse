@@ -34,6 +34,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     DeleteMaintenanceJobUseCaseInput,
     GetMaintenanceJobPodsUseCaseInput,
     GetMaintenanceJobStatusUseCaseInput,
+    RecordMaintenanceAttemptRunningUseCaseInput,
     RecordTableMaintenanceOperationResultUseCaseInput,
     SubmitMaintenanceOperationUseCaseInput,
 )
@@ -46,6 +47,7 @@ if TYPE_CHECKING:
         DeleteMaintenanceJobUseCase,
         GetMaintenanceJobPodsUseCase,
         GetMaintenanceJobStatusUseCase,
+        RecordMaintenanceAttemptRunningUseCase,
         RecordTableMaintenanceOperationResultUseCase,
         SubmitMaintenanceOperationUseCase,
     )
@@ -72,6 +74,7 @@ class TableMaintenanceActivities:
         status: GetMaintenanceJobStatusUseCase,
         delete: DeleteMaintenanceJobUseCase,
         pods: GetMaintenanceJobPodsUseCase,
+        record_running: RecordMaintenanceAttemptRunningUseCase,
         client: Client,
         callback_base_url: str,
         admission_limit: int,
@@ -84,6 +87,7 @@ class TableMaintenanceActivities:
         self._status = status
         self._delete = delete
         self._pods = pods
+        self._record_running = record_running
         self._client = client
         self._callback_base_url = callback_base_url
         self._admission_limit = admission_limit
@@ -135,6 +139,13 @@ class TableMaintenanceActivities:
         """Report the live pods of the Spark job of one ``(run_id, operation, attempt)``."""
         with translate_application_errors():
             output = self._pods.execute(GetMaintenanceJobPodsUseCaseInput.from_primitives(request))
+        return activity_payload(output)
+
+    @activity.defn(name=TableMaintenanceActivity.RECORD_MAINTENANCE_ATTEMPT_RUNNING)
+    def record_maintenance_attempt_running(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Record when the driver of one ``(run_id, operation, attempt)`` started running."""
+        with translate_application_errors():
+            output = self._record_running.execute(RecordMaintenanceAttemptRunningUseCaseInput.from_primitives(request))
         return activity_payload(output)
 
     @activity.defn(name=TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE)

@@ -15,6 +15,7 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fa
     FakeCreateRun,
     FakeDelete,
     FakeRecordResult,
+    FakeRecordRunning,
     FakeStatus,
     FakeSubmit,
 )
@@ -30,6 +31,7 @@ if TYPE_CHECKING:
         DeleteMaintenanceJobUseCase,
         GetMaintenanceJobPodsUseCase,
         GetMaintenanceJobStatusUseCase,
+        RecordMaintenanceAttemptRunningUseCase,
         RecordTableMaintenanceOperationResultUseCase,
         SubmitMaintenanceOperationUseCase,
     )
@@ -43,6 +45,7 @@ def table_maintenance_activities_with_fakes(  # noqa: PLR0913
     status: GetMaintenanceJobStatusUseCase | None = None,
     delete: DeleteMaintenanceJobUseCase | None = None,
     pods: GetMaintenanceJobPodsUseCase | None = None,
+    record_running: RecordMaintenanceAttemptRunningUseCase | None = None,
     client: Client | None = None,
     callback_base_url: str = "http://cp:8000",
     admission_limit: int = 1,
@@ -56,6 +59,7 @@ def table_maintenance_activities_with_fakes(  # noqa: PLR0913
         status=status or FakeStatus(),
         delete=delete or FakeDelete(),
         pods=pods or GetMaintenanceJobPodsService(ScriptedReadMaintenanceJobPodsGateway()),
+        record_running=record_running or FakeRecordRunning(),
         client=client or MagicMock(),
         callback_base_url=callback_base_url,
         admission_limit=admission_limit,

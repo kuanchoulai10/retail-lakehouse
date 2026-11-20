@@ -29,6 +29,9 @@ from context.table_maintenance.application.service.table_maintenance_run.mainten
 from context.table_maintenance.application.service.table_maintenance_run.process_table_maintenance_callback import (
     ProcessTableMaintenanceCallbackService,
 )
+from context.table_maintenance.application.service.table_maintenance_run.record_maintenance_attempt_running import (  # noqa: E501
+    RecordMaintenanceAttemptRunningService,
+)
 from context.table_maintenance.application.service.table_maintenance_run.record_table_maintenance_operation_result import (  # noqa: E501
     RecordTableMaintenanceOperationResultService,
 )
@@ -48,6 +51,7 @@ __all__ = [
     "GetTableMaintenanceRunService",
     "ListTableMaintenanceRunsService",
     "ProcessTableMaintenanceCallbackService",
+    "RecordMaintenanceAttemptRunningService",
     "RecordTableMaintenanceOperationResultService",
     "SubmitMaintenanceOperationService",
     "maintenance_procedure_args",

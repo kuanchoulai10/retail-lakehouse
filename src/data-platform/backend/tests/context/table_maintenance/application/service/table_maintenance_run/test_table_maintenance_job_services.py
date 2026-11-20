@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import copy
+import logging
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -59,6 +61,9 @@ from tests.context.table_maintenance.fakes.scripted_read_maintenance_event_log_g
 )
 from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_evidence_gateway import (
     ScriptedReadMaintenanceJobEvidenceGateway,
+)
+from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_pods_gateway import (
+    ScriptedReadMaintenanceJobPodsGateway,
 )
 from tests.context.table_maintenance.fakes.track_calls import track_calls
 
@@ -281,7 +286,7 @@ def _status_input(run_id=RUN_1, operation="rewrite_data_files", attempt=1):
 def test_get_job_status_passes_state_and_error_through(read_job):
     """The job status service passes the state and error of the gateway through."""
     read_job.set_state(RUN_1, "rewrite_data_files", 1, "FAILED", "OOM")
-    service = GetMaintenanceJobStatusService(read_job)
+    service = GetMaintenanceJobStatusService(read_job, ScriptedReadMaintenanceJobPodsGateway())
     out = service.execute(_status_input())
     assert (out.state, out.error) == ("FAILED", "OOM")
     missing = service.execute(_status_input(attempt=2))
@@ -296,15 +301,62 @@ def test_get_job_status_rejects_unknown_state(read_job):
     """A job state the service does not know raises a ValidationError."""
     read_job.set_state(RUN_1, "rewrite_data_files", 1, "WEIRD")
     with pytest.raises(ValidationError):
-        GetMaintenanceJobStatusService(read_job).execute(_status_input())
+        GetMaintenanceJobStatusService(read_job, ScriptedReadMaintenanceJobPodsGateway()).execute(_status_input())
 
 
 @pytest.mark.parametrize(("operation", "attempt"), [("nope", 1), ("expire_snapshots", 0)])
 def test_get_job_status_rejects_invalid_operation_or_attempt(read_job, operation, attempt):
     """An invalid operation or attempt is rejected before the gateway is called."""
     with pytest.raises(ValidationError):
-        GetMaintenanceJobStatusService(read_job).execute(_status_input(operation=operation, attempt=attempt))
+        GetMaintenanceJobStatusService(read_job, ScriptedReadMaintenanceJobPodsGateway()).execute(
+            _status_input(operation=operation, attempt=attempt)
+        )
     assert read_job.calls == []
+
+
+def test_job_status_reports_the_driver_start(read_job):
+    """A job that exists reports when its driver started, read from the pods."""
+    pods = ScriptedReadMaintenanceJobPodsGateway()
+    started = datetime(2026, 11, 20, 3, 0, 5, tzinfo=UTC)
+    read_job.set_state(RUN_1, "rewrite_data_files", 1, "RUNNING")
+    pods.set_driver_started_at(RUN_1, "rewrite_data_files", 1, started.isoformat())
+
+    out = GetMaintenanceJobStatusService(read_job, pods).execute(_status_input())
+
+    assert (out.state, out.driver_started_at) == ("RUNNING", started)
+    assert [(c.run_id, c.operation, c.attempt) for c in pods.calls] == [(RUN_1, "rewrite_data_files", 1)]
+
+
+def test_job_status_without_a_started_driver_has_no_driver_start(read_job):
+    """A job whose driver has not started reports no driver start."""
+    read_job.set_state(RUN_1, "rewrite_data_files", 1, "PENDING")
+
+    out = GetMaintenanceJobStatusService(read_job, ScriptedReadMaintenanceJobPodsGateway()).execute(_status_input())
+
+    assert (out.state, out.driver_started_at) == ("PENDING", None)
+
+
+def test_job_status_of_a_missing_job_reads_no_pods(read_job):
+    """A job that is gone reads no pods."""
+    pods = ScriptedReadMaintenanceJobPodsGateway()
+
+    out = GetMaintenanceJobStatusService(read_job, pods).execute(_status_input())
+
+    assert (out.state, out.driver_started_at) == ("NOT_FOUND", None)
+    assert pods.calls == []
+
+
+def test_job_status_survives_a_failed_pods_read(read_job, caplog):
+    """A pods read that fails keeps the state and leaves the driver start out, with a warning."""
+    pods = ScriptedReadMaintenanceJobPodsGateway()
+    pods.error = RuntimeError("k8s down")
+    read_job.set_state(RUN_1, "rewrite_data_files", 1, "RUNNING")
+
+    with caplog.at_level(logging.WARNING):
+        out = GetMaintenanceJobStatusService(read_job, pods).execute(_status_input())
+
+    assert (out.state, out.driver_started_at) == ("RUNNING", None)
+    assert "k8s down" in caplog.text
 
 
 def test_delete_job_forwards_the_attempt_to_the_gateway(delete_job):

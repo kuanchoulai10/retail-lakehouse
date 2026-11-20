@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
@@ -15,25 +17,35 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
     ReadMaintenanceJobGatewayInput,
+    ReadMaintenanceJobPodsGatewayInput,
 )
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         ReadMaintenanceJobGateway,
+        ReadMaintenanceJobPodsGateway,
     )
 
+logger = logging.getLogger(__name__)
+
 _KNOWN_STATES = frozenset({"PENDING", "RUNNING", "COMPLETED", "FAILED", "NOT_FOUND"})
+_NOT_FOUND = "NOT_FOUND"
 
 
 class GetMaintenanceJobStatusService(GetMaintenanceJobStatusUseCase):
-    """Report the state of the job of one operation attempt."""
+    """Report the state of the job of one operation attempt and when its driver started."""
 
-    def __init__(self, read_gateway: ReadMaintenanceJobGateway) -> None:
-        """Bind the read gateway."""
+    def __init__(self, read_gateway: ReadMaintenanceJobGateway, pods_gateway: ReadMaintenanceJobPodsGateway) -> None:
+        """Bind the job read gateway and the pods read gateway."""
         self._read_gateway = read_gateway
+        self._pods_gateway = pods_gateway
 
     def execute(self, request: GetMaintenanceJobStatusUseCaseInput) -> GetMaintenanceJobStatusUseCaseOutput:
-        """Return the gateway's state and error, rejecting an unknown state."""
+        """Return the gateway's state and error and the driver's start, rejecting an unknown state.
+
+        A job that is gone reads no pods. Pods that cannot be read leave the driver start out
+        and the state still answers.
+        """
         try:
             operation = MaintenanceOperation(request.operation)
         except ValueError as exc:
@@ -49,4 +61,27 @@ class GetMaintenanceJobStatusService(GetMaintenanceJobStatusUseCase):
         )
         if result.state not in _KNOWN_STATES:
             raise ValidationError(f"unknown maintenance job state {result.state!r}")
-        return GetMaintenanceJobStatusUseCaseOutput(state=result.state, error=result.error)
+        driver_started_at = None if result.state == _NOT_FOUND else self._driver_started_at(request, operation)
+        return GetMaintenanceJobStatusUseCaseOutput(
+            state=result.state, error=result.error, driver_started_at=driver_started_at
+        )
+
+    def _driver_started_at(
+        self, request: GetMaintenanceJobStatusUseCaseInput, operation: MaintenanceOperation
+    ) -> datetime | None:
+        try:
+            pods = self._pods_gateway.read(
+                ReadMaintenanceJobPodsGatewayInput(
+                    run_id=request.run_id, operation=operation.value, attempt=request.attempt
+                )
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "cannot read the pods of attempt %s of %s in run %s: %s",
+                request.attempt,
+                operation.value,
+                request.run_id,
+                exc,
+            )
+            return None
+        return None if pods.driver_started_at is None else datetime.fromisoformat(pods.driver_started_at)

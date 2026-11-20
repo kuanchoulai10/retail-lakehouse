@@ -47,6 +47,7 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fa
     FakePlan,
     FakeRecordReconciliation,
     FakeRecordResult,
+    FakeRecordRunning,
     FakeReleaseCandidates,
     FakeStatus,
     FakeSubmit,
@@ -96,12 +97,14 @@ def _maintain(submit: FakeSubmit | None = None) -> tuple[TableMaintenanceActivit
         "status": FakeStatus(),
         "delete": FakeDelete(),
         "pods_gateway": ScriptedReadMaintenanceJobPodsGateway(),
+        "record_running": FakeRecordRunning(),
     }
     activities = table_maintenance_activities_with_fakes(
         submit=fakes["submit"],
         status=fakes["status"],
         delete=fakes["delete"],
         pods=GetMaintenanceJobPodsService(fakes["pods_gateway"]),
+        record_running=fakes["record_running"],
         callback_base_url="http://cp:8000",
     )
     return activities, fakes
@@ -682,6 +685,7 @@ def test_status_passes_the_attempt_triple():
     assert activities.get_maintenance_job_status(request) == {
         "state": "FAILED",
         "error": "oom",
+        "driver_started_at": None,
     }
     status_request = fakes["status"].requests[0]
     assert (
@@ -901,3 +905,24 @@ def test_sync_passes_catalog_and_namespace():
     }
     activities.sync_discovered_tables({"catalog": "iceberg"})
     assert sync.requests[1].namespace is None
+
+
+def test_record_maintenance_attempt_running_activity_passes_the_driver_start():
+    """The record running activity builds its input from the payload and returns the recorded running time."""
+    activities, fakes = _maintain()
+
+    result = activities.record_maintenance_attempt_running(
+        {
+            "run_id": RUN_1,
+            "operation": "rewrite_data_files",
+            "attempt": 2,
+            "started_running_at": "2026-10-24T01:00:00+00:00",
+            "now": NOW,
+        }
+    )
+
+    request = fakes["record_running"].requests[0]
+    assert (request.run_id, request.operation, request.attempt) == (RUN_1, "rewrite_data_files", 2)
+    assert request.started_running_at == datetime(2026, 10, 24, 1, 0, 0, tzinfo=UTC)
+    assert request.now == NOW_DT
+    assert result == {"status": "running", "started_running_at": "2026-10-24T01:00:00+00:00"}

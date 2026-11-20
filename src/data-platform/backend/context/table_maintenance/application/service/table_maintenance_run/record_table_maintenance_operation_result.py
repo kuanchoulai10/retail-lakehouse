@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
@@ -148,7 +149,12 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
             event_log_finished = self._read_event_log(evidence)
             if request.succeeded:
                 run.succeed(
-                    operation, request.attempt, request.metrics, request.now, event_log_finished=event_log_finished
+                    operation,
+                    request.attempt,
+                    request.metrics,
+                    request.now,
+                    started_running_at=_driver_started_at(evidence),
+                    event_log_finished=event_log_finished,
                 )
             else:
                 self._fail(run, operation, ending, size, request, evidence, event_log_finished)
@@ -201,6 +207,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
             error,
             request.now,
             failure_class=failure_class,
+            started_running_at=_driver_started_at(evidence),
             event_log_finished=event_log_finished,
             next_attempt=next_attempt,
         )
@@ -316,6 +323,13 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
             )
         )
         return applied_policy_ref_of(applied), applied.policy_name
+
+
+def _driver_started_at(evidence: ReadMaintenanceJobEvidenceGatewayOutput | None) -> datetime | None:
+    """Return when the attempt's driver started as the evidence reports it, or None when it does not."""
+    if evidence is None or evidence.driver_started_at is None:
+        return None
+    return datetime.fromisoformat(evidence.driver_started_at)
 
 
 def _measured(value: int | None) -> int | None:

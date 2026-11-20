@@ -6,6 +6,10 @@ from typing import TYPE_CHECKING
 
 from kubernetes.client.exceptions import ApiException
 
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.driver_started_at import (
+    SPARK_ROLE_LABEL,
+    driver_started_at,
+)
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.list_maintenance_job_pods import (
     list_maintenance_job_pods,
 )
@@ -34,7 +38,6 @@ if TYPE_CHECKING:
     )
 
 HTTP_NOT_FOUND = 404
-SPARK_ROLE_LABEL = "spark-role"
 SPARK_CONTAINERS = frozenset({"spark-kubernetes-driver", "spark-kubernetes-executor"})
 
 
@@ -64,7 +67,9 @@ class ReadMaintenanceJobEvidenceK8sGateway(ReadMaintenanceJobEvidenceGateway):
             self._core_api, self._config.namespace, input.run_id, input.operation, input.attempt
         )
         containers = tuple(exit_ for exit_ in (_container_exit(pod) for pod in pods) if exit_ is not None)
-        return ReadMaintenanceJobEvidenceGatewayOutput(execution_id=execution_id, error=error, containers=containers)
+        return ReadMaintenanceJobEvidenceGatewayOutput(
+            execution_id=execution_id, error=error, containers=containers, driver_started_at=driver_started_at(pods)
+        )
 
     def _application_status(self, input: ReadMaintenanceJobEvidenceGatewayInput) -> tuple[str | None, str | None]:  # noqa: A002
         try:
