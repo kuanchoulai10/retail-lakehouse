@@ -138,6 +138,42 @@ def test_observe_partitioned_table_groups_by_day_and_bucket(
     ]
 
 
+def test_observe_counts_data_records_per_partition(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    """Each partition carries the record count of its data files and no delete records."""
+    catalog.create_namespace("db")
+    spec = PartitionSpec(PartitionField(2, 1000, DayTransform(), "ts_day"))
+    table = catalog.create_table("db.events", SCHEMA, partition_spec=spec)
+    table.append(_rows([1, 2, 3], day=1))
+    table.append(_rows([4, 5], day=2))
+
+    observation = gateway.observe_table(_ref())
+
+    assert observation is not None
+    day1 = (datetime(2024, 1, 1) - datetime(1970, 1, 1)).days
+    assert {p["values"][0]: p["data_record_count"] for p in observation.partitions} == {day1: 3, day1 + 1: 2}
+    assert all(p["position_delete_record_count"] == 0 for p in observation.partitions)
+    assert all(p["equality_delete_record_count"] == 0 for p in observation.partitions)
+    assert all(p["deletion_vector_count"] == 0 for p in observation.partitions)
+
+
+def test_observe_counts_manifest_entries(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
+    """Each manifest of two appends has one added entry and no existing or deleted ones."""
+    catalog.create_namespace("db")
+    table = catalog.create_table("db.events", SCHEMA)
+    table.append(_rows([1], day=1))
+    table.append(_rows([2], day=1))
+
+    observation = gateway.observe_table(_ref())
+
+    assert observation is not None
+    assert len(observation.manifests) == 2
+    assert all(
+        (m["added_entries"], m["existing_entries"], m["deleted_entries"]) == (1, 0, 0) for m in observation.manifests
+    )
+
+
 def test_observe_records_when_each_partition_was_last_written(
     catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
 ) -> None:

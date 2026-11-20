@@ -13,9 +13,13 @@ class TableMetadataObservation:
     ``specs`` items are ``{"spec_id", "fields": [{"field_id", "name",
     "source_column", "source_type", "transform"}]}``. ``partitions`` items are
     ``{"spec_id", "values", "data_file_count", "position_delete_file_count",
-    "equality_delete_file_count", "total_data_file_size_bytes", "last_written_at"}``,
-    ``last_written_at`` an ISO-8601 timestamp or None when unknown. ``manifests``
-    items are ``{"length_bytes"}``. ``snapshots`` items are ``{"snapshot_id",
+    "equality_delete_file_count", "total_data_file_size_bytes", "data_record_count",
+    "position_delete_record_count", "equality_delete_record_count",
+    "deletion_vector_count", "last_written_at"}``, ``last_written_at`` an ISO-8601
+    timestamp or None when unknown; ``position_delete_file_count`` includes the
+    deletion vectors that ``deletion_vector_count`` counts apart. ``manifests``
+    items are ``{"length_bytes", "added_entries", "existing_entries",
+    "deleted_entries"}``. ``snapshots`` items are ``{"snapshot_id",
     "committed_at"}`` with an ISO-8601 timestamp.
     """
 

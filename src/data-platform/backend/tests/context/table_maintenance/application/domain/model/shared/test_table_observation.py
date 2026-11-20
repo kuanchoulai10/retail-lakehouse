@@ -4,7 +4,15 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from context.table_maintenance.application.domain.model.shared import SnapshotInfo, TableObservation
+import pytest
+
+from base import InvariantViolation
+from context.table_maintenance.application.domain.model.shared import (
+    ManifestStats,
+    PartitionStats,
+    SnapshotInfo,
+    TableObservation,
+)
 
 T0 = datetime(2026, 1, 1, tzinfo=UTC)
 
@@ -35,3 +43,23 @@ def test_the_last_commit_is_the_newest_snapshot_whatever_the_order():
         SnapshotInfo(snapshot_id=2, committed_at=T0 + timedelta(hours=1)),
     )
     assert observation.last_committed_at == newest
+
+
+def test_negative_record_count_is_refused():
+    """A negative record count is an invariant violation."""
+    with pytest.raises(InvariantViolation):
+        PartitionStats(
+            spec_id=0,
+            values=(),
+            data_file_count=1,
+            position_delete_file_count=0,
+            equality_delete_file_count=0,
+            total_data_file_size_bytes=10,
+            data_record_count=-1,
+        )
+
+
+def test_negative_manifest_entry_count_is_refused():
+    """A negative manifest entry count is an invariant violation."""
+    with pytest.raises(InvariantViolation):
+        ManifestStats(length_bytes=10, added_entries=-1)

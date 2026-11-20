@@ -44,6 +44,9 @@ def _snapshot(snapshot_id: int, timestamp_ms: int, operation: Operation = Operat
 def _table(entries: list[ManifestEntry], snapshots: list[SimpleNamespace]) -> SimpleNamespace:
     manifest = SimpleNamespace(
         manifest_length=10,
+        added_files_count=None,
+        existing_files_count=None,
+        deleted_files_count=None,
         partition_spec_id=0,
         fetch_manifest_entry=lambda io, discard_deleted=True: entries,
     )

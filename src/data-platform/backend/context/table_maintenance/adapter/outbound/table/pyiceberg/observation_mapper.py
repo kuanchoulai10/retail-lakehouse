@@ -6,7 +6,7 @@ from collections import Counter
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from pyiceberg.manifest import DataFileContent
+from pyiceberg.manifest import DataFileContent, FileFormat
 from pyiceberg.table.snapshots import Operation
 
 from context.table_maintenance.adapter.outbound.table.pyiceberg.partition_value_to_primitive import (
@@ -32,7 +32,15 @@ def observation_from_table(table: Table) -> TableMetadataObservation:
     partitions: list[dict[str, Any]] = []
     if snapshot is not None:
         manifest_files = snapshot.manifests(table.io)
-        manifests = [{"length_bytes": m.manifest_length} for m in manifest_files]
+        manifests = [
+            {
+                "length_bytes": m.manifest_length,
+                "added_entries": m.added_files_count or 0,
+                "existing_entries": m.existing_files_count or 0,
+                "deleted_entries": m.deleted_files_count or 0,
+            }
+            for m in manifest_files
+        ]
         partitions = _partition_stats(table, manifest_files)
     return TableMetadataObservation(
         table_uuid=str(metadata.table_uuid),
@@ -90,7 +98,10 @@ def _source_field_type(table: Table, source_id: int) -> IcebergType:
 
 
 def _partition_stats(table: Table, manifest_files: list[ManifestFile]) -> list[dict[str, Any]]:
-    """Count and size each partition's live files and say when a writer last added one.
+    """Count, size and count the records of each partition's live files and say when a writer last added one.
+
+    Position delete files in the Puffin format are deletion vectors: they stay in
+    the position delete file count and are also counted apart.
 
     A partition's last write is the newest commit time of the snapshots that added
     one of its live data or delete files, leaving out compaction's own (``replace``)
@@ -99,6 +110,8 @@ def _partition_stats(table: Table, manifest_files: list[ManifestFile]) -> list[d
     """
     files: Counter[tuple[int, tuple[Any, ...], str]] = Counter()
     sizes: Counter[tuple[int, tuple[Any, ...]]] = Counter()
+    records: Counter[tuple[int, tuple[Any, ...], str]] = Counter()
+    vectors: Counter[tuple[int, tuple[Any, ...]]] = Counter()
     written: dict[tuple[int, tuple[Any, ...]], int] = {}
     commit_ms: dict[int | None, int | None] = {}
     seen: set[tuple[int, tuple[Any, ...]]] = set()
@@ -112,6 +125,9 @@ def _partition_stats(table: Table, manifest_files: list[ManifestFile]) -> list[d
             seen.add(key)
             content = data_file.content
             files[(*key, content.name)] += 1
+            records[(*key, content.name)] += data_file.record_count
+            if content == DataFileContent.POSITION_DELETES and data_file.file_format == FileFormat.PUFFIN:
+                vectors[key] += 1
             if content == DataFileContent.DATA:
                 sizes[key] += data_file.file_size_in_bytes
             if entry.snapshot_id not in commit_ms:
@@ -127,6 +143,10 @@ def _partition_stats(table: Table, manifest_files: list[ManifestFile]) -> list[d
             "position_delete_file_count": files[(spec_id, values, DataFileContent.POSITION_DELETES.name)],
             "equality_delete_file_count": files[(spec_id, values, DataFileContent.EQUALITY_DELETES.name)],
             "total_data_file_size_bytes": sizes[(spec_id, values)],
+            "data_record_count": records[(spec_id, values, DataFileContent.DATA.name)],
+            "position_delete_record_count": records[(spec_id, values, DataFileContent.POSITION_DELETES.name)],
+            "equality_delete_record_count": records[(spec_id, values, DataFileContent.EQUALITY_DELETES.name)],
+            "deletion_vector_count": vectors[(spec_id, values)],
             "last_written_at": _iso_ms(written.get((spec_id, values))),
         }
         for spec_id, values in sorted(seen, key=lambda k: (k[0], repr(k[1])))

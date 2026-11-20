@@ -36,8 +36,9 @@ def table_observation_from_gateway(
 ) -> TableObservation:
     """Convert the gateway's primitive observation into the domain observation.
 
-    ``committed_at`` and ``last_written_at`` are parsed to aware UTC datetimes. Raise ``ValueError`` when
-    an item is missing a key or carries a malformed value.
+    ``committed_at`` and ``last_written_at`` are parsed to aware UTC datetimes. The record, deletion
+    vector and manifest entry counts are read with a default of 0, so an item built without them still
+    converts. Raise ``ValueError`` when an item is missing another key or carries a malformed value.
     """
     try:
         return TableObservation(
@@ -68,11 +69,23 @@ def table_observation_from_gateway(
                     position_delete_file_count=p["position_delete_file_count"],
                     equality_delete_file_count=p["equality_delete_file_count"],
                     total_data_file_size_bytes=p["total_data_file_size_bytes"],
+                    data_record_count=p.get("data_record_count", 0),
+                    position_delete_record_count=p.get("position_delete_record_count", 0),
+                    equality_delete_record_count=p.get("equality_delete_record_count", 0),
+                    deletion_vector_count=p.get("deletion_vector_count", 0),
                     last_written_at=_optional_utc(p.get("last_written_at")),
                 )
                 for p in observation.partitions
             ),
-            manifests=tuple(ManifestStats(length_bytes=m["length_bytes"]) for m in observation.manifests),
+            manifests=tuple(
+                ManifestStats(
+                    length_bytes=m["length_bytes"],
+                    added_entries=m.get("added_entries", 0),
+                    existing_entries=m.get("existing_entries", 0),
+                    deleted_entries=m.get("deleted_entries", 0),
+                )
+                for m in observation.manifests
+            ),
             snapshots=tuple(
                 SnapshotInfo(snapshot_id=s["snapshot_id"], committed_at=_utc(s["committed_at"]))
                 for s in observation.snapshots
