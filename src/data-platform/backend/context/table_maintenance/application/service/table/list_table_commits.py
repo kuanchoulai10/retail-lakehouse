@@ -42,6 +42,7 @@ def _to_item(commit: dict[str, Any]) -> ListTableCommitsUseCaseOutput.Commit:
         committed_at=datetime.fromisoformat(commit["committed_at"]),
         operation=commit["operation"],
         writer=commit["writer"],
+        schema_id=commit.get("schema_id"),
         added_records=summary_int(summary, "added-records"),
         deleted_records=summary_int(summary, "deleted-records"),
         added_data_files=summary_int(summary, "added-data-files"),

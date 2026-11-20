@@ -23,6 +23,7 @@ def _output() -> ListTableCommitsUseCaseOutput:
         committed_at=NOW,
         operation="append",
         writer="unknown",
+        schema_id=1,
         added_records=10,
         deleted_records=None,
         added_data_files=2,
@@ -46,6 +47,7 @@ def test_commits_returns_200() -> None:
     assert body["truncated"] is True
     assert body["items"][0]["snapshot_id"] == "7"
     assert body["items"][0]["parent_id"] is None
+    assert body["items"][0]["schema_id"] == 1
     assert body["items"][0]["added_records"] == 10
     assert body["items"][0]["committed_at"].startswith("2026-10-24T12:00:00")
     assert stub.requests == [ListTableCommitsUseCaseInput(uuid="u-1")]

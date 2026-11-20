@@ -46,6 +46,7 @@ def _commit(summary: dict[str, str], **overrides):
         "operation": "append",
         "summary": summary,
         "writer": "unknown",
+        "schema_id": 1,
     }
     commit.update(overrides)
     return commit
@@ -73,6 +74,7 @@ def test_commits_map_counters_and_writer(service, catalog):
     assert item.committed_at == datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
     assert item.operation == "append"
     assert item.writer == "spark"
+    assert item.schema_id == 1
     assert item.added_records == 10
     assert item.deleted_records == 2
     assert item.added_data_files == 3
@@ -94,6 +96,17 @@ def test_commit_with_partial_summary(service, catalog):
     assert item.added_records is None
     assert item.deleted_records is None
     assert item.removed_delete_files is None
+
+
+def test_commit_without_a_schema_id_reads_none(service, catalog):
+    """A commit dict without the schema id key reads None."""
+    commit = _commit({})
+    del commit["schema_id"]
+    catalog.commit_pages[KEY] = TableCommitPage(table_uuid="u-1", commits=[commit], truncated=False)
+
+    item = service.execute(ListTableCommitsUseCaseInput(uuid="u-1")).items[0]
+
+    assert item.schema_id is None
 
 
 def test_truncated_passes_through(service, catalog):

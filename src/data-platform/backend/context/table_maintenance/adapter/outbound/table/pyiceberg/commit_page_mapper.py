@@ -59,6 +59,7 @@ def _commit(snapshot: Snapshot) -> dict[str, object]:
         "parent_id": snapshot.parent_snapshot_id,
         "committed_at": datetime.fromtimestamp(snapshot.timestamp_ms / 1000, tz=UTC).isoformat(),
         "operation": operation,
+        "schema_id": snapshot.schema_id,
         "summary": summary,
         "writer": commit_writer_of(summary),
     }

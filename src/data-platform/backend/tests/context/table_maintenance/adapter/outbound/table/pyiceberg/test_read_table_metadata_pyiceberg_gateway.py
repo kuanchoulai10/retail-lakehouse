@@ -422,6 +422,34 @@ def test_list_commits_newest_first_with_limit(catalog: SqlCatalog, gateway: Read
     assert datetime.fromisoformat(page.commits[0]["committed_at"]).tzinfo is not None
 
 
+def test_list_commits_carry_the_schema_id_each_was_written_with(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    """A commit made before a schema change reads the old schema id and the next one the new id."""
+    catalog.create_namespace("db")
+    table = catalog.create_table("db.events", SCHEMA)
+    table.append(_rows([1], day=1))
+    with catalog.load_table("db.events").update_schema() as update:
+        update.add_column("note", StringType())
+    evolved = catalog.load_table("db.events")
+    evolved.append(
+        pa.table(
+            {
+                "id": [2],
+                "ts": [datetime(2024, 1, 2, 10)],
+                "region": ["eu"],
+                "note": ["x"],
+            },
+            schema=ARROW.append(pa.field("note", pa.string())),
+        )
+    )
+
+    page = gateway.list_commits(_ref(), TableCommitSelection(limit=10))
+
+    assert page is not None
+    assert [c["schema_id"] for c in page.commits] == [1, 0]
+
+
 def test_list_commits_since(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
     """Listing commits since a time returns only the later commits and is not truncated when all fit."""
     table = _partitioned(catalog)

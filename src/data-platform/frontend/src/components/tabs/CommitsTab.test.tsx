@@ -16,6 +16,7 @@ function commit(overrides: Partial<TableCommitApiResponse>): TableCommitApiRespo
     committed_at: "2026-10-31T12:00:00Z",
     operation: "append",
     writer: "kafka_connect",
+    schema_id: 0,
     added_records: 1200,
     deleted_records: 0,
     added_data_files: 4,

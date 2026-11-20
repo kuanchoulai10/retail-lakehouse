@@ -3615,6 +3615,17 @@
             ],
             "title": "Removed Delete Files"
           },
+          "schema_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Id"
+          },
           "snapshot_id": {
             "title": "Snapshot Id",
             "type": "string"
@@ -3637,6 +3648,7 @@
           "committed_at",
           "operation",
           "writer",
+          "schema_id",
           "added_records",
           "deleted_records",
           "added_data_files",

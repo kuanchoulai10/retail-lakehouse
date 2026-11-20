@@ -18,6 +18,7 @@ class ListTableCommitsUseCaseOutput(UseCaseOutput):
         committed_at: datetime
         operation: str | None
         writer: str
+        schema_id: int | None
         added_records: int | None
         deleted_records: int | None
         added_data_files: int | None

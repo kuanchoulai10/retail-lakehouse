@@ -11,7 +11,7 @@ class TableCommitPage:
     """A page of a table's commits, newest first.
 
     ``commits`` items are ``{"snapshot_id", "parent_id", "committed_at",
-    "operation", "summary", "writer"}``. ``truncated`` is true when more commits
+    "operation", "schema_id", "summary", "writer"}``. ``truncated`` is true when more commits
     exist than the page holds. ``table_uuid`` is the catalog's uuid of the
     table the page was read from.
     """

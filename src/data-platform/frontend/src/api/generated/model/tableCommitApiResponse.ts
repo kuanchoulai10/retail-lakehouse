@@ -19,6 +19,7 @@ export interface TableCommitApiResponse {
   operation: string | null;
   parent_id: string | null;
   removed_delete_files: number | null;
+  schema_id: number | null;
   snapshot_id: string;
   summary: TableCommitApiResponseSummary;
   writer: string;
