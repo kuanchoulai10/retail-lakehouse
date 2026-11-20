@@ -30,6 +30,10 @@ def build_platform_settings(settings: AppSettings) -> PlatformSettings:
             _compute_size(ComputeSize.M, settings.spark.size_m),
             _compute_size(ComputeSize.L, settings.spark.size_l),
         ),
+        rewrite_data_files_cooldown_seconds=settings.maintenance_rewrite_data_files_cooldown_seconds,
+        rewrite_manifests_cooldown_seconds=settings.maintenance_rewrite_manifests_cooldown_seconds,
+        expire_snapshots_cooldown_seconds=settings.maintenance_expire_snapshots_cooldown_seconds,
+        remove_orphan_files_interval_seconds=settings.maintenance_remove_orphan_files_interval_seconds,
         failure_backoff_cap_seconds=settings.maintenance_failure_backoff_cap_seconds,
         discovery_interval_seconds=settings.discovery_interval_seconds,
     )

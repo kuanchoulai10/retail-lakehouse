@@ -11,8 +11,14 @@ from context.table_maintenance.application.domain.model.table.attention_mark imp
 from context.table_maintenance.application.domain.model.table.default_failure_backoff_cap import (
     DEFAULT_FAILURE_BACKOFF_CAP,
 )
+from context.table_maintenance.application.domain.model.table.default_operation_cooldowns import (
+    DEFAULT_OPERATION_COOLDOWNS,
+)
 from context.table_maintenance.application.domain.model.table.invalid_table_transition import (
     InvalidTableTransition,
+)
+from context.table_maintenance.application.domain.model.table.operation_cooldowns import (
+    OperationCooldowns,
 )
 from context.table_maintenance.application.domain.model.table.operation_state import (
     OperationState,
@@ -40,9 +46,11 @@ from context.table_maintenance.application.domain.model.table.table_status impor
 
 __all__ = [
     "DEFAULT_FAILURE_BACKOFF_CAP",
+    "DEFAULT_OPERATION_COOLDOWNS",
     "AppliedPolicyRef",
     "AttentionMark",
     "InvalidTableTransition",
+    "OperationCooldowns",
     "OperationState",
     "PeakHeapUse",
     "RecordedAttempt",

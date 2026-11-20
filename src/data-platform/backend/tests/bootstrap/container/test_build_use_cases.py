@@ -6,6 +6,7 @@ import importlib
 import inspect
 import pkgutil
 from dataclasses import fields
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock
 
@@ -42,10 +43,12 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
 from context.table_maintenance.adapter.outbound.table_maintenance_run.s3 import (
     ReadMaintenanceEventLogS3Gateway,
 )
+from context.table_maintenance.application.domain.model.table import OperationCooldowns
 from context.table_maintenance.application.port.inbound.table_discovery_rules import (
     GetTableDiscoveryRulesUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import GetPlatformSettingsUseCaseInput
+from context.table_maintenance.application.service.table import GetTableHealthService, PlanTableMaintenanceService
 from context.table_maintenance.application.service.table_maintenance_policy import (
     EnsureDefaultTableMaintenancePolicyService,
 )
@@ -164,6 +167,29 @@ def test_the_platform_settings_report_the_values_they_are_given():
 
     values = {item.key: item.value for group in output.groups for item in group.items}
     assert (values["maintenance_attempt_deadline_seconds"], values["maintenance_max_attempts"]) == (900, 6)
+
+
+def test_the_planner_and_the_health_report_are_given_the_cooldowns():
+    """The planner and the table health read the cooldowns build_use_cases is given, the platform default otherwise."""
+    cooldowns = OperationCooldowns.platform_default().with_changes(rewrite_data_files=timedelta(minutes=5))
+    built = build_use_cases(
+        build_repositories(sqlite_engine()),
+        fake_gateways(),
+        clock=lambda: NOW,
+        platform_settings=platform_settings(),
+        cooldowns=cooldowns,
+    )
+    default = build_use_cases(
+        build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW, platform_settings=platform_settings()
+    )
+
+    for use_cases, expected in ((built, cooldowns), (default, OperationCooldowns.platform_default())):
+        planner = use_cases.plan_table_maintenance
+        health = use_cases.get_table_health
+        assert isinstance(planner, PlanTableMaintenanceService)
+        assert isinstance(health, GetTableHealthService)
+        assert planner._cooldowns == expected  # noqa: SLF001
+        assert health._cooldowns == expected  # noqa: SLF001
 
 
 def test_the_platform_settings_are_required():

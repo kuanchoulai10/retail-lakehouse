@@ -13,6 +13,7 @@ from context.table_maintenance.application.domain.model.shared import (
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
     AttentionMark,
+    OperationCooldowns,
     Table,
     TableId,
     TableName,
@@ -245,10 +246,31 @@ def test_health_backs_a_failing_operation_off_only_up_to_the_cap(tables_repo, ca
     tables_repo.update(table)
     _observe(catalog)
     capped = GetTableHealthService(
-        tables_repo, catalog, resolve_applicable_policy, failure_backoff_cap=timedelta(hours=2), clock=lambda: now
+        tables_repo,
+        catalog,
+        resolve_applicable_policy,
+        cooldowns=OperationCooldowns.platform_default().with_changes(failure_backoff_cap=timedelta(hours=2)),
+        clock=lambda: now,
     )
 
     compaction = _health(capped).operations[0]
 
     assert compaction.verdict == "cooldown"
     assert compaction.next_eligible_at == now + timedelta(hours=2)
+
+
+def test_health_reads_the_injected_cooldowns(tables_repo, catalog, resolve_applicable_policy, now):
+    """The next eligible time of an operation after a success is the injected cooldown of that operation."""
+    table = _register(tables_repo, now)
+    table.record_operation_result(MaintenanceOperation.REWRITE_DATA_FILES, True, now)
+    tables_repo.update(table)
+    _observe(catalog)
+    cooldowns = OperationCooldowns.platform_default().with_changes(rewrite_data_files=timedelta(minutes=10))
+    service = GetTableHealthService(
+        tables_repo, catalog, resolve_applicable_policy, cooldowns=cooldowns, clock=lambda: now
+    )
+
+    compaction = _health(service).operations[0]
+
+    assert compaction.verdict == "cooldown"
+    assert compaction.next_eligible_at == now + timedelta(minutes=10)

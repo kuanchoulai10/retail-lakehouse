@@ -99,6 +99,10 @@ worker:
   attemptDeadlineSeconds: 21600
   maxAttempts: 3
   queueWaitLimitSeconds: 86400
+  rewriteDataFilesCooldownSeconds: 3600
+  rewriteManifestsCooldownSeconds: 21600
+  expireSnapshotsCooldownSeconds: 21600
+  removeOrphanFilesIntervalSeconds: 604800
   failureBackoffCapSeconds: 86400
   terminationGracePeriodSeconds: 90
   resources:

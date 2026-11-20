@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from bootstrap.container.use_cases import UseCases
-from context.table_maintenance.application.domain.model.table import DEFAULT_FAILURE_BACKOFF_CAP
+from context.table_maintenance.application.domain.model.table import DEFAULT_OPERATION_COOLDOWNS
 from context.table_maintenance.application.service.table import (
     GetTableHealthService,
     GetTableService,
@@ -64,6 +64,7 @@ if TYPE_CHECKING:
     from bootstrap.container.gateways import Gateways
     from bootstrap.container.repositories import Repositories
     from context.table_maintenance.application.domain.model.shared import ComputeSize, PlatformSettings, SizeMemory
+    from context.table_maintenance.application.domain.model.table import OperationCooldowns
 
 
 def _utc_now() -> datetime:
@@ -78,14 +79,14 @@ def build_use_cases(
     clock: Callable[[], datetime] = _utc_now,
     catalog_names: Sequence[str] = (),
     size_memory: Mapping[ComputeSize, SizeMemory] | None = None,
-    failure_backoff_cap: timedelta = DEFAULT_FAILURE_BACKOFF_CAP,
+    cooldowns: OperationCooldowns = DEFAULT_OPERATION_COOLDOWNS,
 ) -> UseCases:
     """Build every application service on the given repositories and gateways.
 
     ``size_memory`` is the memory each compute size runs with; without it no operation is ever
-    stepped down to a smaller size. ``failure_backoff_cap`` is where the doubling of a failing
-    operation's cooldown stops. ``platform_settings`` are the values the platform settings page
-    lists; every caller gives them, so none shows defaults by accident.
+    stepped down to a smaller size. ``cooldowns`` are the cooldown of each operation and the cap where
+    the doubling of a failing operation's cooldown stops. ``platform_settings`` are the values the platform
+    settings page lists; every caller gives them, so none shows defaults by accident.
     """
     tables = repos.tables
     rules = repos.table_discovery_rules
@@ -134,7 +135,7 @@ def build_use_cases(
         ),
         get_table=GetTableService(tables, discoveries, policies),
         get_table_health=GetTableHealthService(
-            tables, catalog, resolve_applicable_policy, failure_backoff_cap=failure_backoff_cap, clock=clock
+            tables, catalog, resolve_applicable_policy, cooldowns=cooldowns, clock=clock
         ),
         get_table_storage=GetTableStorageService(tables, catalog, runs, clock=clock),
         list_table_commits=ListTableCommitsService(tables, catalog),
@@ -167,7 +168,7 @@ def build_use_cases(
             tables,
             catalog,
             resolve_applicable_policy,
-            failure_backoff_cap=failure_backoff_cap,
+            cooldowns=cooldowns,
         ),
         get_platform_settings=GetPlatformSettingsService(platform_settings),
         list_table_reconciliations=ListTableReconciliationsService(reconciliations, policies),

@@ -13,6 +13,10 @@ WHITELIST = {
     "max_attempts",
     "queue_wait_limit_seconds",
     "compute_sizes",
+    "rewrite_data_files_cooldown_seconds",
+    "rewrite_manifests_cooldown_seconds",
+    "expire_snapshots_cooldown_seconds",
+    "remove_orphan_files_interval_seconds",
     "failure_backoff_cap_seconds",
     "discovery_interval_seconds",
 }
@@ -31,6 +35,12 @@ def test_defaults_are_the_values_the_platform_ran_with_before_they_had_names():
     assert (settings.attempt_deadline_seconds, settings.max_attempts) == (21600, 3)
     assert settings.queue_wait_limit_seconds == 86400
     assert settings.failure_backoff_cap_seconds == 86400
+    assert (
+        settings.rewrite_data_files_cooldown_seconds,
+        settings.rewrite_manifests_cooldown_seconds,
+        settings.expire_snapshots_cooldown_seconds,
+        settings.remove_orphan_files_interval_seconds,
+    ) == (3600, 21600, 21600, 604800)
     assert settings.discovery_interval_seconds == 600
     assert [(s.size, s.driver_memory, s.executor_memory, s.executor_instances) for s in settings.compute_sizes] == [
         (ComputeSize.S, "768m", "768m", 1),
@@ -47,6 +57,10 @@ def test_values_follow_the_application_settings():
             maintenance_max_attempts=5,
             maintenance_queue_wait_limit_seconds=1800,
             maintenance_failure_backoff_cap_seconds=7200,
+            maintenance_rewrite_data_files_cooldown_seconds=60,
+            maintenance_rewrite_manifests_cooldown_seconds=120,
+            maintenance_expire_snapshots_cooldown_seconds=180,
+            maintenance_remove_orphan_files_interval_seconds=240,
             discovery_interval_seconds=60,
             spark={"size_m": {"executor_instances": 3}},
         )
@@ -55,6 +69,12 @@ def test_values_follow_the_application_settings():
     assert (settings.attempt_deadline_seconds, settings.max_attempts) == (900, 5)
     assert settings.queue_wait_limit_seconds == 1800
     assert (settings.failure_backoff_cap_seconds, settings.discovery_interval_seconds) == (7200, 60)
+    assert (
+        settings.rewrite_data_files_cooldown_seconds,
+        settings.rewrite_manifests_cooldown_seconds,
+        settings.expire_snapshots_cooldown_seconds,
+        settings.remove_orphan_files_interval_seconds,
+    ) == (60, 120, 180, 240)
     assert settings.compute_sizes[1].executor_instances == 3
 
 

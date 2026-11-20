@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 from bootstrap.container import (
     build_connected_use_cases,
     build_engine,
+    build_operation_cooldowns,
     build_size_memory,
     run_migrations,
 )
@@ -77,9 +78,11 @@ def test_the_recorder_knows_each_size_s_memory(tmp_path):
     assert recorder._size_memory == build_size_memory(settings.spark)  # noqa: SLF001
 
 
-def test_the_planner_and_the_health_report_cap_the_failure_backoff_as_the_settings_say(tmp_path):
-    """Both the planner and the table health read the failure backoff cap the worker and the api are given."""
-    settings = sqlite_settings(maintenance_failure_backoff_cap_seconds=7200)
+def test_the_planner_and_the_health_report_read_the_cooldowns_the_settings_say(tmp_path):
+    """Both the planner and the table health read the cooldowns and the backoff cap the worker and the api are given."""
+    settings = sqlite_settings(
+        maintenance_failure_backoff_cap_seconds=7200, maintenance_rewrite_data_files_cooldown_seconds=60
+    )
     settings.sqlite.path = str(tmp_path / "tm.db")
 
     async def connect(_temporal: TemporalSettings):
@@ -95,8 +98,11 @@ def test_the_planner_and_the_health_report_cap_the_failure_backoff_as_the_settin
     health = use_cases.get_table_health
     assert isinstance(planner, PlanTableMaintenanceService)
     assert isinstance(health, GetTableHealthService)
-    assert planner._failure_backoff_cap == timedelta(hours=2)  # noqa: SLF001
-    assert health._failure_backoff_cap == timedelta(hours=2)  # noqa: SLF001
+    expected = build_operation_cooldowns(settings)
+    assert expected.failure_backoff_cap == timedelta(hours=2)
+    assert expected.rewrite_data_files == timedelta(seconds=60)
+    assert planner._cooldowns == expected  # noqa: SLF001
+    assert health._cooldowns == expected  # noqa: SLF001
 
 
 def test_the_platform_settings_page_reads_the_settings_the_components_run_on(tmp_path):

@@ -11,7 +11,8 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     DEFAULT_MAX_ATTEMPTS,
     DEFAULT_QUEUE_WAIT_LIMIT_SECONDS,
 )
-from context.table_maintenance.application.domain.model.table import DEFAULT_FAILURE_BACKOFF_CAP
+from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
+from context.table_maintenance.application.domain.model.table import DEFAULT_FAILURE_BACKOFF_CAP, OperationCooldowns
 
 
 @pytest.fixture(autouse=True)
@@ -188,6 +189,75 @@ def test_failure_backoff_cap_must_be_positive(monkeypatch: pytest.MonkeyPatch):
 
     with pytest.raises(ValueError, match="maintenance_failure_backoff_cap_seconds"):
         AppSettings()
+
+
+def test_cooldowns_default_to_the_platform_defaults():
+    """Without an environment the cooldowns are 1 hour, 6 hours and 6 hours, and orphan files are removed weekly."""
+    settings = AppSettings()
+
+    assert settings.maintenance_rewrite_data_files_cooldown_seconds == 3600
+    assert settings.maintenance_rewrite_manifests_cooldown_seconds == 21600
+    assert settings.maintenance_expire_snapshots_cooldown_seconds == 21600
+    assert settings.maintenance_remove_orphan_files_interval_seconds == 604800
+
+
+def test_app_settings_read_the_cooldown_env(monkeypatch: pytest.MonkeyPatch):
+    """Each cooldown and the orphan file interval are read from their GLAC_MAINTENANCE_* variable."""
+    monkeypatch.setenv("GLAC_MAINTENANCE_REWRITE_DATA_FILES_COOLDOWN_SECONDS", "60")
+    monkeypatch.setenv("GLAC_MAINTENANCE_REWRITE_MANIFESTS_COOLDOWN_SECONDS", "120")
+    monkeypatch.setenv("GLAC_MAINTENANCE_EXPIRE_SNAPSHOTS_COOLDOWN_SECONDS", "180")
+    monkeypatch.setenv("GLAC_MAINTENANCE_REMOVE_ORPHAN_FILES_INTERVAL_SECONDS", "240")
+
+    settings = AppSettings()
+
+    assert settings.maintenance_rewrite_data_files_cooldown_seconds == 60
+    assert settings.maintenance_rewrite_manifests_cooldown_seconds == 120
+    assert settings.maintenance_expire_snapshots_cooldown_seconds == 180
+    assert settings.maintenance_remove_orphan_files_interval_seconds == 240
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "MAINTENANCE_REWRITE_DATA_FILES_COOLDOWN_SECONDS",
+        "MAINTENANCE_REWRITE_MANIFESTS_COOLDOWN_SECONDS",
+        "MAINTENANCE_EXPIRE_SNAPSHOTS_COOLDOWN_SECONDS",
+    ],
+)
+def test_negative_cooldown_is_refused(monkeypatch: pytest.MonkeyPatch, name: str):
+    """A cooldown may be zero but never negative."""
+    monkeypatch.setenv(f"GLAC_{name}", "-1")
+
+    with pytest.raises(ValueError, match=name.lower()):
+        AppSettings()
+
+
+def test_zero_cooldown_is_allowed(monkeypatch: pytest.MonkeyPatch):
+    """A cooldown of zero means the operation may run at every plan."""
+    monkeypatch.setenv("GLAC_MAINTENANCE_REWRITE_DATA_FILES_COOLDOWN_SECONDS", "0")
+
+    assert AppSettings().maintenance_rewrite_data_files_cooldown_seconds == 0
+
+
+def test_orphan_file_interval_must_be_positive(monkeypatch: pytest.MonkeyPatch):
+    """Orphan files are due on this interval, so zero is refused at start-up."""
+    monkeypatch.setenv("GLAC_MAINTENANCE_REMOVE_ORPHAN_FILES_INTERVAL_SECONDS", "0")
+
+    with pytest.raises(ValueError, match="maintenance_remove_orphan_files_interval_seconds"):
+        AppSettings()
+
+
+def test_cooldown_defaults_match_the_domain_defaults():
+    """The settings repeat the platform default cooldowns (configs may not import a context), so they must agree."""
+    settings = AppSettings()
+    default = OperationCooldowns.platform_default()
+
+    assert [
+        settings.maintenance_rewrite_data_files_cooldown_seconds,
+        settings.maintenance_rewrite_manifests_cooldown_seconds,
+        settings.maintenance_expire_snapshots_cooldown_seconds,
+        settings.maintenance_remove_orphan_files_interval_seconds,
+    ] == [default.for_operation(op).total_seconds() for op in MaintenanceOperation.ordered()]
 
 
 def test_sizes_default_to_s_m_l():

@@ -12,7 +12,7 @@ from context.table_maintenance.application.domain.model.shared import (
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
-    DEFAULT_FAILURE_BACKOFF_CAP,
+    DEFAULT_OPERATION_COOLDOWNS,
     TableId,
     TableStatus,
 )
@@ -45,10 +45,10 @@ from context.table_maintenance.application.service.table_maintenance_run import 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from datetime import datetime, timedelta
+    from datetime import datetime
 
     from context.table_maintenance.application.domain.model.shared import TableObservation
-    from context.table_maintenance.application.domain.model.table import Table
+    from context.table_maintenance.application.domain.model.table import OperationCooldowns, Table
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
         TablesRepo,
@@ -69,16 +69,17 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         catalog_gateway: ReadTableMetadataGateway,
         resolve_applicable_policy: ResolveApplicableTableMaintenancePolicyUseCase,
         *,
-        failure_backoff_cap: timedelta = DEFAULT_FAILURE_BACKOFF_CAP,
+        cooldowns: OperationCooldowns = DEFAULT_OPERATION_COOLDOWNS,
     ) -> None:
         """Bind the tables repo, the catalog gateway and the applicable policy resolution.
 
-        ``failure_backoff_cap`` is where the doubling of a failing operation's cooldown stops.
+        ``cooldowns`` are the platform's cooldown of each operation and the cap where the doubling
+        of a failing operation's cooldown stops.
         """
         self._tables_repo = tables_repo
         self._catalog_gateway = catalog_gateway
         self._resolve_applicable_policy = resolve_applicable_policy
-        self._failure_backoff_cap = failure_backoff_cap
+        self._cooldowns = cooldowns
 
     def execute(self, request: PlanTableMaintenanceUseCaseInput) -> PlanTableMaintenanceUseCaseOutput:
         """Plan the due operations, or the requested ones for a manual trigger.
@@ -118,9 +119,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                 plan = plan_manual_maintenance(manual)
                 checks = _manual_checks(manual)
             else:
-                assessment = assess_maintenance(
-                    table, policy, observation, request.now, failure_backoff_cap=self._failure_backoff_cap
-                )
+                assessment = assess_maintenance(table, policy, observation, request.now, cooldowns=self._cooldowns)
                 plan, checks = assessment.plan(), _scheduled_checks(assessment)
                 if policy.dry_run:
                     plan = MaintenancePlan()

@@ -32,6 +32,10 @@ def _settings(**changes: Any) -> PlatformSettings:  # noqa: ANN401
             PlatformComputeSize(size=ComputeSize.M, driver_memory="1g", executor_memory="1536m", executor_instances=1),
             PlatformComputeSize(size=ComputeSize.L, driver_memory="1536m", executor_memory="2g", executor_instances=2),
         ),
+        "rewrite_data_files_cooldown_seconds": 3600,
+        "rewrite_manifests_cooldown_seconds": 21600,
+        "expire_snapshots_cooldown_seconds": 21600,
+        "remove_orphan_files_interval_seconds": 604800,
         "failure_backoff_cap_seconds": 86400,
         "discovery_interval_seconds": 600,
     }
@@ -86,13 +90,35 @@ def test_compute_sizes_list_memory_and_executors_of_each_size():
     ]
 
 
-def test_cooldown_and_discovery_report_their_one_setting_each():
-    """The failure backoff cap and the discovery scan interval each have a group of their own."""
-    output = _output(failure_backoff_cap_seconds=3600, discovery_interval_seconds=60)
+def test_platform_settings_list_the_cooldowns():
+    """The cooldown group lists the three cooldowns, the orphan file interval and the failure backoff cap, in order."""
+    output = _output(
+        rewrite_data_files_cooldown_seconds=60,
+        rewrite_manifests_cooldown_seconds=120,
+        expire_snapshots_cooldown_seconds=180,
+        remove_orphan_files_interval_seconds=240,
+        failure_backoff_cap_seconds=3600,
+    )
 
-    assert [(i.key, i.value, i.unit) for i in output.groups[2].items] == [
-        ("maintenance_failure_backoff_cap_seconds", 3600, "seconds")
+    assert [(i.key, i.label, i.value, i.unit) for i in output.groups[2].items] == [
+        ("maintenance_rewrite_data_files_cooldown_seconds", "Rewrite data files cooldown", 60, "seconds"),
+        ("maintenance_rewrite_manifests_cooldown_seconds", "Rewrite manifests cooldown", 120, "seconds"),
+        ("maintenance_expire_snapshots_cooldown_seconds", "Expire snapshots cooldown", 180, "seconds"),
+        ("maintenance_remove_orphan_files_interval_seconds", "Orphan file removal interval", 240, "seconds"),
+        ("maintenance_failure_backoff_cap_seconds", "Failure backoff cap", 3600, "seconds"),
     ]
+    assert [i.description for i in output.groups[2].items][:4] == [
+        "The least time between two runs of rewrite data files on one table.",
+        "The least time between two runs of rewrite manifests on one table.",
+        "The least time between two runs of expire snapshots on one table.",
+        "How often orphan files are removed from a table: they have no target the platform can measure.",
+    ]
+
+
+def test_discovery_reports_its_one_setting():
+    """The discovery scan interval has a group of its own."""
+    output = _output(discovery_interval_seconds=60)
+
     assert [(i.key, i.value, i.unit) for i in output.groups[3].items] == [("discovery_interval_seconds", 60, "seconds")]
 
 

@@ -16,6 +16,7 @@ from context.table_maintenance.application.domain.model.shared import (
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
     AttentionMark,
+    OperationCooldowns,
     Table,
     TableId,
     TableName,
@@ -55,6 +56,7 @@ from context.table_maintenance.application.port.inbound.table_reconciliation imp
 from context.table_maintenance.application.port.outbound.table import (
     TableMetadataObservation,
 )
+from context.table_maintenance.application.service.table import PlanTableMaintenanceService
 from context.table_maintenance.application.service.table_maintenance_policy import (
     CreateTableMaintenancePolicyService,
     UpdateTableMaintenancePolicyService,
@@ -375,6 +377,22 @@ def test_scheduled_plan_respects_cooldown(planner, tables_repo, catalog, now):
     table.operation_states.clear()
     control = _plan(planner, now)
     assert "rewrite_data_files" in [o.operation for o in control.operations]
+
+
+def test_plan_uses_the_injected_cooldowns(tables_repo, catalog, resolve_applicable_policy, now):
+    """With no compaction cooldown a table is due again right after an attempt, as the injected cooldowns say."""
+    table = _table(tables_repo, now)
+    table.record_operation_result(OPS.REWRITE_DATA_FILES, True, now)
+    _observe(catalog, now)
+    held = PlanTableMaintenanceService(tables_repo, catalog, resolve_applicable_policy)
+    free = PlanTableMaintenanceService(
+        tables_repo,
+        catalog,
+        resolve_applicable_policy,
+        cooldowns=OperationCooldowns.platform_default().with_changes(rewrite_data_files=timedelta(0)),
+    )
+    assert "rewrite_data_files" not in [o.operation for o in _plan(held, now).operations]
+    assert "rewrite_data_files" in [o.operation for o in _plan(free, now).operations]
 
 
 def test_manual_plan_ignores_disabled_and_cooldown(planner, tables_repo, catalog, policies, now):

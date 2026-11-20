@@ -11,7 +11,8 @@ class PlatformSettings(ValueObject):
 
     Each field is one setting a person may want to look up: how long and how often a maintenance
     operation is attempted and how long an attempt may wait in its queue, the Spark size of each
-    compute size, how far a failing operation's cooldown backs off, and how often discovery scans.
+    compute size, the cooldown of each operation and how far it backs off after a failure, and how
+    often discovery scans.
     Durations are in seconds. The composition root fills it from the settings it chose to show;
     nothing else about the deployment is here.
     """
@@ -20,5 +21,9 @@ class PlatformSettings(ValueObject):
     max_attempts: int
     queue_wait_limit_seconds: int
     compute_sizes: tuple[PlatformComputeSize, ...]
+    rewrite_data_files_cooldown_seconds: int
+    rewrite_manifests_cooldown_seconds: int
+    expire_snapshots_cooldown_seconds: int
+    remove_orphan_files_interval_seconds: int
     failure_backoff_cap_seconds: int
     discovery_interval_seconds: int

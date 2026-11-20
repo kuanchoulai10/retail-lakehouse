@@ -26,6 +26,7 @@ from context.table_maintenance.application.domain.model.shared import (
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
     AttentionMark,
+    OperationCooldowns,
     OperationState,
     Table,
     TableId,
@@ -61,6 +62,7 @@ from tests.context.table_maintenance.fakes.policy_with_operation import policy_w
 NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)
 MIB = 1024 * 1024
 DEFAULT = MaintenancePolicyContent.platform_default()
+PLATFORM = OperationCooldowns.platform_default()
 DAY_SPEC = PartitionSpecInfo(
     spec_id=0,
     fields=(PartitionFieldInfo(field_id=1000, name="d", source_column="ts", source_type="timestamp", transform="day"),),
@@ -120,9 +122,15 @@ def snaps(n, old):
     )
 
 
-def assess(t: Table, o: TableObservation, op: Op, policy: MaintenancePolicyContent = DEFAULT) -> OperationAssessment:
+def assess(
+    t: Table,
+    o: TableObservation,
+    op: Op,
+    policy: MaintenancePolicyContent = DEFAULT,
+    cooldowns: OperationCooldowns = PLATFORM,
+) -> OperationAssessment:
     """Assess the table and return the assessment of one operation."""
-    assessment = assess_maintenance(t, policy, o, NOW)
+    assessment = assess_maintenance(t, policy, o, NOW, cooldowns=cooldowns)
     assert [a.operation for a in assessment.operations] == list(Op.ordered())
     return next(a for a in assessment.operations if a.operation == op)
 
@@ -344,6 +352,59 @@ def test_cooldown_backs_off_after_failures():
     assert assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES).verdict == OperationVerdict.DUE
 
 
+def test_the_platform_cooldown_holds_an_operation_back():
+    """The cooldown of the platform settings holds an operation back, whatever the policy says."""
+    t = table()
+    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(minutes=30))
+    a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, cooldowns=PLATFORM)
+    assert a.verdict == OperationVerdict.COOLDOWN
+    assert a.next_eligible_at == NOW + timedelta(minutes=30)
+    free = PLATFORM.with_changes(rewrite_data_files=timedelta(0))
+    assert assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, cooldowns=free).verdict == OperationVerdict.DUE
+
+
+def test_a_policy_cooldown_of_zero_no_longer_frees_it():
+    """The policy's own cooldown is not read: a zero there leaves the platform's hour in force."""
+    zero = policy_with_operation(
+        compaction(at_least=5),
+        Op.REWRITE_DATA_FILES,
+        trigger_policy=RewriteDataFilesTriggerPolicy(
+            cooldown=timedelta(0),
+            conditions=RewriteDataFilesConditions(reducible_files=AtLeast(at_least=5)),
+        ),
+    )
+    t = table()
+    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(minutes=30))
+    a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, zero)
+    assert a.verdict == OperationVerdict.COOLDOWN
+
+
+def test_failures_double_the_platform_cooldown_up_to_the_cap():
+    """Two failures make the hour four hours; ten failures stop at the cap."""
+    t = table()
+    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
+        last_attempt_at=NOW - timedelta(hours=1), consecutive_failures=2
+    )
+    two = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
+    assert two.next_eligible_at == NOW - timedelta(hours=1) + timedelta(hours=4)
+    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
+        last_attempt_at=NOW - timedelta(hours=1), consecutive_failures=10
+    )
+    ten = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
+    assert ten.next_eligible_at == NOW - timedelta(hours=1) + PLATFORM.failure_backoff_cap
+
+
+def test_orphan_files_are_due_on_the_platform_interval():
+    """Orphan file removal is due once the platform interval has passed since the last attempt."""
+    t = table()
+    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=8))
+    assert assess(t, obs(), Op.REMOVE_ORPHAN_FILES).verdict == OperationVerdict.DUE
+    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=6))
+    assert assess(t, obs(), Op.REMOVE_ORPHAN_FILES).verdict == OperationVerdict.COOLDOWN
+    daily = PLATFORM.with_changes(remove_orphan_files=timedelta(days=1))
+    assert assess(t, obs(), Op.REMOVE_ORPHAN_FILES, cooldowns=daily).verdict == OperationVerdict.DUE
+
+
 def test_failure_backoff_stops_at_the_given_cap():
     """The doubling of the cooldown stops at the cap the caller passes, 24 hours by default."""
     t = table()
@@ -354,7 +415,11 @@ def test_failure_backoff_stops_at_the_given_cap():
     capped = next(
         a
         for a in assess_maintenance(
-            t, DEFAULT, obs(partitions=(part(10),)), NOW, failure_backoff_cap=timedelta(hours=3)
+            t,
+            DEFAULT,
+            obs(partitions=(part(10),)),
+            NOW,
+            cooldowns=PLATFORM.with_changes(failure_backoff_cap=timedelta(hours=3)),
         ).operations
         if a.operation == Op.REWRITE_DATA_FILES
     )

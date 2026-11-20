@@ -57,6 +57,7 @@ class GetPlatformSettingsService(GetPlatformSettingsUseCase):
                     key="cooldown_and_backoff",
                     title="Cooldown and backoff",
                     items=(
+                        *_cooldowns(settings),
                         _item(
                             "maintenance_failure_backoff_cap_seconds",
                             "Failure backoff cap",
@@ -81,6 +82,40 @@ class GetPlatformSettingsService(GetPlatformSettingsUseCase):
                 ),
             )
         )
+
+
+def _cooldown(key: str, label: str, seconds: int, operation: str) -> GetPlatformSettingsUseCaseOutput.Setting:
+    return _item(key, label, seconds, _SECONDS, f"The least time between two runs of {operation} on one table.")
+
+
+def _cooldowns(settings: PlatformSettings) -> tuple[GetPlatformSettingsUseCaseOutput.Setting, ...]:
+    return (
+        _cooldown(
+            "maintenance_rewrite_data_files_cooldown_seconds",
+            "Rewrite data files cooldown",
+            settings.rewrite_data_files_cooldown_seconds,
+            "rewrite data files",
+        ),
+        _cooldown(
+            "maintenance_rewrite_manifests_cooldown_seconds",
+            "Rewrite manifests cooldown",
+            settings.rewrite_manifests_cooldown_seconds,
+            "rewrite manifests",
+        ),
+        _cooldown(
+            "maintenance_expire_snapshots_cooldown_seconds",
+            "Expire snapshots cooldown",
+            settings.expire_snapshots_cooldown_seconds,
+            "expire snapshots",
+        ),
+        _item(
+            "maintenance_remove_orphan_files_interval_seconds",
+            "Orphan file removal interval",
+            settings.remove_orphan_files_interval_seconds,
+            _SECONDS,
+            "How often orphan files are removed from a table: they have no target the platform can measure.",
+        ),
+    )
 
 
 def _execution_capacity(settings: PlatformSettings) -> tuple[GetPlatformSettingsUseCaseOutput.Setting, ...]:

@@ -44,3 +44,7 @@ class AppSettings(BaseSettings):
     maintenance_max_attempts: int = Field(default=3, ge=1)
     maintenance_queue_wait_limit_seconds: int = Field(default=86400, ge=1)
     maintenance_failure_backoff_cap_seconds: int = Field(default=86400, ge=1)
+    maintenance_rewrite_data_files_cooldown_seconds: int = Field(default=3600, ge=0)
+    maintenance_rewrite_manifests_cooldown_seconds: int = Field(default=21600, ge=0)
+    maintenance_expire_snapshots_cooldown_seconds: int = Field(default=21600, ge=0)
+    maintenance_remove_orphan_files_interval_seconds: int = Field(default=604800, ge=1)

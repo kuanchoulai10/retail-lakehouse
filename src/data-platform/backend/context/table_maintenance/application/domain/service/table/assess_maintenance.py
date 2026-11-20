@@ -16,7 +16,7 @@ from context.table_maintenance.application.domain.model.shared import (
     SizeSource,
     TableObservation,
 )
-from context.table_maintenance.application.domain.model.table import DEFAULT_FAILURE_BACKOFF_CAP
+from context.table_maintenance.application.domain.model.table import DEFAULT_OPERATION_COOLDOWNS
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     AtLeast,
     CompactionUnit,
@@ -39,9 +39,9 @@ from context.table_maintenance.application.domain.service.table.compute_reducibl
 )
 
 if TYPE_CHECKING:
-    from datetime import datetime, timedelta
+    from datetime import datetime
 
-    from context.table_maintenance.application.domain.model.table import Table
+    from context.table_maintenance.application.domain.model.table import OperationCooldowns, Table
 
 DEFAULT_SMALL_MANIFEST_BYTES = 8 * 1024 * 1024
 MANIFEST_TARGET_SIZE_PROPERTY = "commit.manifest.target-size-bytes"
@@ -53,19 +53,20 @@ def assess_maintenance(
     observation: TableObservation,
     now: datetime,
     *,
-    failure_backoff_cap: timedelta = DEFAULT_FAILURE_BACKOFF_CAP,
+    cooldowns: OperationCooldowns = DEFAULT_OPERATION_COOLDOWNS,
 ) -> MaintenanceAssessment:
     """Evaluate every operation of a table against a policy, regardless of the table's status.
 
     An operation is due when it is enabled, its cooldown (with the failure backoff)
     has passed, and its conditions are empty or any of them holds. An enabled operation
     marked as needing attention is never due, whatever its cooldown; a mark set under an
-    earlier applicable policy is lifted by the plan, not ignored here. The failure backoff
-    doubles the cooldown per consecutive failure up to ``failure_backoff_cap``.
+    earlier applicable policy is lifted by the plan, not ignored here. The cooldown is the
+    platform's (``cooldowns``), not the policy's; the failure backoff doubles it per
+    consecutive failure up to ``cooldowns.failure_backoff_cap``.
     """
     return MaintenanceAssessment(
         operations=tuple(
-            _assess(op, table, policy, observation, now, failure_backoff_cap) for op in MaintenanceOperation.ordered()
+            _assess(op, table, policy, observation, now, cooldowns) for op in MaintenanceOperation.ordered()
         )
     )
 
@@ -76,7 +77,7 @@ def _assess(
     policy: MaintenancePolicyContent,
     observation: TableObservation,
     now: datetime,
-    failure_backoff_cap: timedelta,
+    cooldowns: OperationCooldowns,
 ) -> OperationAssessment:
     operation_policy = policy.operations.for_operation(op)
     if not operation_policy.enabled:
@@ -96,7 +97,7 @@ def _assess(
     if state.last_attempt_at is None:
         return assessment
     next_eligible_at = state.last_attempt_at + state.effective_cooldown(
-        operation_policy.trigger_policy.cooldown, failure_backoff_cap
+        cooldowns.for_operation(op), cooldowns.failure_backoff_cap
     )
     if now >= next_eligible_at:
         return assessment

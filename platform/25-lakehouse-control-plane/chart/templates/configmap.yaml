@@ -44,4 +44,8 @@ data:
   GLAC_MAINTENANCE_ATTEMPT_DEADLINE_SECONDS: {{ .Values.worker.attemptDeadlineSeconds | quote }}
   GLAC_MAINTENANCE_MAX_ATTEMPTS: {{ .Values.worker.maxAttempts | quote }}
   GLAC_MAINTENANCE_QUEUE_WAIT_LIMIT_SECONDS: {{ .Values.worker.queueWaitLimitSeconds | quote }}
+  GLAC_MAINTENANCE_REWRITE_DATA_FILES_COOLDOWN_SECONDS: {{ .Values.worker.rewriteDataFilesCooldownSeconds | quote }}
+  GLAC_MAINTENANCE_REWRITE_MANIFESTS_COOLDOWN_SECONDS: {{ .Values.worker.rewriteManifestsCooldownSeconds | quote }}
+  GLAC_MAINTENANCE_EXPIRE_SNAPSHOTS_COOLDOWN_SECONDS: {{ .Values.worker.expireSnapshotsCooldownSeconds | quote }}
+  GLAC_MAINTENANCE_REMOVE_ORPHAN_FILES_INTERVAL_SECONDS: {{ .Values.worker.removeOrphanFilesIntervalSeconds | quote }}
   GLAC_MAINTENANCE_FAILURE_BACKOFF_CAP_SECONDS: {{ .Values.worker.failureBackoffCapSeconds | quote }}
