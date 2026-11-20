@@ -105,7 +105,7 @@ export function RunMaintenanceDialog({
         {inFlight && (
           <Banner
             type="information"
-            title="A maintenance run is already in flight. Running now does not start another run: it raises that run's priority if you pick a higher one, and changes nothing otherwise."
+            title="A maintenance run is already in flight. Running now does not start another run: it raises that run's priority if you pick a higher one. The operations you pick are not added to it."
           />
         )}
         {run.isError && (

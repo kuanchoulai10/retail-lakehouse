@@ -317,3 +317,18 @@ describe("needs attention", () => {
     expect(resultOrder("needs_attention")).toBeLessThan(resultOrder("not_needed"));
   });
 });
+
+describe("a result this console no longer lists", () => {
+  // all_held was a verdict of the compaction rounds, which are gone; an old record may still carry it.
+  it("gets a sentence-case label", () => {
+    expect(resultLabel("all_held")).toBe("All held");
+  });
+
+  it("sorts after every result it knows", () => {
+    expect(resultOrder("all_held")).toBeGreaterThan(resultOrder("not_checked"));
+  });
+
+  it("still renders a sentence", () => {
+    expect(reasonSentence(op({ result: "all_held" }))).toBe("All held");
+  });
+});

@@ -12,7 +12,7 @@ const PATH = "/v1/tables/uuid-orders/maintenance";
 
 const RUNS_PATH = "/v1/tables/uuid-orders/table-maintenance-runs?limit=1";
 const IN_FLIGHT_NOTE =
-  "A maintenance run is already in flight. Running now does not start another run: it raises that run's priority if you pick a higher one, and changes nothing otherwise.";
+  "A maintenance run is already in flight. Running now does not start another run: it raises that run's priority if you pick a higher one. The operations you pick are not added to it.";
 
 function runWithStatus(status: string): TableMaintenanceRunApiResponse {
   return {

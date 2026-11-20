@@ -9,7 +9,7 @@ import { PolicyEditor } from "./PolicyEditor";
 
 const NIGHTLY = policyFixture({ name: "nightly", description: "Nightly compaction", version: 4 });
 
-// What the editor sent; the scheduler settings it reads for the priority labels do not count.
+// What the editor sent (writes only).
 function writesOf(calls: StubbedCall[]): StubbedCall[] {
   return calls.filter((call) => call.method !== "GET");
 }

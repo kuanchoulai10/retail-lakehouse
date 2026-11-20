@@ -18,8 +18,8 @@ function renderAt(path: string) {
 }
 
 describe("AppRoutes", () => {
-  it.each(["/tables/uuid-orders", "/tables/uuid-orders/commits"])(
-    "old tables uuid route renders not found: %s",
+  it.each(["/tables/uuid-orders", "/tables/uuid-orders/commits", "/compaction-rounds"])(
+    "a route that no longer exists renders not found: %s",
     (path) => {
       const calls = stubCatalogApi({});
       renderAt(path);
