@@ -1,9 +1,8 @@
-"""Web adapter for the table_maintenance_policy_attachment group: policy attachments and applicable policies."""
+"""Web adapter for the table_maintenance_policy_attachment group: policy attachments."""
 
 from __future__ import annotations
 
 from context.table_maintenance.adapter.inbound.web.table_maintenance_policy_attachment.dto import (
-    ApplicableTableMaintenancePolicyApiResponse,
     AttachTableMaintenancePolicyApiRequest,
     ListedTableMaintenancePolicyAttachmentApiResponse,
     TableMaintenancePolicyAttachmentApiResponse,
@@ -14,7 +13,6 @@ from context.table_maintenance.adapter.inbound.web.table_maintenance_policy_atta
 )
 
 __all__ = [
-    "ApplicableTableMaintenancePolicyApiResponse",
     "AttachTableMaintenancePolicyApiRequest",
     "ListedTableMaintenancePolicyAttachmentApiResponse",
     "TableMaintenancePolicyAttachmentApiResponse",

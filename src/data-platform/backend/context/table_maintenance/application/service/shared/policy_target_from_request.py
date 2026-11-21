@@ -17,19 +17,13 @@ if TYPE_CHECKING:
 
 
 def policy_target_from_request(
-    gateway: ReadTableMetadataGateway,
-    target_type: str,
-    path: tuple[str, ...],
-    table_uuid: str | None = None,
-    *,
-    must_exist: bool,
+    gateway: ReadTableMetadataGateway, target_type: str, path: tuple[str, ...]
 ) -> PolicyTarget:
-    """Build the target a request names.
+    """Build the target a request names, which must exist in the catalog.
 
-    A table target takes its uuid from the catalog unless ``table_uuid`` is given, and a missing
-    table is NotFoundError. With ``must_exist`` a catalog or namespace must also exist; it may
-    hold no table. A catalog the platform's credential cannot read raises
-    CatalogAccessDeniedError, untouched.
+    A table target takes its uuid from the catalog, and a missing table, namespace or catalog is
+    NotFoundError; a catalog or namespace may hold no table. A catalog the platform's credential
+    cannot read raises CatalogAccessDeniedError, untouched.
     """
     with translate_domain_errors():
         kind = PolicyTargetType(target_type)
@@ -39,23 +33,20 @@ def policy_target_from_request(
             target = PolicyTarget(type=kind, path=path)
     if kind == PolicyTargetType.TABLE:
         ref = TableMetadataRef(catalog=path[0], namespace=".".join(path[1:-1]), table=path[-1])
-        if table_uuid is None:
-            try:
-                table = gateway.load_table(ref)
-            except CatalogNotFoundError as exc:
-                raise NotFoundError(str(exc)) from exc
-            if table is None:
-                raise NotFoundError(f"table {'.'.join(path)} not found")
-            table_uuid = table.table_uuid
-        with translate_domain_errors():
-            return PolicyTarget(type=kind, path=path, table_uuid=table_uuid)
-    if must_exist:
         try:
-            exists = _exists(gateway, kind, path)
+            table = gateway.load_table(ref)
         except CatalogNotFoundError as exc:
             raise NotFoundError(str(exc)) from exc
-        if not exists:
-            raise NotFoundError(f"{kind} {'.'.join(path)} not found")
+        if table is None:
+            raise NotFoundError(f"table {'.'.join(path)} not found")
+        with translate_domain_errors():
+            return PolicyTarget(type=kind, path=path, table_uuid=table.table_uuid)
+    try:
+        exists = _exists(gateway, kind, path)
+    except CatalogNotFoundError as exc:
+        raise NotFoundError(str(exc)) from exc
+    if not exists:
+        raise NotFoundError(f"{kind} {'.'.join(path)} not found")
     return target
 
 

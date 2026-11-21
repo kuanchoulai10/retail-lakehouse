@@ -5,7 +5,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from './applicableTableMaintenancePolicyApiResponse';
 export * from './atMostApiRequest';
 export * from './attachTableDiscoveryPolicyApiRequest';
 export * from './attachTableMaintenancePolicyApiRequest';
@@ -60,7 +59,6 @@ export * from './expireSnapshotsTargetApiRequest';
 export * from './genericTableApiResponse';
 export * from './genericTableApiResponseProperties';
 export * from './genericTableIdentifierApiResponse';
-export * from './getApplicableMaintenancePolicyParams';
 export * from './getCatalogTablePartitionSpecComparisonParams';
 export * from './getCatalogTableSchemaComparisonParams';
 export * from './getEffectivePoliciesParams';

@@ -44,7 +44,6 @@ if TYPE_CHECKING:
         AttachTableMaintenancePolicyUseCase,
         DetachTableMaintenancePolicyUseCase,
         ListTableMaintenancePolicyAttachmentsUseCase,
-        ResolveApplicableTableMaintenancePolicyUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
         GetPlatformSettingsUseCase,
@@ -81,7 +80,6 @@ class WebUseCases:
     attach_table_maintenance_policy: AttachTableMaintenancePolicyUseCase
     detach_table_maintenance_policy: DetachTableMaintenancePolicyUseCase
     list_table_maintenance_policy_attachments: ListTableMaintenancePolicyAttachmentsUseCase
-    resolve_applicable_table_maintenance_policy: ResolveApplicableTableMaintenancePolicyUseCase
     get_effective_policies: GetEffectivePoliciesUseCase
     list_tables: ListTablesUseCase
     get_table: GetTableUseCase

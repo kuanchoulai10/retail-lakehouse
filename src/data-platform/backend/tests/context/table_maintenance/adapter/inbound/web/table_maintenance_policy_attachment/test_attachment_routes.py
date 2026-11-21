@@ -1,4 +1,4 @@
-"""Test the maintenance policy attachment and applicable policy routes over the real services on in-memory fakes."""
+"""Test the maintenance policy attachment routes over the real services on in-memory fakes."""
 
 from __future__ import annotations
 
@@ -234,66 +234,3 @@ def test_mappings_routes_are_gone(world: PolicyWebWorld, method: str, body: dict
 
     assert response.status_code in {404, 405}
     assert len(world.attachments.list_all()) == 1
-
-
-def test_table_applicable_policy_names_where_it_came_from(world: PolicyWebWorld) -> None:
-    """GET /tables/{uuid}/applicable-policy answers the policy, its version and the target it is inherited from."""
-    world.attach("gold", "namespace", ["prod", "sales"])
-    body = world.client.get("/v1/tables/u-1/applicable-policy").json()
-    assert (body["id"], body["name"], body["version"]) == (_gold_id(world), "gold", 1)
-    assert body["target"] == {"type": "namespace", "path": ["prod", "sales"], "table_uuid": None}
-    assert body["rewrite_data_files"]["target"] == {"reducible_files": {"at_most": 5}, "per": "partition"}
-
-
-def test_applicable_policy_shows_the_new_shape(world: PolicyWebWorld) -> None:
-    """The applicable policy carries ``on`` and the blocks at the top level, an absent one as null."""
-    body = world.client.get("/v1/tables/u-1/applicable-policy").json()
-    assert body["on"] == {"schedule": {"every_seconds": 3600}, "catalog_commit": {"debounce_seconds": 300}}
-    assert body["expire_snapshots"] == {
-        "target": {"min_snapshots_to_keep": 10, "max_snapshot_age_seconds": 86400},
-        "options": None,
-    }
-    assert "operations" not in body
-    assert "reconcile_interval_seconds" not in body
-
-
-def test_table_applicable_policy_falls_back_to_default(world: PolicyWebWorld) -> None:
-    """With nothing attached the default applies and the target is null."""
-    body = world.client.get("/v1/tables/u-1/applicable-policy").json()
-    assert (body["id"], body["name"], body["target"]) == ("mp-00000000000000000000000000", "default", None)
-
-
-def test_unknown_table_applicable_policy_is_404(world: PolicyWebWorld) -> None:
-    """A table uuid table maintenance does not know answers 404."""
-    assert world.client.get("/v1/tables/u-404/applicable-policy").status_code == 404
-
-
-def test_applicable_policy_for_a_namespace_and_a_catalog(world: PolicyWebWorld) -> None:
-    """GET /applicable-policy takes a catalog and an optional dotted namespace."""
-    world.attach("gold", "catalog", ["prod"])
-    world.attach("default", "namespace", ["prod", "sales"])
-    namespace = world.client.get("/v1/applicable-policy", params={"catalog": "prod", "namespace": "sales.eu"}).json()
-    assert (namespace["name"], namespace["target"]["path"]) == ("default", ["prod", "sales"])
-    catalog = world.client.get("/v1/applicable-policy", params={"catalog": "prod"}).json()
-    assert (catalog["name"], catalog["target"]["type"]) == ("gold", "catalog")
-
-
-def test_applicable_policy_for_a_table_table_maintenance_has_no_record_of(world: PolicyWebWorld) -> None:
-    """GET /applicable-policy with a table resolves it through the catalog; its own attachment applies."""
-    world.catalog.add_table("prod", "sales.eu", "returns", "u-2")
-    params = {"catalog": "prod", "namespace": "sales.eu", "table": "returns"}
-    world.attach("default", "namespace", ["prod", "sales"])
-    inherited = world.client.get("/v1/applicable-policy", params=params).json()
-    assert (inherited["name"], inherited["target"]["type"]) == ("default", "namespace")
-    assert world.attach("gold", "table", ["prod", "sales", "eu", "returns"]).status_code == 200
-    own = world.client.get("/v1/applicable-policy", params=params).json()
-    assert (own["name"], own["target"]) == (
-        "gold",
-        {"type": "table", "path": ["prod", "sales", "eu", "returns"], "table_uuid": "u-2"},
-    )
-
-
-def test_applicable_policy_for_a_table_missing_from_the_catalog_is_404(world: PolicyWebWorld) -> None:
-    """A table the catalog does not hold answers 404."""
-    params = {"catalog": "prod", "namespace": "sales.eu", "table": "ghost"}
-    assert world.client.get("/v1/applicable-policy", params=params).status_code == 404

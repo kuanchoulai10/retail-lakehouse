@@ -69,7 +69,7 @@ class AttachTableMaintenancePolicyService(AttachTableMaintenancePolicyUseCase):
         """
         with translate_domain_errors():
             policy_name = TableMaintenancePolicyName(value=request.policy_name)
-        target = policy_target_from_request(self._gateway, request.target_type, request.path, must_exist=True)
+        target = policy_target_from_request(self._gateway, request.target_type, request.path)
         policy = self._policies_repo.get_by_name(policy_name)
         if policy is None:
             raise NotFoundError(f"table maintenance policy {request.policy_name} not found")

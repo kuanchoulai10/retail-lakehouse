@@ -23,7 +23,6 @@ from context.table_maintenance.application.service.table_maintenance_policy_atta
     AttachTableMaintenancePolicyService,
     DetachTableMaintenancePolicyService,
     ListTableMaintenancePolicyAttachmentsService,
-    ResolveApplicableTableMaintenancePolicyService,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import build_client
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED
@@ -95,9 +94,6 @@ class PolicyWebWorld:
             ),
             detach_table_maintenance_policy=DetachTableMaintenancePolicyService(policies, attachments, tables, changes),
             list_table_maintenance_policy_attachments=ListTableMaintenancePolicyAttachmentsService(
-                policies, attachments, catalog, tables
-            ),
-            resolve_applicable_table_maintenance_policy=ResolveApplicableTableMaintenancePolicyService(
                 policies, attachments, catalog, tables
             ),
         )

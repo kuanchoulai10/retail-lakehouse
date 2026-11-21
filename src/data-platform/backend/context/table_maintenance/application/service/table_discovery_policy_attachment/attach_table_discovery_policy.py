@@ -75,7 +75,7 @@ class AttachTableDiscoveryPolicyService(AttachTableDiscoveryPolicyUseCase):
         """
         with translate_domain_errors():
             policy_name = TableDiscoveryPolicyName(value=request.policy_name)
-        target = policy_target_from_request(self._gateway, request.target_type, request.path, must_exist=True)
+        target = policy_target_from_request(self._gateway, request.target_type, request.path)
         policy = self._policies_repo.get_by_name(policy_name)
         if policy is None:
             raise NotFoundError(f"discovery policy {request.policy_name} not found")
