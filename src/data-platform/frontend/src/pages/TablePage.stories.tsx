@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
-import { getListCoveredCatalogsMockHandler } from "@/api/generated/discovery-rules/discovery-rules.msw";
+import {
+  getListScannedCatalogsMockHandler,
+  getListTableDiscoveryPoliciesMockHandler,
+} from "@/api/generated/discovery-policies/discovery-policies.msw";
 import { getGetTableApplicableMaintenancePolicyMockHandler } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
 import { getListTableMaintenanceRunsMockHandler } from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
 import {
@@ -66,7 +69,15 @@ export const Overview: Story = {
     await expect(header.queryByText("Managed")).toBeNull();
     await expect(header.queryByText(/Policy:|Rule:/)).toBeNull();
     const table = within(await canvas.findByRole("region", { name: "Table" }));
-    await expect(await table.findByRole("link", { name: "Priority 10" })).toHaveAttribute("href", "/discovery-rules");
+    await expect(await table.findByRole("link", { name: "core-tables v1" })).toHaveAttribute(
+      "href",
+      "/discovery-policies/core-tables/versions/1",
+    );
+    await waitFor(() =>
+      expect(table.getByText("Maintenance: managed").parentElement).toHaveTextContent(
+        "Maintenance: managed · discovery policy core-tables v1 · rule 1",
+      ),
+    );
     await expect(await table.findByRole("combobox", { name: "Priority" })).toHaveTextContent("P3 · default");
     for (const label of METRIC_CARDS) {
       await expect(await canvas.findByRole("group", { name: label })).toBeVisible();
@@ -728,7 +739,7 @@ export const PolicyOldUrl: Story = {
 export const PolicyNotRecorded: Story = {
   beforeEach({ msw }) {
     msw.use(
-      getListCoveredCatalogsMockHandler({ catalogs: [] }),
+      getListScannedCatalogsMockHandler({ catalogs: [] }),
       apiError("get", "/v1/tables/:tableUuid", "table uuid-orders not found", 404),
     );
   },
@@ -736,7 +747,7 @@ export const PolicyNotRecorded: Story = {
     const panel = within(await within(canvasElement).findByRole("region", { name: "Maintenance policy" }));
     await expect(await panel.findByRole("link", { name: "retail-nightly v4" })).toBeVisible();
     await expect(panel.getByRole("button", { name: "Attach policy" })).toBeVisible();
-    await expect(within(canvasElement).getByText("this catalog is not covered by maintenance")).toBeVisible();
+    await expect(within(canvasElement).getByText("no discovery policy in this catalog manages tables")).toBeVisible();
   },
 };
 
@@ -814,19 +825,63 @@ export const Unmanaged: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText("the discovery rules do not include this table")).toBeVisible();
+    await expect(await canvas.findByText("the discovery policy that applies does not manage this table")).toBeVisible();
     await expect(canvas.queryByRole("button", { name: /Pause|Resume/ })).toBeNull();
   },
 };
 
-export const CatalogNotCovered: Story = {
+// No discovery policy that can manage tables is attached in iceberg, so discovery does not scan it.
+export const NotScanned: Story = {
   beforeEach({ msw }) {
-    msw.use(getListCoveredCatalogsMockHandler({ catalogs: [] }));
+    msw.use(getListScannedCatalogsMockHandler({ catalogs: [] }));
   },
   play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByText("this catalog is not covered by maintenance"),
-    ).toBeVisible();
+    const canvas = within(canvasElement);
+    const reason = await canvas.findByText("no discovery policy in this catalog manages tables");
+    await expect(reason).toBeVisible();
+    await expect(within(reason.parentElement as HTMLElement).getByRole("link", { name: "Discovery policies" })).toHaveAttribute("href", "/discovery-policies");
+    await expect(canvas.getByText("Maintenance: not managed")).toBeVisible();
+  },
+};
+
+// Discovery scans iceberg, but the platform's catalog credential cannot read it.
+export const CannotAccess: Story = {
+  beforeEach({ msw }) {
+    msw.use(
+      getListScannedCatalogsMockHandler({
+        catalogs: [
+          {
+            catalog: "iceberg",
+            last_discovered_at: "2026-11-08T08:10:00Z",
+            failure: {
+              reason: "cannot_access",
+              detail: "the platform's catalog credential cannot read catalog iceberg",
+              failed_at: "2026-11-09T08:10:00Z",
+            },
+          },
+        ],
+      }),
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const reason = await canvas.findByText("discovery cannot read this catalog with the platform's catalog credential");
+    await expect(reason).toBeVisible();
+    await expect(within(reason.parentElement as HTMLElement).getByRole("link", { name: "Discovery policies" })).toHaveAttribute("href", "/discovery-policies");
+    await expect(canvas.getByText("Maintenance: not managed")).toBeVisible();
+  },
+};
+
+// The policy that decided the table has been deleted since: its id, in mono, with no link and no rule.
+export const DecidedByDeletedPolicy: Story = {
+  beforeEach({ msw }) {
+    msw.use(getListTableDiscoveryPoliciesMockHandler({ policies: [] }));
+  },
+  play: async ({ canvasElement }) => {
+    const table = within(await within(canvasElement).findByRole("region", { name: "Table" }));
+    await expect(await table.findByText(MAINTAINED_ORDERS.matched_policy_id)).toHaveClass("font-mono");
+    await expect(table.queryByRole("link", { name: /v1/ })).toBeNull();
+    await expect(table.queryByText(/rule/)).toBeNull();
   },
 };
 

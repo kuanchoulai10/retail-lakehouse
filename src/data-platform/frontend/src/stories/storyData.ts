@@ -24,7 +24,6 @@ import type {
   TableCommitsApiResponse,
   TableCurrentMetricsApiResponse,
   TableDiscoveryPolicyVersionApiResponse,
-  TableDiscoveryRuleApiResponse,
   TableIdentifierApiResponse,
   TableMaintenanceRunApiResponse,
   TableMaintenanceRunAttemptApiResponse,
@@ -90,6 +89,11 @@ export const RETAIL_TABLES: TableIdentifierApiResponse[] = [
 ];
 
 export const ORDERS_UUID = "5f2b8c1e-0d4a-4c8e-9a51-7c3f0b6d2e91";
+
+// The discovery policy and rules that decided the maintained tables (CORE_TABLES below).
+export const CORE_TABLES_POLICY_ID = "dp-01m7s6c3tqee0rhg00xry2zqqn";
+const CORE_ORDERS_RULE_ID = "dr-01m7s6c3tqee0rhg00xry2zqqp";
+const CORE_STOCK_RULE_ID = "dr-01m7s6c3tqee0rhg00xry2zqqq";
 
 export const DEFAULT_POLICY_ID = "mp-00000000000000000000000000";
 export const RETAIL_NIGHTLY_POLICY_ID = "mp-01m7sd16b1ef2vww335cwcg9k7";
@@ -247,9 +251,9 @@ export const MAINTAINED_ORDERS: TableApiResponse = {
   table: "orders",
   status: "managed",
   priority: "P3",
-  matched_rule_id: "dr-01m7s6c3tqee0rhg00xry2zqqt",
-  matched_policy_id: "dp-01m7s6c3tqee0rhg00xry2zqqv",
-  matched_policy_version: 2,
+  matched_rule_id: CORE_ORDERS_RULE_ID,
+  matched_policy_id: CORE_TABLES_POLICY_ID,
+  matched_policy_version: 1,
   operation_states: {},
   registered_at: "2026-11-02T10:00:00Z",
   updated_at: "2026-11-09T08:00:00Z",
@@ -272,6 +276,7 @@ export const MAINTAINED_TABLES: TableApiResponse[] = [
     uuid: "1d3f5b7a-2c4e-4a6b-8c0d-e2f4a6b8c0d1",
     namespace: "inventory",
     table: "stock_levels",
+    matched_rule_id: CORE_STOCK_RULE_ID,
   },
   {
     ...MAINTAINED_ORDERS,
@@ -832,76 +837,89 @@ export const QUEUE_TIMEOUT_RUN = runOfAttempts(
   "2026-11-19T02:00:00Z",
 );
 
-export const RULES: TableDiscoveryRuleApiResponse[] = [
-  {
-    id: "dr-01m7s6c3tqee0rhg00xry2zqqt",
-    priority: 10,
-    action: "include",
-    catalogs: ["iceberg"],
-    namespaces: ["retail"],
-    tables: ["*"],
-    enabled: true,
-    created_at: "2026-11-01T09:00:00Z",
-    updated_at: "2026-11-01T09:00:00Z",
-  },
-  {
-    id: "dr-01m7s6c3tqee0rhg00xz1dk9cs",
-    priority: 50,
-    action: "exclude",
-    catalogs: ["*"],
-    namespaces: ["*"],
-    tables: ["tmp_*", "staging_*"],
-    enabled: false,
-    created_at: "2026-11-01T09:00:00Z",
-    updated_at: "2026-11-01T09:00:00Z",
-  },
-];
-
 export const DEFAULT_DISCOVERY_POLICY_ID = "dp-00000000000000000000000000";
-// MAINTAINED_ORDERS names this policy at version 2 and its first rule.
 export const SALES_TABLES_POLICY_ID = "dp-01m7s6c3tqee0rhg00xry2zqqv";
 
-// The platform default, which manages nothing; and sales-tables, which manages the sales
-// namespaces except their temporary tables, attached to namespace iceberg.sales.
+// The platform default, which manages nothing.
+const DEFAULT_DISCOVERY_POLICY: ListedTableDiscoveryPolicyApiResponse = {
+  id: DEFAULT_DISCOVERY_POLICY_ID,
+  name: "default",
+  is_default: true,
+  version: 1,
+  description: "Manages nothing. Attach another discovery policy to a catalog, namespace or table to manage its tables.",
+  no_match_outcome: "unmanage",
+  rules: [],
+  attachment_count: 0,
+  created_at: "2026-11-01T09:00:00Z",
+  updated_at: "2026-11-01T09:00:00Z",
+};
+
+// core-tables, attached to catalog iceberg: MAINTAINED_ORDERS names its v1 and rule 1, the
+// inventory stock table its rule 2; every other table there is not managed.
+export const CORE_TABLES: ListedTableDiscoveryPolicyApiResponse = {
+  id: CORE_TABLES_POLICY_ID,
+  name: "core-tables",
+  is_default: false,
+  version: 1,
+  description: "Retail orders and inventory stock levels",
+  no_match_outcome: "unmanage",
+  rules: [
+    {
+      id: CORE_ORDERS_RULE_ID,
+      outcome: "manage",
+      conditions: [
+        { attribute: "namespace", operator: "glob", values: ["retail"] },
+        { attribute: "table_name", operator: "glob", values: ["orders"] },
+      ],
+    },
+    {
+      id: CORE_STOCK_RULE_ID,
+      outcome: "manage",
+      conditions: [
+        { attribute: "namespace", operator: "glob", values: ["inventory"] },
+        { attribute: "table_name", operator: "glob", values: ["stock_*"] },
+      ],
+    },
+  ],
+  attachment_count: 1,
+  created_at: "2026-11-02T09:00:00Z",
+  updated_at: "2026-11-02T09:00:00Z",
+};
+
+// sales-tables, which manages the sales namespaces except their temporary tables, attached to
+// namespace iceberg.sales.
+export const SALES_TABLES: ListedTableDiscoveryPolicyApiResponse = {
+  id: SALES_TABLES_POLICY_ID,
+  name: "sales-tables",
+  is_default: false,
+  version: 2,
+  description: "Sales tables, without the temporary ones",
+  no_match_outcome: "unmanage",
+  rules: [
+    {
+      id: "dr-01m7s6c3tqee0rhg00xry2zqqt",
+      outcome: "manage",
+      conditions: [
+        { attribute: "namespace", operator: "glob", values: ["sales", "sales.*"] },
+        { attribute: "table_name", operator: "glob", values: ["orders*", "returns*"] },
+      ],
+    },
+    {
+      id: "dr-01m7s6c3tqee0rhg00xz1dk9cs",
+      outcome: "unmanage",
+      conditions: [{ attribute: "table_name", operator: "glob", values: ["tmp_*", "staging_*"] }],
+    },
+  ],
+  attachment_count: 1,
+  created_at: "2026-11-01T09:00:00Z",
+  updated_at: "2026-11-05T09:00:00Z",
+};
+
+// As the API lists them: the default first, then by name.
 export const DISCOVERY_POLICIES: ListedTableDiscoveryPolicyApiResponse[] = [
-  {
-    id: DEFAULT_DISCOVERY_POLICY_ID,
-    name: "default",
-    is_default: true,
-    version: 1,
-    description: "Manages nothing. Attach another discovery policy to a catalog, namespace or table to manage its tables.",
-    no_match_outcome: "unmanage",
-    rules: [],
-    attachment_count: 0,
-    created_at: "2026-11-01T09:00:00Z",
-    updated_at: "2026-11-01T09:00:00Z",
-  },
-  {
-    id: SALES_TABLES_POLICY_ID,
-    name: "sales-tables",
-    is_default: false,
-    version: 2,
-    description: "Sales tables, without the temporary ones",
-    no_match_outcome: "unmanage",
-    rules: [
-      {
-        id: "dr-01m7s6c3tqee0rhg00xry2zqqt",
-        outcome: "manage",
-        conditions: [
-          { attribute: "namespace", operator: "glob", values: ["sales", "sales.*"] },
-          { attribute: "table_name", operator: "glob", values: ["orders*", "returns*"] },
-        ],
-      },
-      {
-        id: "dr-01m7s6c3tqee0rhg00xz1dk9cs",
-        outcome: "unmanage",
-        conditions: [{ attribute: "table_name", operator: "glob", values: ["tmp_*", "staging_*"] }],
-      },
-    ],
-    attachment_count: 1,
-    created_at: "2026-11-01T09:00:00Z",
-    updated_at: "2026-11-05T09:00:00Z",
-  },
+  DEFAULT_DISCOVERY_POLICY,
+  CORE_TABLES,
+  SALES_TABLES,
 ];
 
 // The kept versions before each policy's current one. sales-tables v1 kept archive tables out
@@ -915,7 +933,7 @@ export const DISCOVERY_POLICY_VERSIONS: TableDiscoveryPolicyVersionApiResponse[]
     description: "Sales tables, without the temporary ones",
     no_match_outcome: "unmanage",
     rules: [
-      DISCOVERY_POLICIES[1]!.rules[0]!,
+      SALES_TABLES.rules[0]!,
       {
         id: "dr-01m7s6c3tqee0rhg00xz1dk9ct",
         outcome: "unmanage",
@@ -935,9 +953,17 @@ export const DISCOVERY_POLICY_ATTACHMENTS: ListedTableDiscoveryPolicyAttachmentA
     orphaned: false,
     attached_at: "2026-11-05T09:00:00Z",
   },
+  {
+    id: "da-01m7s6c3tqee0rhg00xry2zqqz",
+    policy_id: CORE_TABLES_POLICY_ID,
+    policy_name: "core-tables",
+    target: { type: "catalog", path: ["iceberg"], table_uuid: null },
+    orphaned: false,
+    attached_at: "2026-11-02T09:00:00Z",
+  },
 ];
 
-// Discovery scans iceberg, where sales-tables is attached, and reads it.
+// Discovery scans iceberg, where core-tables and sales-tables are attached, and reads it.
 export const SCANNED_CATALOGS: ScannedCatalogsApiResponse = {
   catalogs: [{ catalog: "iceberg", last_discovered_at: "2026-11-09T08:10:00Z", failure: null }],
 };

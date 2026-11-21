@@ -3,10 +3,10 @@ import { expect, fn, userEvent, within } from "storybook/test";
 import { draftFromPolicy } from "@/lib/discoveryPolicyDraft";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { PHONE } from "@/stories/phone";
-import { DISCOVERY_POLICIES } from "@/stories/storyData";
+import { SALES_TABLES } from "@/stories/storyData";
 import { DiscoveryRulesTable } from "./DiscoveryRulesTable";
 
-const RULES = draftFromPolicy(DISCOVERY_POLICIES[1]!).rules;
+const RULES = draftFromPolicy(SALES_TABLES).rules;
 
 const meta = {
   title: "Components/Discovery rules table",

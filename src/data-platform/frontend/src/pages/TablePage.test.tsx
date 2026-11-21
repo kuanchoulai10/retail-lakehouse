@@ -5,7 +5,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { describe, expect, it, vi } from "vitest";
-import type { CatalogTableApiResponse, TableApiResponse } from "../api/generated/model";
+import type { CatalogTableApiResponse, ScannedCatalogApiResponse, TableApiResponse } from "../api/generated/model";
 import { getListCatalogTablesQueryKey } from "../api/generated/tables/tables";
 import {
   bodyOf,
@@ -48,17 +48,23 @@ function renderAt(path: string, namespacePage: ReactNode = <p>namespace page</p>
 }
 
 function maintenance(overrides: Partial<TableApiResponse> = {}): TableApiResponse {
-  return tableFixture({ namespace: "retail", ...overrides });
+  return tableFixture({
+    namespace: "retail",
+    matched_policy_id: SALES_TABLES_ID,
+    matched_policy_version: 2,
+    matched_rule_id: ORDERS_RULE_ID,
+    ...overrides,
+  });
 }
 
 interface Options {
   table?: CatalogTableApiResponse;
-  covered?: string[];
+  scanned?: ScannedCatalogApiResponse[];
   maintenanceTable?: () => Response | Promise<Response>;
   extra?: Record<string, StubHandler>;
 }
 
-function stubTable({ table = catalogTableFixture(), covered = ["iceberg"], maintenanceTable, extra = {} }: Options = {}) {
+function stubTable({ table = catalogTableFixture(), scanned = [ICEBERG_SCANNED], maintenanceTable, extra = {} }: Options = {}) {
   return stubCatalogApi({
     [`GET ${TABLE}`]: () => jsonResponse(table),
     [`GET ${TABLE}/properties`]: () => jsonResponse(catalogTablePropertiesFixture()),
@@ -66,8 +72,9 @@ function stubTable({ table = catalogTableFixture(), covered = ["iceberg"], maint
     [`GET ${TABLE}/schema-versions/0/comparison*`]: () => jsonResponse(SCHEMA_COMPARISON),
     [`GET ${TABLE}/partition-spec-versions`]: () => jsonResponse(SPEC_VERSIONS),
     [`GET ${TABLE}/partition-spec-versions/0/comparison*`]: () => jsonResponse(SPEC_COMPARISON),
-    "GET /v1/discovery-rules/catalogs": () => jsonResponse({ catalogs: covered }),
-    "GET /v1/discovery-rules": () => jsonResponse({ version: 1, rules: [RULE] }),
+    "GET /v1/scanned-catalogs": () => jsonResponse({ catalogs: scanned }),
+    "GET /v1/discovery-policies": () => jsonResponse({ policies: [SALES_TABLES] }),
+    "GET /v1/discovery-policies/sales-tables/versions/2": () => jsonResponse(SALES_TABLES_V2),
     "GET /v1/tables/uuid-orders": maintenanceTable ?? (() => jsonResponse(maintenance())),
     "GET /v1/tables/uuid-orders/commits*": () => jsonResponse({ items: [], truncated: false }),
     "GET /v1/tables/uuid-orders/metrics/current": () => jsonResponse(CURRENT_METRICS),
@@ -164,20 +171,62 @@ const METRIC_TRENDS = {
   points: [{ at: "2026-11-20T10:00:00Z", values: CURRENT_METRICS.metrics }],
 };
 
-const RULE = {
-  id: "dr-01m7s6c3tqee0rhg00xn5s97gw",
-  priority: 10,
-  action: "include",
-  enabled: true,
-  catalogs: ["iceberg"],
-  namespaces: ["*"],
-  tables: ["*"],
-  created_at: "2026-10-30T10:00:00Z",
-  updated_at: "2026-10-30T10:00:00Z",
+const ICEBERG_SCANNED: ScannedCatalogApiResponse = {
+  catalog: "iceberg",
+  last_discovered_at: "2026-11-09T08:10:00Z",
+  failure: null,
+};
+const OTHER_SCANNED: ScannedCatalogApiResponse = { ...ICEBERG_SCANNED, catalog: "other" };
+const ICEBERG_REFUSED: ScannedCatalogApiResponse = {
+  ...ICEBERG_SCANNED,
+  failure: {
+    reason: "cannot_access",
+    detail: "the platform's catalog credential cannot read catalog iceberg",
+    failed_at: "2026-11-09T09:10:00Z",
+  },
+};
+
+// sales-tables decided the table at v2 by its first rule, which the current v3 has moved to second.
+const SALES_TABLES_ID = "dp-01m7s6c3tqee0rhg00xry2zqqv";
+const ORDERS_RULE_ID = "dr-01m7s6c3tqee0rhg00xn5s97gw";
+const ORDERS_RULE = {
+  id: ORDERS_RULE_ID,
+  outcome: "manage",
+  conditions: [
+    { attribute: "namespace", operator: "glob", values: ["retail"] },
+    { attribute: "table_name", operator: "glob", values: ["orders*"] },
+  ],
+};
+const TEMPORARY_RULE = {
+  id: "dr-01m7s6c3tqee0rhg00xz1dk9cs",
+  outcome: "unmanage",
+  conditions: [{ attribute: "table_name", operator: "glob", values: ["tmp_*"] }],
+};
+const SALES_TABLES_V2 = {
+  id: SALES_TABLES_ID,
+  name: "sales-tables",
+  is_default: false,
+  version: 2,
+  description: "",
+  no_match_outcome: "unmanage",
+  rules: [ORDERS_RULE, TEMPORARY_RULE],
+  created_at: "2026-11-02T09:00:00Z",
+};
+const SALES_TABLES = {
+  ...SALES_TABLES_V2,
+  version: 3,
+  rules: [TEMPORARY_RULE, ORDERS_RULE],
+  attachment_count: 1,
+  updated_at: "2026-11-05T09:00:00Z",
 };
 
 const UNMANAGED: [string, Options, string][] = [
-  ["catalog-not-covered", { covered: ["other"] }, "this catalog is not covered by maintenance"],
+  ["catalog-not-scanned", { scanned: [OTHER_SCANNED] }, "no discovery policy in this catalog manages tables"],
+  [
+    "catalog-cannot-access",
+    { scanned: [ICEBERG_REFUSED] },
+    "discovery cannot read this catalog with the platform's catalog credential",
+  ],
   [
     "not-found",
     { maintenanceTable: () => jsonResponse({ detail: "table uuid-orders not found" }, 404) },
@@ -186,7 +235,7 @@ const UNMANAGED: [string, Options, string][] = [
   [
     "unmanaged",
     { maintenanceTable: () => jsonResponse(maintenance({ status: "unmanaged" })) },
-    "the discovery rules do not include this table",
+    "the discovery policy that applies does not manage this table",
   ],
   [
     "dropped",
@@ -214,7 +263,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
   });
 
   it("every table shows the same tabs when maintenance does not manage it", async () => {
-    stubTable({ covered: [] });
+    stubTable({ scanned: [] });
     renderAt(PAGE);
     await screen.findByText("Maintenance: not managed");
     expect(tabNames()).toEqual(TABS);
@@ -274,7 +323,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
   it("overview asks by name for a table maintenance has no record of, and attaches to it", async () => {
     const byName = "/v1/applicable-policy?catalog=iceberg&namespace=retail&table=orders";
     const calls = stubTable({
-      covered: ["other"],
+      scanned: [OTHER_SCANNED],
       maintenanceTable: () => jsonResponse({ detail: "table uuid-orders not found" }, 404),
       extra: {
         [`GET ${byName}`]: () => jsonResponse({ ...policyContentFixture(), name: "default", version: 1, target: null }),
@@ -290,7 +339,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
     });
     renderAt(PAGE);
     expect(await screen.findByText("Platform default")).toBeInTheDocument();
-    expect(screen.getByText("this catalog is not covered by maintenance")).toBeInTheDocument();
+    expect(screen.getByText("no discovery policy in this catalog manages tables")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Attach policy" }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.click(within(dialog).getByRole("combobox", { name: "Policy" }));
@@ -303,10 +352,10 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(callsTo(calls, "GET", "/v1/tables/uuid-orders/applicable-policy")).toHaveLength(0);
   });
 
-  it("never asks maintenance about a catalog it does not cover for the commits tab", async () => {
-    const calls = stubTable({ covered: [] });
+  it("never asks maintenance about a catalog discovery does not scan for the commits tab", async () => {
+    const calls = stubTable({ scanned: [] });
     renderAt(`${PAGE}/commits`);
-    await screen.findByText("this catalog is not covered by maintenance");
+    await screen.findByText("no discovery policy in this catalog manages tables");
     expect(callsTo(calls, "GET", "/v1/tables/uuid-orders/commits")).toHaveLength(0);
   });
 
@@ -354,7 +403,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
   });
 
   it("overview shows no metrics dashboard for a table maintenance does not manage", async () => {
-    const calls = stubTable({ covered: [] });
+    const calls = stubTable({ scanned: [] });
     renderAt(PAGE);
     await screen.findByText("Maintenance: not managed");
     await settle();
@@ -362,23 +411,41 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(calls.filter((call) => call.path.startsWith("/v1/tables/uuid-orders/metrics"))).toHaveLength(0);
   });
 
-  it("overview names the discovery rule that selected a managed table, by priority", async () => {
-    stubTable();
+  it("overview names the discovery policy and version that decided a managed table, and its rule's position", async () => {
+    const calls = stubTable();
     renderAt(PAGE);
     const summary = await screen.findByRole("region", { name: "Table" });
-    const link = await within(summary).findByRole("link", { name: "Priority 10" });
-    expect(link).toHaveAttribute("href", "/discovery-rules");
-    expect(within(summary).getByText("Maintenance: managed")).toBeInTheDocument();
-    expect(within(summary).queryByText("dr-01m7s6c3tqee0rhg00xn5s97gw")).not.toBeInTheDocument();
+    const link = await within(summary).findByRole("link", { name: "sales-tables v2" });
+    expect(link).toHaveAttribute("href", "/discovery-policies/sales-tables/versions/2");
+    await waitFor(() =>
+      expect(summary).toHaveTextContent("Maintenance: managed · discovery policy sales-tables v2 · rule 1"),
+    );
+    expect(within(summary).queryByText(ORDERS_RULE_ID)).not.toBeInTheDocument();
+    expect(calls.filter((call) => call.path.startsWith("/v1/discovery-rules"))).toHaveLength(0);
   });
 
-  it("overview shows no rule when the rule is not in the rule list", async () => {
-    stubTable({ extra: { "GET /v1/discovery-rules": () => jsonResponse({ version: 1, rules: [] }) } });
+  it("overview says no rule matched when the policy's no-match outcome decided the table", async () => {
+    stubTable({ maintenanceTable: () => jsonResponse(maintenance({ matched_rule_id: null })) });
     renderAt(PAGE);
     const summary = await screen.findByRole("region", { name: "Table" });
-    await within(summary).findByText("Maintenance: managed");
+    await within(summary).findByRole("link", { name: "sales-tables v2" });
+    await waitFor(() =>
+      expect(summary).toHaveTextContent("Maintenance: managed · discovery policy sales-tables v2 · no rule matched"),
+    );
+    expect(summary).not.toHaveTextContent("· rule ");
+  });
+
+  it("overview shows a deleted policy's id, with no link and no rule", async () => {
+    const calls = stubTable({ extra: { "GET /v1/discovery-policies": () => jsonResponse({ policies: [] }) } });
+    renderAt(PAGE);
+    const summary = await screen.findByRole("region", { name: "Table" });
+    const id = await within(summary).findByText(SALES_TABLES_ID);
+    expect(id).toHaveClass("font-mono");
     await settle();
-    expect(within(summary).queryByRole("link", { name: /Priority/ })).not.toBeInTheDocument();
+    expect(summary).toHaveTextContent(`Maintenance: managed · discovery policy ${SALES_TABLES_ID} v2`);
+    expect(summary).not.toHaveTextContent("rule");
+    expect(within(summary).queryByRole("link", { name: /v2/ })).not.toBeInTheDocument();
+    expect(calls.filter((call) => call.path.includes("/versions/"))).toHaveLength(0);
   });
 
   it("overview shows the table's priority and saves a new one, then reads the record again", async () => {
@@ -421,12 +488,22 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(screen.queryByRole("combobox", { name: "Priority" })).not.toBeInTheDocument();
   });
 
-  it("overview does not ask for the discovery rules when the table is not managed", async () => {
+  it("overview does not ask for the discovery policies when the table is not managed", async () => {
     const calls = stubTable({ maintenanceTable: () => jsonResponse(maintenance({ status: "unmanaged" })) });
     renderAt(PAGE);
     await screen.findByText("Maintenance: not managed");
     await settle();
-    expect(callsTo(calls, "GET", "/v1/discovery-rules")).toHaveLength(0);
+    expect(calls.filter((call) => call.path.startsWith("/v1/discovery-"))).toHaveLength(0);
+  });
+
+  it("names a scanned catalog discovery cannot read on the overview, and links to the discovery policies", async () => {
+    stubTable({ scanned: [ICEBERG_REFUSED] });
+    renderAt(PAGE);
+    expect(
+      await screen.findByText("discovery cannot read this catalog with the platform's catalog credential"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Maintenance: not managed")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Discovery policies" })).toHaveAttribute("href", "/discovery-policies");
   });
 
   it("maintenance tab links to the table's running workflows in Temporal", async () => {
@@ -441,7 +518,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
     renderAt(PAGE);
     const summary = await screen.findByRole("region", { name: "Table" });
     expect(await within(summary).findByText("Maintenance: not managed")).toBeInTheDocument();
-    expect(screen.getByText("the discovery rules do not include this table")).toBeInTheDocument();
+    expect(screen.getByText("the discovery policy that applies does not manage this table")).toBeInTheDocument();
   });
 
   it("shows the header numbers from the catalog summary", async () => {

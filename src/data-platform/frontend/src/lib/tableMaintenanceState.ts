@@ -1,10 +1,12 @@
 import { ApiError } from "@/api/apiError";
-import type { TableApiResponse } from "@/api/generated/model";
+import type { ScannedCatalogApiResponse, TableApiResponse } from "@/api/generated/model";
 import type { MaintenanceEmptyReason } from "@/components/MaintenanceEmptyState";
+import { catalogScanState } from "@/lib/catalogScanState";
 
-// Whether maintenance manages a catalog table, worked out from the catalogs maintenance covers
-// and maintenance's record for the table's uuid, in the spec's order: an uncovered catalog
-// first, then a missing record, then an unmanaged or dropped one.
+// Whether maintenance manages a catalog table, worked out from the catalogs discovery scans and
+// maintenance's record for the table's uuid, in the spec's order: a catalog no discovery policy
+// manages tables in first, then one discovery cannot read, then a missing record, then an
+// unmanaged or dropped one.
 export type TableMaintenanceState =
   | { kind: "loading" }
   | { kind: "failed"; error: unknown }
@@ -19,12 +21,16 @@ interface QueryResult<T> {
 
 export function tableMaintenanceState(
   catalog: string,
-  covered: QueryResult<string[]>,
+  scanned: QueryResult<ScannedCatalogApiResponse[]>,
   maintenance: QueryResult<TableApiResponse>,
 ): TableMaintenanceState {
-  if (covered.isError) return { kind: "failed", error: covered.error };
-  if (covered.data === undefined) return { kind: "loading" };
-  if (!covered.data.includes(catalog)) return { kind: "unmanaged", reason: "catalog-not-covered" };
+  if (scanned.isError) return { kind: "failed", error: scanned.error };
+  if (scanned.data === undefined) return { kind: "loading" };
+  const scan = catalogScanState(catalog, scanned.data);
+  if (scan.kind === "not-scanned") return { kind: "unmanaged", reason: "catalog-not-scanned" };
+  if (scan.kind === "failed" && scan.reason === "cannot_access") {
+    return { kind: "unmanaged", reason: "catalog-cannot-access" };
+  }
   if (maintenance.isError) {
     if (maintenance.error instanceof ApiError && maintenance.error.status === 404) {
       return { kind: "unmanaged", reason: "not-found" };

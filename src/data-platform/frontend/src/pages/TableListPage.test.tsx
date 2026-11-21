@@ -137,11 +137,11 @@ describe("TableListPage", () => {
     expect(screen.queryByRole("columnheader", { name: /Selection|Source preset/ })).not.toBeInTheDocument();
   });
 
-  it("does not ask for the discovery rules", async () => {
+  it("does not ask for the discovery policies or the old discovery rules", async () => {
     renderPage();
     await screen.findByText("iceberg.inventory.orders");
 
-    expect(calls.map((call) => call.path)).not.toContain("/v1/discovery-rules");
+    expect(calls.filter((call) => call.path.startsWith("/v1/discovery-"))).toHaveLength(0);
   });
 
   it("hides dropped tables until Dropped is checked", async () => {

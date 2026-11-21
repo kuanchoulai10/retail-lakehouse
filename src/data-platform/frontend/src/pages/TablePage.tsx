@@ -4,7 +4,7 @@ import { useState, type MouseEvent } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router";
 import { ApiError } from "@/api/apiError";
 import type { CatalogTableApiResponse, TableApiResponse } from "@/api/generated/model";
-import { useListCoveredCatalogs } from "@/api/generated/discovery-rules/discovery-rules";
+import { useListScannedCatalogs } from "@/api/generated/discovery-policies/discovery-policies";
 import {
   deleteTable,
   getGetCatalogTableQueryKey,
@@ -117,7 +117,7 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
   const { leaving, leave } = useLeavingPage([getGetCatalogTableQueryKey(catalog, ns, name)]);
 
   const table = useGetCatalogTable(catalog, ns, name, { query: { enabled: !leaving } });
-  const covered = useListCoveredCatalogs({ query: { select: (response) => response.catalogs } });
+  const scanned = useListScannedCatalogs({ query: { select: (response) => response.catalogs } });
   const uuid = table.data?.uuid;
   // Table maintenance's record of this table, the same query the maintenance tabs read.
   const maintenanceTable = useGetTable(uuid ?? "", { query: { enabled: uuid !== undefined && !leaving } });
@@ -141,7 +141,7 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
     return <Banner type="negative" title={`Could not load table: ${errorMessage(table.error)}`} />;
   }
 
-  const maintenance = tableMaintenanceState(catalog, covered, maintenanceTable);
+  const maintenance = tableMaintenanceState(catalog, scanned, maintenanceTable);
   const menuItems = [
     { label: "Rename", onSelect: () => setDialog("rename") },
     {

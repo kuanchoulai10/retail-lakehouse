@@ -12,25 +12,15 @@ function renderReason(reason: React.ComponentProps<typeof MaintenanceEmptyState>
 }
 
 describe("MaintenanceEmptyState", () => {
-  it("explains a catalog maintenance does not cover", () => {
-    renderReason("catalog-not-covered");
-    expect(screen.getByText("this catalog is not covered by maintenance")).toBeInTheDocument();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
-  });
-
-  it("links to discovery rules when no rule includes the table", () => {
-    renderReason("not-found");
-    expect(screen.getByText("discovery has not found this table yet")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Discovery rules" })).toHaveAttribute(
-      "href",
-      "/discovery-rules",
-    );
-  });
-
-  it("explains a table the discovery rules do not include and links to them", () => {
-    renderReason("unmanaged");
-    expect(screen.getByText("the discovery rules do not include this table")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Discovery rules" })).toHaveAttribute("href", "/discovery-rules");
+  it.each([
+    ["catalog-not-scanned", "no discovery policy in this catalog manages tables"],
+    ["catalog-cannot-access", "discovery cannot read this catalog with the platform's catalog credential"],
+    ["not-found", "discovery has not found this table yet"],
+    ["unmanaged", "the discovery policy that applies does not manage this table"],
+  ] as const)("explains %s and links to the discovery policies", (reason, message) => {
+    renderReason(reason);
+    expect(screen.getByText(message)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Discovery policies" })).toHaveAttribute("href", "/discovery-policies");
   });
 
   it("explains a table recorded as dropped", () => {

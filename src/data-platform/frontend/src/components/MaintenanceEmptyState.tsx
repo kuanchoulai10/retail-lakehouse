@@ -1,14 +1,29 @@
 import { EmptyState, TextLink } from "@retail-lakehouse/design-system";
 import { Link } from "react-router";
+import { discoveryPoliciesPath } from "@/lib/discoveryPolicyPaths";
 
-export type MaintenanceEmptyReason = "catalog-not-covered" | "not-found" | "unmanaged" | "dropped";
+export type MaintenanceEmptyReason =
+  | "catalog-not-scanned"
+  | "catalog-cannot-access"
+  | "not-found"
+  | "unmanaged"
+  | "dropped";
 
 const MESSAGES: Record<MaintenanceEmptyReason, string> = {
-  "catalog-not-covered": "this catalog is not covered by maintenance",
+  "catalog-not-scanned": "no discovery policy in this catalog manages tables",
+  "catalog-cannot-access": "discovery cannot read this catalog with the platform's catalog credential",
   "not-found": "discovery has not found this table yet",
-  unmanaged: "the discovery rules do not include this table",
+  unmanaged: "the discovery policy that applies does not manage this table",
   dropped: "maintenance recorded this table as dropped",
 };
+
+// Every reason but a dropped table is decided by the discovery policies, or the catalog they read.
+const LINKS_TO_POLICIES: ReadonlySet<MaintenanceEmptyReason> = new Set<MaintenanceEmptyReason>([
+  "catalog-not-scanned",
+  "catalog-cannot-access",
+  "not-found",
+  "unmanaged",
+]);
 
 export function MaintenanceEmptyState({ reason }: { reason: MaintenanceEmptyReason }) {
   return (
@@ -18,14 +33,12 @@ export function MaintenanceEmptyState({ reason }: { reason: MaintenanceEmptyReas
       description={
         <>
           Reason: <span>{MESSAGES[reason]}</span>
-          {(reason === "not-found" || reason === "unmanaged") && (
+          {LINKS_TO_POLICIES.has(reason) && (
             <>
               {" "}
               (see{" "}
               <TextLink asChild inline>
-                <Link to="/discovery-rules">
-                  Discovery rules
-                </Link>
+                <Link to={discoveryPoliciesPath()}>Discovery policies</Link>
               </TextLink>
               )
             </>

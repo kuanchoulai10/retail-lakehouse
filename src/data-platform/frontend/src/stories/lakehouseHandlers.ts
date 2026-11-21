@@ -16,11 +16,6 @@ import {
   getUpdateTableDiscoveryPolicyMockHandler,
 } from "@/api/generated/discovery-policies/discovery-policies.msw";
 import {
-  getGetTableDiscoveryRulesMockHandler,
-  getListCoveredCatalogsMockHandler,
-  getReplaceTableDiscoveryRulesMockHandler,
-} from "@/api/generated/discovery-rules/discovery-rules.msw";
-import {
   getAttachTableMaintenancePolicyMockHandler,
   getCreateTableMaintenancePolicyMockHandler,
   getDeleteTableMaintenancePolicyMockHandler,
@@ -89,8 +84,8 @@ import {
   RECONCILIATIONS,
   RETAIL,
   RETAIL_TABLES,
-  RULES,
   RUNS,
+  SALES_TABLES,
   SCANNED_CATALOGS,
 } from "./storyData";
 
@@ -117,7 +112,6 @@ export function lakehouseHandlers() {
     }),
     getListCatalogTablePartitionSpecVersionsMockHandler(ORDERS_SPEC_VERSIONS),
     getGetCatalogTablePartitionSpecComparisonMockHandler(({ params }) => ordersSpecComparison(Number(params.specId))),
-    getListCoveredCatalogsMockHandler({ catalogs: ["iceberg"] }),
     getListTablesMockHandler(MAINTAINED_TABLES),
     getGetTableMockHandler(MAINTAINED_ORDERS),
     getSetTablePriorityMockHandler(async ({ request }) => ({
@@ -202,7 +196,7 @@ export function lakehouseHandlers() {
     }),
     // The saved policy moves one version on; a rule sent without an id gets one, as the server does.
     getUpdateTableDiscoveryPolicyMockHandler(async ({ params, request }) => {
-      const found = DISCOVERY_POLICIES.find((p) => p.name === params.name) ?? DISCOVERY_POLICIES[1]!;
+      const found = DISCOVERY_POLICIES.find((p) => p.name === params.name) ?? SALES_TABLES;
       const body = await request.json();
       return {
         ...found,
@@ -231,15 +225,13 @@ export function lakehouseHandlers() {
     })),
     getAttachTableDiscoveryPolicyMockHandler(async ({ params, request }) => ({
       id: "da-01m7s6c3tqee0rhg00xry2zqqy",
-      policy_id: (DISCOVERY_POLICIES.find((p) => p.name === params.name) ?? DISCOVERY_POLICIES[1]!).id,
+      policy_id: (DISCOVERY_POLICIES.find((p) => p.name === params.name) ?? SALES_TABLES).id,
       policy_name: params.name,
       target: { ...(await request.json()).target, table_uuid: null },
       attached_at: "2026-11-09T09:00:00Z",
     })),
     getDetachTableDiscoveryPolicyMockHandler(),
     getListScannedCatalogsMockHandler(SCANNED_CATALOGS),
-    getGetTableDiscoveryRulesMockHandler({ version: 1, rules: RULES }),
-    getReplaceTableDiscoveryRulesMockHandler({ version: 2, rules: RULES }),
     getListTableMaintenancePoliciesMockHandler({ policies: POLICIES }),
     getListTableMaintenancePolicyMappingsMockHandler(({ params }) => ({
       mappings: POLICY_MAPPINGS.filter((mapping) => mapping.policy_name === params.name),
