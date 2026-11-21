@@ -47,6 +47,107 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
+export const getGetTableReconciliationUrl = (reconciliationId: string,) => {
+
+
+
+
+  return `/v1/table-reconciliations/${encodeURIComponent(String(reconciliationId))}`
+}
+
+/**
+ * Return one reconciliation by its id, wherever it sits in the table's history.
+ * @summary Get Table Reconciliation
+ */
+export const getTableReconciliation = async (reconciliationId: string, options?: Parameters<typeof apiFetch>[1]): Promise<TableReconciliationApiResponse> => {
+
+  return apiFetch<TableReconciliationApiResponse>(getGetTableReconciliationUrl(reconciliationId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTableReconciliationQueryKey = (reconciliationId: string,) => {
+    return [
+    `/v1/table-reconciliations/${reconciliationId}`
+    ] as const;
+    }
+
+
+export const getGetTableReconciliationQueryOptions = <TData = Awaited<ReturnType<typeof getTableReconciliation>>, TError = HTTPValidationError>(reconciliationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableReconciliation>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTableReconciliationQueryKey(reconciliationId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTableReconciliation>>> = ({ signal }) => getTableReconciliation(reconciliationId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: reconciliationId !== null && reconciliationId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTableReconciliation>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTableReconciliationQueryResult = NonNullable<Awaited<ReturnType<typeof getTableReconciliation>>>
+export type GetTableReconciliationQueryError = HTTPValidationError
+
+
+export function useGetTableReconciliation<TData = Awaited<ReturnType<typeof getTableReconciliation>>, TError = HTTPValidationError>(
+ reconciliationId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableReconciliation>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTableReconciliation>>,
+          TError,
+          Awaited<ReturnType<typeof getTableReconciliation>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTableReconciliation<TData = Awaited<ReturnType<typeof getTableReconciliation>>, TError = HTTPValidationError>(
+ reconciliationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableReconciliation>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTableReconciliation>>,
+          TError,
+          Awaited<ReturnType<typeof getTableReconciliation>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTableReconciliation<TData = Awaited<ReturnType<typeof getTableReconciliation>>, TError = HTTPValidationError>(
+ reconciliationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableReconciliation>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Table Reconciliation
+ */
+
+export function useGetTableReconciliation<TData = Awaited<ReturnType<typeof getTableReconciliation>>, TError = HTTPValidationError>(
+ reconciliationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableReconciliation>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTableReconciliationQueryOptions(reconciliationId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 export const getListTableReconciliationsUrl = (tableUuid: string,
     params?: ListTableReconciliationsParams,) => {
   const normalizedParams = new URLSearchParams();

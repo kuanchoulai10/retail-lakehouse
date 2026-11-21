@@ -38,6 +38,7 @@ import {
   QUEUE_TIMEOUT_RUN_ID,
   queuedRun,
   SCHEDULED_ORPHANS_RUN_ID,
+  SCHEDULED_RECONCILIATION_ID,
   SCHEDULED_RUN_ID,
 } from "@/stories/storyData";
 
@@ -517,11 +518,15 @@ export const Reconciliations: Story = {
   },
 };
 
+// The reconciliation's side panel, opened through its url as a link to it opens it.
+function reconciliationRoute(id: string) {
+  return `${ORDERS}/reconciliations?reconciliation=${id}`;
+}
+
 export const ReconciliationDrawer: Story = {
-  args: { route: `${ORDERS}/reconciliations` },
+  args: { route: reconciliationRoute(SCHEDULED_RECONCILIATION_ID) },
+  globals: DESKTOP,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole("button", { name: SCHEDULED_ROW }));
     const drawer = within(await within(canvasElement.ownerDocument.body).findByRole("dialog"));
     await expect(drawer.getByRole("heading", { level: 2, name: "Started Rewrite data files" })).toBeVisible();
     await expect(drawer.getByText(/Catalog commit × 3/)).toBeVisible();
@@ -536,6 +541,40 @@ export const ReconciliationDrawer: Story = {
     await userEvent.click(measurements);
     await expect(measurements).toHaveAttribute("aria-expanded", "true");
     await expect(drawer.getByRole("list", { name: "All measurements of Rewrite data files" })).toBeVisible();
+  },
+};
+
+export const ReconciliationPanelKeyboard: Story = {
+  args: { route: `${ORDERS}/reconciliations` },
+  globals: DESKTOP,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const first = await canvas.findByRole("button", { name: SCHEDULED_ROW });
+    first.focus();
+    await userEvent.keyboard("{Enter}");
+    await body.findByRole("dialog", { name: "Started Rewrite data files" });
+    await waitFor(() => expect(body.getByRole("heading", { name: "Started Rewrite data files" })).toHaveFocus());
+    await expect(canvasElement.ownerDocument.body.querySelector(".bg-scrim")).toBeNull();
+    const next = canvas.getByRole("button", { name: /^Would start Rewrite data files/ });
+    await userEvent.click(next);
+    await expect(body.getAllByRole("dialog")).toHaveLength(1);
+    await body.findByRole("dialog", { name: "Would start Rewrite data files" });
+    await waitFor(() => expect(body.getByRole("heading", { name: "Would start Rewrite data files" })).toHaveFocus());
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(body.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(next).toHaveFocus());
+  },
+};
+
+export const ReconciliationPanelPhone: Story = {
+  args: { route: reconciliationRoute(SCHEDULED_RECONCILIATION_ID) },
+  globals: PHONE,
+  play: async ({ canvasElement }) => {
+    const panel = await within(canvasElement.ownerDocument.body).findByRole("dialog", { name: "Started Rewrite data files" });
+    await expect(panel.getBoundingClientRect().width).toBe(window.innerWidth);
+    await expect(within(panel).getByText(/Catalog commit × 3/)).toBeVisible();
+    await expectNoHorizontalPageScroll(canvasElement);
   },
 };
 

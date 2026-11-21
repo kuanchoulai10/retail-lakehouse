@@ -5,47 +5,32 @@ import {
   Drawer,
   IconChevronDown,
   IconChevronRight,
-  IconChevronUp,
-  IconCircleCheck,
-  IconRadar,
-  IconX,
-  StatusBadge,
-  TextLink,
   Timeline,
   TimelineItem,
 } from "@retail-lakehouse/design-system";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useId, useState } from "react";
-import { Link } from "react-router";
-import type {
-  ReconciliationOperationApiResponse,
-  TableReconciliationApiResponse,
-} from "@/api/generated/model";
+import { ApiError } from "@/api/apiError";
+import type { TableReconciliationApiResponse } from "@/api/generated/model";
 import {
   getListTableReconciliationsQueryKey,
   listTableReconciliations,
+  useGetTableReconciliation,
 } from "@/api/generated/table-reconciliations/table-reconciliations";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
+import { ReconciliationPanel } from "@/components/tabs/ReconciliationPanel";
 import {
-  formatMeasured,
-  formatRule,
-  headline,
-  isManualRun,
   foldKey,
   foldText,
   formatTime,
+  headline,
+  isManualRun,
   mainWakeText,
-  measurementLabel,
-  operationLabel,
   policyLabel,
-  policyOrigin,
-  reasonSentence,
-  resultLabel,
-  resultOrder,
-  wakeText,
 } from "@/components/tabs/reconciliationText";
+import { RunLink } from "@/components/tabs/RunLink";
+import { useOpenRecord } from "@/components/tabs/useOpenRecord";
 import { errorMessage, formatRelativeTime, formatTimestamp } from "@/format";
-import { policyVersionPath } from "@/lib/policyPaths";
 
 const PAGE_SIZE = 50;
 
@@ -80,21 +65,6 @@ function folded(records: TableReconciliationApiResponse[]): Line[] {
     else lines.push(key === null ? { kind: "record", record } : { kind: "fold", key, records: [record] });
   }
   return lines.map((line) => (line.kind === "fold" && line.records.length === 1 ? { kind: "record", record: line.records[0]! } : line));
-}
-
-function runPath(runId: string): string {
-  return `../maintenance?run=${encodeURIComponent(runId)}`;
-}
-
-// Shows the whole run id (an mr- id, docs/adr/0011) in monospace; the accessible name carries it too.
-function RunLink({ runId, label, className }: { runId: string; label: string; className?: string }) {
-  return (
-    <TextLink asChild className={className}>
-      <Link to={runPath(runId)} relative="path" aria-label={`Open maintenance run ${runId}`}>
-        {label} <span className="font-mono">{runId}</span>
-      </Link>
-    </TextLink>
-  );
 }
 
 // The run the line links to: only when exactly one operation started a run, since a timeline line holds
@@ -193,127 +163,37 @@ function DaySection({ day, onOpen }: { day: Day; onOpen: (r: TableReconciliation
   );
 }
 
-function MetMark({ met }: { met: boolean | null }) {
-  if (met === null) return <span aria-hidden="true" className="inline-block w-3.5 shrink-0" />;
-  return met ? (
-    <>
-      <IconCircleCheck aria-hidden="true" size={14} className="shrink-0 text-on-surface-variant" />
-      <span className="sr-only">Met:</span>
-    </>
-  ) : (
-    <>
-      <IconX aria-hidden="true" size={14} className="shrink-0 text-on-surface-variant" />
-      <span className="sr-only">Not met:</span>
-    </>
-  );
+// A 404 is a reconciliation that no longer exists; a 422 is an id that cannot name one. Either way
+// the link points at nothing.
+function isGone(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 404 || error.status === 422);
 }
 
-function AllMeasurements({ operation }: { operation: ReconciliationOperationApiResponse }) {
-  const [open, setOpen] = useState(false);
-  const listId = useId();
-  const label = operationLabel(operation.operation);
-  // Lines with a threshold carry a met mark; conditions combine with OR, which only matters with two or more.
-  const deciding = operation.measurements.filter((m) => m.threshold !== null).length;
-  return (
-    <>
-      <Button
-        styleType="ghost"
-        size="small"
-        aria-expanded={open}
-        aria-controls={open ? listId : undefined}
-        className="self-start"
-        onClick={() => setOpen((value) => !value)}
-      >
-        {open ? <IconChevronUp aria-hidden="true" size={14} /> : <IconChevronDown aria-hidden="true" size={14} />}
-        All measurements
-      </Button>
-      {open && (
-        <div id={listId} className="type-body-small flex flex-col gap-1">
-          {deciding > 1 && (
-            <p className="text-on-surface-variant">Starts when any marked line holds</p>
-          )}
-          <ul aria-label={`All measurements of ${label}`} className="flex flex-col gap-1">
-            {operation.measurements.map((m) => (
-              <li key={m.key} className="flex items-center justify-between gap-4">
-                <span className="flex min-w-0 items-center gap-1 text-on-surface-variant">
-                  <MetMark met={m.met} />
-                  {measurementLabel(m.key)}
-                </span>
-                <span className="shrink-0 tabular-nums text-on-surface">
-                  {formatMeasured(m.observed, m.unit)}
-                  {m.threshold !== null && <span className="text-on-surface-variant"> / {formatRule(m)}</span>}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </>
-  );
-}
+type Shown =
+  | { kind: "record"; record: TableReconciliationApiResponse }
+  | { kind: "loading" }
+  | { kind: "message"; text: string }
+  | { kind: "error"; error: unknown };
 
-function OperationBlock({ record, operation }: { record: TableReconciliationApiResponse; operation: ReconciliationOperationApiResponse }) {
-  const headingId = useId();
-  const status = operation.result === "started" || operation.result === "would_start" ? "notice" : "neutral";
-  const runId = operation.result === "started" ? operation.run_id : null;
-  return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-1 border-l-2 border-outline pl-4">
-      <div className="flex items-center justify-between gap-2">
-        <h3 id={headingId} className="type-label-large text-on-surface">
-          {operationLabel(operation.operation)}
-        </h3>
-        <StatusBadge status={status}>{resultLabel(operation.result)}</StatusBadge>
-      </div>
-      <p className="type-body-small text-on-surface-variant">{reasonSentence(operation, { manualRun: isManualRun(record) })}</p>
-      {runId !== null && <RunLink runId={runId} label="Open maintenance run" className="type-body-small self-start" />}
-      {operation.measurements.length > 0 && <AllMeasurements operation={operation} />}
-    </section>
-  );
-}
-
-function ReconciliationDetail({ record }: { record: TableReconciliationApiResponse }) {
-  const operations = [...record.operations].sort((a, b) => resultOrder(a.result) - resultOrder(b.result));
-  const manual = isManualRun(record);
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex gap-2">
-        <IconRadar aria-hidden="true" className="mt-0.5 shrink-0 text-on-surface-variant" size={18} />
-        <div>
-          <p className="type-body-medium text-on-surface">Woken by {wakeText(record)}</p>
-          <p className="type-body-small text-on-surface-variant">
-            <time dateTime={record.reconciled_at}>{formatTimestamp(record.reconciled_at)}</time>
-            {record.dry_run && (manual ? " · dry run is on; a manual run still runs" : " · dry run, nothing was started")}
-          </p>
-          <p className="type-body-small text-on-surface-variant">
-            Policy{" "}
-            {record.policy_deleted ? (
-              <span className="font-mono">{policyLabel(record)}</span>
-            ) : (
-              <TextLink asChild inline className="font-mono">
-                <Link to={policyVersionPath(record.policy_name, record.policy_version)}>{policyLabel(record)}</Link>
-              </TextLink>
-            )}
-            , {policyOrigin(record)}
-          </p>
-        </div>
-      </div>
-      {operations.map((operation) => (
-        <OperationBlock key={operation.operation} record={record} operation={operation} />
-      ))}
-    </div>
-  );
+function PanelContent({ shown }: { shown: Shown }) {
+  switch (shown.kind) {
+    case "record":
+      return <ReconciliationPanel record={shown.record} />;
+    case "loading":
+      return <PanelSkeleton label="Loading reconciliation…" />;
+    case "message":
+      return <p className="type-body-medium text-on-surface-variant">{shown.text}</p>;
+    case "error":
+      return <Banner type="negative" title={`Could not load the reconciliation: ${errorMessage(shown.error)}`} />;
+  }
 }
 
 // Each time this table was reconciled, newest first: what woke it, what it decided and what it
-// started. Details open in a drawer; the full measurements sit one click further in.
+// started. A line opens its record in a side panel beside the list (full width and modal on a
+// phone), kept in the url as `?reconciliation=<id>`; the full measurements sit one click further
+// in. The panel shows the listed record; a record older than the pages loaded is read by its id.
 export function ReconciliationsTab({ tableUuid }: { tableUuid: string }) {
-  // The drawer keeps showing the last record it opened while it closes, so it never empties mid-way.
-  const [shown, setShown] = useState<TableReconciliationApiResponse | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const open = (record: TableReconciliationApiResponse) => {
-    setShown(record);
-    setIsOpen(true);
-  };
+  const { openId, open, close } = useOpenRecord("reconciliation");
   const pages = useInfiniteQuery({
     // Under the list's url key, so invalidating getListTableReconciliationsQueryKey(uuid) refetches it.
     queryKey: [...getListTableReconciliationsQueryKey(tableUuid), "pages"],
@@ -322,20 +202,37 @@ export function ReconciliationsTab({ tableUuid }: { tableUuid: string }) {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => (lastPage.length < PAGE_SIZE ? undefined : (lastPage.at(-1)?.reconciled_at ?? undefined)),
   });
+  const records = pages.data?.pages.flat();
+  const listed = openId === null ? undefined : records?.find((record) => record.reconciliation_id === openId);
+  const notInList = openId !== null && records !== undefined && listed === undefined;
+  const byId = useGetTableReconciliation(openId ?? "", { query: { enabled: notInList } });
 
   if (pages.isPending) return <PanelSkeleton label="Loading reconciliations…" />;
   if (pages.isError) {
     return <Banner type="negative" title={`Could not load reconciliations: ${errorMessage(pages.error)}`} />;
   }
-  const records = pages.data.pages.flat();
-  if (records.length === 0) {
-    return <p className="type-body-medium text-on-surface-variant">No reconciliations yet.</p>;
-  }
+
+  const shown: Shown =
+    listed !== undefined
+      ? { kind: "record", record: listed }
+      : byId.data !== undefined
+        ? byId.data.table_uuid === tableUuid
+          ? { kind: "record", record: byId.data }
+          : { kind: "message", text: "This reconciliation belongs to another table" }
+        : byId.isError
+          ? isGone(byId.error)
+            ? { kind: "message", text: "This reconciliation is no longer available" }
+            : { kind: "error", error: byId.error }
+          : { kind: "loading" };
+
+  const loaded = records ?? [];
   return (
     <>
-      {groupedByDay(records).map((day) => (
-        <DaySection key={day.date} day={day} onOpen={open} />
-      ))}
+      {loaded.length === 0 ? (
+        <p className="type-body-medium text-on-surface-variant">No reconciliations yet.</p>
+      ) : (
+        groupedByDay(loaded).map((day) => <DaySection key={day.date} day={day} onOpen={(record) => open(record.reconciliation_id)} />)
+      )}
       {pages.hasNextPage && (
         <Button
           styleType="outlined"
@@ -347,8 +244,16 @@ export function ReconciliationsTab({ tableUuid }: { tableUuid: string }) {
           Show older
         </Button>
       )}
-      <Drawer isOpen={isOpen} onOpenChange={setIsOpen} title={shown ? headline(shown) : ""}>
-        {shown && <ReconciliationDetail record={shown} />}
+      <Drawer
+        modal={false}
+        contentKey={openId ?? undefined}
+        isOpen={openId !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) close();
+        }}
+        title={shown.kind === "record" ? headline(shown.record) : "Reconciliation"}
+      >
+        <PanelContent shown={shown} />
       </Drawer>
     </>
   );

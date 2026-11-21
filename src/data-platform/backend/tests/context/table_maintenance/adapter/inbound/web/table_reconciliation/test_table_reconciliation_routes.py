@@ -34,6 +34,7 @@ from context.table_maintenance.application.domain.model.table_reconciliation imp
     WakeReason,
 )
 from context.table_maintenance.application.service.table_reconciliation import (
+    GetTableReconciliationService,
     ListTableReconciliationsService,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import build_client
@@ -108,7 +109,10 @@ def _client(*items: TableReconciliation) -> TestClient:
             updated_at=NOW,
         )
     )
-    return build_client(list_table_reconciliations=ListTableReconciliationsService(repo, policies))
+    return build_client(
+        list_table_reconciliations=ListTableReconciliationsService(repo, policies),
+        get_table_reconciliation=GetTableReconciliationService(repo, policies),
+    )
 
 
 def _ids(response) -> list[str]:  # noqa: ANN001
@@ -232,3 +236,23 @@ def test_response_under_a_deleted_policy_keeps_its_name() -> None:
     body = client.get("/v1/tables/t-1/reconciliations").json()[0]
 
     assert (body["policy_id"], body["policy_name"], body["policy_deleted"]) == (NIGHTLY.value, "nightly", True)
+
+
+def test_the_route_reads_one_reconciliation() -> None:
+    """One record reads by its id, with the body the listing gives for it."""
+    client = _client(_reconciliation(OLD, NOW - timedelta(hours=2)), _reconciliation(NEW, NOW))
+
+    response = client.get(f"/v1/table-reconciliations/{OLD}")
+
+    assert response.status_code == 200
+    assert response.json() == client.get("/v1/tables/t-1/reconciliations").json()[1]
+
+
+def test_the_route_is_404_for_an_unknown_id() -> None:
+    """An id nothing was recorded under is 404."""
+    assert _client(_reconciliation(OLD, NOW)).get(f"/v1/table-reconciliations/{NEW}").status_code == 404
+
+
+def test_the_route_is_422_for_a_malformed_id() -> None:
+    """An id that is not an rc- id is 422."""
+    assert _client().get("/v1/table-reconciliations/not-an-id").status_code == 422

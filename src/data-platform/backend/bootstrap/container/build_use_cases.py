@@ -59,6 +59,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
     SubmitMaintenanceOperationService,
 )
 from context.table_maintenance.application.service.table_reconciliation import (
+    GetTableReconciliationService,
     ListTableReconciliationsService,
     RecordTableReconciliationService,
 )
@@ -182,6 +183,7 @@ def build_use_cases(
             partition_selection=partition_selection,
         ),
         get_platform_settings=GetPlatformSettingsService(platform_settings),
+        get_table_reconciliation=GetTableReconciliationService(reconciliations, policies),
         list_table_reconciliations=ListTableReconciliationsService(reconciliations, policies),
         record_table_reconciliation=RecordTableReconciliationService(reconciliations),
         skip_table_maintenance_run=SkipTableMaintenanceRunService(runs),

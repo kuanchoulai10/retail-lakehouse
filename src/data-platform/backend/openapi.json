@@ -7537,6 +7537,51 @@
         ]
       }
     },
+    "/v1/table-reconciliations/{reconciliation_id}": {
+      "get": {
+        "description": "Return one reconciliation by its id, wherever it sits in the table's history.",
+        "operationId": "get_table_reconciliation",
+        "parameters": [
+          {
+            "description": "An `rc-` id (prefix, dash, 26 lowercase Crockford base32 characters; ADR 0011).",
+            "in": "path",
+            "name": "reconciliation_id",
+            "required": true,
+            "schema": {
+              "description": "An `rc-` id (prefix, dash, 26 lowercase Crockford base32 characters; ADR 0011).",
+              "title": "Reconciliation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableReconciliationApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Reconciliation",
+        "tags": [
+          "table-reconciliations"
+        ]
+      }
+    },
     "/v1/tables": {
       "get": {
         "description": "List the tables, optionally only those in one status.",

@@ -22,10 +22,26 @@ import type {
 } from '../model';
 
 
+export const getGetTableReconciliationResponseMock = (overrideResponse: Partial<Extract<TableReconciliationApiResponse, object>> = {}): TableReconciliationApiResponse => ({dry_run: faker.datatype.boolean(), operations: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({measurements: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({comparison: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), key: faker.string.alpha({length: {min: 10, max: 20}}), met: faker.helpers.arrayElement([faker.datatype.boolean(),null,]), observed: faker.number.int(), threshold: faker.helpers.arrayElement([faker.number.int(),null,]), unit: faker.string.alpha({length: {min: 10, max: 20}})})), next_eligible_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), operation: faker.string.alpha({length: {min: 10, max: 20}}), result: faker.string.alpha({length: {min: 10, max: 20}}), run_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,])})), outcome: faker.string.alpha({length: {min: 10, max: 20}}), policy_deleted: faker.datatype.boolean(), policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), policy_target: faker.helpers.arrayElement([{path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), type: faker.string.alpha({length: {min: 10, max: 20}})},null,]), policy_version: faker.number.int(), reconciled_at: faker.date.past().toISOString().slice(0, 19) + 'Z', reconciliation_id: faker.string.alpha({length: {min: 10, max: 20}}), skip_reason: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), table_uuid: faker.string.alpha({length: {min: 10, max: 20}}), wake_reasons: {
+        [faker.string.alphanumeric(5)]: faker.number.int()
+      }, ...overrideResponse})
+
 export const getListTableReconciliationsResponseMock = (): TableReconciliationApiResponse[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({dry_run: faker.datatype.boolean(), operations: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({measurements: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({comparison: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), key: faker.string.alpha({length: {min: 10, max: 20}}), met: faker.helpers.arrayElement([faker.datatype.boolean(),null,]), observed: faker.number.int(), threshold: faker.helpers.arrayElement([faker.number.int(),null,]), unit: faker.string.alpha({length: {min: 10, max: 20}})})), next_eligible_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), operation: faker.string.alpha({length: {min: 10, max: 20}}), result: faker.string.alpha({length: {min: 10, max: 20}}), run_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,])})), outcome: faker.string.alpha({length: {min: 10, max: 20}}), policy_deleted: faker.datatype.boolean(), policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), policy_target: faker.helpers.arrayElement([{path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), type: faker.string.alpha({length: {min: 10, max: 20}})},null,]), policy_version: faker.number.int(), reconciled_at: faker.date.past().toISOString().slice(0, 19) + 'Z', reconciliation_id: faker.string.alpha({length: {min: 10, max: 20}}), skip_reason: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), table_uuid: faker.string.alpha({length: {min: 10, max: 20}}), wake_reasons: {
         [faker.string.alphanumeric(5)]: faker.number.int()
       }})))
 
+
+export const getGetTableReconciliationMockHandler = (overrideResponse?: TableReconciliationApiResponse | ((info: Parameters<HttpResponseResolver<{ reconciliationId: string }>>[0]) => Promise<TableReconciliationApiResponse> | TableReconciliationApiResponse), options?: RequestHandlerOptions) => {
+  return http.get<{ reconciliationId: string }>('*/v1/table-reconciliations/:reconciliationId', async (info: Parameters<HttpResponseResolver<{ reconciliationId: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetTableReconciliationResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 
 export const getListTableReconciliationsMockHandler = (overrideResponse?: TableReconciliationApiResponse[] | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TableReconciliationApiResponse[]> | TableReconciliationApiResponse[]), options?: RequestHandlerOptions) => {
   return http.get<{ tableUuid: string }>('*/v1/tables/:tableUuid/reconciliations', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
@@ -39,5 +55,6 @@ export const getListTableReconciliationsMockHandler = (overrideResponse?: TableR
   }, options)
 }
 export const getTableReconciliationsMock = () => [
+  getGetTableReconciliationMockHandler(),
   getListTableReconciliationsMockHandler()
 ]

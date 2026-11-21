@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.port.inbound.table_reconciliation.get_table_reconciliation import (
+    GetTableReconciliationUseCase,
+    GetTableReconciliationUseCaseInput,
+    GetTableReconciliationUseCaseOutput,
+)
 from context.table_maintenance.application.port.inbound.table_reconciliation.list_table_reconciliations import (
     ListTableReconciliationsUseCase,
     ListTableReconciliationsUseCaseInput,
@@ -18,6 +23,9 @@ from context.table_maintenance.application.port.inbound.table_reconciliation.rec
 )
 
 __all__ = [
+    "GetTableReconciliationUseCase",
+    "GetTableReconciliationUseCaseInput",
+    "GetTableReconciliationUseCaseOutput",
     "ListTableReconciliationsUseCase",
     "ListTableReconciliationsUseCaseInput",
     "ListTableReconciliationsUseCaseOutput",

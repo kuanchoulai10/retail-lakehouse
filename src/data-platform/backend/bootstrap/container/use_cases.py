@@ -55,6 +55,7 @@ if TYPE_CHECKING:
         SubmitMaintenanceOperationUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_reconciliation import (
+        GetTableReconciliationUseCase,
         ListTableReconciliationsUseCase,
         RecordTableReconciliationUseCase,
     )
@@ -101,6 +102,7 @@ class UseCases:
     plan_table_maintenance: PlanTableMaintenanceUseCase
     skip_table_maintenance_run: SkipTableMaintenanceRunUseCase
     submit_maintenance_operation: SubmitMaintenanceOperationUseCase
+    get_table_reconciliation: GetTableReconciliationUseCase
     list_table_reconciliations: ListTableReconciliationsUseCase
     record_table_reconciliation: RecordTableReconciliationUseCase
     get_platform_settings: GetPlatformSettingsUseCase

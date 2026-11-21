@@ -900,11 +900,13 @@ function reconciliation(
   };
 }
 
+export const SCHEDULED_RECONCILIATION_ID = "rc-01m72gst60f5grrcwpsxv0365q";
+
 // Newest first, as the API returns them: a run started by catalog commits, four quiet hourly
 // passes that fold into one line, a dry run that would have compacted, a paused skip, a run capped
 // to 10 of 25 partitions and a compaction waiting for writes.
 export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
-  reconciliation("rc-01m72gst60f5grrcwpsxv0365q", "2026-11-10T10:42:00Z", {
+  reconciliation(SCHEDULED_RECONCILIATION_ID, "2026-11-10T10:42:00Z", {
     wake_reasons: { catalog_commit: 3 },
     policy_id: RETAIL_NIGHTLY_POLICY_ID,
     policy_name: "retail-nightly",

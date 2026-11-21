@@ -42,7 +42,10 @@ import {
   getGetTableMaintenanceRunMockHandler,
   getListTableMaintenanceRunsMockHandler,
 } from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
-import { getListTableReconciliationsMockHandler } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
+import {
+  getGetTableReconciliationMockHandler,
+  getListTableReconciliationsMockHandler,
+} from "@/api/generated/table-reconciliations/table-reconciliations.msw";
 import { getListViewsMockHandler } from "@/api/generated/views/views.msw";
 import {
   applicablePolicy,
@@ -141,6 +144,14 @@ export function lakehouseHandlers() {
       return run;
     }),
     getGetPlatformSettingsMockHandler(PLATFORM_SETTINGS),
+    // Every reconciliation of the story data by its id; any other id is gone.
+    getGetTableReconciliationMockHandler(({ params }) => {
+      const record = RECONCILIATIONS.find((r) => r.reconciliation_id === params.reconciliationId);
+      if (record === undefined) {
+        throw HttpResponse.json({ detail: `table reconciliation ${params.reconciliationId} not found` }, { status: 404 });
+      }
+      return record;
+    }),
     getListTableReconciliationsMockHandler(({ request }) => {
       const query = new URL(request.url).searchParams;
       const before = query.get("before");

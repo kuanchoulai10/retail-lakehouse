@@ -2,13 +2,13 @@ import { TooltipProvider } from "@retail-lakehouse/design-system";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   ReconciliationOperationApiResponse,
   TableReconciliationApiResponse,
 } from "../../api/generated/model";
-import { stubCatalogApi, type StubbedCall } from "../../test/catalogApiStub";
+import { callsTo, stubCatalogApi, type StubbedCall } from "../../test/catalogApiStub";
 import { DEFAULT_POLICY_ID, jsonResponse, NIGHTLY_POLICY_ID } from "../../test/fixtures";
 import { ReconciliationsTab } from "./ReconciliationsTab";
 
@@ -104,23 +104,51 @@ const DRY_RUN: TableReconciliationApiResponse = {
   ],
 };
 
-function renderTab() {
+function LocationProbe() {
+  const location = useLocation();
+  return <output aria-label="search">{location.search}</output>;
+}
+
+function renderTab(search = "") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/tables/orders/reconciliations"]}>
+      <MemoryRouter initialEntries={[`/tables/orders/reconciliations${search}`]}>
         <TooltipProvider>
           <Routes>
             <Route path="/tables/:table/:tab" element={<ReconciliationsTab tableUuid="uuid-orders" />} />
           </Routes>
         </TooltipProvider>
+        <LocationProbe />
       </MemoryRouter>
     </QueryClientProvider>,
   );
 }
 
-function stubList(items: TableReconciliationApiResponse[]): StubbedCall[] {
-  return stubCatalogApi({ "GET /v1/tables/uuid-orders/reconciliations*": () => jsonResponse(items) });
+const urlSearch = () => screen.getByRole("status", { name: "search" }).textContent;
+
+// The window at 768px and wider matches; the jsdom setup's stub matches no query (a phone).
+function stubWindowWidth({ wide }: { wide: boolean }) {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: wide && query === "(min-width: 48rem)",
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  }));
+}
+
+const LIST_PATH = "/v1/tables/uuid-orders/reconciliations*";
+const reconciliationPath = (id: string) => `/v1/table-reconciliations/${id}`;
+
+function stubList(items: TableReconciliationApiResponse[], byId: Record<string, () => Response> = {}): StubbedCall[] {
+  return stubCatalogApi({
+    [`GET ${LIST_PATH}`]: () => jsonResponse(items),
+    ...Object.fromEntries(Object.entries(byId).map(([id, handler]) => [`GET ${reconciliationPath(id)}`, handler])),
+  });
 }
 
 function hours(day: number, from: number, to: number): TableReconciliationApiResponse[] {
@@ -136,6 +164,7 @@ async function openDrawer(user: ReturnType<typeof userEvent.setup>, name: RegExp
 
 describe("ReconciliationsTab", () => {
   beforeEach(() => {
+    stubWindowWidth({ wide: true });
     stubList([STARTED, ...hours(10, 3, 9), quiet("rec-9", at(9, 23))]);
   });
 
@@ -403,5 +432,109 @@ describe("ReconciliationsTab", () => {
     expect(params()[0]?.get("limit")).toBe("50");
     expect(params()[1]?.get("before")).toBe(oldest);
     expect(screen.queryByRole("button", { name: "Show older" })).not.toBeInTheDocument();
+  });
+
+  describe("the open record in the url", () => {
+    const OLD_ID = "rc-old";
+    const OLD = { ...quiet(OLD_ID, at(1, 8)), operations: STARTED.operations };
+
+    it("pressing a line sets ?reconciliation= and keeps the other parameters", async () => {
+      const user = userEvent.setup();
+      renderTab("?since=x");
+      await user.click(await screen.findByRole("button", { name: /Started Rewrite data files/ }));
+      expect(urlSearch()).toBe("?since=x&reconciliation=rec-started");
+      expect(await screen.findByRole("dialog", { name: "Started Rewrite data files" })).toBeInTheDocument();
+    });
+
+    it("opens the record a link names, from the loaded list, without reading it by id", async () => {
+      const calls = stubList([STARTED, quiet("rec-lone", at(10, 9))]);
+      renderTab("?reconciliation=rec-started");
+      expect(await screen.findByRole("dialog", { name: "Started Rewrite data files" })).toBeInTheDocument();
+      expect(calls.filter((call) => call.path.startsWith("/v1/table-reconciliations/"))).toHaveLength(0);
+    });
+
+    it("reads a record outside the loaded pages by its id", async () => {
+      const calls = stubList([STARTED], { [OLD_ID]: () => jsonResponse(OLD) });
+      renderTab(`?reconciliation=${OLD_ID}`);
+      const panel = await screen.findByRole("dialog", { name: "Started Rewrite data files" });
+      expect(within(panel).getByText(/Woken by Schedule/)).toBeInTheDocument();
+      expect(callsTo(calls, "GET", reconciliationPath(OLD_ID))).toHaveLength(1);
+    });
+
+    it("shows a loading state in the panel while it is read", async () => {
+      stubCatalogApi({
+        [`GET ${LIST_PATH}`]: () => jsonResponse([STARTED]),
+        [`GET ${reconciliationPath("rc-slow")}`]: () => new Promise<Response>(() => {}),
+      });
+      renderTab("?reconciliation=rc-slow");
+      const panel = await screen.findByRole("dialog");
+      expect(within(panel).getByText("Loading reconciliation…")).toBeInTheDocument();
+    });
+
+    it.each([
+      ["a record that no longer exists (404)", "rc-gone", 404],
+      ["a malformed id (422)", "not-an-id", 422],
+    ])("says %s is no longer available, inside the panel", async (_what, id, status) => {
+      stubList([STARTED], { [id]: () => jsonResponse({ detail: "no such reconciliation" }, status) });
+      renderTab(`?reconciliation=${id}`);
+      const panel = await screen.findByRole("dialog");
+      expect(await within(panel).findByText("This reconciliation is no longer available")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Started Rewrite data files/ })).toBeInTheDocument();
+      expect(screen.queryByText(/^Could not/)).not.toBeInTheDocument();
+    });
+
+    it("says a record of another table belongs to another table", async () => {
+      stubList([STARTED], { "rc-other": () => jsonResponse({ ...OLD, reconciliation_id: "rc-other", table_uuid: "uuid-customers" }) });
+      renderTab("?reconciliation=rc-other");
+      const panel = await screen.findByRole("dialog");
+      expect(await within(panel).findByText("This reconciliation belongs to another table")).toBeInTheDocument();
+      expect(within(panel).queryByText(/Woken by/)).not.toBeInTheDocument();
+    });
+
+    it("says a link is no longer available when the table has no reconciliation at all", async () => {
+      stubList([], { "rc-gone": () => jsonResponse({ detail: "gone" }, 404) });
+      renderTab("?reconciliation=rc-gone");
+      expect(await screen.findByText("No reconciliations yet.")).toBeInTheDocument();
+      const panel = await screen.findByRole("dialog");
+      expect(await within(panel).findByText("This reconciliation is no longer available")).toBeInTheDocument();
+    });
+
+    it("shows another record in the same panel when its line is pressed, and moves focus to the heading", async () => {
+      const user = userEvent.setup();
+      stubList([STARTED, DRY_RUN]);
+      renderTab();
+      await user.click(await screen.findByRole("button", { name: /Started Rewrite data files/ }));
+      expect(await screen.findByRole("dialog", { name: "Started Rewrite data files" })).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: /Would start Rewrite data files/ }));
+
+      expect(screen.getAllByRole("dialog")).toHaveLength(1);
+      expect(screen.getByRole("dialog")).toHaveAccessibleName("Would start Rewrite data files");
+      expect(urlSearch()).toBe("?reconciliation=rec-dry");
+      await waitFor(() => expect(screen.getByRole("heading", { name: "Would start Rewrite data files" })).toHaveFocus());
+    });
+
+    it("closes on Escape, drops the record from the url and returns focus to its line", async () => {
+      const user = userEvent.setup();
+      renderTab("?since=x");
+      const line = await screen.findByRole("button", { name: /Started Rewrite data files/ });
+      await user.click(line);
+      await screen.findByRole("dialog");
+
+      await user.keyboard("{Escape}");
+
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(urlSearch()).toBe("?since=x");
+      await waitFor(() => expect(line).toHaveFocus());
+    });
+
+    it("opens a line from the keyboard and moves focus to the panel's heading", async () => {
+      const user = userEvent.setup();
+      renderTab();
+      const line = await screen.findByRole("button", { name: /Started Rewrite data files/ });
+      line.focus();
+      await user.keyboard("{Enter}");
+      await waitFor(() => expect(screen.getByRole("heading", { name: "Started Rewrite data files" })).toHaveFocus());
+    });
   });
 });

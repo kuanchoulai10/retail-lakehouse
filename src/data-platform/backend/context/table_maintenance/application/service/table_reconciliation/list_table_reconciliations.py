@@ -10,13 +10,11 @@ from context.table_maintenance.application.port.inbound.table_reconciliation imp
     ListTableReconciliationsUseCaseInput,
     ListTableReconciliationsUseCaseOutput,
 )
+from context.table_maintenance.application.service.table_reconciliation.table_reconciliation_output_fields import (
+    table_reconciliation_output_fields,
+)
 
 if TYPE_CHECKING:
-    from context.table_maintenance.application.domain.model.shared import Measurement
-    from context.table_maintenance.application.domain.model.table_reconciliation import (
-        OperationOutcome,
-        TableReconciliation,
-    )
     from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
         TableMaintenancePoliciesRepo,
     )
@@ -48,54 +46,11 @@ class ListTableReconciliationsService(ListTableReconciliationsUseCase):
             policy.id.value: policy.name.value
             for policy in self._policies_repo.get_many(list({r.policy_id: None for r in found}))
         }
-        return ListTableReconciliationsUseCaseOutput(items=tuple(_item(r, names) for r in found))
-
-
-def _item(
-    reconciliation: TableReconciliation, names: dict[str, str]
-) -> ListTableReconciliationsUseCaseOutput.TableReconciliation:
-    return ListTableReconciliationsUseCaseOutput.TableReconciliation(
-        reconciliation_id=reconciliation.id.value,
-        table_uuid=reconciliation.table_uuid.value,
-        reconciled_at=reconciliation.reconciled_at,
-        wake_reasons={reason.value: count for reason, count in reconciliation.wake_reasons.items()},
-        dry_run=reconciliation.dry_run,
-        outcome=reconciliation.outcome.value,
-        skip_reason=reconciliation.skip_reason,
-        operations=tuple(_operation(op) for op in reconciliation.operations),
-        policy_id=reconciliation.policy_id.value,
-        policy_name=names.get(reconciliation.policy_id.value, reconciliation.policy_name.value),
-        policy_deleted=reconciliation.policy_id.value not in names,
-        policy_version=reconciliation.policy_version,
-        policy_target=_policy_target(reconciliation),
-    )
-
-
-def _policy_target(
-    reconciliation: TableReconciliation,
-) -> ListTableReconciliationsUseCaseOutput.PolicyTarget | None:
-    target = reconciliation.policy_target
-    if target is None:
-        return None
-    return ListTableReconciliationsUseCaseOutput.PolicyTarget(type=target.type.value, path=tuple(target.path))
-
-
-def _operation(outcome: OperationOutcome) -> ListTableReconciliationsUseCaseOutput.Operation:
-    return ListTableReconciliationsUseCaseOutput.Operation(
-        operation=outcome.operation.value,
-        result=outcome.result.value,
-        measurements=tuple(_measurement(m) for m in outcome.measurements),
-        next_eligible_at=outcome.next_eligible_at,
-        run_id=outcome.run_id.value if outcome.run_id else None,
-    )
-
-
-def _measurement(measurement: Measurement) -> ListTableReconciliationsUseCaseOutput.Measurement:
-    return ListTableReconciliationsUseCaseOutput.Measurement(
-        key=measurement.key,
-        observed=measurement.observed,
-        unit=measurement.unit.value,
-        threshold=measurement.threshold,
-        comparison=measurement.comparison.value if measurement.comparison else None,
-        met=measurement.met,
-    )
+        return ListTableReconciliationsUseCaseOutput(
+            items=tuple(
+                ListTableReconciliationsUseCaseOutput.TableReconciliation(
+                    **table_reconciliation_output_fields(r, names)
+                )
+                for r in found
+            )
+        )
