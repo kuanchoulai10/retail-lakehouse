@@ -108,7 +108,7 @@ describe("TableHeader", () => {
     expect(screen.getByText("last commit 3 h ago")).toBeInTheDocument();
   });
 
-  it("offers no Pause or Resume: the discovery rules alone decide what is managed", async () => {
+  it("offers no Pause or Resume: the discovery policies alone decide what is managed", async () => {
     const user = userEvent.setup();
     renderHeader();
     expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();

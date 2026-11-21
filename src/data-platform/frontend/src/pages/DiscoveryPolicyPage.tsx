@@ -4,6 +4,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 import { Link, useParams } from "react-router";
 import {
   getGetTableDiscoveryPolicyQueryKey,
+  getListScannedCatalogsQueryKey,
   getListTableDiscoveryPoliciesQueryKey,
   updateTableDiscoveryPolicy,
   useGetTableDiscoveryPolicy,
@@ -127,11 +128,13 @@ function PolicyDraftEditor({ policy }: { policy: Policy }) {
   const save = useMutation({
     mutationFn: (body: UpdateTableDiscoveryPolicyApiRequest) => updateTableDiscoveryPolicy(policy.name, body),
     // A write can fail after part of it landed, so the page refetches either way; the draft is
-    // dropped only once the save succeeded, so a refused save keeps the user's edits.
+    // dropped only once the save succeeded, so a refused save keeps the user's edits. The scanned
+    // catalogs too: a save can start or stop the scans of the catalogs the policy is attached in.
     onSettled: async (_data, error) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getGetTableDiscoveryPolicyQueryKey(policy.name) }),
         queryClient.invalidateQueries({ queryKey: getListTableDiscoveryPoliciesQueryKey(), exact: true }),
+        queryClient.invalidateQueries({ queryKey: getListScannedCatalogsQueryKey() }),
       ]);
       if (error === null) {
         setDraft(null);

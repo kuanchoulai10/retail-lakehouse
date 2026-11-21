@@ -181,9 +181,12 @@ describe("DiscoveryPolicyPage", () => {
     await user.click(screen.getByRole("button", { name: "Move rule 2 up" }));
     await user.click(screen.getByRole("combobox", { name: "When no rule matches" }));
     await user.click(await screen.findByRole("option", { name: "Manage" }));
+    await waitFor(() => expect(callsTo(calls, "GET", "/v1/scanned-catalogs")).toHaveLength(1));
     await user.click(saveButton());
 
     expect(await screen.findByText("Saved. Discovering tables…")).toBeInTheDocument();
+    // The save can start or stop the scans of the catalogs the policy is attached in.
+    await waitFor(() => expect(callsTo(calls, "GET", "/v1/scanned-catalogs")).toHaveLength(2));
     expect(callsTo(calls, "PUT", PATH).map((call) => call.body)).toEqual([
       {
         version: 3,

@@ -31,7 +31,7 @@ function averageFileSize(table: CatalogTableApiResponse): string {
 }
 
 // The same six numbers for every table, from the catalog; Run maintenance and Reconcile now only when maintenance manages
-// it. The discovery rules alone decide whether it does, so there is no pause or include here.
+// it. The discovery policies alone decide whether it does, so there is no pause or include here.
 // The maintenance actions live here, not in a child, so the phone overflow menu opens the same
 // dialog as the buttons.
 export function TableHeader({ table, managed, menuItems }: Props) {

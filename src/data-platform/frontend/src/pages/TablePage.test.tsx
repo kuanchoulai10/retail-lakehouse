@@ -425,13 +425,30 @@ describe("TablePage", { timeout: 15_000 }, () => {
   });
 
   it("overview says no rule matched when the policy's no-match outcome decided the table", async () => {
-    stubTable({ maintenanceTable: () => jsonResponse(maintenance({ matched_rule_id: null })) });
+    const calls = stubTable({ maintenanceTable: () => jsonResponse(maintenance({ matched_rule_id: null })) });
     renderAt(PAGE);
     const summary = await screen.findByRole("region", { name: "Table" });
     await within(summary).findByRole("link", { name: "sales-tables v2" });
     await waitFor(() =>
       expect(summary).toHaveTextContent("Maintenance: managed · discovery policy sales-tables v2 · no rule matched"),
     );
+    expect(summary).not.toHaveTextContent("· rule ");
+    await settle();
+    expect(calls.filter((call) => call.path.includes("/versions/"))).toHaveLength(0);
+  });
+
+  it.each([
+    ["pending", () => new Promise<Response>(() => {})],
+    ["failed", () => jsonResponse({ detail: "boom" }, 500)],
+  ])("overview names no rule while the deciding version is %s", async (_state, version) => {
+    const calls = stubTable({ extra: { "GET /v1/discovery-policies/sales-tables/versions/2": version } });
+    renderAt(PAGE);
+    const summary = await screen.findByRole("region", { name: "Table" });
+    await within(summary).findByRole("link", { name: "sales-tables v2" });
+    await waitFor(() => expect(callsTo(calls, "GET", "/v1/discovery-policies/sales-tables/versions/2")).toHaveLength(1));
+    await settle();
+    expect(summary).toHaveTextContent("Maintenance: managed · discovery policy sales-tables v2");
+    expect(summary).not.toHaveTextContent("no rule matched");
     expect(summary).not.toHaveTextContent("· rule ");
   });
 
