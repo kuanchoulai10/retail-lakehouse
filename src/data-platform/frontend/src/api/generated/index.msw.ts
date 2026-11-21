@@ -1,7 +1,6 @@
 export { getCatalogsMock } from './catalogs/catalogs.msw'
 export { getDefaultMock } from './default/default.msw'
 export { getDiscoveryPoliciesMock } from './discovery-policies/discovery-policies.msw'
-export { getDiscoveryRulesMock } from './discovery-rules/discovery-rules.msw'
 export { getGenericTablesMock } from './generic-tables/generic-tables.msw'
 export { getMaintenancePoliciesMock } from './maintenance-policies/maintenance-policies.msw'
 export { getNamespacesMock } from './namespaces/namespaces.msw'

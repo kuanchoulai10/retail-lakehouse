@@ -57,7 +57,6 @@ def build_connected_use_cases(
     return build_use_cases(
         build_repositories(build_engine(settings)),
         gateways,
-        catalog_names=settings.catalog.names,
         size_memory=build_size_memory(settings.spark),
         cooldowns=build_operation_cooldowns(settings),
         partition_selection=build_partition_selection_settings(settings),

@@ -31,11 +31,6 @@ if TYPE_CHECKING:
         DetachTableDiscoveryPolicyUseCase,
         ListTableDiscoveryPolicyAttachmentsUseCase,
     )
-    from context.table_maintenance.application.port.inbound.table_discovery_rules import (
-        GetTableDiscoveryRulesUseCase,
-        ListCoveredCatalogsUseCase,
-        ReplaceTableDiscoveryRulesUseCase,
-    )
     from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
         CreateTableMaintenancePolicyUseCase,
         DeleteTableMaintenancePolicyUseCase,
@@ -66,9 +61,6 @@ if TYPE_CHECKING:
 class WebUseCases:
     """Hold every use case the web API calls; the composition root builds it."""
 
-    get_table_discovery_rules: GetTableDiscoveryRulesUseCase
-    replace_table_discovery_rules: ReplaceTableDiscoveryRulesUseCase
-    list_covered_catalogs: ListCoveredCatalogsUseCase
     list_table_discovery_policies: ListTableDiscoveryPoliciesUseCase
     create_table_discovery_policy: CreateTableDiscoveryPolicyUseCase
     get_table_discovery_policy: GetTableDiscoveryPolicyUseCase

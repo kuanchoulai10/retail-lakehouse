@@ -16,9 +16,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
         TableDiscoveryPolicyAttachmentsRepo,
     )
-    from context.table_maintenance.application.port.outbound.table_discovery_rules import (
-        TableDiscoveryRulesRepo,
-    )
     from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
         TableMaintenancePoliciesRepo,
     )
@@ -39,7 +36,6 @@ class Repositories:
 
     table_discovery_policies: TableDiscoveryPoliciesRepo
     table_discovery_policy_attachments: TableDiscoveryPolicyAttachmentsRepo
-    table_discovery_rules: TableDiscoveryRulesRepo
     table_maintenance_runs: TableMaintenanceRunsRepo
     tables: TablesRepo
     table_maintenance_policies: TableMaintenancePoliciesRepo

@@ -39,11 +39,6 @@ from context.table_maintenance.application.service.table_discovery_policy_attach
     ListTableDiscoveryPolicyAttachmentsService,
     SyncDiscoverySchedulesService,
 )
-from context.table_maintenance.application.service.table_discovery_rules import (
-    GetTableDiscoveryRulesService,
-    ListCoveredCatalogsService,
-    ReplaceTableDiscoveryRulesService,
-)
 from context.table_maintenance.application.service.table_maintenance_policy import (
     CreateTableMaintenancePolicyService,
     DeleteTableMaintenancePolicyService,
@@ -80,7 +75,7 @@ from context.table_maintenance.application.service.table_reconciliation import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping, Sequence
+    from collections.abc import Callable, Mapping
 
     from bootstrap.container.gateways import Gateways
     from bootstrap.container.repositories import Repositories
@@ -101,7 +96,6 @@ def build_use_cases(
     *,
     platform_settings: PlatformSettings,
     clock: Callable[[], datetime] = _utc_now,
-    catalog_names: Sequence[str] = (),
     size_memory: Mapping[ComputeSize, SizeMemory] | None = None,
     cooldowns: OperationCooldowns = DEFAULT_OPERATION_COOLDOWNS,
     partition_selection: PartitionSelectionSettings = DEFAULT_PARTITION_SELECTION_SETTINGS,
@@ -115,7 +109,6 @@ def build_use_cases(
     every caller gives them, so none shows defaults by accident.
     """
     tables = repos.tables
-    rules = repos.table_discovery_rules
     discovery_policies = repos.table_discovery_policies
     discovery_attachments = repos.table_discovery_policy_attachments
     policies = repos.table_maintenance_policies
@@ -129,7 +122,6 @@ def build_use_cases(
     discovery_schedules = gateways.sync_discovery_schedules
     resolve_applicable_policy = ResolveApplicableTableMaintenancePolicyService(policies, attachments, catalog, tables)
     return UseCases(
-        list_covered_catalogs=ListCoveredCatalogsService(catalog_names),
         process_table_hint=ProcessTableHintService(
             tables,
             discovery_policies,
@@ -141,10 +133,6 @@ def build_use_cases(
         ),
         sync_discovered_tables=SyncDiscoveredTablesService(
             tables, discovery_policies, discovery_attachments, discoveries, catalog, table_changes, clock=clock
-        ),
-        get_table_discovery_rules=GetTableDiscoveryRulesService(rules),
-        replace_table_discovery_rules=ReplaceTableDiscoveryRulesService(
-            rules, gateways.send_discovery_request, catalog_names, clock=clock
         ),
         list_table_discovery_policies=ListTableDiscoveryPoliciesService(discovery_policies, discovery_attachments),
         create_table_discovery_policy=CreateTableDiscoveryPolicyService(discovery_policies, clock=clock),

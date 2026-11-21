@@ -12,9 +12,6 @@ from context.table_maintenance.application.domain.model.table_discovery_policy i
     DefaultDiscoveryPolicyIsFixed,
     StaleDiscoveryPolicyVersion,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import (
-    StaleDiscoveryRulesVersion,
-)
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     StalePolicyVersion,
 )
@@ -36,8 +33,8 @@ def translate_domain_errors() -> Iterator[None]:
     """Translate domain and repo errors into application exceptions.
 
     InvalidTableTransition, InvalidRunTransition, StalePolicyVersion,
-    StaleDiscoveryRulesVersion, StaleDiscoveryPolicyVersion and
-    DefaultDiscoveryPolicyIsFixed become ConflictError, any other ValueError (which
+    StaleDiscoveryPolicyVersion and DefaultDiscoveryPolicyIsFixed become
+    ConflictError, any other ValueError (which
     covers a broken invariant, an InvariantViolation whose text is one line)
     becomes ValidationError with its message, and a repo LookupError becomes
     NotFoundError. Application exceptions pass through.
@@ -48,7 +45,6 @@ def translate_domain_errors() -> Iterator[None]:
         InvalidTableTransition,
         InvalidRunTransition,
         StalePolicyVersion,
-        StaleDiscoveryRulesVersion,
         StaleDiscoveryPolicyVersion,
         DefaultDiscoveryPolicyIsFixed,
     ) as exc:

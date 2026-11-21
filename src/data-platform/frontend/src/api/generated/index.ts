@@ -1,7 +1,6 @@
 export * from './catalogs/catalogs';
 export * from './default/default';
 export * from './discovery-policies/discovery-policies';
-export * from './discovery-rules/discovery-rules';
 export * from './generic-tables/generic-tables';
 export * from './maintenance-policies/maintenance-policies';
 export * from './namespaces/namespaces';

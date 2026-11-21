@@ -16,9 +16,6 @@ from context.table_maintenance.adapter.inbound.web.table_discovery_policy import
 from context.table_maintenance.adapter.inbound.web.table_discovery_policy_attachment import (
     router as table_discovery_policy_attachment_router,
 )
-from context.table_maintenance.adapter.inbound.web.table_discovery_rules import (
-    router as table_discovery_rules_router,
-)
 from context.table_maintenance.adapter.inbound.web.table_maintenance_policy import (
     router as table_maintenance_policy_router,
 )
@@ -48,7 +45,6 @@ def register_routes(app: FastAPI, use_cases: WebUseCases) -> None:
     app.state.table_maintenance_use_cases = use_cases
     register_error_handlers(app)
     for router in (
-        table_discovery_rules_router,
         table_discovery_policy_router,
         table_discovery_policy_attachment_router,
         catalog_discovery_router,

@@ -31,9 +31,6 @@ from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_re
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_policy_attachments_repo import (
     InMemoryTableDiscoveryPolicyAttachmentsRepo,
 )
-from tests.context.table_maintenance.fakes.in_memory_table_discovery_rules_repo import (
-    InMemoryTableDiscoveryRulesRepo,
-)
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
     InMemoryTableMaintenancePoliciesRepo,
 )
@@ -88,12 +85,6 @@ def new_id() -> Callable[[], str]:
     """Provide a discovery rule id generator that returns dr-…001, dr-…002 and so on (26 base32 characters)."""
     counter = iter(range(1, 1000))
     return lambda: f"dr-{next(counter):026d}"
-
-
-@pytest.fixture
-def rules_repo() -> InMemoryTableDiscoveryRulesRepo:
-    """Provide an in-memory discovery rules repository holding no rules."""
-    return InMemoryTableDiscoveryRulesRepo()
 
 
 @pytest.fixture

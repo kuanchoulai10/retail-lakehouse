@@ -6,7 +6,7 @@ import os
 
 import pytest
 
-from bootstrap.configs import AppSettings, Component, DatabaseBackend, TemporalSettings
+from bootstrap.configs import AppSettings, CatalogSettings, Component, DatabaseBackend, TemporalSettings
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     DEFAULT_MAX_ATTEMPTS,
     DEFAULT_QUEUE_WAIT_LIMIT_SECONDS,
@@ -39,7 +39,6 @@ def test_defaults_follow_the_brief():
         "http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/management/v1"
     )
     assert settings.catalog.scope == "PRINCIPAL_ROLE:ALL"
-    assert settings.catalog.names == ["iceberg"]
     assert settings.catalog.s3_endpoint == ("http://rustfs.object-storage.svc.cluster.local:9000")
     assert settings.catalog.s3_access_key_id is None
     assert settings.catalog.s3_secret_access_key is None
@@ -49,6 +48,11 @@ def test_defaults_follow_the_brief():
     assert settings.api.root_path == ""
     assert "admission_limit" not in AppSettings.model_fields
     assert settings.discovery_interval_seconds == 600
+
+
+def test_catalog_settings_have_no_names():
+    """The catalogs to scan follow the discovery policy attachments, so no catalog list is configured."""
+    assert "names" not in CatalogSettings.model_fields
 
 
 def test_nested_env_vars_are_parsed(monkeypatch: pytest.MonkeyPatch):
@@ -64,7 +68,6 @@ def test_nested_env_vars_are_parsed(monkeypatch: pytest.MonkeyPatch):
         "GLAC_CATALOG__URI": "http://polaris:8181/api/catalog",
         "GLAC_CATALOG__MANAGEMENT_URI": "http://polaris:8181/api/management/v1",
         "GLAC_CATALOG__CREDENTIAL": "root:s3cr3t",
-        "GLAC_CATALOG__NAMES": '["a","b"]',
         "GLAC_CATALOG__S3_ACCESS_KEY_ID": "AKID",
         "GLAC_CATALOG__S3_SECRET_ACCESS_KEY": "SK",
         "GLAC_KAFKA__BOOTSTRAP_SERVERS": "broker:9092",
@@ -89,7 +92,6 @@ def test_nested_env_vars_are_parsed(monkeypatch: pytest.MonkeyPatch):
     assert settings.catalog.uri == "http://polaris:8181/api/catalog"
     assert settings.catalog.management_uri == "http://polaris:8181/api/management/v1"
     assert settings.catalog.credential.get_secret_value() == "root:s3cr3t"
-    assert settings.catalog.names == ["a", "b"]
     assert settings.catalog.s3_access_key_id is not None
     assert settings.catalog.s3_access_key_id.get_secret_value() == "AKID"
     assert settings.catalog.s3_secret_access_key is not None

@@ -20,8 +20,7 @@ from bootstrap.configs.temporal_settings import TemporalSettings
 class AppSettings(BaseSettings):
     """Root application settings, read from ``GLAC_`` environment variables.
 
-    Nested fields use ``__``, for example ``GLAC_TEMPORAL__ADDRESS``; list fields
-    take JSON, for example ``GLAC_CATALOG__NAMES='["iceberg"]'``.
+    Nested fields use ``__``, for example ``GLAC_TEMPORAL__ADDRESS``.
     """
 
     model_config = SettingsConfigDict(

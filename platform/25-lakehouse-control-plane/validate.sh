@@ -73,13 +73,6 @@ for priority in p0 p1 p2 p3; do
     || { echo "priorityclass ${PRIORITY_CLASS_PREFIX}-${priority} preemptionPolicy is ${preemption_policy}, expected Never" >&2; exit 1; }
 done
 
-CATALOGS="$(kubectl get configmap table-maintenance-config \
-  -o jsonpath='{.data.GLAC_CATALOG__NAMES}' \
-  --namespace "${NAMESPACE}" \
-  --context "${KUBE_CONTEXT}" \
-  | yq '.[]')"
-[[ -n "${CATALOGS}" ]] || { echo "no catalogs configured" >&2; exit 1; }
-
 api_get() {
   kubectl exec deployment/table-maintenance-api \
     --namespace "${NAMESPACE}" \
@@ -87,19 +80,30 @@ api_get() {
     -- python -c "import sys, urllib.request; r = urllib.request.urlopen('http://localhost:8000' + sys.argv[1], timeout=10); print(sys.argv[1], r.status)" "$1"
 }
 
+api_body() {
+  kubectl exec deployment/table-maintenance-api \
+    --namespace "${NAMESPACE}" \
+    --context "${KUBE_CONTEXT}" \
+    -- python -c "import sys, urllib.request; print(urllib.request.urlopen('http://localhost:8000' + sys.argv[1], timeout=10).read().decode())" "$1"
+}
+
 api_get /healthz
-api_get /v1/discovery-rules
+api_get /v1/discovery-policies
+api_get /v1/scanned-catalogs
 api_get /v1/maintenance-policies/default
 api_get /v1/tables
 api_get /v1/catalogs
 
-DEFAULT_POLICY="$(kubectl exec deployment/table-maintenance-api \
-  --namespace "${NAMESPACE}" \
-  --context "${KUBE_CONTEXT}" \
-  -- python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/v1/maintenance-policies/default', timeout=10).read().decode())")"
+DEFAULT_POLICY="$(api_body /v1/maintenance-policies/default)"
 grep -q '"name":"default"' <<<"${DEFAULT_POLICY}" || { echo "policy default is missing" >&2; exit 1; }
 
-for old_route in /v1/policy-templates /v1/compaction-rounds; do
+DEFAULT_DISCOVERY_POLICY="$(api_body /v1/discovery-policies/default)"
+grep -qF '"is_default":true' <<<"${DEFAULT_DISCOVERY_POLICY}" \
+  || { echo "discovery policy default is missing or not the default: ${DEFAULT_DISCOVERY_POLICY}" >&2; exit 1; }
+grep -qF '"rules":[]' <<<"${DEFAULT_DISCOVERY_POLICY}" \
+  || { echo "discovery policy default holds rules, expected none: ${DEFAULT_DISCOVERY_POLICY}" >&2; exit 1; }
+
+for old_route in /v1/policy-templates /v1/compaction-rounds /v1/discovery-rules; do
   OLD_ROUTE_STATUS="$(kubectl exec deployment/table-maintenance-api \
     --namespace "${NAMESPACE}" \
     --context "${KUBE_CONTEXT}" \
@@ -114,14 +118,29 @@ done
 
 ADMIN_TOOLS="deployment/temporal-admintools"
 
-for catalog in ${CATALOGS}; do
-  kubectl exec "${ADMIN_TOOLS}" \
+DISCOVERY_SCHEDULE_PREFIX="table-discovery:catalog="
+WANTED_SCHEDULES=""
+LISTED_SCHEDULES=""
+for _ in $(seq 1 30); do
+  WANTED_SCHEDULES="$(api_body /v1/scanned-catalogs \
+    | jq -r --arg prefix "${DISCOVERY_SCHEDULE_PREFIX}" '.catalogs[].catalog | $prefix + .' \
+    | sort -u)"
+  LISTED_SCHEDULES="$(kubectl exec "${ADMIN_TOOLS}" \
     --namespace temporal \
     --context "${KUBE_CONTEXT}" \
-    -- temporal schedule describe \
+    -- temporal schedule list \
     --address temporal-frontend.temporal.svc.cluster.local:7233 \
-    --schedule-id "table-discovery:catalog=${catalog}" >/dev/null
+    | { grep -oE "${DISCOVERY_SCHEDULE_PREFIX}[^[:space:]\"]+" || true; } \
+    | sort -u)"
+  [[ "${WANTED_SCHEDULES}" == "${LISTED_SCHEDULES}" ]] && break
+  sleep 2
 done
+[[ "${WANTED_SCHEDULES}" == "${LISTED_SCHEDULES}" ]] || {
+  echo "discovery schedules are not the scanned catalogs' schedules" >&2
+  echo "missing: $(comm -23 <(echo "${WANTED_SCHEDULES}") <(echo "${LISTED_SCHEDULES}") | xargs)" >&2
+  echo "extra: $(comm -13 <(echo "${WANTED_SCHEDULES}") <(echo "${LISTED_SCHEDULES}") | xargs)" >&2
+  exit 1
+}
 
 if RETIRED_WORKFLOW="$(kubectl exec "${ADMIN_TOOLS}" \
   --namespace temporal \

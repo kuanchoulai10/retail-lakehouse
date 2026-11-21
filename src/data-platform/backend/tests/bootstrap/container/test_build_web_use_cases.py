@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import fields
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from fastapi.testclient import TestClient
 
@@ -30,10 +30,10 @@ def _web_use_cases() -> WebUseCases:
 
 
 def test_every_web_use_case_is_populated():
-    """All 38 web use case fields are set."""
+    """All 35 web use case fields are set."""
     web = _web_use_cases()
 
-    assert len(fields(web)) == 38
+    assert len(fields(web)) == 35
     assert all(getattr(web, f.name) is not None for f in fields(web))
 
 
@@ -54,35 +54,33 @@ def test_app_serves_requests_end_to_end_on_sqlite():
     client = TestClient(create_api_app(lambda app: register_routes(app, _web_use_cases())))
 
     assert client.get("/healthz").json() == {"status": "ok"}
-    rule = {
-        "priority": 1,
-        "action": "exclude",
-        "enabled": True,
-        "catalogs": ["*"],
-        "namespaces": ["*"],
-        "tables": ["tmp_*"],
-    }
-    saved = client.put("/v1/discovery-rules", json={"version": 0, "rules": [rule]})
-    assert saved.status_code == 200
-    listing = client.get("/v1/discovery-rules").json()
-    assert (listing["version"], [r["priority"] for r in listing["rules"]]) == (1, [1])
-    stale = client.put("/v1/discovery-rules", json={"version": 0, "rules": []})
+    saved = client.post("/v1/discovery-policies", json={"name": "sales", **_content(_rule())})
+    assert saved.status_code == 201
+    fetched = client.get("/v1/discovery-policies/sales").json()
+    assert (fetched["version"], [r["outcome"] for r in fetched["rules"]]) == (1, ["manage"])
+    stale = client.put("/v1/discovery-policies/sales", json={"version": 0, **_content()})
     assert stale.status_code == 409
 
 
-def test_saving_a_rule_id_the_list_does_not_hold_answers_422():
-    """A PUT naming a rule id the saved list does not hold is refused with 422 and saves nothing."""
+def test_saving_a_rule_id_the_policy_does_not_hold_answers_422():
+    """A PUT naming a rule id the policy's current version does not hold is refused with 422 and saves nothing."""
     client = TestClient(create_api_app(lambda app: register_routes(app, _web_use_cases())))
-    rule = {
-        "id": UNKNOWN_RULE,
-        "priority": 1,
-        "action": "exclude",
-        "enabled": True,
-        "catalogs": ["*"],
-        "namespaces": ["*"],
-        "tables": ["tmp_*"],
-    }
-    response = client.put("/v1/discovery-rules", json={"version": 0, "rules": [rule]})
+    assert client.post("/v1/discovery-policies", json={"name": "sales", **_content()}).status_code == 201
+
+    response = client.put("/v1/discovery-policies/sales", json={"version": 1, **_content(_rule(id=UNKNOWN_RULE))})
+
     assert response.status_code == 422
     assert f"unknown discovery rule id {UNKNOWN_RULE}" in response.json()["detail"]
-    assert client.get("/v1/discovery-rules").json()["version"] == 0
+    assert client.get("/v1/discovery-policies/sales").json()["version"] == 1
+
+
+def _rule(**extra: Any) -> dict[str, Any]:  # noqa: ANN401
+    return {
+        "outcome": "manage",
+        "conditions": [{"attribute": "table_name", "operator": "glob", "values": ["orders_*"]}],
+        **extra,
+    }
+
+
+def _content(*rules: dict[str, Any]) -> dict[str, Any]:
+    return {"description": "", "no_match_outcome": "unmanage", "rules": list(rules)}

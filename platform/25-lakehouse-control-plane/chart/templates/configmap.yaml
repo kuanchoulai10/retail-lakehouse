@@ -13,7 +13,6 @@ data:
   GLAC_CATALOG__URI: {{ .Values.catalog.uri | quote }}
   GLAC_CATALOG__MANAGEMENT_URI: {{ .Values.catalog.managementUri | quote }}
   GLAC_CATALOG__SCOPE: {{ .Values.catalog.scope | quote }}
-  GLAC_CATALOG__NAMES: {{ .Values.catalog.names | toJson | quote }}
   GLAC_CATALOG__S3_ENDPOINT: {{ .Values.catalog.s3Endpoint | quote }}
   GLAC_CATALOG__S3_PATH_STYLE_ACCESS: {{ .Values.catalog.s3PathStyleAccess | quote }}
   GLAC_CATALOG__S3_REGION: {{ .Values.catalog.s3Region | quote }}

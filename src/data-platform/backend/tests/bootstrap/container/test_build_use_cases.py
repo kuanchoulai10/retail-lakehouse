@@ -49,8 +49,8 @@ from context.table_maintenance.application.domain.model.table import (
     OperationCooldowns,
     PartitionSelectionSettings,
 )
-from context.table_maintenance.application.port.inbound.table_discovery_rules import (
-    GetTableDiscoveryRulesUseCaseInput,
+from context.table_maintenance.application.port.inbound.table_discovery_policy import (
+    ListTableDiscoveryPoliciesUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import GetPlatformSettingsUseCaseInput
 from context.table_maintenance.application.service.table import PlanTableMaintenanceService
@@ -159,9 +159,9 @@ def test_use_cases_work_against_the_sql_repos():
         build_repositories(sqlite_engine()), fake_gateways(), platform_settings=platform_settings(), clock=lambda: NOW
     )
 
-    rules = use_cases.get_table_discovery_rules.execute(GetTableDiscoveryRulesUseCaseInput())
+    policies = use_cases.list_table_discovery_policies.execute(ListTableDiscoveryPoliciesUseCaseInput())
 
-    assert (rules.version, rules.rules) == (0, ())
+    assert policies.items == ()
 
 
 def test_the_platform_settings_report_the_values_they_are_given():
