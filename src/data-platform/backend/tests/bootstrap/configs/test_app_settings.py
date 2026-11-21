@@ -12,7 +12,11 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     DEFAULT_QUEUE_WAIT_LIMIT_SECONDS,
 )
 from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
-from context.table_maintenance.application.domain.model.table import DEFAULT_FAILURE_BACKOFF_CAP, OperationCooldowns
+from context.table_maintenance.application.domain.model.table import (
+    DEFAULT_FAILURE_BACKOFF_CAP,
+    OperationCooldowns,
+    PartitionSelectionSettings,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -288,6 +292,50 @@ def test_size_reads_env(monkeypatch: pytest.MonkeyPatch):
     assert spark.size_l.executor_memory == "3g"
     assert spark.size_l.driver_memory == "1536m"
     assert spark.size_m.executor_instances == 2
+
+
+def test_app_settings_read_the_partition_selection_env(monkeypatch: pytest.MonkeyPatch):
+    """The partitions per job, the quiet period and the longest wait are read from their GLAC_MAINTENANCE_* variable."""
+    monkeypatch.setenv("GLAC_MAINTENANCE_COMPACTION_PARTITIONS_PER_JOB", "4")
+    monkeypatch.setenv("GLAC_MAINTENANCE_COMPACTION_QUIET_SECONDS", "0")
+    monkeypatch.setenv("GLAC_MAINTENANCE_COMPACTION_MAX_QUIET_WAIT_SECONDS", "600")
+
+    settings = AppSettings()
+
+    assert (
+        settings.maintenance_compaction_partitions_per_job,
+        settings.maintenance_compaction_quiet_seconds,
+        settings.maintenance_compaction_max_quiet_wait_seconds,
+    ) == (4, 0, 600)
+
+
+@pytest.mark.parametrize("value", ["0", "1001"])
+def test_partitions_per_job_out_of_range_is_refused(monkeypatch: pytest.MonkeyPatch, value: str):
+    """One job compacts at least one partition and at most a thousand, which bounds the size of its where."""
+    monkeypatch.setenv("GLAC_MAINTENANCE_COMPACTION_PARTITIONS_PER_JOB", value)
+
+    with pytest.raises(ValueError, match="maintenance_compaction_partitions_per_job"):
+        AppSettings()
+
+
+@pytest.mark.parametrize("name", ["QUIET_SECONDS", "MAX_QUIET_WAIT_SECONDS"])
+def test_negative_quiet_is_refused(monkeypatch: pytest.MonkeyPatch, name: str):
+    """The quiet period and the longest wait may be zero but never negative."""
+    monkeypatch.setenv(f"GLAC_MAINTENANCE_COMPACTION_{name}", "-1")
+
+    with pytest.raises(ValueError, match=f"maintenance_compaction_{name.lower()}"):
+        AppSettings()
+
+
+def test_partition_selection_defaults_match_the_domain_defaults():
+    """The settings repeat the platform default selection (configs may not import a context), so they must agree."""
+    settings, default = AppSettings(), PartitionSelectionSettings.platform_default()
+
+    assert (
+        settings.maintenance_compaction_partitions_per_job,
+        settings.maintenance_compaction_quiet_seconds,
+        settings.maintenance_compaction_max_quiet_wait_seconds,
+    ) == (default.partitions_per_job, default.quiet_period.total_seconds(), default.max_quiet_wait.total_seconds())
 
 
 def test_settings_hold_no_round_scheduling_or_candidate_selection_group():

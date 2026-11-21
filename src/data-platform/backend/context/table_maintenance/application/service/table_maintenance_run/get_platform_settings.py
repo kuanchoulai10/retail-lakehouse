@@ -39,7 +39,7 @@ class GetPlatformSettingsService(GetPlatformSettingsUseCase):
         self._settings = settings
 
     def execute(self, request: GetPlatformSettingsUseCaseInput) -> GetPlatformSettingsUseCaseOutput:  # noqa: ARG002
-        """Return the four groups of settings in the order the console shows them."""
+        """Return the five groups of settings in the order the console shows them."""
         settings = self._settings
         return GetPlatformSettingsUseCaseOutput(
             groups=(
@@ -66,6 +66,11 @@ class GetPlatformSettingsService(GetPlatformSettingsUseCase):
                             "Each failure of an operation doubles its cooldown, up to this limit.",
                         ),
                     ),
+                ),
+                GetPlatformSettingsUseCaseOutput.Group(
+                    key="partition_selection",
+                    title="Compaction partition selection",
+                    items=_partition_selection(settings),
                 ),
                 GetPlatformSettingsUseCaseOutput.Group(
                     key="discovery",
@@ -114,6 +119,34 @@ def _cooldowns(settings: PlatformSettings) -> tuple[GetPlatformSettingsUseCaseOu
             settings.remove_orphan_files_interval_seconds,
             _SECONDS,
             "How often orphan files are removed from a table: they have no target the platform can measure.",
+        ),
+    )
+
+
+def _partition_selection(settings: PlatformSettings) -> tuple[GetPlatformSettingsUseCaseOutput.Setting, ...]:
+    return (
+        _item(
+            "maintenance_compaction_partitions_per_job",
+            "Partitions per job",
+            settings.compaction_partitions_per_job,
+            "partitions",
+            "The most partitions one rewrite data files job compacts; those with the most reducible files go first, "
+            "the rest wait for a later check.",
+        ),
+        _item(
+            "maintenance_compaction_quiet_seconds",
+            "Quiet period",
+            settings.compaction_quiet_seconds,
+            _SECONDS,
+            "A partition written more recently than this waits for a later check, so compaction does not race its "
+            "writers.",
+        ),
+        _item(
+            "maintenance_compaction_max_quiet_wait_seconds",
+            "Longest wait for quiet",
+            settings.compaction_max_quiet_wait_seconds,
+            _SECONDS,
+            "A partition over its target for this long is compacted even while it is still being written.",
         ),
     )
 

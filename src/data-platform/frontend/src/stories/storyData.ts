@@ -1074,6 +1074,14 @@ export const PLATFORM_SETTINGS: PlatformSettingsApiResponse = {
       setting("maintenance_failure_backoff_cap_seconds", "Failure backoff cap", 86400, "seconds",
         "Each failure of an operation doubles its cooldown, up to this limit."),
     ]),
+    group("partition_selection", "Compaction partition selection", [
+      setting("maintenance_compaction_partitions_per_job", "Partitions per job", 10, "partitions",
+        "The most partitions one rewrite data files job compacts; those with the most reducible files go first, the rest wait for a later check."),
+      setting("maintenance_compaction_quiet_seconds", "Quiet period", 120, "seconds",
+        "A partition written more recently than this waits for a later check, so compaction does not race its writers."),
+      setting("maintenance_compaction_max_quiet_wait_seconds", "Longest wait for quiet", 3600, "seconds",
+        "A partition over its target for this long is compacted even while it is still being written."),
+    ]),
     group("discovery", "Discovery", [
       setting("discovery_interval_seconds", "Scan interval", 600, "seconds",
         "How often discovery scans the catalogs for tables to manage."),

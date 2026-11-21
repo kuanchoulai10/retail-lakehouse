@@ -36,6 +36,9 @@ def build_platform_settings(settings: AppSettings) -> PlatformSettings:
         remove_orphan_files_interval_seconds=settings.maintenance_remove_orphan_files_interval_seconds,
         failure_backoff_cap_seconds=settings.maintenance_failure_backoff_cap_seconds,
         discovery_interval_seconds=settings.discovery_interval_seconds,
+        compaction_partitions_per_job=settings.maintenance_compaction_partitions_per_job,
+        compaction_quiet_seconds=settings.maintenance_compaction_quiet_seconds,
+        compaction_max_quiet_wait_seconds=settings.maintenance_compaction_max_quiet_wait_seconds,
     )
 
 

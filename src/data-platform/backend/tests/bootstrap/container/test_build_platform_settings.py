@@ -19,6 +19,9 @@ WHITELIST = {
     "remove_orphan_files_interval_seconds",
     "failure_backoff_cap_seconds",
     "discovery_interval_seconds",
+    "compaction_partitions_per_job",
+    "compaction_quiet_seconds",
+    "compaction_max_quiet_wait_seconds",
 }
 SECRETS = ("s3cr3t-pass", "AKIDSECRET", "SKSECRET", "root:cat4log", "kafka-user")
 
@@ -42,6 +45,11 @@ def test_defaults_are_the_values_the_platform_ran_with_before_they_had_names():
         settings.remove_orphan_files_interval_seconds,
     ) == (3600, 21600, 21600, 604800)
     assert settings.discovery_interval_seconds == 600
+    assert (
+        settings.compaction_partitions_per_job,
+        settings.compaction_quiet_seconds,
+        settings.compaction_max_quiet_wait_seconds,
+    ) == (10, 120, 3600)
     assert [(s.size, s.driver_memory, s.executor_memory, s.executor_instances) for s in settings.compute_sizes] == [
         (ComputeSize.S, "768m", "768m", 1),
         (ComputeSize.M, "1g", "1536m", 1),
@@ -76,6 +84,23 @@ def test_values_follow_the_application_settings():
         settings.remove_orphan_files_interval_seconds,
     ) == (60, 120, 180, 240)
     assert settings.compute_sizes[1].executor_instances == 3
+
+
+def test_build_platform_settings_copies_the_partition_selection():
+    """The three partition selection settings are shown as the deployment sets them."""
+    settings = build_platform_settings(
+        sqlite_settings(
+            maintenance_compaction_partitions_per_job=4,
+            maintenance_compaction_quiet_seconds=0,
+            maintenance_compaction_max_quiet_wait_seconds=600,
+        )
+    )
+
+    assert (
+        settings.compaction_partitions_per_job,
+        settings.compaction_quiet_seconds,
+        settings.compaction_max_quiet_wait_seconds,
+    ) == (4, 0, 600)
 
 
 def test_no_secret_of_the_deployment_reaches_the_platform_settings():

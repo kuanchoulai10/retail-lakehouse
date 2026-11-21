@@ -50,3 +50,6 @@ class AppSettings(BaseSettings):
     maintenance_rewrite_manifests_cooldown_seconds: int = Field(default=21600, ge=0)
     maintenance_expire_snapshots_cooldown_seconds: int = Field(default=21600, ge=0)
     maintenance_remove_orphan_files_interval_seconds: int = Field(default=604800, ge=1)
+    maintenance_compaction_partitions_per_job: int = Field(default=10, ge=1, le=1000)
+    maintenance_compaction_quiet_seconds: int = Field(default=120, ge=0)
+    maintenance_compaction_max_quiet_wait_seconds: int = Field(default=3600, ge=0)

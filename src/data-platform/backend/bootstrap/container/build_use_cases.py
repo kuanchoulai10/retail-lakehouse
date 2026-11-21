@@ -6,7 +6,10 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from bootstrap.container.use_cases import UseCases
-from context.table_maintenance.application.domain.model.table import DEFAULT_OPERATION_COOLDOWNS
+from context.table_maintenance.application.domain.model.table import (
+    DEFAULT_OPERATION_COOLDOWNS,
+    DEFAULT_PARTITION_SELECTION_SETTINGS,
+)
 from context.table_maintenance.application.service.table import (
     GetTableCurrentMetricsService,
     GetTableMetricTrendsService,
@@ -65,7 +68,10 @@ if TYPE_CHECKING:
     from bootstrap.container.gateways import Gateways
     from bootstrap.container.repositories import Repositories
     from context.table_maintenance.application.domain.model.shared import ComputeSize, PlatformSettings, SizeMemory
-    from context.table_maintenance.application.domain.model.table import OperationCooldowns
+    from context.table_maintenance.application.domain.model.table import (
+        OperationCooldowns,
+        PartitionSelectionSettings,
+    )
 
 
 def _utc_now() -> datetime:
@@ -81,13 +87,15 @@ def build_use_cases(
     catalog_names: Sequence[str] = (),
     size_memory: Mapping[ComputeSize, SizeMemory] | None = None,
     cooldowns: OperationCooldowns = DEFAULT_OPERATION_COOLDOWNS,
+    partition_selection: PartitionSelectionSettings = DEFAULT_PARTITION_SELECTION_SETTINGS,
 ) -> UseCases:
     """Build every application service on the given repositories and gateways.
 
     ``size_memory`` is the memory each compute size runs with; without it no operation is ever
     stepped down to a smaller size. ``cooldowns`` are the cooldown of each operation and the cap where
-    the doubling of a failing operation's cooldown stops. ``platform_settings`` are the values the platform
-    settings page lists; every caller gives them, so none shows defaults by accident.
+    the doubling of a failing operation's cooldown stops. ``partition_selection`` is how a scheduled compaction
+    chooses the partitions of one job. ``platform_settings`` are the values the platform settings page lists;
+    every caller gives them, so none shows defaults by accident.
     """
     tables = repos.tables
     rules = repos.table_discovery_rules
@@ -170,6 +178,7 @@ def build_use_cases(
             resolve_applicable_policy,
             metrics_store=repos.table_metrics,
             cooldowns=cooldowns,
+            partition_selection=partition_selection,
         ),
         get_platform_settings=GetPlatformSettingsService(platform_settings),
         list_table_reconciliations=ListTableReconciliationsService(reconciliations, policies),

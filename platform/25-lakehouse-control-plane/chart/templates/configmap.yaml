@@ -50,3 +50,6 @@ data:
   GLAC_MAINTENANCE_EXPIRE_SNAPSHOTS_COOLDOWN_SECONDS: {{ .Values.worker.expireSnapshotsCooldownSeconds | quote }}
   GLAC_MAINTENANCE_REMOVE_ORPHAN_FILES_INTERVAL_SECONDS: {{ .Values.worker.removeOrphanFilesIntervalSeconds | quote }}
   GLAC_MAINTENANCE_FAILURE_BACKOFF_CAP_SECONDS: {{ .Values.worker.failureBackoffCapSeconds | quote }}
+  GLAC_MAINTENANCE_COMPACTION_PARTITIONS_PER_JOB: {{ .Values.worker.compactionPartitionsPerJob | quote }}
+  GLAC_MAINTENANCE_COMPACTION_QUIET_SECONDS: {{ .Values.worker.compactionQuietSeconds | quote }}
+  GLAC_MAINTENANCE_COMPACTION_MAX_QUIET_WAIT_SECONDS: {{ .Values.worker.compactionMaxQuietWaitSeconds | quote }}

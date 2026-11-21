@@ -27,3 +27,6 @@ class PlatformSettings(ValueObject):
     remove_orphan_files_interval_seconds: int
     failure_backoff_cap_seconds: int
     discovery_interval_seconds: int
+    compaction_partitions_per_job: int
+    compaction_quiet_seconds: int
+    compaction_max_quiet_wait_seconds: int

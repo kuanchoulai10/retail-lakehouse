@@ -44,7 +44,11 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
 from context.table_maintenance.adapter.outbound.table_maintenance_run.s3 import (
     ReadMaintenanceEventLogS3Gateway,
 )
-from context.table_maintenance.application.domain.model.table import OperationCooldowns
+from context.table_maintenance.application.domain.model.table import (
+    DEFAULT_PARTITION_SELECTION_SETTINGS,
+    OperationCooldowns,
+    PartitionSelectionSettings,
+)
 from context.table_maintenance.application.port.inbound.table_discovery_rules import (
     GetTableDiscoveryRulesUseCaseInput,
 )
@@ -189,6 +193,28 @@ def test_the_planner_is_given_the_cooldowns():
         planner = use_cases.plan_table_maintenance
         assert isinstance(planner, PlanTableMaintenanceService)
         assert planner._cooldowns == expected  # noqa: SLF001
+
+
+def test_the_planner_is_given_the_partition_selection():
+    """The planner reads the partition selection build_use_cases is given, the platform default otherwise."""
+    selection = PartitionSelectionSettings(
+        partitions_per_job=4, quiet_period=timedelta(0), max_quiet_wait=timedelta(seconds=600)
+    )
+    built = build_use_cases(
+        build_repositories(sqlite_engine()),
+        fake_gateways(),
+        clock=lambda: NOW,
+        platform_settings=platform_settings(),
+        partition_selection=selection,
+    )
+    default = build_use_cases(
+        build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW, platform_settings=platform_settings()
+    )
+
+    for use_cases, expected in ((built, selection), (default, DEFAULT_PARTITION_SELECTION_SETTINGS)):
+        planner = use_cases.plan_table_maintenance
+        assert isinstance(planner, PlanTableMaintenanceService)
+        assert planner._partition_selection == expected  # noqa: SLF001
 
 
 def test_the_platform_settings_are_required():

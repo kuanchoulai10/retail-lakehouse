@@ -104,6 +104,9 @@ worker:
   expireSnapshotsCooldownSeconds: 21600
   removeOrphanFilesIntervalSeconds: 604800
   failureBackoffCapSeconds: 86400
+  compactionPartitionsPerJob: 10
+  compactionQuietSeconds: 120
+  compactionMaxQuietWaitSeconds: 3600
   terminationGracePeriodSeconds: 90
   resources:
     requests:

@@ -18,6 +18,7 @@ from bootstrap.container.build_k8s_api import build_k8s_api
 from bootstrap.container.build_k8s_core_api import build_k8s_core_api
 from bootstrap.container.build_openapi_document import build_openapi_document
 from bootstrap.container.build_operation_cooldowns import build_operation_cooldowns
+from bootstrap.container.build_partition_selection_settings import build_partition_selection_settings
 from bootstrap.container.build_platform_settings import build_platform_settings
 from bootstrap.container.build_polaris_http_client import build_polaris_http_client
 from bootstrap.container.build_repositories import build_repositories
@@ -60,6 +61,7 @@ __all__ = [
     "build_k8s_core_api",
     "build_openapi_document",
     "build_operation_cooldowns",
+    "build_partition_selection_settings",
     "build_platform_settings",
     "build_polaris_http_client",
     "build_repositories",

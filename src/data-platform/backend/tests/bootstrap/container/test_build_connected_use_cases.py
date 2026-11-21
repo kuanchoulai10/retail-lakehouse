@@ -11,6 +11,7 @@ from bootstrap.container import (
     build_connected_use_cases,
     build_engine,
     build_operation_cooldowns,
+    build_partition_selection_settings,
     build_size_memory,
     run_migrations,
 )
@@ -101,6 +102,27 @@ def test_the_planner_reads_the_cooldowns_the_settings_say(tmp_path):
     assert expected.failure_backoff_cap == timedelta(hours=2)
     assert expected.rewrite_data_files == timedelta(seconds=60)
     assert planner._cooldowns == expected  # noqa: SLF001
+
+
+def test_the_planner_reads_the_partition_selection_the_settings_say(tmp_path):
+    """The planner reads the partition selection the worker and the api are given."""
+    settings = sqlite_settings(maintenance_compaction_quiet_seconds=0)
+    settings.sqlite.path = str(tmp_path / "tm.db")
+
+    async def connect(_temporal: TemporalSettings):
+        return MagicMock(name="client")
+
+    bridge = AsyncLoopBridge()
+    try:
+        use_cases = build_connected_use_cases(settings, bridge, connect=connect, k8s_api_factory=MagicMock)
+    finally:
+        bridge.close()
+
+    planner = use_cases.plan_table_maintenance
+    assert isinstance(planner, PlanTableMaintenanceService)
+    expected = build_partition_selection_settings(settings)
+    assert expected.quiet_period == timedelta(0)
+    assert planner._partition_selection == expected  # noqa: SLF001
 
 
 def test_the_planner_saves_the_metrics_in_sql(tmp_path):

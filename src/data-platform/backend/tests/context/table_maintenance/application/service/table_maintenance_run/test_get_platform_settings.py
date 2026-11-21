@@ -38,6 +38,9 @@ def _settings(**changes: Any) -> PlatformSettings:  # noqa: ANN401
         "remove_orphan_files_interval_seconds": 604800,
         "failure_backoff_cap_seconds": 86400,
         "discovery_interval_seconds": 600,
+        "compaction_partitions_per_job": 10,
+        "compaction_quiet_seconds": 120,
+        "compaction_max_quiet_wait_seconds": 3600,
     }
     return PlatformSettings(**{**values, **changes})
 
@@ -51,13 +54,14 @@ def _values(output: GetPlatformSettingsUseCaseOutput) -> dict[str, object]:
 
 
 def test_groups_follow_the_page_order_with_a_key_and_a_title():
-    """The settings come in four groups, each with a stable key and a title, in the order the page shows them."""
+    """The settings come in five groups, each with a stable key and a title, in the order the page shows them."""
     output = _output()
 
     assert [(g.key, g.title) for g in output.groups] == [
         ("execution_capacity", "Execution capacity"),
         ("compute_sizes", "Spark sizes"),
         ("cooldown_and_backoff", "Cooldown and backoff"),
+        ("partition_selection", "Compaction partition selection"),
         ("discovery", "Discovery"),
     ]
 
@@ -115,11 +119,61 @@ def test_platform_settings_list_the_cooldowns():
     ]
 
 
+def test_platform_settings_list_partition_selection():
+    """The partition selection group lists the cap, the quiet period and the longest wait, with their wording."""
+    groups = _output().groups
+
+    assert [g.key for g in groups] == [
+        "execution_capacity",
+        "compute_sizes",
+        "cooldown_and_backoff",
+        "partition_selection",
+        "discovery",
+    ]
+    assert groups[3].title == "Compaction partition selection"
+    assert [(i.key, i.label, i.value, i.unit, i.description) for i in groups[3].items] == [
+        (
+            "maintenance_compaction_partitions_per_job",
+            "Partitions per job",
+            10,
+            "partitions",
+            "The most partitions one rewrite data files job compacts; those with the most reducible files go first, "
+            "the rest wait for a later check.",
+        ),
+        (
+            "maintenance_compaction_quiet_seconds",
+            "Quiet period",
+            120,
+            "seconds",
+            "A partition written more recently than this waits for a later check, so compaction does not race its "
+            "writers.",
+        ),
+        (
+            "maintenance_compaction_max_quiet_wait_seconds",
+            "Longest wait for quiet",
+            3600,
+            "seconds",
+            "A partition over its target for this long is compacted even while it is still being written.",
+        ),
+    ]
+
+
+def test_partition_selection_values_follow_the_settings():
+    """A changed setting shows as the changed value."""
+    values = _values(
+        _output(compaction_partitions_per_job=4, compaction_quiet_seconds=0, compaction_max_quiet_wait_seconds=600)
+    )
+
+    assert values["maintenance_compaction_partitions_per_job"] == 4
+    assert values["maintenance_compaction_quiet_seconds"] == 0
+    assert values["maintenance_compaction_max_quiet_wait_seconds"] == 600
+
+
 def test_discovery_reports_its_one_setting():
     """The discovery scan interval has a group of its own."""
     output = _output(discovery_interval_seconds=60)
 
-    assert [(i.key, i.value, i.unit) for i in output.groups[3].items] == [("discovery_interval_seconds", 60, "seconds")]
+    assert [(i.key, i.value, i.unit) for i in output.groups[4].items] == [("discovery_interval_seconds", 60, "seconds")]
 
 
 def test_values_follow_the_settings_they_were_built_from():

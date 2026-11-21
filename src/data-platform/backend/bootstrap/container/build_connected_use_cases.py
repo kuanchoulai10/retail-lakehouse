@@ -10,6 +10,7 @@ from bootstrap.container.build_gateways import build_gateways
 from bootstrap.container.build_k8s_api import build_k8s_api
 from bootstrap.container.build_k8s_core_api import build_k8s_core_api
 from bootstrap.container.build_operation_cooldowns import build_operation_cooldowns
+from bootstrap.container.build_partition_selection_settings import build_partition_selection_settings
 from bootstrap.container.build_platform_settings import build_platform_settings
 from bootstrap.container.build_repositories import build_repositories
 from bootstrap.container.build_size_memory import build_size_memory
@@ -59,5 +60,6 @@ def build_connected_use_cases(
         catalog_names=settings.catalog.names,
         size_memory=build_size_memory(settings.spark),
         cooldowns=build_operation_cooldowns(settings),
+        partition_selection=build_partition_selection_settings(settings),
         platform_settings=build_platform_settings(settings),
     )
