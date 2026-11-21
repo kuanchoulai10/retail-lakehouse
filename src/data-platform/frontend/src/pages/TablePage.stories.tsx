@@ -4,12 +4,12 @@ import {
   getListScannedCatalogsMockHandler,
   getListTableDiscoveryPoliciesMockHandler,
 } from "@/api/generated/discovery-policies/discovery-policies.msw";
-import { getGetTableApplicableMaintenancePolicyMockHandler } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
 import { getListTableMaintenanceRunsMockHandler } from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
 import {
   getGetCatalogTablePartitionSpecComparisonMockHandler,
   getGetCatalogTableSchemaComparisonMockHandler,
   getGetTableCurrentMetricsMockHandler,
+  getGetTableEffectivePoliciesMockHandler,
   getGetTableMockHandler,
   getListCatalogTablePartitionSpecVersionsMockHandler,
   getListCatalogTableSchemaVersionsMockHandler,
@@ -22,6 +22,7 @@ import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageSc
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
 import { DESKTOP, PHONE } from "@/stories/phone";
 import {
+  effectivePolicies,
   ESCALATED_RUN,
   ESCALATED_RUN_ID,
   inFlightRun,
@@ -84,11 +85,11 @@ export const Overview: Story = {
     }
     await expect(await within(canvas.getByRole("group", { name: "Data files" })).findByText("1,174")).toBeVisible();
     await expect(canvas.getByText(/^Measured /)).toBeVisible();
-    await canvas.findByRole("region", { name: "Maintenance policy" });
+    await canvas.findByRole("region", { name: "Policies" });
     await expect(canvas.getAllByRole("region").map((region) => region.querySelector("h2")?.textContent)).toEqual([
       ...METRIC_SECTIONS,
       "Table",
-      "Maintenance policy",
+      "Policies",
     ]);
   },
 };
@@ -702,24 +703,43 @@ export const ReconciliationPolicyLink: Story = {
 export const Policy: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const panel = within(await canvas.findByRole("region", { name: "Maintenance policy" }));
+    const panel = within(await canvas.findByRole("region", { name: "Policies" }));
     await expect(await panel.findByRole("link", { name: "iceberg.retail" })).toBeVisible();
     await expect(panel.getByRole("link", { name: "retail-nightly v4" })).toBeVisible();
-    await expect(panel.queryByRole("button", { name: "Detach" })).toBeNull();
+    await expect(panel.getByRole("link", { name: "core-tables v1" })).toBeVisible();
+    await expect(panel.queryByRole("button", { name: /^Detach/ })).toBeNull();
     await expect(canvas.getByRole("region", { name: "Table" })).toBeVisible();
   },
 };
 
 export const PolicyDryRun: Story = {
   beforeEach({ msw }) {
-    msw.use(getGetTableApplicableMaintenancePolicyMockHandler({ ...POLICIES[2]!, target: null }));
+    const scratch = POLICIES[2]!;
+    const [, discovery] = effectivePolicies("iceberg", ["retail"], "orders").policies;
+    msw.use(
+      getGetTableEffectivePoliciesMockHandler({
+        policies: [
+          {
+            kind: "maintenance",
+            policy_id: scratch.id,
+            policy_name: scratch.name,
+            version: scratch.version,
+            description: scratch.description,
+            dry_run: true,
+            target: null,
+            attachment_id: null,
+          },
+          discovery!,
+        ],
+      }),
+    );
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText("Platform default")).toBeVisible();
     const header = within(canvas.getByRole("heading", { level: 1, name: "orders" }).closest("header") as HTMLElement);
     await expect(header.queryByText("Dry run")).toBeNull();
-    const panel = within(canvas.getByRole("region", { name: "Maintenance policy" }));
+    const panel = within(canvas.getByRole("region", { name: "Policies" }));
     await expect(panel.getByText("Dry run")).toBeVisible();
   },
 };
@@ -729,13 +749,13 @@ export const PolicyOldUrl: Story = {
   args: { route: `${ORDERS}/policy` },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole("region", { name: "Maintenance policy" })).toBeVisible();
+    await expect(await canvas.findByRole("region", { name: "Policies" })).toBeVisible();
     await expect(canvas.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
     await expect(canvas.queryByRole("tab", { name: "Policy" })).toBeNull();
   },
 };
 
-// A table maintenance has no record of still shows the policy that applies, asked by its name.
+// A table maintenance has no record of still shows the policies that apply, asked by its location.
 export const PolicyNotRecorded: Story = {
   beforeEach({ msw }) {
     msw.use(
@@ -744,9 +764,9 @@ export const PolicyNotRecorded: Story = {
     );
   },
   play: async ({ canvasElement }) => {
-    const panel = within(await within(canvasElement).findByRole("region", { name: "Maintenance policy" }));
+    const panel = within(await within(canvasElement).findByRole("region", { name: "Policies" }));
     await expect(await panel.findByRole("link", { name: "retail-nightly v4" })).toBeVisible();
-    await expect(panel.getByRole("button", { name: "Attach policy" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Attach maintenance policy" })).toBeVisible();
     await expect(within(canvasElement).getByText("no discovery policy in this catalog manages tables")).toBeVisible();
   },
 };
@@ -754,7 +774,7 @@ export const PolicyNotRecorded: Story = {
 export const PolicyPhone: Story = {
   globals: PHONE,
   play: async ({ canvasElement }) => {
-    await within(canvasElement).findByRole("region", { name: "Maintenance policy" });
+    await within(canvasElement).findByRole("region", { name: "Policies" });
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };

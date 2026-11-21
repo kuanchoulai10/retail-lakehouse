@@ -20,8 +20,6 @@ import {
   getCreateTableMaintenancePolicyMockHandler,
   getDeleteTableMaintenancePolicyMockHandler,
   getDetachTableMaintenancePolicyMockHandler,
-  getGetApplicableMaintenancePolicyMockHandler,
-  getGetTableApplicableMaintenancePolicyMockHandler,
   getGetTableMaintenancePolicyMockHandler,
   getGetTableMaintenancePolicyVersionMockHandler,
   getListTableMaintenancePoliciesMockHandler,
@@ -32,7 +30,9 @@ import {
   getGetCatalogTableMockHandler,
   getGetCatalogTablePartitionSpecComparisonMockHandler,
   getGetCatalogTableSchemaComparisonMockHandler,
+  getGetEffectivePoliciesMockHandler,
   getGetTableCurrentMetricsMockHandler,
+  getGetTableEffectivePoliciesMockHandler,
   getGetTableMetricTrendsMockHandler,
   getGetTableMockHandler,
   getListCatalogTablePartitionSpecVersionsMockHandler,
@@ -55,12 +55,12 @@ import {
 } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
 import { getListViewsMockHandler } from "@/api/generated/views/views.msw";
 import {
-  applicablePolicy,
   CATALOGS,
   COMMITS,
   DISCOVERY_POLICIES,
   DISCOVERY_POLICY_ATTACHMENTS,
   DISCOVERY_POLICY_VERSIONS,
+  effectivePolicies,
   ESCALATED_RUN,
   inFlightRun,
   MAINTAINED_ORDERS,
@@ -251,11 +251,15 @@ export function lakehouseHandlers() {
       const policy = POLICIES.find((p) => p.name === params.name) ?? POLICIES[0]!;
       return { ...policy, version: Number(params.version) };
     }),
-    getGetApplicableMaintenancePolicyMockHandler(({ request }) => {
+    getGetEffectivePoliciesMockHandler(({ request }) => {
       const query = new URL(request.url).searchParams;
-      return applicablePolicy(query.get("catalog") ?? "", query.get("namespace")?.split(".") ?? []);
+      return effectivePolicies(
+        query.get("catalog") ?? "",
+        query.get("namespace")?.split(".") ?? [],
+        query.get("table") ?? undefined,
+      );
     }),
-    getGetTableApplicableMaintenancePolicyMockHandler(applicablePolicy(ORDERS.catalog, ORDERS.namespace)),
+    getGetTableEffectivePoliciesMockHandler(effectivePolicies(ORDERS.catalog, ORDERS.namespace, ORDERS.name)),
     getAttachTableMaintenancePolicyMockHandler(async ({ params, request }) => ({
       policy_id: (POLICIES.find((p) => p.name === params.name) ?? POLICIES[0]!).id,
       policy_name: params.name,

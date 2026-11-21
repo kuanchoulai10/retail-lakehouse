@@ -28,7 +28,7 @@ import {
   getListViewsQueryKey,
   useListViews,
 } from "@/api/generated/views/views";
-import { ApplicablePolicyPanel } from "@/components/ApplicablePolicyPanel";
+import { EffectivePoliciesPanel } from "@/components/EffectivePoliciesPanel";
 import type { Crumb } from "@/components/Breadcrumbs";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { CreateNamespaceDialog } from "@/components/forms/CreateNamespaceDialog";
@@ -267,7 +267,7 @@ function NamespaceDetailsPage({ catalog, parts }: { catalog: string; parts: stri
             await removeObject.mutateAsync(row);
           }}
         />
-        <ApplicablePolicyPanel scope={{ type: "namespace", catalog, namespace: parts }} />
+        <EffectivePoliciesPanel scope={{ type: "namespace", catalog, namespace: parts }} />
         <PropertiesPanel properties={namespace.data.properties} />
       </ResourceListPage>
       {dialog === "edit" && (

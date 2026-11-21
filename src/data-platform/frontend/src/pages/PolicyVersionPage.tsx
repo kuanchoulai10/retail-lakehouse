@@ -7,7 +7,7 @@ import { PolicySummary } from "@/components/PolicySummary";
 import { errorMessage, formatTimestamp } from "@/format";
 import { policiesPath } from "@/lib/policyPaths";
 
-// One saved version of a policy, as reconciliation records and the applicable-policy panels
+// One saved version of a policy, as reconciliation records and the policies panels
 // name it. A version never changes, so the page only reads; edits go through the Policies page.
 export function PolicyVersionPage() {
   const { name = "", version: param = "" } = useParams();

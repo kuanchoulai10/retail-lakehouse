@@ -8,10 +8,11 @@ import {
   getListTableDiscoveryPoliciesQueryKey,
   getListTableDiscoveryPolicyAttachmentsQueryKey,
 } from "./generated/discovery-policies/discovery-policies";
+import { getGetEffectivePoliciesQueryKey, getGetTableEffectivePoliciesQueryKey } from "./generated/tables/tables";
 import { invalidateDiscoveryPolicyAttachments } from "./invalidateDiscoveryPolicyAttachments";
 
 describe("invalidateDiscoveryPolicyAttachments", () => {
-  it("marks every policy's attachments, the policy list and the scanned catalogs stale, nothing else", async () => {
+  it("marks every policy's attachments, the policy list, the scanned catalogs and what applies anywhere stale, nothing else", async () => {
     const client = new QueryClient();
     const keys = {
       sales: getListTableDiscoveryPolicyAttachmentsQueryKey("sales-tables"),
@@ -21,6 +22,8 @@ describe("invalidateDiscoveryPolicyAttachments", () => {
       policy: getGetTableDiscoveryPolicyQueryKey("sales-tables"),
       version: getGetTableDiscoveryPolicyVersionQueryKey("x", 1),
       catalogs: getListCatalogsQueryKey(),
+      effective: getGetEffectivePoliciesQueryKey({ catalog: "iceberg", namespace: "sales" }),
+      tableEffective: getGetTableEffectivePoliciesQueryKey("uuid-orders"),
     };
     for (const key of Object.values(keys)) client.setQueryData(key, {});
 
@@ -29,6 +32,6 @@ describe("invalidateDiscoveryPolicyAttachments", () => {
     const stale = Object.entries(keys)
       .filter(([, key]) => client.getQueryState(key)?.isInvalidated)
       .map(([name]) => name);
-    expect(stale).toEqual(["sales", "finance", "list", "scanned"]);
+    expect(stale).toEqual(["sales", "finance", "list", "scanned", "effective", "tableEffective"]);
   });
 });

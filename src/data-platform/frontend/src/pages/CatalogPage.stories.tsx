@@ -24,8 +24,11 @@ export const Default: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole("link", { name: "retail" })).toBeVisible();
     await expect(canvas.getByRole("link", { name: "inventory" })).toBeVisible();
-    const panel = within(canvas.getByRole("region", { name: "Maintenance policy" }));
-    await expect(await panel.findByText("Platform default")).toBeVisible();
+    const panel = within(canvas.getByRole("region", { name: "Policies" }));
+    const [maintenance, discovery] = await panel.findAllByRole("listitem");
+    await expect(maintenance).toHaveTextContent("Platform default");
+    await expect(discovery).toHaveTextContent("core-tables v1");
+    await expect(within(discovery!).getByRole("button", { name: "Detach discovery policy" })).toBeVisible();
   },
 };
 

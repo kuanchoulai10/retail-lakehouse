@@ -6,7 +6,7 @@ import {
   useListTableDiscoveryPolicies,
 } from "@/api/generated/discovery-policies/discovery-policies";
 import type { CatalogTableApiResponse, TableApiResponse } from "@/api/generated/model";
-import { ApplicablePolicyPanel } from "@/components/ApplicablePolicyPanel";
+import { EffectivePoliciesPanel } from "@/components/EffectivePoliciesPanel";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
 import { TablePrioritySelect } from "@/components/TablePrioritySelect";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
@@ -117,9 +117,9 @@ export function OverviewTab({ table, maintenance, record }: Props) {
         </dl>
       </Panel>
       {record.isPending ? (
-        <PanelSkeleton label="Loading policy…" />
+        <PanelSkeleton label="Loading policies…" />
       ) : (
-        <ApplicablePolicyPanel
+        <EffectivePoliciesPanel
           scope={{
             type: "table",
             catalog: table.catalog,

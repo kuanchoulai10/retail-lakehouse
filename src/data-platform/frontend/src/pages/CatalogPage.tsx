@@ -15,7 +15,7 @@ import {
   getListNamespacesQueryKey,
   useListNamespaces,
 } from "@/api/generated/namespaces/namespaces";
-import { ApplicablePolicyPanel } from "@/components/ApplicablePolicyPanel";
+import { EffectivePoliciesPanel } from "@/components/EffectivePoliciesPanel";
 import { CatalogDetails } from "@/components/CatalogDetails";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { CreateNamespaceDialog } from "@/components/forms/CreateNamespaceDialog";
@@ -115,7 +115,7 @@ function CatalogDetailsPage({ name }: { name: string }) {
           await removeNamespace.mutateAsync(row);
         }}
       >
-        <ApplicablePolicyPanel scope={{ type: "catalog", catalog: name }} />
+        <EffectivePoliciesPanel scope={{ type: "catalog", catalog: name }} />
         <CatalogDetails catalog={catalog.data} />
         <PropertiesPanel properties={catalog.data.properties} />
       </ResourceListPage>

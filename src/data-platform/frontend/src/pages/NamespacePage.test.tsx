@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { TableIdentifierApiResponse } from "../api/generated/model";
 import { getGetNamespaceQueryKey } from "../api/generated/namespaces/namespaces";
 import { bodyOf, callsTo, stubCatalogApi, type StubHandler } from "../test/catalogApiStub";
-import { jsonResponse, policyContentFixture } from "../test/fixtures";
+import { effectiveDiscoveryFixture, effectiveMaintenanceFixture, jsonResponse } from "../test/fixtures";
 import { settle, SuspendForever } from "../test/SuspendForever";
 import { NamespacePage } from "./NamespacePage";
 
@@ -56,15 +56,24 @@ async function openAction(user: ReturnType<typeof userEvent.setup>, label: strin
 
 // These tests type whole forms, which takes seconds under a loaded parallel run.
 describe("NamespacePage", { timeout: 15_000 }, () => {
-  it("shows the policy the namespace inherits and where from", async () => {
-    stubNamespace({
-      "GET /v1/applicable-policy?catalog=iceberg&namespace=retail": () =>
-        jsonResponse({ ...policyContentFixture(), name: "nightly", version: 4, target: { type: "catalog", path: ["iceberg"], table_uuid: null } }),
+  it("shows the policy of each kind the namespace inherits and where from", async () => {
+    const calls = stubNamespace({
+      "GET /v1/effective-policies?catalog=iceberg&namespace=retail": () =>
+        jsonResponse({
+          policies: [
+            effectiveMaintenanceFixture({ target: { type: "catalog", path: ["iceberg"], table_uuid: null } }),
+            effectiveDiscoveryFixture({ target: { type: "namespace", path: ["iceberg", "retail"], table_uuid: null } }),
+          ],
+        }),
     });
     renderAt("/catalogs/iceberg/namespaces/retail");
-    const panel = await screen.findByRole("region", { name: "Maintenance policy" });
-    expect(await within(panel).findByText(/Inherited from catalog/)).toBeInTheDocument();
-    expect(within(panel).queryByRole("button", { name: "Detach" })).not.toBeInTheDocument();
+    const panel = await screen.findByRole("region", { name: "Policies" });
+    const [maintenance, discovery] = await within(panel).findAllByRole("listitem");
+    expect(maintenance).toHaveTextContent("From catalog iceberg");
+    expect(within(maintenance!).queryByRole("button", { name: "Detach maintenance policy" })).not.toBeInTheDocument();
+    expect(discovery).toHaveTextContent("Attached here");
+    expect(within(discovery!).getByRole("button", { name: "Detach discovery policy" })).toBeInTheDocument();
+    expect(callsTo(calls, "GET", "/v1/effective-policies?catalog=iceberg&namespace=retail")).toHaveLength(1);
   });
 
   it("namespace page lists tables views and generic tables with a type column", async () => {

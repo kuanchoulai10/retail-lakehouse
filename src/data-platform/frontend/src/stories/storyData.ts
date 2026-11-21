@@ -1,5 +1,4 @@
 import type {
-  ApplicableTableMaintenancePolicyApiResponse,
   CatalogApiResponse,
   CatalogTableApiResponse,
   CatalogTablePartitionSpecComparisonApiResponse,
@@ -7,11 +6,15 @@ import type {
   CatalogTablePropertiesApiResponse,
   CatalogTableSchemaComparisonApiResponse,
   CatalogTableSchemaVersionsApiResponse,
+  DiscoveryEffectivePolicyApiResponse,
+  EffectivePoliciesApiResponse,
   ListedTableDiscoveryPolicyApiResponse,
   ListedTableDiscoveryPolicyAttachmentApiResponse,
   ListedTableMaintenancePolicyApiResponse,
   ListedTableMaintenancePolicyMappingApiResponse,
+  MaintenanceEffectivePolicyApiResponse,
   NamespaceApiResponse,
+  PolicyTargetApiResponse,
   NamespaceSummaryApiResponse,
   PartitionFieldComparisonApiResponse,
   PlatformSettingApiResponse,
@@ -1183,6 +1186,9 @@ export const POLICIES: ListedTableMaintenancePolicyApiResponse[] = [
   }),
 ];
 
+// The id of retail-nightly's attachment to namespace iceberg.retail, which the mappings do not carry.
+const RETAIL_NIGHTLY_ATTACHMENT_ID = "pa-01m7sd16b1ef2vww335cwcg9k8";
+
 export const POLICY_MAPPINGS: ListedTableMaintenancePolicyMappingApiResponse[] = [
   {
     policy_id: RETAIL_NIGHTLY_POLICY_ID,
@@ -1200,14 +1206,61 @@ export const POLICY_MAPPINGS: ListedTableMaintenancePolicyMappingApiResponse[] =
   },
 ];
 
-const RETAIL_TARGET = { type: "namespace", path: ["iceberg", "retail"], table_uuid: null };
+// The targets a catalog, namespace or table takes its policies from, nearest first: the table,
+// its namespaces deepest first, then the catalog.
+function candidateTargets(catalog: string, namespace: string[], table?: string): string[] {
+  const keys = table === undefined ? [] : [`table:${[catalog, ...namespace, table].join(".")}`];
+  for (let depth = namespace.length; depth > 0; depth--) {
+    keys.push(`namespace:${[catalog, ...namespace.slice(0, depth)].join(".")}`);
+  }
+  keys.push(`catalog:${catalog}`);
+  return keys;
+}
 
-// What applies where in the story lakehouse: retail-nightly is attached to namespace retail
-// (POLICY_MAPPINGS), so the namespace has it attached, its tables inherit it, and the catalog
-// falls back to the platform default.
-export function applicablePolicy(catalog: string, namespace: string[] = []): ApplicableTableMaintenancePolicyApiResponse {
-  const inRetail = catalog === "iceberg" && namespace[0] === "retail";
-  return { ...POLICIES[inRetail ? 1 : 0]!, target: inRetail ? RETAIL_TARGET : null };
+function nearest<T extends { target: PolicyTargetApiResponse }>(attachments: T[], candidates: string[]): T | undefined {
+  const byTarget = new Map(attachments.map((a) => [`${a.target.type}:${a.target.path.join(".")}`, a]));
+  return candidates.map((key) => byTarget.get(key)).find((a) => a !== undefined);
+}
+
+// What applies where in the story lakehouse, worked out from POLICY_MAPPINGS and
+// DISCOVERY_POLICY_ATTACHMENTS as the API does: retail-nightly is attached to namespace
+// iceberg.retail, core-tables to catalog iceberg and sales-tables to namespace iceberg.sales; any
+// other place has the platform default of that kind.
+export function effectivePolicies(catalog: string, namespace: string[] = [], table?: string): EffectivePoliciesApiResponse {
+  const candidates = candidateTargets(catalog, namespace, table);
+  const mapping = nearest(
+    POLICY_MAPPINGS.filter((m) => !m.orphaned),
+    candidates,
+  );
+  const maintenancePolicy = POLICIES.find((p) => p.name === (mapping?.policy_name ?? "default"))!;
+  const maintenance: MaintenanceEffectivePolicyApiResponse = {
+    kind: "maintenance",
+    policy_id: maintenancePolicy.id,
+    policy_name: maintenancePolicy.name,
+    version: maintenancePolicy.version,
+    description: maintenancePolicy.description,
+    dry_run: maintenancePolicy.dry_run,
+    target: mapping?.target ?? null,
+    attachment_id: mapping === undefined ? null : RETAIL_NIGHTLY_ATTACHMENT_ID,
+  };
+  const attachment = nearest(
+    DISCOVERY_POLICY_ATTACHMENTS.filter((a) => !a.orphaned),
+    candidates,
+  );
+  const discoveryPolicy = attachment === undefined
+    ? DEFAULT_DISCOVERY_POLICY
+    : DISCOVERY_POLICIES.find((p) => p.name === attachment.policy_name)!;
+  const discovery: DiscoveryEffectivePolicyApiResponse = {
+    kind: "discovery",
+    policy_id: discoveryPolicy.id,
+    policy_name: discoveryPolicy.name,
+    version: discoveryPolicy.version,
+    description: discoveryPolicy.description,
+    no_match_outcome: discoveryPolicy.no_match_outcome,
+    target: attachment?.target ?? null,
+    attachment_id: attachment?.id ?? null,
+  };
+  return { policies: [maintenance, discovery] };
 }
 
 function setting(

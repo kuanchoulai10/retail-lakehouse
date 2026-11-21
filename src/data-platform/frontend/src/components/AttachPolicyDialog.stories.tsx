@@ -12,7 +12,7 @@ import { AttachPolicyDialog } from "./AttachPolicyDialog";
 const meta = {
   title: "Components/Attach policy dialog",
   component: AttachPolicyDialog,
-  args: { scope: { type: "namespace", catalog: "iceberg", namespace: ["retail"] }, current: null, onClose: fn() },
+  args: { kind: "maintenance", scope: { type: "namespace", catalog: "iceberg", namespace: ["retail"] }, current: null, onClose: fn() },
   decorators: [
     (Story) => (
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -64,7 +64,47 @@ export const NoOtherPolicy: Story = {
     msw.use(getListTableMaintenancePoliciesMockHandler({ policies: [POLICIES[0]!] }));
   },
   play: async () => {
-    await expect(await screen.findByText("There is no other policy to attach.")).toBeVisible();
+    await expect(await screen.findByText("There is no other maintenance policy to attach.")).toBeVisible();
+  },
+};
+
+// A discovery policy is picked from the discovery policies and attached through their route.
+export const AttachDiscovery: Story = {
+  args: { kind: "discovery" },
+  play: async ({ args }) => {
+    const dialog = await screen.findByRole("dialog", { name: "Attach policy" });
+    await expect(dialog).toHaveTextContent("Attaches a discovery policy to the namespace iceberg.retail.");
+    await userEvent.click(await within(dialog).findByRole("combobox", { name: "Policy" }));
+    await expect(screen.queryByRole("option", { name: "retail-nightly" })).toBeNull();
+    await userEvent.click(await screen.findByRole("option", { name: "sales-tables" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Attach" }));
+    await waitFor(() => expect(args.onClose).toHaveBeenCalled());
+  },
+};
+
+export const ReplaceDiscovery: Story = {
+  args: { kind: "discovery", current: "core-tables" },
+  play: async () => {
+    const dialog = await screen.findByRole("dialog", { name: "Replace policy" });
+    await userEvent.click(await within(dialog).findByRole("combobox", { name: "Policy" }));
+    await expect(await screen.findByRole("option", { name: "sales-tables" })).toBeVisible();
+    await expect(screen.queryByRole("option", { name: "core-tables" })).toBeNull();
+    await userEvent.keyboard("{Escape}");
+  },
+};
+
+export const AttachDiscoveryFails: Story = {
+  args: { kind: "discovery" },
+  beforeEach({ msw }) {
+    msw.use(apiError("put", "/v1/discovery-policies/sales-tables/attachments", "the platform cannot read catalog iceberg", 403));
+  },
+  play: async ({ args }) => {
+    const dialog = await screen.findByRole("dialog", { name: "Attach policy" });
+    await userEvent.click(await within(dialog).findByRole("combobox", { name: "Policy" }));
+    await userEvent.click(await screen.findByRole("option", { name: "sales-tables" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Attach" }));
+    await expect(await within(dialog).findByText("the platform cannot read catalog iceberg")).toBeVisible();
+    await expect(args.onClose).not.toHaveBeenCalled();
   },
 };
 

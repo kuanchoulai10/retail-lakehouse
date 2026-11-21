@@ -29,9 +29,12 @@ export const Default: Story = {
 
 export const PolicyAttachedHere: Story = {
   play: async ({ canvasElement }) => {
-    const panel = within(await within(canvasElement).findByRole("region", { name: "Maintenance policy" }));
-    await expect(await panel.findByText("Attached here")).toBeVisible();
-    await userEvent.click(panel.getByRole("button", { name: "Detach" }));
+    const panel = within(await within(canvasElement).findByRole("region", { name: "Policies" }));
+    const [maintenance, discovery] = await panel.findAllByRole("listitem");
+    await expect(maintenance).toHaveTextContent("Attached here");
+    await expect(discovery).toHaveTextContent("From catalog iceberg");
+    await expect(panel.queryByRole("button", { name: "Detach discovery policy" })).toBeNull();
+    await userEvent.click(panel.getByRole("button", { name: "Detach maintenance policy" }));
     await expect(panel.queryByRole("alert")).toBeNull();
   },
 };

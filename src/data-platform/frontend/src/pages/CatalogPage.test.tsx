@@ -8,7 +8,7 @@ import { getGetCatalogQueryKey } from "../api/generated/catalogs/catalogs";
 import type { NamespaceSummaryApiResponse } from "../api/generated/model";
 import { getListNamespacesQueryKey } from "../api/generated/namespaces/namespaces";
 import { bodyOf, callsTo, catalogFixture, stubCatalogApi, type StubHandler } from "../test/catalogApiStub";
-import { jsonResponse, policyContentFixture } from "../test/fixtures";
+import { effectiveDiscoveryFixture, effectiveMaintenanceFixture, jsonResponse } from "../test/fixtures";
 import { settle, SuspendForever } from "../test/SuspendForever";
 import { CatalogPage } from "./CatalogPage";
 import { NamespacePage } from "./NamespacePage";
@@ -49,15 +49,24 @@ async function openAction(user: ReturnType<typeof userEvent.setup>, label: strin
 
 // These tests type whole forms, which takes seconds under a loaded parallel run.
 describe("CatalogPage", { timeout: 15_000 }, () => {
-  it("shows the policy that applies to the catalog", async () => {
-    stubCatalog({
-      "GET /v1/applicable-policy?catalog=iceberg": () =>
-        jsonResponse({ ...policyContentFixture(), name: "nightly", version: 4, target: { type: "catalog", path: ["iceberg"], table_uuid: null } }),
+  it("shows the policy of each kind that applies to the catalog, asked by location", async () => {
+    const calls = stubCatalog({
+      "GET /v1/effective-policies?catalog=iceberg": () =>
+        jsonResponse({
+          policies: [
+            effectiveMaintenanceFixture({ target: { type: "catalog", path: ["iceberg"], table_uuid: null } }),
+            effectiveDiscoveryFixture(),
+          ],
+        }),
     });
     renderAt("/catalogs/iceberg");
-    const panel = await screen.findByRole("region", { name: "Maintenance policy" });
-    expect(await within(panel).findByText("Attached here")).toBeInTheDocument();
-    expect(within(panel).getByRole("link", { name: "nightly v4" })).toBeInTheDocument();
+    const panel = await screen.findByRole("region", { name: "Policies" });
+    const [maintenance, discovery] = await within(panel).findAllByRole("listitem");
+    expect(maintenance).toHaveTextContent("Attached here");
+    expect(within(maintenance!).getByRole("link", { name: "nightly v4" })).toBeInTheDocument();
+    expect(within(maintenance!).getByRole("button", { name: "Detach maintenance policy" })).toBeInTheDocument();
+    expect(discovery).toHaveTextContent("Platform default");
+    expect(callsTo(calls, "GET", "/v1/effective-policies?catalog=iceberg")).toHaveLength(1);
   });
 
   it("catalog page lists namespaces with breadcrumbs", async () => {

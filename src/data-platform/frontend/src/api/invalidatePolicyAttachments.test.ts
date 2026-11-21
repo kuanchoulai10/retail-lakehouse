@@ -1,22 +1,24 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 import {
-  getGetApplicableMaintenancePolicyQueryKey,
-  getGetTableApplicableMaintenancePolicyQueryKey,
   getGetTableMaintenancePolicyQueryKey,
   getListTableMaintenancePoliciesQueryKey,
   getListTableMaintenancePolicyMappingsQueryKey,
 } from "./generated/maintenance-policies/maintenance-policies";
-import { getGetTableQueryKey } from "./generated/tables/tables";
+import {
+  getGetEffectivePoliciesQueryKey,
+  getGetTableEffectivePoliciesQueryKey,
+  getGetTableQueryKey,
+} from "./generated/tables/tables";
 import { invalidatePolicyAttachments } from "./invalidatePolicyAttachments";
 
 describe("invalidatePolicyAttachments", () => {
   it("marks what applies anywhere, the policy list and the named policies' mappings stale, nothing else", async () => {
     const client = new QueryClient();
     const keys = {
-      catalog: getGetApplicableMaintenancePolicyQueryKey({ catalog: "iceberg" }),
-      namespace: getGetApplicableMaintenancePolicyQueryKey({ catalog: "iceberg", namespace: "retail" }),
-      table: getGetTableApplicableMaintenancePolicyQueryKey("uuid-orders"),
+      catalog: getGetEffectivePoliciesQueryKey({ catalog: "iceberg" }),
+      namespace: getGetEffectivePoliciesQueryKey({ catalog: "iceberg", namespace: "retail" }),
+      table: getGetTableEffectivePoliciesQueryKey("uuid-orders"),
       list: getListTableMaintenancePoliciesQueryKey(),
       nightly: getListTableMaintenancePolicyMappingsQueryKey("nightly"),
       scratch: getListTableMaintenancePolicyMappingsQueryKey("scratch"),

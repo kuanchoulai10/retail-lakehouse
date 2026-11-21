@@ -1,6 +1,8 @@
 import type {
   CreateTableMaintenancePolicyApiRequest,
+  DiscoveryEffectivePolicyApiResponse,
   ListedTableMaintenancePolicyApiResponse,
+  MaintenanceEffectivePolicyApiResponse,
   TableApiResponse,
 } from "../api/generated/model";
 
@@ -66,6 +68,42 @@ export function policyFixture(
     created_at: "2026-11-01T09:00:00Z",
     updated_at: "2026-11-02T09:00:00Z",
     ...policyContentFixture(),
+    ...overrides,
+  };
+}
+
+// What a page's effective-policies answer holds for each kind; an entry with a target is attached
+// there and carries that attachment's id, one without is the platform default.
+export function effectiveMaintenanceFixture(
+  overrides: Partial<MaintenanceEffectivePolicyApiResponse> = {},
+): MaintenanceEffectivePolicyApiResponse {
+  const target = overrides.target ?? null;
+  return {
+    kind: "maintenance",
+    policy_id: NIGHTLY_POLICY_ID,
+    policy_name: "nightly",
+    version: 4,
+    description: "Compacts once a day",
+    dry_run: false,
+    target,
+    attachment_id: target === null ? null : "pa-01m7sd16b1ef2vww335cwcg9k8",
+    ...overrides,
+  };
+}
+
+export function effectiveDiscoveryFixture(
+  overrides: Partial<DiscoveryEffectivePolicyApiResponse> = {},
+): DiscoveryEffectivePolicyApiResponse {
+  const target = overrides.target ?? null;
+  return {
+    kind: "discovery",
+    policy_id: target === null ? "dp-00000000000000000000000000" : "dp-01m7s6c3tqee0rhg00xry2zqqv",
+    policy_name: target === null ? "default" : "sales-tables",
+    version: target === null ? 1 : 2,
+    description: "",
+    no_match_outcome: "unmanage",
+    target,
+    attachment_id: target === null ? null : "da-01m7s6c3tqee0rhg00xry2zqqx",
     ...overrides,
   };
 }
