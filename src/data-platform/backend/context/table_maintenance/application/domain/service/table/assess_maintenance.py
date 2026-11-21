@@ -93,6 +93,7 @@ def assess_maintenance(
     ]
     return MaintenanceAssessment(
         operations=tuple(assessment for assessment, _ in assessed),
+        # Only the compaction tracks partitions, so at most one operation returns a non-empty tuple.
         over_target_partitions=next((tracked for _, tracked in assessed if tracked), ()),
     )
 

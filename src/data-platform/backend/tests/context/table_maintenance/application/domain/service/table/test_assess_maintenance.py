@@ -546,6 +546,7 @@ def test_the_job_takes_at_most_the_cap():
     """A job takes at most the platform's partitions per job; the rest stay over the target."""
     o = obs(partitions=tuple(part(6 + i, value=i) for i in range(12)))
     a = _compaction_of(assess_maintenance(table(), compaction(), o, NOW, partition_selection=SELECTION))
+    assert a.planned.partitions == tuple(sorted(o.partitions, key=lambda p: -p.data_file_count))[:10]
     assert len(a.planned.partitions) == 10
     assert _measurement(a, "selected_partitions").observed == 10
     assert _measurement(a, "qualifying_partitions").observed == 12
@@ -670,5 +671,47 @@ def test_a_selected_unpartitioned_partition_plans_the_whole_table():
         total_data_file_size_bytes=0,
     )
     o = obs(specs=(DAY_SPEC, flat), partitions=(part(9, value=1), unpartitioned))
+    a = _compaction_of(assess_maintenance(table(), compaction(), o, NOW))
+    assert (a.verdict, a.planned.partitions) == (OperationVerdict.DUE, ())
+
+
+def _flat(reducible: int, spec_id: int = 1) -> PartitionStats:
+    return PartitionStats(
+        spec_id=spec_id,
+        values=(),
+        data_file_count=reducible,
+        position_delete_file_count=0,
+        equality_delete_file_count=0,
+        total_data_file_size_bytes=0,
+    )
+
+
+def test_an_unpartitioned_partition_under_the_target_does_not_widen_the_plan():
+    """The whole-table rule looks at the selection only: a flat partition under the target is not in it."""
+    flat = PartitionSpecInfo(spec_id=1, fields=())
+    o = obs(specs=(DAY_SPEC, flat), partitions=(part(9, value=1), _flat(2)))
+    a = _compaction_of(assess_maintenance(table(), compaction(), o, NOW))
+    assert a.planned.partitions == (o.partitions[0],)
+
+
+def test_an_unpartitioned_partition_that_waits_does_not_widen_the_plan():
+    """A flat partition over the target that waits for writes is not selected, so the plan stays partitioned."""
+    flat = PartitionSpecInfo(spec_id=1, fields=())
+    o = obs(specs=(DAY_SPEC, flat), partitions=(part(9, value=1), written(_flat(9), NOW)))
+    a = _compaction_of(assess_maintenance(table(), compaction(), o, NOW))
+    assert a.planned.partitions == (o.partitions[0],)
+    assert _measurement(a, "waiting_partitions").observed == 1
+
+
+def test_a_partition_of_an_unknown_spec_under_the_target_does_not_widen_the_plan():
+    """A partition whose spec the observation does not list, under the target, is not in the selection."""
+    o = obs(partitions=(part(9, value=1), _flat(2, spec_id=7)))
+    a = _compaction_of(assess_maintenance(table(), compaction(), o, NOW))
+    assert a.planned.partitions == (o.partitions[0],)
+
+
+def test_a_selected_partition_of_an_unknown_spec_plans_the_whole_table():
+    """A selected partition whose spec the observation does not list plans the whole table."""
+    o = obs(partitions=(part(9, value=1), _flat(9, spec_id=7)))
     a = _compaction_of(assess_maintenance(table(), compaction(), o, NOW))
     assert (a.verdict, a.planned.partitions) == (OperationVerdict.DUE, ())
