@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from base import EntityId
+    from context.table_maintenance.application.domain.model.shared import OverTargetPartition
     from context.table_maintenance.application.domain.model.table import (
         Table,
         TableId,
@@ -47,9 +48,11 @@ class InMemoryTablesRepo(TablesRepo):
         )
 
     def update(self, table: Table) -> Table:
-        """Replace a stored table."""
-        if table.id.value not in self.items:
+        """Replace a stored table, keeping the stored over-target partitions as the SQL adapter does."""
+        stored = self.items.get(table.id.value)
+        if stored is None:
             raise LookupError(f"table {table.id.value} does not exist")
+        table.over_target_partitions = stored.over_target_partitions
         self.items[table.id.value] = table
         return table
 
@@ -58,6 +61,14 @@ class InMemoryTablesRepo(TablesRepo):
         self.commit_writes.append((table_id.value, at))
         stored = self.items.get(table_id.value)
         return stored is not None and stored.record_last_commit(at)
+
+    def record_over_target_partitions(self, table_id: TableId, partitions: Sequence[OverTargetPartition]) -> bool:
+        """Replace the stored table's over-target partitions; return whether a live row matched."""
+        stored = self.items.get(table_id.value)
+        if stored is None or stored.status == TableStatus.DROPPED:
+            return False
+        stored.record_over_target_partitions(partitions)
+        return True
 
     def find_by_name(self, name: TableName) -> Table | None:
         """Return the latest-updated non-dropped table with this name."""

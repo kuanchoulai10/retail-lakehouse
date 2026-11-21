@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from context.table_maintenance.adapter.outbound.shared.sql import UtcDateTime
 from context.table_maintenance.adapter.outbound.table.sql.table_row_mapper import (
     TableRowMapper,
+    encode_over_target_partitions,
 )
 from context.table_maintenance.adapter.outbound.table.sql.tables_table import (
     tables_table as t,
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
 
     from base import EntityId
     from context.table_maintenance.application.port.outbound.table import (
+        OverTargetPartition,
         Table,
         TableId,
         TableName,
@@ -47,7 +49,7 @@ class TablesSqlRepo(TablesRepo):
         """Insert a new table."""
         try:
             with self._engine.begin() as conn:
-                conn.execute(insert(t).values(**TableRowMapper.to_values(entity)))
+                conn.execute(insert(t).values(**TableRowMapper.to_values(entity), over_target_partitions_json=[]))
         except IntegrityError as exc:
             raise ConflictError(str(exc.orig)) from exc
         return entity
@@ -85,6 +87,16 @@ class TablesSqlRepo(TablesRepo):
             update(t)
             .where(t.c.uuid == table_id.value, t.c.status != TableStatus.DROPPED.value, _commit_moves(at))
             .values(last_committed_at=at)
+        )
+        with self._engine.begin() as conn:
+            return conn.execute(stmt).rowcount == 1
+
+    def record_over_target_partitions(self, table_id: TableId, partitions: Sequence[OverTargetPartition]) -> bool:
+        """Write only the over-target partitions, when the table exists and is not dropped."""
+        stmt = (
+            update(t)
+            .where(t.c.uuid == table_id.value, t.c.status != TableStatus.DROPPED.value)
+            .values(over_target_partitions_json=encode_over_target_partitions(partitions))
         )
         with self._engine.begin() as conn:
             return conn.execute(stmt).rowcount == 1

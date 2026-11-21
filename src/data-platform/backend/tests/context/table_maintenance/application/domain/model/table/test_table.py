@@ -7,7 +7,12 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from base import InvariantViolation
-from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation, TablePriority
+from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
+    MaintenanceOperation,
+    OverTargetPartition,
+    TablePriority,
+)
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
     AttentionMark,
@@ -329,3 +334,35 @@ def test_a_dropped_table_refuses_set_priority():
     t.mark_dropped(T1)
     with pytest.raises(InvalidTableTransition):
         t.set_priority(TablePriority.P0, T1)
+
+
+EU = OverTargetPartition(spec_id=0, values=("eu",), since=T0)
+
+
+def test_recording_over_target_partitions_replaces_them():
+    """Recording replaces the partitions the table holds over the target and says it changed."""
+    table = managed()
+    assert table.record_over_target_partitions((EU,)) is True
+    assert table.over_target_partitions == (EU,)
+
+
+def test_recording_the_same_partitions_changes_nothing():
+    """Recording an equal record again is no change."""
+    table = managed()
+    table.record_over_target_partitions((EU,))
+    assert table.record_over_target_partitions((EU,)) is False
+
+
+def test_recording_does_not_move_updated_at():
+    """The over-target record is not a change of maintenance state, so it leaves updated_at."""
+    table = managed()
+    before = table.updated_at
+    table.record_over_target_partitions((EU,))
+    assert table.updated_at == before
+
+
+def test_a_dropped_table_records_nothing():
+    """A dropped table keeps its record as it was and reports no change."""
+    table = managed()
+    table.mark_dropped(T0 + timedelta(days=1))
+    assert (table.record_over_target_partitions((EU,)), table.over_target_partitions) == (False, ())

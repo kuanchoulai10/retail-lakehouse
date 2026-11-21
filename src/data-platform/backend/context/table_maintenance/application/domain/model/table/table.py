@@ -11,6 +11,7 @@ from base import AggregateRoot
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    OverTargetPartition,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table.invalid_table_transition import (
@@ -31,6 +32,8 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from context.table_maintenance.application.domain.model.table.applied_policy_ref import (
         AppliedPolicyRef,
     )
@@ -56,6 +59,10 @@ class Table(AggregateRoot[TableId]):
     discovery saw it. A live table takes its catalog's last discovery instead (see
     ``last_discovered``), so a discovery need not save every table it sees. Neither
     is a change of maintenance state, so neither moves ``updated_at``.
+
+    ``over_target_partitions`` holds the partitions the last scheduled plan found over their
+    compaction target, each with the time the first plan saw it over. It is replaced whole by
+    ``record_over_target_partitions`` and does not move ``updated_at`` either.
     """
 
     id: TableId
@@ -68,6 +75,7 @@ class Table(AggregateRoot[TableId]):
     last_committed_at: datetime | None = None
     last_discovered_at: datetime | None = None
     priority: TablePriority = TablePriority.P3
+    over_target_partitions: tuple[OverTargetPartition, ...] = ()
 
     @classmethod
     def register(
@@ -177,6 +185,18 @@ class Table(AggregateRoot[TableId]):
         if self.last_committed_at is not None and at <= self.last_committed_at:
             return False
         self.last_committed_at = at
+        return True
+
+    def record_over_target_partitions(self, partitions: Sequence[OverTargetPartition]) -> bool:
+        """Replace the partitions held over the target; return whether the record changed.
+
+        An equal record, or any record once the table is dropped, changes nothing. The record is
+        compared as given, so a caller passes it in one fixed order. ``updated_at`` does not move.
+        """
+        record = tuple(partitions)
+        if self.status == TableStatus.DROPPED or record == self.over_target_partitions:
+            return False
+        self.over_target_partitions = record
         return True
 
     def rename(self, name: TableName, now: datetime) -> None:

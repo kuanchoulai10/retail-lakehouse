@@ -13,6 +13,7 @@ from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo, 
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    OverTargetPartition,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -500,3 +501,86 @@ def test_a_full_update_with_a_newer_last_commit_moves_it(repo: TablesSqlRepo):
     loaded = repo.get(TableId("u1"))
     assert loaded is not None
     assert loaded.last_committed_at == NOW + timedelta(minutes=5)
+
+
+def test_sql_round_trip_of_over_target_partitions(repo: TablesSqlRepo):
+    """An int, a float, a bool, a None and a string with a quote come back equal, with their since."""
+    repo.create(_table())
+    entries = (OverTargetPartition(spec_id=0, values=("o'neil", 19700, 1.5, True, None), since=NOW),)
+    assert repo.record_over_target_partitions(TableId("u1"), entries) is True
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.over_target_partitions == entries
+
+
+def test_recording_the_same_over_target_partitions_again_keeps_them(either_repo: TablesRepo):
+    """The narrow write answers whether a row matched, so a repeat is True and leaves the record as stored."""
+    either_repo.create(_table())
+    entries = (OverTargetPartition(spec_id=0, values=("eu",), since=NOW),)
+    assert either_repo.record_over_target_partitions(TableId("u1"), entries) is True
+    assert either_repo.record_over_target_partitions(TableId("u1"), entries) is True
+    loaded = either_repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.over_target_partitions == entries
+
+
+def test_update_keeps_the_stored_over_target_partitions(either_repo: TablesRepo):
+    """Saving a copy read before the record was written keeps the stored record (the copy is a real snapshot)."""
+    either_repo.create(_table())
+    first_read = either_repo.get(TableId("u1"))
+    assert first_read is not None
+    stale = first_read.model_copy(deep=True)
+    entries = (OverTargetPartition(spec_id=0, values=("eu",), since=NOW),)
+    either_repo.record_over_target_partitions(TableId("u1"), entries)
+    assert stale.over_target_partitions == ()
+    stale.rename(TableName(catalog="c", namespace="n", table="renamed"), NOW)
+    either_repo.update(stale)
+    loaded = either_repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.name.table == "renamed"
+    assert loaded.over_target_partitions == entries
+
+
+def test_sql_update_does_not_overwrite_a_newer_over_target_record(repo: TablesSqlRepo):
+    """SQL-adapter guarantee: an older read saved after a record was written leaves that record in place."""
+    repo.create(_table())
+    stale = repo.get(TableId("u1"))
+    assert stale is not None
+    entries = (OverTargetPartition(spec_id=0, values=("eu",), since=NOW),)
+    repo.record_over_target_partitions(TableId("u1"), entries)
+    stale.record_over_target_partitions(
+        (OverTargetPartition(spec_id=0, values=("us",), since=NOW + timedelta(minutes=5)),)
+    )
+    repo.update(stale)
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.over_target_partitions == entries
+
+
+def test_a_new_table_has_no_over_target_partitions(repo: TablesSqlRepo):
+    """A table created without a record reads as holding none."""
+    repo.create(_table())
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.over_target_partitions == ()
+
+
+def test_over_target_partitions_of_a_dropped_or_unknown_table_are_not_written(either_repo: TablesRepo):
+    """A dropped table keeps no record and an unknown table is no row, so neither reports a write."""
+    either_repo.create(_table(status=TableStatus.DROPPED))
+    entries = (OverTargetPartition(spec_id=0, values=("eu",), since=NOW),)
+    assert either_repo.record_over_target_partitions(TableId("u1"), entries) is False
+    assert either_repo.record_over_target_partitions(TableId("nope"), entries) is False
+    loaded = either_repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.over_target_partitions == ()
+
+
+def test_a_null_over_target_column_reads_as_none(repo: TablesSqlRepo, engine: Engine):
+    """A row stored before the column existed (NULL) reads as holding no over-target partitions."""
+    repo.create(_table())
+    with engine.begin() as connection:
+        connection.execute(text("UPDATE tables SET over_target_partitions_json = NULL"))
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.over_target_partitions == ()

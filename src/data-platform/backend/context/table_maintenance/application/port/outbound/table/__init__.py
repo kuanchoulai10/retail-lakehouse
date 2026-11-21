@@ -5,6 +5,7 @@ from __future__ import annotations
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    OverTargetPartition,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -90,6 +91,7 @@ __all__ = [
     "MaintenanceOperation",
     "MetricHistoryUnavailableError",
     "OperationState",
+    "OverTargetPartition",
     "RecordedAttempt",
     "TableDiscoveryRuleId",
     "TableId",

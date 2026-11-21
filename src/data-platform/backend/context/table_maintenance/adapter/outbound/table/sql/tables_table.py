@@ -21,5 +21,6 @@ tables_table = Table(
     Column("last_committed_at", UtcDateTime, nullable=True),
     Column("last_discovered_at", UtcDateTime, nullable=True),
     Column("priority", String, nullable=True),
+    Column("over_target_partitions_json", JSON, nullable=True),
     Index("ix_tables_name", "catalog", "namespace", "table_name"),
 )

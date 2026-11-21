@@ -13,6 +13,7 @@ from context.table_maintenance.application.port.outbound.table import (
     ComputeSize,
     MaintenanceOperation,
     OperationState,
+    OverTargetPartition,
     RecordedAttempt,
     Table,
     TableDiscoveryRuleId,
@@ -25,6 +26,8 @@ from context.table_maintenance.application.port.outbound.table import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from sqlalchemy import RowMapping
 
 _ATTENTION_POLICY_KEYS = frozenset({"id", "version", "target", "name"})
@@ -101,12 +104,32 @@ def _decode_state(data: dict[str, Any]) -> OperationState:
     )
 
 
+def encode_over_target_partitions(partitions: Sequence[OverTargetPartition]) -> list[dict[str, Any]]:
+    """Return the JSON form of the over-target partitions stored in the tables row."""
+    return [
+        {"spec_id": p.spec_id, "values": list(p.values), "since": IsoDatetimeCodec.encode(p.since)} for p in partitions
+    ]
+
+
+def _decode_over_target_partitions(data: list[dict[str, Any]] | None) -> tuple[OverTargetPartition, ...]:
+    if data is None:
+        return ()
+    decoded = []
+    for entry in data:
+        since = IsoDatetimeCodec.decode(entry["since"])
+        if since is None:
+            msg = "an over-target partition needs its start time"
+            raise ValueError(msg)
+        decoded.append(OverTargetPartition(spec_id=entry["spec_id"], values=tuple(entry["values"]), since=since))
+    return tuple(decoded)
+
+
 class TableRowMapper:
     """Convert between Table aggregates and table rows."""
 
     @staticmethod
     def to_values(table: Table) -> dict[str, Any]:
-        """Return the column values of the aggregate."""
+        """Return the column values of the aggregate, without the over-target partitions its own write owns."""
         return {
             "uuid": table.id.value,
             "catalog": table.name.catalog,
@@ -143,4 +166,5 @@ class TableRowMapper:
             last_committed_at=row["last_committed_at"],
             last_discovered_at=row["last_discovered_at"],
             priority=TablePriority(row["priority"] or TablePriority.default()),
+            over_target_partitions=_decode_over_target_partitions(row["over_target_partitions_json"]),
         )
