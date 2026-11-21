@@ -10,6 +10,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.port.inbound.table_discovery_policy import (
     CreateTableDiscoveryPolicyUseCaseInput,
     EnsureDefaultTableDiscoveryPolicyUseCaseInput,
+    UpdateTableDiscoveryPolicyUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     CreateTableMaintenancePolicyUseCaseInput,
@@ -19,6 +20,7 @@ from context.table_maintenance.application.service.table import GetEffectivePoli
 from context.table_maintenance.application.service.table_discovery_policy import (
     CreateTableDiscoveryPolicyService,
     EnsureDefaultTableDiscoveryPolicyService,
+    UpdateTableDiscoveryPolicyService,
 )
 from context.table_maintenance.application.service.table_discovery_policy_attachment import (
     AttachTableDiscoveryPolicyService,
@@ -142,6 +144,20 @@ class EffectivePoliciesWebWorld:
         )
         assert response.status_code == 200, response.text
         return response.json()
+
+    def update_discovery(self, name: str, version: int, **changes: Any) -> None:  # noqa: ANN401
+        """Replace a discovery policy's content as its next version, with ``changes`` on top of no rules."""
+        UpdateTableDiscoveryPolicyService(
+            self.discovery_policies,
+            self.discovery_attachments,
+            RecordingSendDiscoveryRequestGateway(),
+            RecordingSyncDiscoverySchedulesGateway(),
+            clock=lambda: NOW,
+        ).execute(
+            UpdateTableDiscoveryPolicyUseCaseInput(
+                name=name, content={**SALES_TABLES_CONTENT, **changes}, version=version
+            )
+        )
 
     def maintenance_attachment_id(self) -> str:
         """Return the id of the one maintenance attachment; the attach route does not answer it yet."""

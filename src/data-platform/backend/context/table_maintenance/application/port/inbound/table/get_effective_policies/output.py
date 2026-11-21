@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from base import UseCaseOutput
 
@@ -33,7 +33,7 @@ class GetEffectivePoliciesUseCaseOutput(UseCaseOutput):
         policy_name: str
         version: int
         description: str
-        no_match_outcome: str
+        no_match_outcome: Literal["manage", "unmanage"]
         target: dict[str, Any] | None
         attachment_id: str | None
 

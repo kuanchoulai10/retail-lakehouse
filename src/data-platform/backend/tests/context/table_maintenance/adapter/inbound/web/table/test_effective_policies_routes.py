@@ -62,6 +62,20 @@ def test_by_uuid_with_nothing_attached_answers_both_defaults(world: EffectivePol
     assert "dry_run" not in policies[1]
 
 
+def test_the_discovery_entry_answers_the_policys_latest_version(world: EffectivePoliciesWebWorld) -> None:
+    """Replacing the attached discovery policy's content moves the entry to the new version."""
+    world.attach_discovery("sales-tables", "catalog", ["prod"])
+    world.update_discovery("sales-tables", 1, description="Sales v2", no_match_outcome="unmanage")
+
+    _, discovery = world.client.get("/v1/tables/u-1/effective-policies").json()["policies"]
+
+    assert (discovery["version"], discovery["description"], discovery["no_match_outcome"]) == (
+        2,
+        "Sales v2",
+        "unmanage",
+    )
+
+
 def test_by_uuid_a_table_without_a_record_is_404(world: EffectivePoliciesWebWorld) -> None:
     """A uuid table maintenance has no record of answers 404, though the catalog holds the table."""
     assert world.client.get("/v1/tables/u-2/effective-policies").status_code == 404

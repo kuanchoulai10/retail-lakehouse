@@ -17,6 +17,7 @@ from context.table_maintenance.application.port.inbound.table import (
 from context.table_maintenance.application.port.inbound.table_discovery_policy import (
     CreateTableDiscoveryPolicyUseCaseInput,
     EnsureDefaultTableDiscoveryPolicyUseCaseInput,
+    UpdateTableDiscoveryPolicyUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_policy_attachment import (
     AttachTableDiscoveryPolicyUseCaseInput,
@@ -34,6 +35,7 @@ from context.table_maintenance.application.service.table import GetEffectivePoli
 from context.table_maintenance.application.service.table_discovery_policy import (
     CreateTableDiscoveryPolicyService,
     EnsureDefaultTableDiscoveryPolicyService,
+    UpdateTableDiscoveryPolicyService,
 )
 from context.table_maintenance.application.service.table_discovery_policy_attachment import (
     AttachTableDiscoveryPolicyService,
@@ -232,9 +234,10 @@ def test_each_kind_takes_its_own_nearest_attachment(world: _World) -> None:
 
 
 def test_the_version_is_the_policys_latest(world: _World) -> None:
-    """An attachment means the policy's latest version, so updating the policy moves the answer."""
+    """An attachment means the policy's latest version, so updating either kind's policy moves its answer."""
     world.record_orders()
     world.attach_maintenance("gold", "catalog", ("prod",))
+    world.attach_discovery("sales-tables", "catalog", ("prod",))
     UpdateTableMaintenancePolicyService(
         world.maintenance_policies, world.maintenance_attachments, world.tables, world.changes, clock=lambda: NOW
     ).execute(
@@ -243,9 +246,28 @@ def test_the_version_is_the_policys_latest(world: _World) -> None:
         )
     )
 
+    UpdateTableDiscoveryPolicyService(
+        world.discovery_policies,
+        world.discovery_attachments,
+        RecordingSendDiscoveryRequestGateway(),
+        RecordingSyncDiscoverySchedulesGateway(),
+        clock=lambda: NOW,
+    ).execute(
+        UpdateTableDiscoveryPolicyUseCaseInput(
+            name="sales-tables",
+            content={"description": "Sales v2", "no_match_outcome": "unmanage", "rules": []},
+            version=1,
+        )
+    )
+
     out = world.by_uuid("u-1")
 
     assert (out.maintenance.version, out.maintenance.description, out.maintenance.dry_run) == (2, "Gold v2", True)
+    assert (out.discovery.version, out.discovery.description, out.discovery.no_match_outcome) == (
+        2,
+        "Sales v2",
+        "unmanage",
+    )
 
 
 def test_a_table_unknown_to_maintenance_is_answered_by_location(world: _World) -> None:
@@ -297,6 +319,31 @@ def test_by_uuid_the_table_is_placed_by_its_record_not_where_it_was_attached(wor
     assert out.maintenance.policy_name == "gold"
     assert out.maintenance.target == {"type": "table", "path": ["prod", "archive", "orders_old"], "table_uuid": "u-1"}
     assert (out.discovery.policy_name, out.discovery.target) == ("default", None)
+
+
+def test_a_table_by_location_reads_its_place_only_by_loading_the_table(world: _World) -> None:
+    """Loading the table proves its catalog and namespace exist, so neither is asked about again."""
+    world.by_location("prod", "sales.eu", "orders")
+
+    assert [name for name, _ in world.gateway.calls] == ["load_table"]
+
+
+def test_a_namespace_by_location_is_checked_with_one_read(world: _World) -> None:
+    """A namespace read also tells whether its catalog exists."""
+    world.by_location("prod", "sales.eu")
+
+    assert world.gateway.calls == [("namespace_exists", ("prod", "sales.eu"))]
+
+
+@pytest.mark.parametrize(
+    "location", [{"catalog": "prod"}, {"catalog": "prod", "namespace": "sales.eu", "table": "orders"}]
+)
+def test_a_uuid_with_a_location_is_refused(world: _World, location: dict[str, str]) -> None:
+    """A place is named by uuid or by location, never both."""
+    world.record_orders()
+
+    with pytest.raises(ValidationError, match="by uuid or by location"):
+        world.service.execute(GetEffectivePoliciesUseCaseInput(table_uuid="u-1", **location))
 
 
 def test_by_uuid_a_table_without_a_record_is_not_found(world: _World) -> None:

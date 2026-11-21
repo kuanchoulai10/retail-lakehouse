@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.application.domain.model.table_discovery_policy import DEFAULT_DISCOVERY_POLICY_ID
 from context.table_maintenance.application.domain.model.table_maintenance_policy import DEFAULT_POLICY_ID
 from context.table_maintenance.application.domain.service.shared import nearest_attached
-from context.table_maintenance.application.exceptions import NotFoundError
+from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table import (
     GetEffectivePoliciesUseCase,
     GetEffectivePoliciesUseCaseInput,
@@ -42,7 +42,8 @@ class GetEffectivePoliciesService(GetEffectivePoliciesUseCase):
     table attachment of one kind leaves the other kind at its own level. With nothing attached a kind's
     platform default applies, read from its repo. By location a catalog, namespace or table the catalog does
     not hold is NotFoundError, and a catalog the platform cannot read raises CatalogAccessDeniedError, as
-    attaching there does; by uuid a table table maintenance has no record of is NotFoundError.
+    attaching there does; by uuid a table table maintenance has no record of is NotFoundError. A place is
+    named by uuid or by location, never both (ValidationError).
     """
 
     def __init__(  # noqa: PLR0913
@@ -64,6 +65,8 @@ class GetEffectivePoliciesService(GetEffectivePoliciesUseCase):
 
     def execute(self, request: GetEffectivePoliciesUseCaseInput) -> GetEffectivePoliciesUseCaseOutput:
         """Return the maintenance and the discovery entry of the place the request names."""
+        if request.table_uuid is not None and request.catalog is not None:
+            raise ValidationError("name a place by uuid or by location, not both")
         candidates = policy_candidates(
             self._gateway,
             self._tables_repo,
@@ -72,7 +75,7 @@ class GetEffectivePoliciesService(GetEffectivePoliciesUseCase):
             table=request.table,
             table_uuid=request.table_uuid,
         )
-        if request.catalog is not None:
+        if request.catalog is not None and request.table is None:
             self._require_place(request.catalog, request.namespace)
         return GetEffectivePoliciesUseCaseOutput(
             maintenance=self._maintenance_entry(candidates),
@@ -80,14 +83,21 @@ class GetEffectivePoliciesService(GetEffectivePoliciesUseCase):
         )
 
     def _require_place(self, catalog: str, namespace: str | None) -> None:
-        """Raise NotFoundError unless the catalog, and the namespace when one is named, exist."""
+        """Raise NotFoundError unless the catalog, or the namespace when one is named, exists.
+
+        A table named by location needs no check: loading it already proved its place. A namespace read
+        also answers for its catalog, which raises CatalogNotFoundError when it is gone.
+        """
+        place = catalog if namespace is None else f"{catalog}.{namespace}"
         try:
-            if not self._gateway.catalog_exists(catalog):
-                raise NotFoundError(f"catalog {catalog} not found")
-            if namespace is not None and not self._gateway.namespace_exists(catalog, namespace):
-                raise NotFoundError(f"namespace {catalog}.{namespace} not found")
+            if namespace is None:
+                exists = self._gateway.catalog_exists(catalog)
+            else:
+                exists = self._gateway.namespace_exists(catalog, namespace)
         except CatalogNotFoundError as exc:
             raise NotFoundError(str(exc)) from exc
+        if not exists:
+            raise NotFoundError(f"{'catalog' if namespace is None else 'namespace'} {place} not found")
 
     def _maintenance_entry(
         self, candidates: Sequence[PolicyTarget]
