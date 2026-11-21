@@ -8,7 +8,7 @@ import {
   IconButton,
   IconTrash,
 } from "@retail-lakehouse/design-system";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { outcomeLabel, type DiscoveryRuleDraft } from "@/lib/discoveryPolicyDraft";
 
 export interface DiscoveryRuleActions {
@@ -21,13 +21,25 @@ interface Props {
   // In the order they are read; a rule's position is its number.
   rules: DiscoveryRuleDraft[];
   readOnly: boolean;
+  // Pass the same object across renders (memoise it), or every render remounts the row controls.
   actions?: DiscoveryRuleActions;
   // Text shown under a rule's conditions, keyed by the rule's `key`.
   hints?: Record<string, string[]>;
   emptyState?: ReactNode;
 }
 
-const column = createDataTableColumnHelper<DiscoveryRuleDraft>();
+// One row: the rule with what its cells show besides it. Position, ends and hints travel in the
+// data, not in the columns, so the columns (the cells' component types) change only with the actions.
+interface RuleRow {
+  rule: DiscoveryRuleDraft;
+  position: number;
+  last: boolean;
+  hints: string[];
+}
+
+const NO_HINTS: Record<string, string[]> = {};
+
+const column = createDataTableColumnHelper<RuleRow>();
 
 function Globs({ globs }: { globs: string[] }) {
   if (globs.length === 0) return <span className="text-on-surface-variant">—</span>;
@@ -42,29 +54,27 @@ function Globs({ globs }: { globs: string[] }) {
   );
 }
 
-function rulesColumns(rules: DiscoveryRuleDraft[], hints: Record<string, string[]>, actions: DiscoveryRuleActions | null) {
-  const position = (rule: DiscoveryRuleDraft) => rules.indexOf(rule) + 1;
+function rulesColumns(actions: DiscoveryRuleActions | null) {
   const columns = [
     column.display({
       id: "position",
       header: "#",
-      cell: (info) => <span className="tabular-nums">{position(info.row.original)}</span>,
+      cell: (info) => <span className="tabular-nums">{info.row.original.position}</span>,
     }),
     column.display({
       id: "outcome",
       header: "Outcome",
-      cell: (info) => <Badge className="whitespace-nowrap">{outcomeLabel(info.row.original.outcome)}</Badge>,
+      cell: (info) => <Badge className="whitespace-nowrap">{outcomeLabel(info.row.original.rule.outcome)}</Badge>,
     }),
     column.display({
       id: "namespace",
       header: "Namespace",
       cell: (info) => {
-        const rule = info.row.original;
-        const notes = hints[rule.key] ?? [];
+        const { rule, hints } = info.row.original;
         return (
           <div className="flex flex-col gap-1">
             <Globs globs={rule.namespaces} />
-            {notes.map((note) => (
+            {hints.map((note) => (
               <p key={note} className="type-body-small text-on-surface-variant">
                 {note}
               </p>
@@ -76,7 +86,7 @@ function rulesColumns(rules: DiscoveryRuleDraft[], hints: Record<string, string[
     column.display({
       id: "tableName",
       header: "Table name",
-      cell: (info) => <Globs globs={info.row.original.tableNames} />,
+      cell: (info) => <Globs globs={info.row.original.rule.tableNames} />,
     }),
   ];
   if (actions === null) return columns;
@@ -86,8 +96,7 @@ function rulesColumns(rules: DiscoveryRuleDraft[], hints: Record<string, string[
       id: "actions",
       header: () => <span className="sr-only">Actions</span>,
       cell: (info) => {
-        const rule = info.row.original;
-        const at = position(rule);
+        const { rule, position: at, last } = info.row.original;
         return (
           <div className="flex items-center justify-end gap-1">
             <IconButton
@@ -103,7 +112,7 @@ function rulesColumns(rules: DiscoveryRuleDraft[], hints: Record<string, string[
               shape="rectangle"
               aria-label={`Move rule ${at} down`}
               icon={<IconArrowDown />}
-              disabled={at === rules.length}
+              disabled={last}
               onClick={() => actions.move(rule, 1)}
             />
             <Button
@@ -130,14 +139,25 @@ function rulesColumns(rules: DiscoveryRuleDraft[], hints: Record<string, string[
 }
 
 // A discovery policy's rules, read top to bottom: the first whose conditions all hold decides.
-export function DiscoveryRulesTable({ rules, readOnly, actions, hints = {}, emptyState = "No rules." }: Props) {
-  const columns = rulesColumns(rules, hints, readOnly || actions === undefined ? null : actions);
+export function DiscoveryRulesTable({ rules, readOnly, actions, hints = NO_HINTS, emptyState = "No rules." }: Props) {
+  const rowActions = readOnly || actions === undefined ? null : actions;
+  const columns = useMemo(() => rulesColumns(rowActions), [rowActions]);
+  const rows = useMemo(
+    () =>
+      rules.map((rule, index) => ({
+        rule,
+        position: index + 1,
+        last: index === rules.length - 1,
+        hints: hints[rule.key] ?? [],
+      })),
+    [rules, hints],
+  );
   return (
     <DataTable
       caption="Discovery rules, read top to bottom"
       columns={columns}
-      data={rules}
-      getRowId={(rule) => rule.key}
+      data={rows}
+      getRowId={(row) => row.rule.key}
       emptyState={emptyState}
     />
   );

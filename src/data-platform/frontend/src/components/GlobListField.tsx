@@ -2,7 +2,7 @@ import { Badge, Button, IconButton, IconX, TextField } from "@retail-lakehouse/d
 import { useState, type KeyboardEvent } from "react";
 
 interface Props {
-  // The field's name, plural: "Catalogs", "Namespaces", "Tables".
+  // What the globs match, singular: "Namespace", "Table name". It names the inputs too ("New namespace glob").
   label: string;
   hint: string;
   globs: string[];

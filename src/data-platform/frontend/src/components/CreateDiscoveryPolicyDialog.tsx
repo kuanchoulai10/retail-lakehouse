@@ -5,22 +5,17 @@ import {
   createTableDiscoveryPolicy,
   getListTableDiscoveryPoliciesQueryKey,
 } from "@/api/generated/discovery-policies/discovery-policies";
-import type {
-  CreateTableDiscoveryPolicyApiRequest,
-  CreateTableDiscoveryPolicyApiRequestNoMatchOutcome,
-} from "@/api/generated/model";
+import type { CreateTableDiscoveryPolicyApiRequest } from "@/api/generated/model";
 import { errorMessage } from "@/format";
+import type { DiscoveryOutcome } from "@/lib/discoveryPolicyDraft";
 import { discoveryPolicyPath } from "@/lib/discoveryPolicyPaths";
 import { POLICY_NAME_PATTERN } from "@/lib/policyDraft";
 import { FormDialog } from "./forms/FormDialog";
-import { SelectField, type SelectOption } from "./forms/SelectField";
+import { DISCOVERY_OUTCOME_OPTIONS } from "./forms/discoveryOutcomeOptions";
+import { SelectField } from "./forms/SelectField";
 import { TextField } from "./forms/TextField";
 
 const NAME_MESSAGE = "A name uses letters, digits, - and _ only, at most 64 characters.";
-const NO_MATCH_OUTCOMES: SelectOption<CreateTableDiscoveryPolicyApiRequestNoMatchOutcome>[] = [
-  { value: "manage", label: "Manage" },
-  { value: "unmanage", label: "Do not manage" },
-];
 
 interface Props {
   onClose: () => void;
@@ -33,7 +28,7 @@ export function CreateDiscoveryPolicyDialog({ onClose }: Props) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [noMatchOutcome, setNoMatchOutcome] = useState<CreateTableDiscoveryPolicyApiRequestNoMatchOutcome>("unmanage");
+  const [noMatchOutcome, setNoMatchOutcome] = useState<DiscoveryOutcome>("unmanage");
   const [invalid, setInvalid] = useState<string | null>(null);
 
   const create = useMutation({
@@ -78,7 +73,7 @@ export function CreateDiscoveryPolicyDialog({ onClose }: Props) {
       <SelectField
         label="When no rule matches"
         value={noMatchOutcome}
-        options={NO_MATCH_OUTCOMES}
+        options={DISCOVERY_OUTCOME_OPTIONS}
         onChange={setNoMatchOutcome}
       />
     </FormDialog>

@@ -81,11 +81,62 @@ describe("discoveryPolicyChanges", () => {
     ]);
   });
 
-  it("reads two swapped rules as two moves", () => {
+  it("reads a changed namespace glob as changed", () => {
+    const sales = { ...ORDERS, conditions: [{ ...ORDERS.conditions[0]!, values: ["sales", "sales.*"] }] };
+    const items = discoveryPolicyChanges(version(1), version(2, { rules: [sales, TEMPORARY] }));
+    expect(changed(items)).toEqual([
+      {
+        id: "dr-orders",
+        change: "changed",
+        label: "Rule #1",
+        before: "Manage: namespace sales",
+        after: "Manage: namespace sales, sales.*",
+      },
+    ]);
+  });
+
+  it("reads a swap as one rule moved above the other", () => {
     const items = discoveryPolicyChanges(version(1), version(2, { rules: [TEMPORARY, ORDERS] }));
     expect(changed(items)).toEqual([
-      { id: "dr-temporary", change: "changed", label: "Rule #1", tags: ["Moved"], after: "Moved from #2 to #1" },
-      { id: "dr-orders", change: "changed", label: "Rule #2", tags: ["Moved"], after: "Moved from #1 to #2" },
+      {
+        id: "dr-temporary",
+        change: "changed",
+        label: "Rule #1",
+        tags: ["Moved"],
+        after: "Moved above Manage: namespace sales",
+      },
+    ]);
+  });
+
+  it("reads [A, B, C] to [N, B, A, C] as one added rule and one move, by its new neighbour", () => {
+    const added: DiscoveryRuleApiResponse = {
+      id: "dr-new",
+      outcome: "manage",
+      conditions: [{ attribute: "table_name", operator: "glob", values: ["new_*"] }],
+    };
+    const items = discoveryPolicyChanges(
+      version(1, { rules: [ORDERS, TEMPORARY, ARCHIVE] }),
+      version(2, { rules: [added, TEMPORARY, ORDERS, ARCHIVE] }),
+    );
+    expect(changed(items)).toEqual([
+      { id: "dr-new", change: "added", label: "Rule #1", after: "Manage: table name new_*" },
+      {
+        id: "dr-temporary",
+        change: "changed",
+        label: "Rule #2",
+        tags: ["Moved"],
+        after: "Moved above Manage: namespace sales",
+      },
+    ]);
+  });
+
+  it("reads the first rule moved to the bottom as one move to the end", () => {
+    const items = discoveryPolicyChanges(
+      version(1, { rules: [ORDERS, TEMPORARY, ARCHIVE] }),
+      version(2, { rules: [TEMPORARY, ARCHIVE, ORDERS] }),
+    );
+    expect(changed(items)).toEqual([
+      { id: "dr-orders", change: "changed", label: "Rule #3", tags: ["Moved"], after: "Moved to the end" },
     ]);
   });
 
@@ -96,16 +147,28 @@ describe("discoveryPolicyChanges", () => {
 
   it("says a rule both changed and moved in one item", () => {
     const flipped = { ...ORDERS, outcome: "unmanage" as const };
-    const items = discoveryPolicyChanges(version(1), version(2, { rules: [TEMPORARY, flipped] }));
-    expect(changed(items)[1]).toEqual({
-      id: "dr-orders",
-      change: "changed",
-      label: "Rule #2",
-      tags: ["Changed", "Moved"],
-      before: "Manage: namespace sales",
-      after: "Do not manage: namespace sales",
-      description: "Moved from #1 to #2",
-    });
+    const items = discoveryPolicyChanges(
+      version(1, { rules: [ORDERS, TEMPORARY, ARCHIVE] }),
+      version(2, { rules: [TEMPORARY, ARCHIVE, flipped] }),
+    );
+    expect(changed(items)).toEqual([
+      {
+        id: "dr-orders",
+        change: "changed",
+        label: "Rule #3",
+        tags: ["Changed", "Moved"],
+        before: "Manage: namespace sales",
+        after: "Do not manage: namespace sales",
+        description: "Moved to the end",
+      },
+    ]);
+  });
+
+  it("shows an empty description as a dash, before or after", () => {
+    const items = discoveryPolicyChanges(version(1, { description: "" }), version(2));
+    expect(changed(items)).toEqual([
+      { id: "description", change: "changed", label: "Description", before: "—", after: "Sales tables" },
+    ]);
   });
 
   it("lists the no-match outcome and the description when they changed", () => {

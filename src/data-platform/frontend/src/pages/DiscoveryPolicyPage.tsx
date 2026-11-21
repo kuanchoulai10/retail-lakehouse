@@ -1,6 +1,6 @@
 import { Banner, Button, DescriptionList, TextArea, TextLink } from "@retail-lakehouse/design-system";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import {
   getGetTableDiscoveryPolicyQueryKey,
@@ -12,8 +12,9 @@ import {
 import type { TableDiscoveryPolicyApiResponse, UpdateTableDiscoveryPolicyApiRequest } from "@/api/generated/model";
 import { DiscoveryPolicyAttachments } from "@/components/DiscoveryPolicyAttachments";
 import { DiscoveryRuleEditor } from "@/components/DiscoveryRuleEditor";
-import { DiscoveryRulesTable } from "@/components/DiscoveryRulesTable";
-import { SelectField, type SelectOption } from "@/components/forms/SelectField";
+import { DiscoveryRulesTable, type DiscoveryRuleActions } from "@/components/DiscoveryRulesTable";
+import { DISCOVERY_OUTCOME_OPTIONS } from "@/components/forms/discoveryOutcomeOptions";
+import { SelectField } from "@/components/forms/SelectField";
 import { PageHeader } from "@/components/PageHeader";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { errorMessage, formatTimestamp } from "@/format";
@@ -24,7 +25,6 @@ import {
   newRuleDraft,
   outcomeLabel,
   updateRequest,
-  type DiscoveryOutcome,
   type DiscoveryPolicyDraft,
   type DiscoveryRuleDraft,
 } from "@/lib/discoveryPolicyDraft";
@@ -33,10 +33,6 @@ import { isConflict } from "@/lib/updateErrorMessage";
 
 const CONFLICT_MESSAGE = "Someone else changed this policy. Reload to see their version.";
 const VISIBLE_VERSIONS = 10;
-const OUTCOMES: SelectOption<DiscoveryOutcome>[] = [
-  { value: "manage", label: "Manage" },
-  { value: "unmanage", label: "Do not manage" },
-];
 
 type Policy = TableDiscoveryPolicyApiResponse;
 
@@ -123,8 +119,10 @@ function PolicyDraftEditor({ policy }: { policy: Policy }) {
   const current = draft ?? base;
   const dirty = draft !== null && contentKey(draft) !== contentKey(base);
   // The hints follow the draft, so a rule shows them before it is saved.
-  const targets = (attachments.data?.attachments ?? []).map((attachment) => attachment.target);
-  const hints = Object.fromEntries(current.rules.map((rule) => [rule.key, ruleHints(rule, targets)]));
+  const hints = useMemo(() => {
+    const targets = (attachments.data?.attachments ?? []).map((attachment) => attachment.target);
+    return Object.fromEntries(current.rules.map((rule) => [rule.key, ruleHints(rule, targets)]));
+  }, [current.rules, attachments.data]);
 
   const save = useMutation({
     mutationFn: (body: UpdateTableDiscoveryPolicyApiRequest) => updateTableDiscoveryPolicy(policy.name, body),
@@ -151,6 +149,21 @@ function PolicyDraftEditor({ policy }: { policy: Policy }) {
   function changeRules(edit: (rules: DiscoveryRuleDraft[]) => DiscoveryRuleDraft[]) {
     change((d) => ({ ...d, rules: edit(d.rules) }));
   }
+
+  // The row actions stay one object for the page's life, so a re-render (the attachments loading,
+  // a refetch) never remounts the rules' buttons under a click; each call runs this render's edit.
+  const latestChangeRules = useRef(changeRules);
+  useLayoutEffect(() => {
+    latestChangeRules.current = changeRules;
+  });
+  const actions = useMemo<DiscoveryRuleActions>(
+    () => ({
+      move: (rule, by) => latestChangeRules.current((rules) => movedRule(rules, rule.key, by)),
+      edit: (rule) => setEditing({ mode: "edit", rule }),
+      remove: (rule) => latestChangeRules.current((rules) => rules.filter((r) => r.key !== rule.key)),
+    }),
+    [],
+  );
 
   function addRule() {
     newKeys.current += 1;
@@ -213,7 +226,7 @@ function PolicyDraftEditor({ policy }: { policy: Policy }) {
         <SelectField
           label="When no rule matches"
           value={current.noMatchOutcome}
-          options={OUTCOMES}
+          options={DISCOVERY_OUTCOME_OPTIONS}
           onChange={(noMatchOutcome) => change((d) => ({ ...d, noMatchOutcome }))}
         />
       </div>
@@ -230,11 +243,7 @@ function PolicyDraftEditor({ policy }: { policy: Policy }) {
         <DiscoveryRulesTable
           rules={current.rules}
           readOnly={false}
-          actions={{
-            move: (rule, by) => changeRules((rules) => movedRule(rules, rule.key, by)),
-            edit: (rule) => setEditing({ mode: "edit", rule }),
-            remove: (rule) => changeRules((rules) => rules.filter((r) => r.key !== rule.key)),
-          }}
+          actions={actions}
           hints={hints}
           emptyState={`No rules. ${outcomeLabel(current.noMatchOutcome)} every table.`}
         />

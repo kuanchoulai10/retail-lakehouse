@@ -66,6 +66,16 @@ describe("DiscoveryRulesTable", () => {
     expect(within(second!).queryByText(/On a table/)).not.toBeInTheDocument();
   });
 
+  // A click landing while the page re-renders (say, when the attachments load) must not be lost.
+  it("keeps its row controls when re-rendered with the same actions and new hints", () => {
+    const handlers = actions();
+    const { rerender } = render(<DiscoveryRulesTable rules={RULES} readOnly={false} actions={handlers} />);
+    const edit = screen.getByRole("button", { name: "Edit rule 1" });
+    rerender(<DiscoveryRulesTable rules={[...RULES]} readOnly={false} actions={handlers} hints={{ a: ["A hint."] }} />);
+    expect(screen.getByRole("button", { name: "Edit rule 1" })).toBe(edit);
+    expect(screen.getByText("A hint.")).toBeInTheDocument();
+  });
+
   it("says when there are no rules", () => {
     render(<DiscoveryRulesTable rules={[]} readOnly emptyState="No rules." />);
     expect(screen.getByText("No rules.")).toBeInTheDocument();

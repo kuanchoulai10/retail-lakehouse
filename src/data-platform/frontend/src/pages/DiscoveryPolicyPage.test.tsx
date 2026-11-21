@@ -101,10 +101,9 @@ function ruleRow(position: number): HTMLElement {
   return row;
 }
 
-// The rules, and where the policy is attached: the hints the rules show wait for the attachments.
+// The rules are there; the attachments may still be loading, and the rules' controls must work meanwhile.
 async function loaded() {
   await screen.findByRole("table", { name: "Discovery rules, read top to bottom" });
-  await waitFor(() => expect(screen.queryByText(/^Loading where/)).not.toBeInTheDocument());
 }
 
 function saveButton(): HTMLElement {

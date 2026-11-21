@@ -1,13 +1,9 @@
 import { useState } from "react";
-import { ruleHasCondition, type DiscoveryOutcome, type DiscoveryRuleDraft } from "@/lib/discoveryPolicyDraft";
+import { ruleHasCondition, type DiscoveryRuleDraft } from "@/lib/discoveryPolicyDraft";
+import { DISCOVERY_OUTCOME_OPTIONS } from "./forms/discoveryOutcomeOptions";
 import { FormDialog } from "./forms/FormDialog";
-import { SelectField, type SelectOption } from "./forms/SelectField";
+import { SelectField } from "./forms/SelectField";
 import { GlobListField } from "./GlobListField";
-
-const OUTCOMES: SelectOption<DiscoveryOutcome>[] = [
-  { value: "manage", label: "Manage" },
-  { value: "unmanage", label: "Do not manage" },
-];
 
 const NO_CONDITION_MESSAGE = "A rule needs at least one condition: a namespace or a table name glob.";
 
@@ -45,7 +41,7 @@ export function DiscoveryRuleEditor({ title, submitLabel, rule, onSubmit, onClos
       onSubmit={submit}
       onClose={onClose}
     >
-      <SelectField label="Outcome" value={outcome} options={OUTCOMES} onChange={setOutcome} />
+      <SelectField label="Outcome" value={outcome} options={DISCOVERY_OUTCOME_OPTIONS} onChange={setOutcome} />
       <GlobListField
         label="Namespace"
         hint="Globs on the full dotted namespace: sales.* matches sales.eu."
