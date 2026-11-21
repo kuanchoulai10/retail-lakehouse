@@ -38,14 +38,14 @@ export const Standalone: Story = {
 };
 
 export const Inline: Story = {
-  args: { inline: true, children: <a href="#/discovery-rules">Add a discovery rule</a> },
+  args: { inline: true, children: <a href="#/items/new">Add an item</a> },
   render: (args) => (
     <p className="type-body-medium text-on-surface">
-      No tables yet. <TextLink {...args} /> to find some.
+      Nothing here yet. <TextLink {...args} /> to get started.
     </p>
   ),
   play: async ({ canvasElement }) => {
-    const link = within(canvasElement).getByRole("link", { name: "Add a discovery rule" });
+    const link = within(canvasElement).getByRole("link", { name: "Add an item" });
     await expect(link).toHaveClass("text-primary");
     await expect(getComputedStyle(link).textDecorationLine).toBe("underline");
   },

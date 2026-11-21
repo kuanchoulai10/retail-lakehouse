@@ -11,6 +11,7 @@ CATALOG="iceberg"
 SCHEMA="e2e"
 ORDERS="tm_e2e_orders"
 REGIONS="tm_e2e_regions"
+DISCOVERY_POLICY="tm-e2e"
 TRINO_USER="tm-e2e"
 TRINO_PORT="${TRINO_PORT:-18445}"
 CERT_DIR="${ROOT}/platform/23-trino/client-certs/${TRINO_USER}"
@@ -18,6 +19,7 @@ MC_IMAGE="pgsty/mc:RELEASE.2026-10-18T00-00-00Z"
 S3_ENDPOINT="http://rustfs.object-storage.svc.cluster.local:9000"
 TEMPORAL_ADDRESS="temporal-frontend.temporal.svc.cluster.local:7233"
 DISCOVERY_TIMEOUT_SECONDS="${DISCOVERY_TIMEOUT_SECONDS:-900}"
+SCHEDULE_TIMEOUT_SECONDS="${SCHEDULE_TIMEOUT_SECONDS:-120}"
 RUN_TIMEOUT_SECONDS="${RUN_TIMEOUT_SECONDS:-3600}"
 RECONCILE_TIMEOUT_SECONDS="${RECONCILE_TIMEOUT_SECONDS:-300}"
 EXPIRE_AGE_SECONDS=60
@@ -487,6 +489,20 @@ assert_applicable_policy() {
     || { echo "table ${uuid} does not resolve to the policy ${name} attached to it" >&2; return 1; }
 }
 
+wait_for_discovery_schedule() {
+  local deadline
+  deadline=$(( $(date +%s) + SCHEDULE_TIMEOUT_SECONDS ))
+  while (( $(date +%s) < deadline )); do
+    if temporal_cli schedule describe --schedule-id "table-discovery:catalog=${CATALOG}" >/dev/null 2>&1; then
+      progress "the discovery schedule table-discovery:catalog=${CATALOG} exists"
+      return 0
+    fi
+    sleep 5
+  done
+  echo "the discovery schedule table-discovery:catalog=${CATALOG} did not appear within ${SCHEDULE_TIMEOUT_SECONDS}s of the attach" >&2
+  return 1
+}
+
 wait_for_table() {
   local table="$1" deadline uuid=""
   deadline=$(( $(date +%s) + DISCOVERY_TIMEOUT_SECONDS ))
@@ -620,15 +636,16 @@ assert_manual_run_recorded() {
 }
 
 assert_prefixed_ids() {
-  local uuid="$1" run_id="$2" rule_id="$3" policy="$4" ids
+  local uuid="$1" run_id="$2" rule_id="$3" policy="$4" discovery_policy_id="$5" attachment_id="$6" ids
   ids="$(jq -cn --arg mr "${run_id}" --arg dr "${rule_id}" \
     --arg rc "$(reconciliation_ids "${uuid}" | jq -r '.[0] // ""')" \
     --arg mp "$(api GET "/v1/maintenance-policies/${policy}" | jq -r '.id')" \
-    '{mr: $mr, rc: $rc, dr: $dr, mp: $mp}')"
+    --arg dp "${discovery_policy_id}" --arg da "${attachment_id}" \
+    '{mr: $mr, rc: $rc, dr: $dr, mp: $mp, dp: $dp, da: $da}')"
   # shellcheck disable=SC2016
   check 'to_entries | all(.[]; . as $e | $e.value | test("^" + $e.key + "-[0-7][0-9a-hjkmnp-tv-z]{25}$"))' \
     "${ids}" "an id the API returned is not <prefix>-<26 base32 characters> (ADR 0011)"
-  progress "run, reconciliation, discovery rule and policy ids are prefixed: $(jq -c . <<<"${ids}")"
+  progress "run, reconciliation, discovery rule, policy and attachment ids are prefixed: $(jq -c . <<<"${ids}")"
 }
 
 reconciliation_ids() {
@@ -715,22 +732,20 @@ progress "issuing the Trino client certificate for ${TRINO_USER}"
 task --dir "${ROOT}" trino:issue-cert \
   TRINO_USER="${TRINO_USER}" PRINT_USAGE=false KUBE_CONTEXT="${KUBE_CONTEXT}"
 
-progress "ensuring the discovery rule ${CATALOG} / ${SCHEMA} / tm_e2e_*"
-RULES="$(api GET /v1/discovery-rules)"
-RULE_ID="$(jq -r --arg ns "${SCHEMA}" \
-  '.rules[] | select(.action == "include" and .catalogs == ["iceberg"]
-    and .namespaces == [$ns] and .tables == ["tm_e2e_*"] and .enabled) | .id' <<<"${RULES}" | head -n 1)"
-if [[ -z "${RULE_ID}" ]]; then
-  api PUT /v1/discovery-rules "$(jq -c --arg ns "${SCHEMA}" '{
-    version: .version,
-    rules: ([{priority: (([.rules[].priority] | min // 11) - 1), action: "include", enabled: true,
-          catalogs: ["iceberg"], namespaces: [$ns], tables: ["tm_e2e_*"]}]
-      + [.rules[] | {id, priority, action, enabled, catalogs, namespaces, tables}])}' <<<"${RULES}")" >/dev/null
-  RULE_ID="$(api GET /v1/discovery-rules | jq -r --arg ns "${SCHEMA}" \
-    '.rules[] | select(.action == "include" and .catalogs == ["iceberg"]
-      and .namespaces == [$ns] and .tables == ["tm_e2e_*"] and .enabled) | .id' | head -n 1)"
+progress "ensuring the discovery policy ${DISCOVERY_POLICY} (manages the tm_e2e_* tables)"
+DISCOVERY_POLICY_REPLY="$(api_call GET "/v1/discovery-policies/${DISCOVERY_POLICY}")"
+if jq -e '.status == 404' <<<"${DISCOVERY_POLICY_REPLY}" >/dev/null; then
+  DISCOVERY_POLICY_BODY="$(api POST /v1/discovery-policies "$(jq -cn --arg n "${DISCOVERY_POLICY}" '{
+    name: $n, description: "e2e: manage the tm_e2e_* tables", no_match_outcome: "unmanage",
+    rules: [{outcome: "manage",
+      conditions: [{attribute: "table_name", operator: "glob", values: ["tm_e2e_*"]}]}]}')")"
+else
+  check '.status == 200' "${DISCOVERY_POLICY_REPLY}" "could not read the discovery policy ${DISCOVERY_POLICY}"
+  DISCOVERY_POLICY_BODY="$(jq -c '.body' <<<"${DISCOVERY_POLICY_REPLY}")"
 fi
-progress "discovery rule ${RULE_ID}"
+DISCOVERY_POLICY_ID="$(jq -r '.id' <<<"${DISCOVERY_POLICY_BODY}")"
+RULE_ID="$(jq -r '.rules[0].id' <<<"${DISCOVERY_POLICY_BODY}")"
+progress "discovery policy ${DISCOVERY_POLICY_ID} v$(jq -r '.version' <<<"${DISCOVERY_POLICY_BODY}"), first rule ${RULE_ID}"
 
 progress "creating ${CATALOG}.${SCHEMA}.${ORDERS} and ${CATALOG}.${SCHEMA}.${REGIONS}"
 trino_sql "CREATE SCHEMA IF NOT EXISTS ${CATALOG}.${SCHEMA};
@@ -757,6 +772,17 @@ JQ
 )"
 attach_policy tm-e2e-orders "${ORDERS}"
 attach_policy tm-e2e-regions "${REGIONS}"
+
+progress "attaching the discovery policy ${DISCOVERY_POLICY} to the namespace ${CATALOG}.${SCHEMA}"
+DISCOVERY_ATTACHMENT_ID="$(api PUT "/v1/discovery-policies/${DISCOVERY_POLICY}/attachments" \
+  "$(jq -cn --arg c "${CATALOG}" --arg s "${SCHEMA}" '{target: {type: "namespace", path: [$c, $s]}}')" \
+  | jq -r '.id')"
+progress "discovery attachment ${DISCOVERY_ATTACHMENT_ID}"
+wait_for_discovery_schedule
+# shellcheck disable=SC2016
+check 'any(.catalogs[]; .catalog == $c and .failure == null)' "$(api GET /v1/scanned-catalogs)" \
+  "the scanned catalogs do not list ${CATALOG} without a failure" --arg c "${CATALOG}"
+progress "${CATALOG} is a scanned catalog with no current failure"
 
 progress "inserting 20 single-row orders, 4 two-row region commits, and deleting one order"
 STATEMENTS=""
@@ -942,4 +968,5 @@ fi
 assert_reconcile_running "${ORDERS_UUID}"
 assert_reconcile_running "${REGIONS_UUID}"
 assert_workflows_found_by_table "${ORDERS_UUID}" "${ORDERS_MANUAL_RUN_ID}"
-assert_prefixed_ids "${ORDERS_UUID}" "${ORDERS_MANUAL_RUN_ID}" "${RULE_ID}" tm-e2e-orders
+assert_prefixed_ids "${ORDERS_UUID}" "${ORDERS_MANUAL_RUN_ID}" "${RULE_ID}" tm-e2e-orders \
+  "${DISCOVERY_POLICY_ID}" "${DISCOVERY_ATTACHMENT_ID}"

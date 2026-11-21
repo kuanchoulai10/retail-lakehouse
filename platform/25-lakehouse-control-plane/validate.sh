@@ -128,9 +128,10 @@ for _ in $(seq 1 30); do
   LISTED_SCHEDULES="$(kubectl exec "${ADMIN_TOOLS}" \
     --namespace temporal \
     --context "${KUBE_CONTEXT}" \
-    -- temporal schedule list \
+    -- temporal schedule list --output json \
     --address temporal-frontend.temporal.svc.cluster.local:7233 \
-    | { grep -oE "${DISCOVERY_SCHEDULE_PREFIX}[^[:space:]\"]+" || true; } \
+    | jq -r --arg prefix "${DISCOVERY_SCHEDULE_PREFIX}" \
+      '(if type == "array" then .[] else . end) | (.scheduleId // .id // empty) | select(startswith($prefix))' \
     | sort -u)"
   [[ "${WANTED_SCHEDULES}" == "${LISTED_SCHEDULES}" ]] && break
   sleep 2

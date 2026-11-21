@@ -112,6 +112,13 @@ There is no scoring, no cost-benefit ranking and no compaction round (KCL-89). T
 
   A collection per kind, rather than one `/v1/policies?type=`, keeps each kind's body its own schema in OpenAPI and lets names be unique per kind. `effective-policies` replaces both `applicable-policy` routes, and `/v1/discovery-rules` goes.
 
+2026-11-21 note (KCL-71): the discovery policy is built.
+
+- **A condition is `{attribute, operator, values}`**, modelled on Kubernetes `matchExpressions`, so labels and table properties later add an attribute or an operator, not a new structure. The attributes are `namespace` and `table_name`, the only operator is `glob`, and a condition holds when any of its values matches.
+- **The outcomes are `manage` and `unmanage`**, the words of the table's own statuses; the console says "Manage" and "Do not manage".
+- **Attach is `PUT /v1/discovery-policies/{name}/attachments` with `{"target": {"type", "path"}}` and detach is `DELETE /v1/discovery-policies/{name}/attachments/{attachment_id}`**, by the attachment's `da-` id. A request body on `DELETE` has no defined semantics (RFC 9110 §9.3.5), and detaching by id also works for an orphaned target. KCL-98 gives maintenance attachments the same shape.
+- **A target must exist when it is attached, but it may be empty.** An empty catalog or namespace may be attached, since the first place a discovery policy goes is often an empty catalog; a target that does not exist is 404. The same check now serves maintenance attachments, and an attachment is orphaned only when its target no longer exists.
+
 ## Consequences
 
 - One rule explains every policy on a table: walk up from the table to the first attachment. `effective-policies` shows the answer and the level it came from.
