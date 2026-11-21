@@ -93,6 +93,11 @@ export {
 } from "./components/TimeRangePicker/TimeRangePicker";
 export { Tracker, type TrackerItem, type TrackerProps } from "./components/Tracker/Tracker";
 export { DataTable, type DataTableProps } from "./components/DataTable/DataTable";
+export {
+  DescriptionList,
+  type DescriptionListItem,
+  type DescriptionListProps,
+} from "./components/DescriptionList/DescriptionList";
 export { createDataTableColumnHelper } from "./components/DataTable/createDataTableColumnHelper";
 export type { DataTableColumn, DataTableFeatures } from "./components/DataTable/dataTableFeatures";
 export { EmptyState, type EmptyStateProps } from "./components/EmptyState/EmptyState";

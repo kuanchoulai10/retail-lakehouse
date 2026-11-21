@@ -30,6 +30,13 @@ export type DataTableProps<T extends RowData> = {
    * ignored. Needs renderDetail to show anything.
    */
   initialExpandedRowIds?: string[];
+  /**
+   * Opens a row somewhere else, such as a side panel: a plain click on the row, or its first cell's
+   * button, calls it. Not combined with renderDetail.
+   */
+  onOpenRow?: (row: T) => void;
+  /** The row whose panel is open: its button reads aria-expanded="true" and the row is drawn selected. */
+  openRowId?: string | null;
 };
 
 const stickyFirst = "first:sticky first:left-0 first:z-10";
@@ -62,8 +69,14 @@ export function DataTable<T extends RowData>({
   renderDetail,
   getRowLabel,
   initialExpandedRowIds,
+  onOpenRow,
+  openRowId,
 }: DataTableProps<T>) {
+  if (import.meta.env.DEV && renderDetail !== undefined && onOpenRow !== undefined) {
+    throw new Error("DataTable: a row either expands (renderDetail) or opens (onOpenRow), not both.");
+  }
   const expandable = renderDetail !== undefined;
+  const openable = onOpenRow !== undefined;
   const table = useTable({
     features: dataTableFeatures,
     columns,
@@ -143,14 +156,29 @@ export function DataTable<T extends RowData>({
               event.stopPropagation();
               row.toggleExpanded();
             };
+            const opened = openable && openRowId === row.id;
+            const open = (event: MouseEvent) => {
+              event.stopPropagation();
+              onOpenRow?.(row.original);
+            };
             return (
               <Fragment key={row.id}>
                 <TableRow
-                  className={cn("group", expandable && "cursor-pointer", expanded && "bg-inverse-primary")}
+                  className={cn(
+                    "group",
+                    (expandable || openable) && "cursor-pointer",
+                    (expanded || opened) && "bg-inverse-primary",
+                  )}
                   onClick={
-                    expandable
+                    expandable || openable
                       ? (event: MouseEvent<HTMLTableRowElement>) => {
-                          if (isPlainRowClick(event)) row.toggleExpanded();
+                          if (!isPlainRowClick(event)) return;
+                          if (openable) {
+                            onOpenRow(row.original);
+                            event.currentTarget.querySelector<HTMLElement>("[data-open-row]")?.focus();
+                          } else {
+                            row.toggleExpanded();
+                          }
                         }
                       : undefined
                   }
@@ -160,7 +188,7 @@ export function DataTable<T extends RowData>({
                       key={cell.id}
                       className={cn(
                         stickyFirst,
-                        expanded ? "first:bg-inverse-primary" : "first:bg-surface",
+                        expanded || opened ? "first:bg-inverse-primary" : "first:bg-surface",
                         hoverOverlay,
                       )}
                     >
@@ -181,6 +209,25 @@ export function DataTable<T extends RowData>({
                               aria-hidden="true"
                               className={cn("size-4", expanded && "rotate-90")}
                             />
+                          </button>
+                          <table.FlexRender cell={cell} />
+                        </span>
+                      ) : openable && index === 0 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            data-open-row=""
+                            aria-haspopup="dialog"
+                            aria-expanded={opened}
+                            aria-label={`Open ${label}`}
+                            onClick={open}
+                            className={cn(
+                              "-ml-1 inline-flex min-h-row min-w-6 shrink-0 cursor-pointer items-center justify-center rounded-sm",
+                              "text-on-surface-variant focus-visible:outline-2 focus-visible:outline-offset-2",
+                              "focus-visible:outline-focus-ring",
+                            )}
+                          >
+                            <IconChevronRight aria-hidden="true" className="size-4" />
                           </button>
                           <table.FlexRender cell={cell} />
                         </span>

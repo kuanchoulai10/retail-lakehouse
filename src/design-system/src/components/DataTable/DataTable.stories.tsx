@@ -1,6 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, fn, userEvent, within } from "storybook/test";
-import { expectFocusRing, expectNoHorizontalPageScroll } from "../../stories/assertions";
+import { useState } from "react";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+import {
+  expectFocusRing,
+  expectNoHorizontalPageScroll,
+  portalQueries,
+} from "../../stories/assertions";
+import { Drawer } from "../Drawer/Drawer";
 import { createDataTableColumnHelper } from "./createDataTableColumnHelper";
 import { DataTable } from "./DataTable";
 
@@ -41,7 +47,9 @@ const meta = {
           "Expanded departs from Serendie: rows are 36px high (44px below 768px). Sorting is by " +
           "header buttons that set aria-sort. The table scrolls inside its own container with a " +
           "sticky first column, so the page never scrolls sideways. With renderDetail, each row " +
-          "opens a full-width detail row from a toggle in its first cell or a click on the row.",
+          "opens a full-width detail row from a toggle in its first cell or a click on the row. " +
+          "With onOpenRow, a row opens somewhere else, such as a side panel, from a button in its " +
+          "first cell or a click on the row; openRowId marks the row whose panel is open.",
       },
     },
   },
@@ -339,5 +347,67 @@ export const RowClickIgnoresControlsAndSelection: Story = {
     selection.removeAllRanges();
     await userEvent.click(nameCell);
     await expect(detail()).toBeVisible();
+  },
+};
+
+function OpenRowInPanelHarness() {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const open = rows.find((row) => row.id === openId) ?? null;
+  return (
+    <div className="flex items-start gap-4 p-4">
+      <DataTable<Row>
+        caption="Tables opening in a panel"
+        columns={plainColumns}
+        data={rows}
+        getRowId={(row) => row.id}
+        getRowLabel={(row) => row.name}
+        onOpenRow={(row) => setOpenId(row.id)}
+        openRowId={openId}
+        className="flex-1"
+      />
+      <Drawer
+        title={open?.name ?? "Table"}
+        contentKey={openId ?? undefined}
+        isOpen={open !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setOpenId(null);
+        }}
+        modal={false}
+      >
+        {open ? `Details of ${open.name}` : null}
+      </Drawer>
+    </div>
+  );
+}
+
+export const OpenRowInPanel: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  render: () => <OpenRowInPanelHarness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const first = canvas.getByRole("button", { name: "Open sales.orders" });
+    const second = canvas.getByRole("button", { name: "Open sales.customers" });
+    await expect(first).toHaveAttribute("aria-haspopup", "dialog");
+    await expect(first).toHaveAttribute("aria-expanded", "false");
+    await userEvent.tab();
+    await userEvent.tab();
+    await expectFocusRing(first);
+    await userEvent.keyboard("{Enter}");
+    await expect(first).toHaveAttribute("aria-expanded", "true");
+    const heading = await portalQueries(canvasElement).findByRole("heading", { name: "sales.orders" });
+    await waitFor(() => expect(heading).toHaveFocus());
+    await expect(first.closest("tr")).toHaveClass("bg-inverse-primary");
+
+    await userEvent.click(canvas.getByText("sales.customers"));
+    await expect(second).toHaveAttribute("aria-expanded", "true");
+    await expect(first).toHaveAttribute("aria-expanded", "false");
+    await expect(first.closest("tr")).not.toHaveClass("bg-inverse-primary");
+    const switched = await portalQueries(canvasElement).findByRole("heading", { name: "sales.customers" });
+    await waitFor(() => expect(switched).toHaveFocus());
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(portalQueries(canvasElement).queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(second).toHaveFocus());
+    await expect(second).toHaveAttribute("aria-expanded", "false");
   },
 };

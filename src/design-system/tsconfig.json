@@ -14,7 +14,7 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["vitest/globals"]
+    "types": ["vite/client", "vitest/globals"]
   },
   "include": ["src", ".storybook", "vite.config.ts", "eslint.config.js"]
 }
