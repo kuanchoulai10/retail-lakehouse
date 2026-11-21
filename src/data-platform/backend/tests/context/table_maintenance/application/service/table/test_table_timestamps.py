@@ -49,7 +49,7 @@ NEWER_COMMIT = COMMIT + timedelta(minutes=5)
 NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 
 
-def _include_all(discovery_policies, discovery_attachments):
+def _manage_all_in_catalog(discovery_policies, discovery_attachments):
     discovery_policies.create(MANAGE_ALL)
     discovery_attachments.create(TableDiscoveryPolicyAttachment.attach(catalog_target("iceberg"), MANAGE_ALL.id, NOW))
 
@@ -115,7 +115,7 @@ def test_a_sync_does_not_save_tables_only_because_it_saw_them(
     sync, tables_repo, discovery_policies, discovery_attachments, catalog, log, now
 ):
     """Seeing an unchanged table writes nothing for it: its catalog's discovery stands for it."""
-    _include_all(discovery_policies, discovery_attachments)
+    _manage_all_in_catalog(discovery_policies, discovery_attachments)
     _row(tables_repo, EARLIER)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
@@ -153,7 +153,7 @@ def test_a_sync_saves_a_newer_commit_of_a_known_table(
     sync, tables_repo, discovery_policies, discovery_attachments, catalog, log, now
 ):
     """A known table whose only change is a newer commit writes just its last commit, once."""
-    _include_all(discovery_policies, discovery_attachments)
+    _manage_all_in_catalog(discovery_policies, discovery_attachments)
     _row(tables_repo, EARLIER).record_last_commit(COMMIT)
     catalog.add_table("iceberg", "sales", "orders", "u-1", last_committed_at=NEWER_COMMIT.isoformat())
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
@@ -167,7 +167,7 @@ def test_a_rename_with_a_newer_commit_is_one_full_update(
     sync, tables_repo, discovery_policies, discovery_attachments, catalog, log, now
 ):
     """When the table changed too, the newer commit rides along in the one full update."""
-    _include_all(discovery_policies, discovery_attachments)
+    _manage_all_in_catalog(discovery_policies, discovery_attachments)
     _row(tables_repo, EARLIER).record_last_commit(COMMIT)
     catalog.add_table("iceberg", "sales", "renamed", "u-1", last_committed_at=NEWER_COMMIT.isoformat())
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
@@ -181,7 +181,7 @@ def test_a_sync_never_moves_a_last_commit_back(
     sync, tables_repo, discovery_policies, discovery_attachments, catalog, log, now
 ):
     """An older commit time read from the catalog changes and saves nothing."""
-    _include_all(discovery_policies, discovery_attachments)
+    _manage_all_in_catalog(discovery_policies, discovery_attachments)
     _row(tables_repo, EARLIER).record_last_commit(NEWER_COMMIT)
     catalog.add_table("iceberg", "sales", "orders", "u-1", last_committed_at=COMMIT.isoformat())
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
@@ -195,7 +195,7 @@ def test_a_catalog_event_saves_the_newer_commit_of_a_known_table(
     hint, tables_repo, discovery_policies, discovery_attachments, catalog, now
 ):
     """A table update event reads the table from the catalog and saves its newest commit."""
-    _include_all(discovery_policies, discovery_attachments)
+    _manage_all_in_catalog(discovery_policies, discovery_attachments)
     _row(tables_repo, EARLIER).record_last_commit(COMMIT)
     catalog.add_table("iceberg", "sales", "orders", "u-1", last_committed_at=NEWER_COMMIT.isoformat())
     hint.execute(

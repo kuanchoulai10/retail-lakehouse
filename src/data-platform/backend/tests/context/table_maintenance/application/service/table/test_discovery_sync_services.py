@@ -227,6 +227,19 @@ def test_managed_by_the_no_match_outcome_has_no_rule(sync, world):
     assert table.discovered_by == DiscoveryMatch(policy_id=MANAGE_BY_DEFAULT.id, policy_version=1, rule_id=None)
 
 
+def test_a_table_moved_out_of_a_managing_namespace_is_decided_by_its_new_name(sync, world, tables_repo, signals, now):
+    """A scan decides a known table by the name the catalog gives it now, not the name stored for it."""
+    world.attach(namespace_target("iceberg", "sales"), MANAGE_ALL)
+    _row(tables_repo, now, "u-1", _name("orders"))
+    world.catalog.add_table("iceberg", "other", "orders", "u-1")
+    out = sync.execute(_catalog_wide())
+    table = world.tables.get(TableId("u-1"))
+    assert (table.name.namespace, table.status) == ("other", TableStatus.UNMANAGED)
+    assert table.discovered_by == DiscoveryMatch.platform_default()
+    assert (out.renamed, out.unmanaged) == (1, 1)
+    assert _calls(signals) == [("u-1", "stopped", False)]
+
+
 def test_a_renamed_table_keeps_its_table_attachment(sync, world, tables_repo, now):
     """A table attached by uuid keeps its own policy after a rename to another namespace."""
     old_name = _name("orders")
@@ -241,7 +254,11 @@ def test_a_renamed_table_keeps_its_table_attachment(sync, world, tables_repo, no
 
 
 def test_a_new_policy_version_moves_the_match_and_sends_nothing(sync, world, tables_repo, signals, log, now):
-    """A new version of the deciding policy is a match change: the row is saved with it and nothing is sent."""
+    """On a namespace scan, a new version of the deciding policy is a match change: the row is saved, nothing is sent.
+
+    A catalog-wide scan still sends ``seen`` to the managed table, as
+    ``test_managed_table_now_decided_by_another_managing_policy_records_it`` pins.
+    """
     world.attach_to_catalog(MANAGE_ALL)
     _row(tables_repo, now, "u-1", _name("orders"))
     world.catalog.add_table("iceberg", "sales", "orders", "u-1")
@@ -766,6 +783,41 @@ def _hint(table="orders", namespace="sales", event_type="updateTable"):
 def test_a_hint_in_an_unscanned_catalog_registers_unmanaged(hint, world, signals):
     """A catalog event in a catalog no policy manages registers the table, decided by the default, and sends nothing."""
     world.attach(catalog_target("other"), MANAGE_ALL)
+    world.catalog.add_table("iceberg", "sales", "orders", "u-1")
+    assert hint.execute(_hint()).action == "registered"
+    table = world.tables.get(TableId("u-1"))
+    assert (table.status, table.discovered_by) == (TableStatus.UNMANAGED, DiscoveryMatch.platform_default())
+    assert signals.calls == []
+
+
+def test_a_hint_decides_a_table_moved_out_of_a_managing_namespace_by_its_new_name(
+    hint, world, tables_repo, signals, now
+):
+    """A catalog event decides a known table by the name the catalog gives it now, not the name stored for it."""
+    world.attach(namespace_target("iceberg", "sales"), MANAGE_ALL)
+    _row(tables_repo, now, "u-1", _name("orders"))
+    world.catalog.add_table("iceberg", "other", "orders", "u-1")
+    assert hint.execute(_hint(namespace="other")).action == "unmanaged"
+    table = world.tables.get(TableId("u-1"))
+    assert (table.name.namespace, table.status) == ("other", TableStatus.UNMANAGED)
+    assert table.discovered_by == DiscoveryMatch.platform_default()
+    assert _calls(signals) == [("u-1", "stopped", False)]
+
+
+def test_a_hint_reads_the_walk_of_a_table_moved_into_a_managing_namespace(hint, world, tables_repo, signals, now):
+    """A catalog event reads the attachments on the walk of the new name: a move into a managed namespace manages it."""
+    world.attach(namespace_target("iceberg", "other"), MANAGE_ALL)
+    _row(tables_repo, now, "u-1", _name("orders"), by=DEFAULT)
+    world.catalog.add_table("iceberg", "other", "orders", "u-1")
+    assert hint.execute(_hint(namespace="other")).action == "managed"
+    assert world.tables.get(TableId("u-1")).discovered_by == MANAGE_ALL.decide(_name("orders", namespace="other")).match
+    assert _calls(signals) == [("u-1", "managed", True)]
+
+
+def test_a_hint_decides_a_new_table_by_its_uuid(hint, world, signals):
+    """A catalog event finds the table's own attachment by its uuid: the default on it opts it out of its namespace."""
+    world.attach(namespace_target("iceberg", "sales"), MANAGE_ALL)
+    world.attach(table_target(_name("orders"), "u-1"), DEFAULT)
     world.catalog.add_table("iceberg", "sales", "orders", "u-1")
     assert hint.execute(_hint()).action == "registered"
     table = world.tables.get(TableId("u-1"))
