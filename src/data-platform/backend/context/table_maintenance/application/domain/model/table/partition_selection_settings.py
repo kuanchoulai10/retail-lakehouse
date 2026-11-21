@@ -21,7 +21,10 @@ class PartitionSelectionSettings(ValueObject):
 
     ``partitions_per_job`` caps the partitions one job compacts. A partition written less than
     ``quiet_period`` ago waits for a later check, until it has been over its target for
-    ``max_quiet_wait``. A zero ``quiet_period`` or ``max_quiet_wait`` means nothing waits.
+    ``max_quiet_wait``. A partition over its target for ``max_quiet_wait`` also goes first under
+    the cap, oldest first, so none waits behind the cap for ever. A zero ``quiet_period`` or
+    ``max_quiet_wait`` means nothing waits; with a zero ``max_quiet_wait`` every partition counts
+    as past it, so the cap takes the oldest first.
     """
 
     partitions_per_job: int

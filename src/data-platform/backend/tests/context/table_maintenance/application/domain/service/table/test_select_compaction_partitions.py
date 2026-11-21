@@ -149,3 +149,49 @@ def test_waiting_is_in_the_selection_order():
     over = [(p(0, "a", written=NOW), 3), (p(0, "b", written=NOW), 9)]
     got = select_compaction_partitions(over, [], NOW, SETTINGS)
     assert [w.values for w in got.waiting] == [("b",), ("a",)]
+
+
+def test_a_partition_over_target_past_the_max_wait_beats_more_reducible_ones_under_the_cap():
+    """Under the cap a partition over the target for the longest wait goes before the most reducible ones."""
+    cold = p(0, "cold")
+    busy = [p(0, f"busy{i:02}") for i in range(10)]
+    over = [(cold, 1), *[(partition, 9) for partition in busy]]
+    tracked = [
+        since(cold, NOW - timedelta(minutes=61)),
+        *[since(partition, NOW - timedelta(minutes=10)) for partition in busy],
+    ]
+    got = select_compaction_partitions(over, tracked, NOW, SETTINGS)
+    assert len(got.selected) == 10
+    assert got.selected[0] == cold
+    assert busy[-1] not in got.selected
+
+
+def test_partitions_past_the_max_wait_are_taken_oldest_since_first():
+    """Two partitions past the longest wait are ordered by since, oldest first, whatever their reducible files."""
+    newer, older = p(0, "newer"), p(0, "older")
+    tracked = [since(newer, NOW - timedelta(hours=2)), since(older, NOW - timedelta(hours=3))]
+    got = select_compaction_partitions([(newer, 9), (older, 1)], tracked, NOW, SETTINGS)
+    assert got.selected == (older, newer)
+
+
+def test_partitions_past_the_max_wait_come_before_the_rest_which_keep_the_reducible_order():
+    """Overdue partitions lead, then the others by reducible files, most first."""
+    overdue, few, many = p(0, "overdue"), p(0, "few"), p(0, "many")
+    tracked = [since(overdue, NOW - timedelta(hours=2))]
+    got = select_compaction_partitions([(few, 2), (many, 8), (overdue, 1)], tracked, NOW, SETTINGS)
+    assert got.selected == (overdue, many, few)
+
+
+def test_with_a_zero_max_wait_every_partition_is_past_it_and_the_oldest_since_goes_first():
+    """A longest wait of zero makes every partition overdue, so the order is oldest since first."""
+    wait_off = SETTINGS.with_changes(max_quiet_wait=timedelta(0), partitions_per_job=1)
+    old, fresh = p(0, "old"), p(0, "fresh")
+    got = select_compaction_partitions([(fresh, 9), (old, 1)], [since(old, NOW - timedelta(hours=1))], NOW, wait_off)
+    assert got.selected == (old,)
+
+
+def test_a_waiting_partition_past_no_wait_is_not_pulled_ahead_by_the_overdue_order():
+    """A partition still waiting is not selected, however old its since is."""
+    waiting = p(0, "waiting", written=NOW - timedelta(seconds=10))
+    got = select_compaction_partitions([(waiting, 9)], [since(waiting, NOW - timedelta(minutes=30))], NOW, SETTINGS)
+    assert (got.selected, got.waiting) == ((), (waiting,))
