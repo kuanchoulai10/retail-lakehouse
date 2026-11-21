@@ -1,9 +1,8 @@
 import {
   Banner,
   DatePicker,
+  Drawer,
   IconButton,
-  IconCheck,
-  IconCopy,
   IconDots,
   IconGitCommit,
   List,
@@ -12,13 +11,17 @@ import {
   Tooltip,
 } from "@retail-lakehouse/design-system";
 import { keepPreviousData } from "@tanstack/react-query";
-import { useEffect, useId, useState } from "react";
+import { useId } from "react";
 import { Link } from "react-router";
 import { ListTableCommitsWriter, type TableCommitApiResponse } from "@/api/generated/model";
 import { useListTableCommits } from "@/api/generated/tables/tables";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
+import { CommitPanel } from "@/components/tabs/CommitPanel";
+import { commitTitle } from "@/components/tabs/commitText";
+import { CopySnapshotId } from "@/components/tabs/CopySnapshotId";
 import { useCommitFilters, type CommitFilters } from "@/components/tabs/useCommitFilters";
-import { errorMessage, formatCount, formatRelativeTime, formatTimestamp } from "@/format";
+import { useOpenRecord } from "@/components/tabs/useOpenRecord";
+import { errorMessage, formatRelativeTime, formatTimestamp } from "@/format";
 import { writerLabel } from "@/writerLabel";
 
 function sortedNewestFirst(items: TableCommitApiResponse[]): TableCommitApiResponse[] {
@@ -41,86 +44,21 @@ function groupedByDay(commits: TableCommitApiResponse[]): CommitDay[] {
   return days;
 }
 
-function counted(value: number, noun: string): string {
-  return `${formatCount(value)} ${noun}${value === 1 ? "" : "s"}`;
-}
-
-// What a commit changed, in the words of a commit message: "1,200 rows added in 4 files".
-function changeSummary(commit: TableCommitApiResponse): string[] {
-  const changes: string[] = [];
-  const sides = [
-    { rows: commit.added_records, files: commit.added_data_files, verb: "added", preposition: "in" },
-    { rows: commit.deleted_records, files: commit.deleted_data_files, verb: "removed", preposition: "from" },
-  ];
-  for (const { rows, files, verb, preposition } of sides) {
-    const fileCount = files ?? 0;
-    if (rows) {
-      const where = fileCount > 0 ? ` ${preposition} ${counted(fileCount, "file")}` : "";
-      changes.push(`${counted(rows, "row")} ${verb}${where}`);
-    } else if (fileCount > 0) {
-      changes.push(`${counted(fileCount, "file")} ${verb}`);
-    }
-  }
-  return changes;
-}
-
-function commitTitle(commit: TableCommitApiResponse): string {
-  const operation = commit.operation ?? "commit";
-  const name = operation.charAt(0).toUpperCase() + operation.slice(1);
-  const changes = changeSummary(commit);
-  return changes.length > 0 ? `${name}: ${changes.join(", ")}` : name;
-}
-
 // Snapshot ids are random 64-bit numbers, so like a git hash the first seven digits name a
-// commit well enough to read; the full id is in the tooltip, the details and the copy button.
+// commit well enough to read; the full id is in the tooltip, the panel and the copy button.
 const SHORT_ID_LENGTH = 7;
-
-function CopySnapshotId({ snapshotId }: { snapshotId: string }) {
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 2000);
-    return () => clearTimeout(timer);
-  }, [copied]);
-
-  return (
-    <Tooltip content={copied ? "Copied" : "Copy snapshot id"}>
-      <IconButton
-        styleType="ghost"
-        shape="rectangle"
-        aria-label={`Copy snapshot id ${snapshotId}`}
-        icon={copied ? <IconCheck /> : <IconCopy />}
-        onClick={() => {
-          void navigator.clipboard.writeText(snapshotId).then(() => setCopied(true));
-        }}
-      />
-    </Tooltip>
-  );
-}
-
-function CommitDetail({ id, commit }: { id: string; commit: TableCommitApiResponse }) {
-  return (
-    <div id={id} className="border-t border-outline px-3 py-2">
-      <p className="type-code">Snapshot id: {commit.snapshot_id}</p>
-      <p className="type-code">Parent id: {commit.parent_id ?? "—"}</p>
-      <pre className="type-code mt-2 overflow-x-auto rounded-md bg-surface-container-dim p-2">
-        {JSON.stringify(commit.summary, null, 2)}
-      </pre>
-    </div>
-  );
-}
 
 function CommitRow({
   commit,
   schemaHref,
+  isOpen,
+  onOpen,
 }: {
   commit: TableCommitApiResponse;
   schemaHref: (schemaId: number) => string;
+  isOpen: boolean;
+  onOpen: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const detailId = useId();
-
   return (
     <li>
       <div className="flex flex-col gap-1 px-3 py-2 sm:flex-row sm:items-center sm:gap-3">
@@ -147,27 +85,36 @@ function CommitRow({
             {commit.snapshot_id.slice(0, SHORT_ID_LENGTH)}
           </span>
           <CopySnapshotId snapshotId={commit.snapshot_id} />
-          <Tooltip content={open ? "Hide details" : "Show details"}>
+          <Tooltip content="Show details">
             <IconButton
               styleType="ghost"
               shape="rectangle"
               aria-label={`Details of commit ${commit.snapshot_id}`}
-              aria-expanded={open}
-              aria-controls={open ? detailId : undefined}
+              aria-haspopup="dialog"
+              aria-expanded={isOpen}
               icon={<IconDots />}
-              onClick={() => setOpen((value) => !value)}
+              onClick={onOpen}
             />
           </Tooltip>
         </div>
       </div>
-      {open && <CommitDetail id={detailId} commit={commit} />}
     </li>
   );
 }
 
 // One day of the history, drawn as GitHub draws it: a commit mark on a line running down the
 // left, the day's commits in one box beside it.
-function CommitDaySection({ day, schemaHref }: { day: CommitDay; schemaHref: (schemaId: number) => string }) {
+function CommitDaySection({
+  day,
+  schemaHref,
+  openId,
+  onOpen,
+}: {
+  day: CommitDay;
+  schemaHref: (schemaId: number) => string;
+  openId: string | null;
+  onOpen: (snapshotId: string) => void;
+}) {
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} className="relative pb-6 pl-9 last:pb-0">
@@ -178,7 +125,13 @@ function CommitDaySection({ day, schemaHref }: { day: CommitDay; schemaHref: (sc
       </h2>
       <List className="mt-2 divide-y divide-outline rounded-md border border-outline bg-surface">
         {day.commits.map((commit) => (
-          <CommitRow key={commit.snapshot_id} commit={commit} schemaHref={schemaHref} />
+          <CommitRow
+            key={commit.snapshot_id}
+            commit={commit}
+            schemaHref={schemaHref}
+            isOpen={openId === commit.snapshot_id}
+            onOpen={() => onOpen(commit.snapshot_id)}
+          />
         ))}
       </List>
     </section>
@@ -229,6 +182,7 @@ function CommitHistory({
   filters: CommitFilters;
   schemaHref: (schemaId: number) => string;
 }) {
+  const { openId, open, close } = useOpenRecord("snapshot");
   const commits = useListTableCommits(tableUuid, filters.params, { query: { placeholderData: keepPreviousData } });
 
   if (commits.isPending) return <PanelSkeleton label="Loading commits…" />;
@@ -236,6 +190,7 @@ function CommitHistory({
     return <Banner type="negative" title={`Could not load commits: ${errorMessage(commits.error)}`} />;
   }
   const days = groupedByDay(sortedNewestFirst(commits.data.items));
+  const shown = openId === null ? undefined : commits.data.items.find((commit) => commit.snapshot_id === openId);
   return (
     <>
       {days.length === 0 ? (
@@ -243,11 +198,30 @@ function CommitHistory({
           {filters.isFiltered ? "No commits match these filters." : "No commits."}
         </p>
       ) : (
-        days.map((day) => <CommitDaySection key={day.label} day={day} schemaHref={schemaHref} />)
+        days.map((day) => (
+          <CommitDaySection key={day.label} day={day} schemaHref={schemaHref} openId={openId} onOpen={open} />
+        ))
       )}
       {commits.data.truncated && (
         <p className="type-body-small mt-3 text-notice-text">Showing the newest commits only.</p>
       )}
+      <Drawer
+        modal={false}
+        contentKey={openId ?? undefined}
+        isOpen={openId !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) close();
+        }}
+        title={shown === undefined ? "Commit" : commitTitle(shown)}
+      >
+        {shown === undefined ? (
+          <p className="type-body-medium text-on-surface-variant">
+            This commit is not in the history shown. It may be outside the filters, or expired.
+          </p>
+        ) : (
+          <CommitPanel commit={shown} schemaHref={schemaHref} />
+        )}
+      </Drawer>
     </>
   );
 }

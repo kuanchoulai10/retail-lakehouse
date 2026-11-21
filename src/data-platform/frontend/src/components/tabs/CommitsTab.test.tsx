@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TableCommitApiResponse } from "../../api/generated/model";
 import { stubCatalogApi, type StubbedCall } from "../../test/catalogApiStub";
 import { jsonResponse } from "../../test/fixtures";
@@ -34,6 +34,7 @@ const ITEMS = [
     snapshot_id: "3051729675574597004",
     parent_id: "3051729675574597003",
     committed_at: "2026-10-30T12:00:00Z",
+    summary: { "kafka.connect.task-id": "0", "total-data-files": "12" },
   }),
   commit({
     snapshot_id: "8127364509182736455",
@@ -92,10 +93,29 @@ function commitsOn(name: string): HTMLElement[] {
   return within(day(name)).getAllByRole("listitem");
 }
 
+// The window at 768px and wider matches; the jsdom setup's stub matches no query (a phone).
+function stubWindowWidth({ wide }: { wide: boolean }) {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: wide && query === "(min-width: 48rem)",
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  }));
+}
+
+const APPEND_TITLE = "Append: 1,200 rows added in 4 files";
+const APPEND_ID = "3051729675574597004";
+
 describe("CommitsTab", () => {
   let calls: StubbedCall[];
 
   beforeEach(() => {
+    // Beside the list, as on a laptop; the phone layout is the modal case of the Drawer.
+    stubWindowWidth({ wide: true });
     calls = stubCatalogApi({
       "GET /v1/tables/uuid-orders/commits*": () => jsonResponse({ items: ITEMS, truncated: false }),
     });
@@ -137,20 +157,93 @@ describe("CommitsTab", () => {
     expect(within(row).queryByText("3051729675574597004")).not.toBeInTheDocument();
   });
 
-  it("shows the full ids and summary JSON when a commit's details are opened", async () => {
-    const user = userEvent.setup();
-    renderTab();
-    await screen.findByRole("region", { name: "Commits on Oct 30, 2026" });
-    const toggle = screen.getByRole("button", { name: "Details of commit 3051729675574597004" });
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByText("Parent id: 3051729675574597003")).not.toBeInTheDocument();
+  describe("the side panel", () => {
+    it("opens a commit's details in a panel named by its title and keeps the snapshot in the url", async () => {
+      const user = userEvent.setup();
+      renderTab();
+      await screen.findByRole("region", { name: "Commits on Oct 30, 2026" });
+      const toggle = screen.getByRole("button", { name: `Details of commit ${APPEND_ID}` });
+      expect(toggle).toHaveAttribute("aria-haspopup", "dialog");
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    await user.click(toggle);
+      await user.click(toggle);
 
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText("Snapshot id: 3051729675574597004")).toBeInTheDocument();
-    expect(screen.getByText("Parent id: 3051729675574597003")).toBeInTheDocument();
-    expect(screen.getByText(/"kafka.connect.task-id": "0"/)).toBeInTheDocument();
+      const panel = await screen.findByRole("dialog", { name: APPEND_TITLE });
+      expect(toggle).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByTestId("location")).toHaveTextContent(`?snapshot=${APPEND_ID}`);
+      const facts = within(panel);
+      expect(facts.getByText(APPEND_ID)).toBeInTheDocument();
+      expect(facts.getByText("3051729675574597003")).toBeInTheDocument();
+      expect(facts.getByText("Snapshot id")).toBeInTheDocument();
+      expect(facts.getByRole("link", { name: "Schema v0" })).toHaveAttribute("href", "/tables/orders/schema?schema=0");
+      expect(facts.getByText("1,200 rows added in 4 files")).toBeInTheDocument();
+      expect(facts.getByText("Kafka Connect")).toBeInTheDocument();
+    });
+
+    it("lists every summary entry with its value", async () => {
+      renderTab(`?snapshot=${APPEND_ID}`);
+      const panel = await screen.findByRole("dialog", { name: APPEND_TITLE });
+      expect(within(panel).getByRole("heading", { name: "Summary" })).toBeInTheDocument();
+      expect(within(panel).getByText("kafka.connect.task-id")).toBeInTheDocument();
+      expect(within(panel).getByText("0")).toHaveClass("font-mono");
+      expect(within(panel).getByText("total-data-files")).toBeInTheDocument();
+      expect(within(panel).getByText("12")).toHaveClass("font-mono");
+    });
+
+    it("keeps the snapshot when a filter changes, and the filters when the panel closes", async () => {
+      const user = userEvent.setup();
+      renderTab(`?snapshot=${APPEND_ID}`);
+      await screen.findByRole("dialog", { name: APPEND_TITLE });
+
+      await user.click(screen.getByRole("combobox", { name: "Writer" }));
+      await user.click(await screen.findByRole("option", { name: "Kafka Connect" }));
+      await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("writer=kafka_connect"));
+      expect(screen.getByTestId("location")).toHaveTextContent(`snapshot=${APPEND_ID}`);
+
+      await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Close" }));
+
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(screen.getByTestId("location")).toHaveTextContent("?writer=kafka_connect");
+      expect(screen.getByTestId("location")).not.toHaveTextContent("snapshot");
+    });
+
+    it("says so when the snapshot is not in the history shown", async () => {
+      renderTab("?snapshot=999");
+      const panel = await screen.findByRole("dialog");
+      expect(
+        within(panel).getByText("This commit is not in the history shown. It may be outside the filters, or expired."),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Could not load commits", { exact: false })).not.toBeInTheDocument();
+    });
+
+    it("returns focus to the commit's details button on Escape", async () => {
+      const user = userEvent.setup();
+      renderTab();
+      await screen.findByRole("region", { name: "Commits on Oct 30, 2026" });
+      const toggle = screen.getByRole("button", { name: `Details of commit ${APPEND_ID}` });
+      await user.click(toggle);
+      const panel = await screen.findByRole("dialog", { name: APPEND_TITLE });
+      await waitFor(() => expect(within(panel).getByRole("heading", { name: APPEND_TITLE })).toHaveFocus());
+
+      await user.keyboard("{Escape}");
+
+      await waitFor(() => expect(toggle).toHaveFocus());
+      expect(screen.getByTestId("location")).toHaveTextContent("");
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("shows another commit in the same panel when its button is pressed", async () => {
+      const user = userEvent.setup();
+      renderTab(`?snapshot=${APPEND_ID}`);
+      await screen.findByRole("dialog", { name: APPEND_TITLE });
+
+      await user.click(screen.getByRole("button", { name: "Details of commit 8127364509182736455" }));
+
+      expect(await screen.findByRole("dialog", { name: "Replace: 1 file added, 6 files removed" })).toBeInTheDocument();
+      expect(screen.getAllByRole("dialog")).toHaveLength(1);
+      expect(screen.getByTestId("location")).toHaveTextContent("?snapshot=8127364509182736455");
+    });
   });
 
   it("links a commit to the schema version it was written with", async () => {

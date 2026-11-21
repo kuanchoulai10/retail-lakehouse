@@ -285,6 +285,44 @@ export const CommitsPhone: Story = {
   },
 };
 
+const SPARK_COMMIT_ID = "4610293847561029384";
+const SPARK_COMMIT_TITLE = "Replace: 2 files added, 18 files removed";
+
+export const CommitsPanel: Story = {
+  args: { route: `${ORDERS}/commits` },
+  globals: DESKTOP,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const details = await canvas.findByRole("button", { name: `Details of commit ${SPARK_COMMIT_ID}` });
+    while (canvasElement.ownerDocument.activeElement !== details) await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    const panel = within(await body.findByRole("dialog", { name: SPARK_COMMIT_TITLE }));
+    await waitFor(() => expect(panel.getByRole("heading", { name: SPARK_COMMIT_TITLE })).toHaveFocus());
+    await expect(panel.getByText("spark.app.id")).toBeVisible();
+    await expect(getComputedStyle(panel.getByText("spark.app.id")).fontFamily).toBe(
+      getComputedStyle(panel.getByText("spark-application-1762567380")).fontFamily,
+    );
+    await expect(panel.getByText("spark-application-1762567380")).toBeVisible();
+    await expect(panel.getByRole("link", { name: "Schema v0" })).toBeVisible();
+    await expect(canvasElement.ownerDocument.body.querySelector(".bg-scrim")).toBeNull();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(body.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(details).toHaveFocus());
+  },
+};
+
+export const CommitsPanelPhone: Story = {
+  args: { route: `${ORDERS}/commits?snapshot=${SPARK_COMMIT_ID}` },
+  globals: PHONE,
+  play: async ({ canvasElement }) => {
+    const panel = await within(canvasElement.ownerDocument.body).findByRole("dialog", { name: SPARK_COMMIT_TITLE });
+    await expect(panel.getBoundingClientRect().width).toBe(window.innerWidth);
+    await expect(within(panel).getByText("spark-application-1762567380")).toBeVisible();
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
+
 export const Maintenance: Story = {
   args: { route: `${ORDERS}/maintenance` },
   globals: DESKTOP,
