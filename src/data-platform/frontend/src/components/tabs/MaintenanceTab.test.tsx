@@ -436,6 +436,39 @@ describe("MaintenanceTab", () => {
       expect(await within(panel).findByText("This run belongs to another table")).toBeInTheDocument();
       expect(within(panel).queryByText("mr-other")).not.toBeInTheDocument();
     });
+
+    describe("read again while it is in flight", () => {
+      const FAKE_TIMERS: Parameters<typeof vi.useFakeTimers>[0] = {
+        toFake: ["setTimeout", "setInterval", "clearTimeout", "clearInterval", "Date"],
+        shouldAdvanceTime: true,
+      };
+      const byIdReads = (id: string) => callsTo(calls, "GET", runPath(id)).length;
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it.each(["pending", "queued", "running"])("reads a %s run again on the in-flight interval", async (status) => {
+        vi.useFakeTimers(FAKE_TIMERS);
+        calls = stubCatalogApi({
+          [`GET ${RUNS_PATH}`]: () => jsonResponse([EXPIRE_RUN]),
+          [`GET ${runPath(OLDER_RUN_ID)}`]: () => jsonResponse({ ...OLDER_RUN, status, finished_at: null }),
+        });
+        renderTab(`/?run=${OLDER_RUN_ID}`);
+        await screen.findByRole("dialog", { name: "Expire snapshots" });
+        expect(byIdReads(OLDER_RUN_ID)).toBe(1);
+        await vi.advanceTimersByTimeAsync(15_500);
+        await vi.waitFor(() => expect(byIdReads(OLDER_RUN_ID)).toBeGreaterThanOrEqual(2));
+      });
+
+      it("does not read a finished run again", async () => {
+        vi.useFakeTimers(FAKE_TIMERS);
+        renderTab(`/?run=${OLDER_RUN_ID}`);
+        await screen.findByRole("dialog", { name: "Expire snapshots" });
+        await vi.advanceTimersByTimeAsync(31_000);
+        expect(byIdReads(OLDER_RUN_ID)).toBe(1);
+      });
+    });
   });
 
   describe("with a run in flight", () => {

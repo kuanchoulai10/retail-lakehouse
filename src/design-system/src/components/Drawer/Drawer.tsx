@@ -1,5 +1,5 @@
 import { Dialog, VisuallyHidden } from "radix-ui";
-import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useId, useLayoutEffect, useRef, useState } from "react";
 import { IconX } from "../../icons";
 import { cn } from "../../lib/cn";
 import { useMatchesMedia } from "../../lib/useMatchesMedia";
@@ -47,8 +47,10 @@ export function Drawer({
   const [body, setBody] = useState<HTMLDivElement | null>(null);
   const [bodyContent, setBodyContent] = useState<HTMLDivElement | null>(null);
   useTabStopWhileScrolling(body, bodyContent);
+  // The title names the panel and its body, a region, so the body's tab stop is announced by the title.
+  const titleId = useId();
   const heading = (
-    <Dialog.Title ref={headingRef} tabIndex={-1} className="type-title-large">
+    <Dialog.Title id={titleId} ref={headingRef} tabIndex={-1} className="type-title-large">
       {title}
     </Dialog.Title>
   );
@@ -83,6 +85,7 @@ export function Drawer({
           onOpenAutoFocus={onOpenAutoFocus}
           onCloseAutoFocus={onCloseAutoFocus}
           onInteractOutside={isModal ? undefined : (event) => event.preventDefault()}
+          aria-labelledby={titleId}
           aria-describedby={undefined}
           className={cn(
             "fixed inset-y-0 z-50 flex w-full flex-col bg-surface text-on-surface",
@@ -99,6 +102,8 @@ export function Drawer({
           </div>
           <div
             ref={setBody}
+            role="region"
+            aria-labelledby={titleId}
             className={cn(
               "type-body-large flex-1 overflow-y-auto px-6 py-4",
               "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring",

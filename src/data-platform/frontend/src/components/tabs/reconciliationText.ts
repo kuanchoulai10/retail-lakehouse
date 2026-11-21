@@ -4,7 +4,9 @@ import type {
   TableReconciliationApiResponse,
 } from "@/api/generated/model";
 import { formatBytes, formatCount, formatSeconds } from "@/format";
+import { operationLabel } from "@/lib/operationLabel";
 import { targetKind, targetName } from "@/lib/policyPaths";
+import { sentenceCase } from "@/lib/sentenceCase";
 
 // What a reconciliation's record says, in words: the line headline, the wake reasons and one
 // reason sentence per operation. Built from the structured record so the wording can change
@@ -46,13 +48,6 @@ const WAKE_REASONS: [string, string][] = [
   ["previous_run_finished", "Previous run finished"],
 ];
 
-const OPERATION_LABELS: Record<string, string> = {
-  rewrite_data_files: "Rewrite data files",
-  rewrite_manifests: "Rewrite manifests",
-  expire_snapshots: "Expire snapshots",
-  remove_orphan_files: "Remove orphan files",
-};
-
 const MEASUREMENT_LABELS: Record<string, string> = {
   reducible_files: "Reducible files",
   target_file_size: "Target file size",
@@ -72,15 +67,6 @@ const NEXT_ALLOWED_FORMAT = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
   hourCycle: "h23",
 });
-
-function sentenceCase(key: string): string {
-  const words = key.replaceAll("_", " ");
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
-export function operationLabel(operation: string): string {
-  return OPERATION_LABELS[operation] ?? sentenceCase(operation);
-}
 
 export function resultLabel(result: string): string {
   return RESULT_LABELS[result] ?? sentenceCase(result);

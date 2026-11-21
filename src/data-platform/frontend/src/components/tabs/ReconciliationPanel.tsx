@@ -8,7 +8,6 @@ import {
   formatRule,
   isManualRun,
   measurementLabel,
-  operationLabel,
   policyLabel,
   policyOrigin,
   reasonSentence,
@@ -17,6 +16,7 @@ import {
   wakeText,
 } from "@/components/tabs/reconciliationText";
 import { formatTimestamp } from "@/format";
+import { operationLabel } from "@/lib/operationLabel";
 import { policyVersionPath } from "@/lib/policyPaths";
 
 function MetMark({ met }: { met: boolean | null }) {

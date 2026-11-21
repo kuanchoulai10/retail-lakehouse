@@ -6,7 +6,7 @@ function counted(value: number, noun: string): string {
 }
 
 // What a commit changed, in the words of a commit message: "1,200 rows added in 4 files".
-export function changeSummary(commit: TableCommitApiResponse): string[] {
+export function commitChanges(commit: TableCommitApiResponse): string[] {
   const changes: string[] = [];
   const sides = [
     { rows: commit.added_records, files: commit.added_data_files, verb: "added", preposition: "in" },
@@ -27,6 +27,6 @@ export function changeSummary(commit: TableCommitApiResponse): string[] {
 export function commitTitle(commit: TableCommitApiResponse): string {
   const operation = commit.operation ?? "commit";
   const name = operation.charAt(0).toUpperCase() + operation.slice(1);
-  const changes = changeSummary(commit);
+  const changes = commitChanges(commit);
   return changes.length > 0 ? `${name}: ${changes.join(", ")}` : name;
 }

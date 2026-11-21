@@ -2,13 +2,13 @@ import { DescriptionList, type DescriptionListItem, TextLink } from "@retail-lak
 import { useId } from "react";
 import { Link } from "react-router";
 import type { TableCommitApiResponse } from "@/api/generated/model";
-import { changeSummary } from "@/components/tabs/commitText";
+import { commitChanges } from "@/components/tabs/commitText";
 import { CopySnapshotId } from "@/components/tabs/CopySnapshotId";
 import { formatTimestamp } from "@/format";
 import { writerLabel } from "@/writerLabel";
 
 function fields(commit: TableCommitApiResponse, schemaHref: (schemaId: number) => string): DescriptionListItem[] {
-  const changes = changeSummary(commit);
+  const changes = commitChanges(commit);
   return [
     {
       term: "Snapshot id",

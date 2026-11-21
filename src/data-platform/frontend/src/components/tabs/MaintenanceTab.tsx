@@ -1,6 +1,5 @@
 import { Banner, createDataTableColumnHelper, DataTable, Drawer, Panel, TextLink } from "@retail-lakehouse/design-system";
 import { useMemo } from "react";
-import { ApiError } from "@/api/apiError";
 import type { TableMaintenanceRunApiResponse } from "@/api/generated/model";
 import {
   useGetTableMaintenanceRun,
@@ -9,10 +8,11 @@ import {
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { RunStatusBadge } from "@/components/RunStatusBadge";
 import { MaintenanceRunPanel } from "@/components/tabs/MaintenanceRunPanel";
-import { operationLabel } from "@/components/tabs/reconciliationText";
 import { useOpenRecord } from "@/components/tabs/useOpenRecord";
 import { errorMessage, formatDuration, formatTimestamp } from "@/format";
 import { anyRunInFlight } from "@/lib/anyRunInFlight";
+import { isGone } from "@/lib/isGone";
+import { operationLabel } from "@/lib/operationLabel";
 import { temporalWorkflowsUrl } from "@/lib/temporalWorkflowsUrl";
 
 // While a run is in flight the list is read again this often, so its queued and running times keep counting.
@@ -44,12 +44,6 @@ const columns = column.columns([
   }),
 ]);
 
-// A 404 is a run that no longer exists; a 422 is an id that cannot name a run, which is what a link
-// from before the mr- prefix carries. Either way the link points at nothing.
-function isGone(error: unknown): boolean {
-  return error instanceof ApiError && (error.status === 404 || error.status === 422);
-}
-
 type Shown =
   | { kind: "run"; run: TableMaintenanceRunApiResponse; now: Date }
   | { kind: "loading" }
@@ -72,7 +66,8 @@ function PanelContent({ shown }: { shown: Shown }) {
 // The runs of the table, newest first, one row per run. A row opens its run in a side panel beside
 // the list (full width and modal on a phone), kept in the url as `?run=<id>`, the link a
 // reconciliation gives to the run it started. The panel shows the listed run, so it refreshes with
-// the list's in-flight polling; a run older than the runs listed is read by its id.
+// the list's in-flight polling; a run older than the runs listed is read by its id, and read again
+// while it is in flight.
 // The Temporal link is a plain anchor, not a router Link: the Temporal UI is another app on the
 // gateway, outside the console's base path.
 export function MaintenanceTab({ tableUuid }: { tableUuid: string }) {
@@ -82,7 +77,13 @@ export function MaintenanceTab({ tableUuid }: { tableUuid: string }) {
   const { openId, open, close } = useOpenRecord("run");
   const listed = openId === null ? undefined : runs.data?.find((run) => run.run_id === openId);
   const notInList = openId !== null && runs.data !== undefined && listed === undefined;
-  const byId = useGetTableMaintenanceRun(openId ?? "", { query: { enabled: notInList } });
+  // A run read by id is read again on the same interval while it is in flight, as the list is.
+  const byId = useGetTableMaintenanceRun(openId ?? "", {
+    query: {
+      enabled: notInList,
+      refetchInterval: (query) => (query.state.data !== undefined && anyRunInFlight([query.state.data]) ? IN_FLIGHT_REFETCH_MS : false),
+    },
+  });
   // A queued or running attempt counts up to the moment the runs were last read.
   const now = useMemo(() => new Date(runs.dataUpdatedAt), [runs.dataUpdatedAt]);
   const byIdNow = useMemo(() => new Date(byId.dataUpdatedAt), [byId.dataUpdatedAt]);

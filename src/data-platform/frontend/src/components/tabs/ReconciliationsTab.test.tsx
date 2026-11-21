@@ -1,6 +1,6 @@
 import { TooltipProvider } from "@retail-lakehouse/design-system";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -109,8 +109,10 @@ function LocationProbe() {
   return <output aria-label="search">{location.search}</output>;
 }
 
+let client: QueryClient;
+
 function renderTab(search = "") {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[`/tables/orders/reconciliations${search}`]}>
@@ -141,6 +143,7 @@ function stubWindowWidth({ wide }: { wide: boolean }) {
   }));
 }
 
+const REFRESH_FAILED = "Could not refresh. Showing what was last read.";
 const LIST_PATH = "/v1/tables/uuid-orders/reconciliations*";
 const reconciliationPath = (id: string) => `/v1/table-reconciliations/${id}`;
 
@@ -411,6 +414,28 @@ describe("ReconciliationsTab", () => {
     stubCatalogApi({ "GET /v1/tables/uuid-orders/reconciliations*": () => jsonResponse({ detail: "database down" }, 500) });
     renderTab();
     expect(await screen.findByText("Could not load reconciliations: database down")).toBeInTheDocument();
+  });
+
+  it("keeps the timeline and the open record when a refresh fails, and drops the note once one succeeds", async () => {
+    let reads = 0;
+    stubCatalogApi({
+      [`GET ${LIST_PATH}`]: () =>
+        reads++ === 1 ? jsonResponse({ detail: "database down" }, 500) : jsonResponse([STARTED, quiet("rec-lone", at(10, 9))]),
+    });
+    renderTab("?reconciliation=rec-started");
+    await screen.findByRole("dialog", { name: "Started Rewrite data files" });
+
+    await act(() => client.invalidateQueries());
+
+    expect(await screen.findByText(REFRESH_FAILED)).toBeInTheDocument();
+    expect(screen.queryByText(/^Could not load reconciliations/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Started Rewrite data files/ })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Started Rewrite data files" })).toBeInTheDocument();
+
+    await act(() => client.invalidateQueries());
+
+    await waitFor(() => expect(screen.queryByText(REFRESH_FAILED)).not.toBeInTheDocument());
+    expect(screen.getByRole("dialog", { name: "Started Rewrite data files" })).toBeInTheDocument();
   });
 
   it("Show older requests before the oldest record", async () => {

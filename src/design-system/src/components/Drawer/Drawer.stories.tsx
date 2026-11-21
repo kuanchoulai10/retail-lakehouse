@@ -290,6 +290,8 @@ export const SidePanelLongContent: Story = {
     const body = within(dialog).getByText("Field 1").closest("[tabindex]");
     await waitFor(() => expect(body).toHaveFocus());
     await expect(body!.scrollHeight).toBeGreaterThan(body!.clientHeight);
+    // The tab stop is announced by the panel's title, not as an unnamed group.
+    await expect(within(dialog).getByRole("region", { name: "Run details" })).toBe(body);
   },
 };
 

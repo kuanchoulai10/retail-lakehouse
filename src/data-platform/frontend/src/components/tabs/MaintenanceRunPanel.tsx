@@ -75,18 +75,19 @@ function fields(run: TableMaintenanceRunApiResponse): DescriptionListItem[] {
 // What the attempt's record says, one line each: how long it queued and ran, why it failed, what
 // the platform did next, whether its Spark event log finished and the job it ran as.
 function attemptLines(attempt: TableMaintenanceRunAttemptApiResponse, now: Date): ReactNode {
+  // Each line is keyed by what it tells, so a counter that moves does not remount its line.
   const lines = [
-    `Queued ${queueWaitText(attempt, now)}`,
-    `Ran ${runTimeText(attempt, now)}`,
-    failureClassText(attempt.failure_class),
-    nextStepText(attempt.next_step, attempt.next_size),
-    `Event log: ${eventLogText(attempt.event_log_finished)}`,
-  ].filter((line) => line !== "");
+    { key: "queued", text: `Queued ${queueWaitText(attempt, now)}` },
+    { key: "ran", text: `Ran ${runTimeText(attempt, now)}` },
+    { key: "failure", text: failureClassText(attempt.failure_class) },
+    { key: "next", text: nextStepText(attempt.next_step, attempt.next_size) },
+    { key: "event-log", text: `Event log: ${eventLogText(attempt.event_log_finished)}` },
+  ].filter((line) => line.text !== "");
   return (
     <>
       {lines.map((line) => (
-        <span key={line} className="block tabular-nums">
-          {line}
+        <span key={line.key} className="block tabular-nums">
+          {line.text}
         </span>
       ))}
       {attempt.job_name !== null && <span className="block font-mono break-all">{attempt.job_name}</span>}

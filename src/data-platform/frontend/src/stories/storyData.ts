@@ -600,6 +600,18 @@ function endedRun(
   };
 }
 
+// The scheduled plan's compaction, its first run.
+const SCHEDULED_COMPACTION_RUN: TableMaintenanceRunApiResponse = endedRun(
+  SCHEDULED_RUN_ID,
+  "rewrite_data_files",
+  [succeededAttempt("tm-orders-rewrite", "2026-11-08T02:00:00Z", "2026-11-08T02:03:10Z")],
+  {
+    filters: [{ spec_id: 0, where: "(`region` = 'eu')" }],
+    procedure_args: { options: { "target-file-size-bytes": 134217728 } },
+    metrics: { rewritten_data_files_count: 14 },
+  },
+);
+
 // The four runs of one scheduled plan, created together and run one at a time in the plan's order,
 // listed as the API lists them: newest first, the plan's last operation first.
 export const RUNS: TableMaintenanceRunApiResponse[] = [
@@ -624,16 +636,7 @@ export const RUNS: TableMaintenanceRunApiResponse[] = [
     [succeededAttempt("tm-orders-manifests", "2026-11-08T02:03:20Z", "2026-11-08T02:04:00Z")],
     { metrics: { rewritten_manifests_count: 18, added_manifests_count: 2 } },
   ),
-  endedRun(
-    SCHEDULED_RUN_ID,
-    "rewrite_data_files",
-    [succeededAttempt("tm-orders-rewrite", "2026-11-08T02:00:00Z", "2026-11-08T02:03:10Z")],
-    {
-      filters: [{ spec_id: 0, where: "(`region` = 'eu')" }],
-      procedure_args: { options: { "target-file-size-bytes": 134217728 } },
-      metrics: { rewritten_data_files_count: 14 },
-    },
-  ),
+  SCHEDULED_COMPACTION_RUN,
 ];
 
 // A compaction that ran out of memory at S and succeeded at M.
@@ -687,7 +690,7 @@ const TEN_PARTITIONS_WHERE = Array.from(
 
 // A scheduled compaction of the partitions over the target: one where clause per partition spec, the first of them long.
 export const PARTITION_SCOPE_RUN: TableMaintenanceRunApiResponse = {
-  ...RUNS[3]!,
+  ...SCHEDULED_COMPACTION_RUN,
   run_id: PARTITION_SCOPE_RUN_ID,
   filters: [
     { spec_id: 0, where: TEN_PARTITIONS_WHERE },

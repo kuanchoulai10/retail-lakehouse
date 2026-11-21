@@ -48,6 +48,8 @@ function groupedByDay(commits: TableCommitApiResponse[]): CommitDay[] {
 // commit well enough to read; the full id is in the tooltip, the panel and the copy button.
 const SHORT_ID_LENGTH = 7;
 
+const REFRESH_FAILED = "Could not refresh. Showing what was last read.";
+
 function CommitRow({
   commit,
   schemaHref,
@@ -186,13 +188,15 @@ function CommitHistory({
   const commits = useListTableCommits(tableUuid, filters.params, { query: { placeholderData: keepPreviousData } });
 
   if (commits.isPending) return <PanelSkeleton label="Loading commits…" />;
-  if (commits.isError) {
+  // A failed background read keeps the history it already has on screen; only a first read that fails replaces it.
+  if (commits.isError && commits.data === undefined) {
     return <Banner type="negative" title={`Could not load commits: ${errorMessage(commits.error)}`} />;
   }
   const days = groupedByDay(sortedNewestFirst(commits.data.items));
   const shown = openId === null ? undefined : commits.data.items.find((commit) => commit.snapshot_id === openId);
   return (
     <>
+      {commits.isError && <Banner type="information" title={REFRESH_FAILED} className="mb-4" />}
       {days.length === 0 ? (
         <p className="type-body-medium text-on-surface-variant">
           {filters.isFiltered ? "No commits match these filters." : "No commits."}

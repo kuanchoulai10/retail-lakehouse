@@ -1,6 +1,6 @@
 import { TooltipProvider } from "@retail-lakehouse/design-system";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -65,8 +65,10 @@ function LocationProbe() {
   return <output data-testid="location">{location.search}</output>;
 }
 
+let client: QueryClient;
+
 function renderTab(search = "") {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[`/tables/orders/commits${search}`]}>
@@ -107,6 +109,7 @@ function stubWindowWidth({ wide }: { wide: boolean }) {
   }));
 }
 
+const REFRESH_FAILED = "Could not refresh. Showing what was last read.";
 const APPEND_TITLE = "Append: 1,200 rows added in 4 files";
 const APPEND_ID = "3051729675574597004";
 
@@ -181,14 +184,53 @@ describe("CommitsTab", () => {
       expect(facts.getByText("Kafka Connect")).toBeInTheDocument();
     });
 
-    it("lists every summary entry with its value", async () => {
+    it("lists every summary entry with its value, in the API's order", async () => {
       renderTab(`?snapshot=${APPEND_ID}`);
       const panel = await screen.findByRole("dialog", { name: APPEND_TITLE });
-      expect(within(panel).getByRole("heading", { name: "Summary" })).toBeInTheDocument();
-      expect(within(panel).getByText("kafka.connect.task-id")).toBeInTheDocument();
-      expect(within(panel).getByText("0")).toHaveClass("font-mono");
-      expect(within(panel).getByText("total-data-files")).toBeInTheDocument();
-      expect(within(panel).getByText("12")).toHaveClass("font-mono");
+      const summary = within(panel).getByRole("region", { name: "Summary" });
+      expect(within(summary).getAllByRole("term").map((term) => term.textContent)).toEqual([
+        "kafka.connect.task-id",
+        "total-data-files",
+      ]);
+      expect(within(summary).getByText("0")).toHaveClass("font-mono");
+      expect(within(summary).getByText("12")).toHaveClass("font-mono");
+    });
+
+    it("shows a dash for a commit with no schema version and says when its summary is empty", async () => {
+      stubCatalogApi({
+        "GET /v1/tables/uuid-orders/commits*": () =>
+          jsonResponse({ items: [commit({ snapshot_id: "2222222333", schema_id: null, summary: {} })], truncated: false }),
+      });
+      renderTab("?snapshot=2222222333");
+      const panel = await screen.findByRole("dialog", { name: APPEND_TITLE });
+      const schema = within(panel).getByText("Schema", { selector: "dt" });
+      expect(schema.nextElementSibling).toHaveTextContent(/^—$/);
+      expect(within(panel).queryByRole("link", { name: /^Schema v/ })).not.toBeInTheDocument();
+      expect(within(panel).getByText("No summary entries.")).toBeInTheDocument();
+    });
+
+    it("keeps the history and the open commit when a refresh fails, and drops the note once one succeeds", async () => {
+      let reads = 0;
+      stubCatalogApi({
+        "GET /v1/tables/uuid-orders/commits*": () =>
+          reads++ === 1
+            ? jsonResponse({ detail: "catalog down" }, 500)
+            : jsonResponse({ items: ITEMS, truncated: false }),
+      });
+      renderTab(`?snapshot=${APPEND_ID}`);
+      await screen.findByRole("dialog", { name: APPEND_TITLE });
+
+      await act(() => client.invalidateQueries());
+
+      expect(await screen.findByText(REFRESH_FAILED)).toBeInTheDocument();
+      expect(screen.queryByText(/^Could not load commits/)).not.toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Commits on Oct 30, 2026" })).toBeInTheDocument();
+      expect(screen.getByRole("dialog", { name: APPEND_TITLE })).toBeInTheDocument();
+
+      await act(() => client.invalidateQueries());
+
+      await waitFor(() => expect(screen.queryByText(REFRESH_FAILED)).not.toBeInTheDocument());
+      expect(screen.getByRole("dialog", { name: APPEND_TITLE })).toBeInTheDocument();
     });
 
     it("keeps the snapshot when a filter changes, and the filters when the panel closes", async () => {

@@ -10,7 +10,6 @@ import {
 } from "@retail-lakehouse/design-system";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useId, useState } from "react";
-import { ApiError } from "@/api/apiError";
 import type { TableReconciliationApiResponse } from "@/api/generated/model";
 import {
   getListTableReconciliationsQueryKey,
@@ -31,8 +30,11 @@ import {
 import { RunLink } from "@/components/tabs/RunLink";
 import { useOpenRecord } from "@/components/tabs/useOpenRecord";
 import { errorMessage, formatRelativeTime, formatTimestamp } from "@/format";
+import { isGone } from "@/lib/isGone";
 
 const PAGE_SIZE = 50;
+
+const REFRESH_FAILED = "Could not refresh. Showing what was last read.";
 
 const DAY_FORMAT = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
 
@@ -163,12 +165,6 @@ function DaySection({ day, onOpen }: { day: Day; onOpen: (r: TableReconciliation
   );
 }
 
-// A 404 is a reconciliation that no longer exists; a 422 is an id that cannot name one. Either way
-// the link points at nothing.
-function isGone(error: unknown): boolean {
-  return error instanceof ApiError && (error.status === 404 || error.status === 422);
-}
-
 type Shown =
   | { kind: "record"; record: TableReconciliationApiResponse }
   | { kind: "loading" }
@@ -208,7 +204,8 @@ export function ReconciliationsTab({ tableUuid }: { tableUuid: string }) {
   const byId = useGetTableReconciliation(openId ?? "", { query: { enabled: notInList } });
 
   if (pages.isPending) return <PanelSkeleton label="Loading reconciliations…" />;
-  if (pages.isError) {
+  // A failed background read keeps the records it already has on screen; only a first read that fails replaces them.
+  if (pages.isError && pages.data === undefined) {
     return <Banner type="negative" title={`Could not load reconciliations: ${errorMessage(pages.error)}`} />;
   }
 
@@ -228,6 +225,7 @@ export function ReconciliationsTab({ tableUuid }: { tableUuid: string }) {
   const loaded = records ?? [];
   return (
     <>
+      {pages.isError && <Banner type="information" title={REFRESH_FAILED} className="mb-4" />}
       {loaded.length === 0 ? (
         <p className="type-body-medium text-on-surface-variant">No reconciliations yet.</p>
       ) : (
