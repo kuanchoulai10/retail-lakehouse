@@ -478,15 +478,23 @@ ensure_policy() {
 }
 
 attach_policy() {
-  api PUT "/v1/maintenance-policies/$1/mappings" "$(jq -cn --arg c "${CATALOG}" --arg s "${SCHEMA}" --arg t "$2" \
-    '{target: {type: "table", path: [$c, $s, $t]}}')" >/dev/null
+  api PUT "/v1/maintenance-policies/$1/attachments" "$(jq -cn --arg c "${CATALOG}" --arg s "${SCHEMA}" --arg t "$2" \
+    '{target: {type: "table", path: [$c, $s, $t]}}')" | jq -r '.id'
 }
 
-assert_applicable_policy() {
-  local uuid="$1" name="$2"
-  api GET "/v1/tables/${uuid}/applicable-policy" \
-    | jq -e --arg n "${name}" '.name == $n and .target.type == "table"' >/dev/null \
-    || { echo "table ${uuid} does not resolve to the policy ${name} attached to it" >&2; return 1; }
+assert_effective_policies() {
+  local uuid="$1" table="$2" name="$3" attachment_id="$4"
+  # shellcheck disable=SC2016
+  check '.policies | length == 2
+    and (.[0] | .kind == "maintenance" and .policy_name == $n and .attachment_id == $pa
+      and .target == {type: "table", path: [$c, $s, $t], table_uuid: $u})
+    and (.[1] | .kind == "discovery" and .policy_name == $dn and .attachment_id == $da
+      and .target == {type: "namespace", path: [$c, $s], table_uuid: null})' \
+    "$(api GET "/v1/tables/${uuid}/effective-policies")" \
+    "${table} does not follow the maintenance policy ${name} attached to it and the discovery policy ${DISCOVERY_POLICY} attached to ${CATALOG}.${SCHEMA}" \
+    --arg u "${uuid}" --arg c "${CATALOG}" --arg s "${SCHEMA}" --arg t "${table}" \
+    --arg n "${name}" --arg pa "${attachment_id}" --arg dn "${DISCOVERY_POLICY}" --arg da "${DISCOVERY_ATTACHMENT_ID}"
+  progress "${table} follows the maintenance policy ${name} attached to it (${attachment_id}) and the discovery policy ${DISCOVERY_POLICY} from the namespace ${CATALOG}.${SCHEMA} (${DISCOVERY_ATTACHMENT_ID})"
 }
 
 wait_for_discovery_schedule() {
@@ -636,14 +644,16 @@ assert_manual_run_recorded() {
 }
 
 assert_prefixed_ids() {
-  local uuid="$1" run_id="$2" rule_id="$3" policy="$4" discovery_policy_id="$5" attachment_id="$6" ids
+  local uuid="$1" run_id="$2" rule_id="$3" policy="$4" discovery_policy_id="$5" discovery_attachment_id="$6" ids
+  shift 6
   ids="$(jq -cn --arg mr "${run_id}" --arg dr "${rule_id}" \
     --arg rc "$(reconciliation_ids "${uuid}" | jq -r '.[0] // ""')" \
     --arg mp "$(api GET "/v1/maintenance-policies/${policy}" | jq -r '.id')" \
-    --arg dp "${discovery_policy_id}" --arg da "${attachment_id}" \
-    '{mr: $mr, rc: $rc, dr: $dr, mp: $mp, dp: $dp, da: $da}')"
+    --arg dp "${discovery_policy_id}" --arg da "${discovery_attachment_id}" \
+    '{mr: [$mr], rc: [$rc], dr: [$dr], mp: [$mp], dp: [$dp], da: [$da], pa: $ARGS.positional}' --args "$@")"
   # shellcheck disable=SC2016
-  check 'to_entries | all(.[]; . as $e | $e.value | test("^" + $e.key + "-[0-7][0-9a-hjkmnp-tv-z]{25}$"))' \
+  check 'to_entries | all(.[]; .key as $p | .value | length > 0
+    and all(.[]; test("^" + $p + "-[0-7][0-9a-hjkmnp-tv-z]{25}$")))' \
     "${ids}" "an id the API returned is not <prefix>-<26 base32 characters> (ADR 0011)"
   progress "run, reconciliation, discovery rule, policy and attachment ids are prefixed: $(jq -c . <<<"${ids}")"
 }
@@ -777,8 +787,9 @@ ensure_policy tm-e2e-regions "e2e: scheduled per-partition compaction" "$(cat <<
 | del(.rewrite_manifests, .expire_snapshots, .remove_orphan_files)
 JQ
 )"
-attach_policy tm-e2e-orders "${ORDERS}"
-attach_policy tm-e2e-regions "${REGIONS}"
+ORDERS_ATTACHMENT_ID="$(attach_policy tm-e2e-orders "${ORDERS}")"
+REGIONS_ATTACHMENT_ID="$(attach_policy tm-e2e-regions "${REGIONS}")"
+progress "maintenance attachments ${ORDERS_ATTACHMENT_ID} (${ORDERS}) and ${REGIONS_ATTACHMENT_ID} (${REGIONS})"
 
 progress "attaching the discovery policy ${DISCOVERY_POLICY} to the namespace ${CATALOG}.${SCHEMA}"
 DISCOVERY_ATTACHMENT_ID="$(api PUT "/v1/discovery-policies/${DISCOVERY_POLICY}/attachments" \
@@ -876,9 +887,9 @@ progress "before: ${ORDERS} files=${ORDERS_FILES_BEFORE} snapshots=${ORDERS_SNAP
 
 ORDERS_BEFORE_RUNS="$(run_ids "${ORDERS_UUID}")"
 
-progress "checking the applicable policies of both tables"
-assert_applicable_policy "${ORDERS_UUID}" tm-e2e-orders
-assert_applicable_policy "${REGIONS_UUID}" tm-e2e-regions
+progress "checking the effective policies of both tables"
+assert_effective_policies "${ORDERS_UUID}" "${ORDERS}" tm-e2e-orders "${ORDERS_ATTACHMENT_ID}"
+assert_effective_policies "${REGIONS_UUID}" "${REGIONS}" tm-e2e-regions "${REGIONS_ATTACHMENT_ID}"
 
 progress "triggering all four operations on ${ORDERS}"
 api POST "/v1/tables/${ORDERS_UUID}/maintenance" '{"operations": ["rewrite_data_files",
@@ -976,4 +987,4 @@ assert_reconcile_running "${ORDERS_UUID}"
 assert_reconcile_running "${REGIONS_UUID}"
 assert_workflows_found_by_table "${ORDERS_UUID}" "${ORDERS_MANUAL_RUN_ID}"
 assert_prefixed_ids "${ORDERS_UUID}" "${ORDERS_MANUAL_RUN_ID}" "${RULE_ID}" tm-e2e-orders \
-  "${DISCOVERY_POLICY_ID}" "${DISCOVERY_ATTACHMENT_ID}"
+  "${DISCOVERY_POLICY_ID}" "${DISCOVERY_ATTACHMENT_ID}" "${ORDERS_ATTACHMENT_ID}" "${REGIONS_ATTACHMENT_ID}"

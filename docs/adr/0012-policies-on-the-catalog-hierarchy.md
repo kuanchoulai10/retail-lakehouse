@@ -119,6 +119,13 @@ There is no scoring, no cost-benefit ranking and no compaction round (KCL-89). T
 - **Attach is `PUT /v1/discovery-policies/{name}/attachments` with `{"target": {"type", "path"}}` and detach is `DELETE /v1/discovery-policies/{name}/attachments/{attachment_id}`**, by the attachment's `da-` id. A request body on `DELETE` has no defined semantics (RFC 9110 §9.3.5), and detaching by id also works for an orphaned target. KCL-98 gives maintenance attachments the same shape.
 - **A target must exist when it is attached, but it may be empty.** An empty catalog or namespace may be attached, since the first place a discovery policy goes is often an empty catalog; a target that does not exist is 404. The same check now serves maintenance attachments, and an attachment is orphaned only when its target no longer exists.
 
+2026-11-21 note (KCL-98): `effective-policies` and the maintenance attachments are built.
+
+- **Two read routes, not one.** The table above lists only `/v1/tables/{table_uuid}/effective-policies`, but the catalog and namespace pages, and a table maintenance has no record of yet, need an answer by location, which only the old `GET /v1/applicable-policy?catalog=&namespace=&table=` gave. So `GET /v1/effective-policies?catalog=&namespace=&table=` answers by location (the namespace dot-joined), and the uuid route answers for a table maintenance records. By location, a catalog, namespace or table the catalog does not hold is 404 and a catalog the platform cannot read is 403, as attaching there answers.
+- **One entry per kind, in a list.** The answer is `{"policies": [maintenance entry, discovery entry]}`, each entry told apart by `kind`, so a third kind adds an entry rather than a field. The maintenance entry carries `dry_run` and the discovery entry `no_match_outcome`, so a page shows what matters about each without a second request.
+- **The entry carries the attachment id.** `attachment_id` is the `pa-` or `da-` id of the nearest attachment and `null` for the platform default, so a page detaches by it. The console offers Detach only on an entry attached to the page's own target, never on one inherited from above.
+- **Maintenance attachments take the discovery shape:** `PUT /v1/maintenance-policies/{name}/attachments` keeps the target's `pa-` id and `DELETE …/attachments/{attachment_id}` detaches by it; `/mappings` and both `applicable-policy` routes answer 404.
+
 ## Consequences
 
 - One rule explains every policy on a table: walk up from the table to the first attachment. `effective-policies` shows the answer and the level it came from.

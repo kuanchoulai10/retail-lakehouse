@@ -12,7 +12,7 @@ Open issues and deferred work. Not loaded automatically; read the entries for th
 - Each SparkApplication downloads the Iceberg, `hadoop-aws` and `s3-transfer-manager` jars from Maven Central at submit; bake them into `table-maintenance-spark`.
 - Spark event logs: no consumer of `spark-event-log-completions` exists yet. A driver that crashes or is killed never renames its `.inprogress` marker, so it sends no completion event (its log still expires after 3 days). RustFS accepts a bucket notification naming an unregistered target ARN with only a warning, so `20-rustfs/validate.sh` proves the saved config, not that the target is live. Message keys / `s3.object.key` are URL-encoded and `awsRegion` is empty; delivery is at least once.
 - `Table` (formerly `ManagedTable`) updates can be lost under concurrent writers: add a version column with compare-and-set.
-- A renamed table outside the scanned catalogs lists its policy mapping as orphaned (the catalog gateway cannot look a table up by UUID).
+- A renamed table outside the scanned catalogs lists its maintenance policy attachment as orphaned (the catalog gateway cannot look a table up by UUID).
 - Execution `target_file_size_bytes` can disagree with the measured target size.
 - A retried `record_maintenance_operation_result` activity can lose the table's backoff update.
 - No auth on the API or the Spark result callback, and no NetworkPolicy.
