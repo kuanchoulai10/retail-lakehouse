@@ -29,6 +29,12 @@ from context.table_maintenance.application.domain.service.table.measure_table im
 from context.table_maintenance.application.domain.service.table.plan_manual_maintenance import (
     plan_manual_maintenance,
 )
+from context.table_maintenance.application.domain.service.table.select_compaction_partitions import (
+    select_compaction_partitions,
+)
+from context.table_maintenance.application.domain.service.table.track_over_target_partitions import (
+    track_over_target_partitions,
+)
 
 __all__ = [
     "any_condition_holds",
@@ -40,4 +46,6 @@ __all__ = [
     "fits_smaller_size",
     "measure_table",
     "plan_manual_maintenance",
+    "select_compaction_partitions",
+    "track_over_target_partitions",
 ]

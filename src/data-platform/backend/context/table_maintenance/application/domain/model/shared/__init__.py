@@ -41,8 +41,14 @@ from context.table_maintenance.application.domain.model.shared.operation_assessm
 from context.table_maintenance.application.domain.model.shared.operation_verdict import (
     OperationVerdict,
 )
+from context.table_maintenance.application.domain.model.shared.over_target_partition import (
+    OverTargetPartition,
+)
 from context.table_maintenance.application.domain.model.shared.partition_field_info import (
     PartitionFieldInfo,
+)
+from context.table_maintenance.application.domain.model.shared.partition_selection import (
+    PartitionSelection,
 )
 from context.table_maintenance.application.domain.model.shared.partition_spec_info import (
     PartitionSpecInfo,
@@ -101,7 +107,9 @@ __all__ = [
     "NonNegativeDuration",
     "OperationAssessment",
     "OperationVerdict",
+    "OverTargetPartition",
     "PartitionFieldInfo",
+    "PartitionSelection",
     "PartitionSpecInfo",
     "PartitionStats",
     "PlannedOperation",

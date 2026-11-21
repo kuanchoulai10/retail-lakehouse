@@ -14,6 +14,9 @@ from context.table_maintenance.application.domain.model.table.default_failure_ba
 from context.table_maintenance.application.domain.model.table.default_operation_cooldowns import (
     DEFAULT_OPERATION_COOLDOWNS,
 )
+from context.table_maintenance.application.domain.model.table.default_partition_selection_settings import (
+    DEFAULT_PARTITION_SELECTION_SETTINGS,
+)
 from context.table_maintenance.application.domain.model.table.invalid_table_transition import (
     InvalidTableTransition,
 )
@@ -25,6 +28,9 @@ from context.table_maintenance.application.domain.model.table.operation_cooldown
 )
 from context.table_maintenance.application.domain.model.table.operation_state import (
     OperationState,
+)
+from context.table_maintenance.application.domain.model.table.partition_selection_settings import (
+    PartitionSelectionSettings,
 )
 from context.table_maintenance.application.domain.model.table.peak_heap_use import (
     PeakHeapUse,
@@ -54,6 +60,7 @@ from context.table_maintenance.application.domain.model.table.table_status impor
 __all__ = [
     "DEFAULT_FAILURE_BACKOFF_CAP",
     "DEFAULT_OPERATION_COOLDOWNS",
+    "DEFAULT_PARTITION_SELECTION_SETTINGS",
     "TABLE_METRIC_COUNT_FIELDS",
     "AppliedPolicyRef",
     "AttentionMark",
@@ -61,6 +68,7 @@ __all__ = [
     "MetricTimeRange",
     "OperationCooldowns",
     "OperationState",
+    "PartitionSelectionSettings",
     "PeakHeapUse",
     "RecordedAttempt",
     "Table",
