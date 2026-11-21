@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import math
 from datetime import UTC, datetime, timedelta
+
+import pytest
 
 from context.table_maintenance.application.domain.model.shared import OverTargetPartition, PartitionStats
 from context.table_maintenance.application.domain.service.table import track_over_target_partitions
@@ -68,3 +71,16 @@ def test_a_round_tripped_entry_still_matches():
     observed = p(0, 1, 1.5, True, None, "o'neil")
     entry = track_over_target_partitions((), [observed], NOW)[0]
     assert OverTargetPartition.from_primitives(entry.to_primitives()).is_of(observed)
+
+
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf])
+def test_a_partition_with_a_non_finite_value_is_not_tracked(value):
+    """A NaN or infinite value cannot be stored as JSON nor compared equal, so the partition is left out."""
+    assert track_over_target_partitions((), [p(0, 1, value)], NOW) == ()
+
+
+def test_a_non_finite_partition_does_not_stop_the_others_being_tracked():
+    """The finite partitions beside a non-finite one are still tracked."""
+    assert track_over_target_partitions((), [p(0, math.nan), p(0, 1.5)], NOW) == (
+        OverTargetPartition(spec_id=0, values=(1.5,), since=NOW),
+    )

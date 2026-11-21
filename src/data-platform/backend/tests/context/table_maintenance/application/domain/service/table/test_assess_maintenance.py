@@ -715,3 +715,11 @@ def test_a_selected_partition_of_an_unknown_spec_plans_the_whole_table():
     o = obs(partitions=(part(9, value=1), _flat(9, spec_id=7)))
     a = _compaction_of(assess_maintenance(table(), compaction(), o, NOW))
     assert (a.verdict, a.planned.partitions) == (OperationVerdict.DUE, ())
+
+
+def test_a_non_finite_partition_over_target_is_due_but_not_tracked():
+    """A partition with a NaN value is still compacted when over the target, but left out of the record."""
+    nan = part(9, value=float("nan"))
+    result = assess_maintenance(table(), compaction(), obs(partitions=(nan,)), NOW)
+    a = _compaction_of(result)
+    assert (a.verdict, a.planned.partitions, result.over_target_partitions) == (OperationVerdict.DUE, (nan,), ())
