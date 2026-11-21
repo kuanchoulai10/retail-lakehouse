@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import insert, or_, select, update
 from sqlalchemy.exc import IntegrityError
 
 from context.table_maintenance.adapter.outbound.catalog_discovery.sql.catalog_discoveries_table import (
@@ -16,7 +16,7 @@ from context.table_maintenance.adapter.outbound.catalog_discovery.sql.catalog_di
 from context.table_maintenance.application.port.outbound.catalog_discovery import CatalogDiscoveriesRepo
 
 if TYPE_CHECKING:
-    from sqlalchemy import Engine
+    from sqlalchemy import Connection, Engine
 
     from base import EntityId
     from context.table_maintenance.application.port.outbound.catalog_discovery import CatalogDiscovery
@@ -35,11 +35,12 @@ class CatalogDiscoveriesSqlRepo(CatalogDiscoveriesRepo):
         return entity
 
     def save(self, entity: CatalogDiscovery) -> None:
-        """Insert the catalog's row, or move its time forward; an older time never replaces a newer one.
+        """Insert the catalog's row, or move each of its two times forward on its own; neither ever moves back.
 
-        Two scans of one catalog may save at once. The update only ever moves the time
-        forward, and when both find no row and insert, the one that loses the race on
-        the primary key tries again and takes the update path.
+        Two scans of one catalog may save at once. Each update only ever moves its own time
+        forward (the scan time, or the failure with its reason and detail), and when both
+        find no row and insert, the one that loses the race on the primary key tries again
+        and takes the update path.
         """
         try:
             self._save_once(entity)
@@ -47,14 +48,32 @@ class CatalogDiscoveriesSqlRepo(CatalogDiscoveriesRepo):
             self._save_once(entity)
 
     def _save_once(self, entity: CatalogDiscovery) -> None:
-        at = entity.last_discovered_at
-        forward = update(t).where(t.c.catalog == entity.catalog, t.c.last_discovered_at < at)
         with self._engine.begin() as conn:
-            if conn.execute(forward.values(last_discovered_at=at)).rowcount:
+            if conn.execute(select(t.c.catalog).where(t.c.catalog == entity.catalog)).first() is None:
+                conn.execute(insert(t).values(**CatalogDiscoveryRowMapper.to_values(entity)))
                 return
-            if conn.execute(select(t.c.catalog).where(t.c.catalog == entity.catalog)).first() is not None:
-                return
-            conn.execute(insert(t).values(**CatalogDiscoveryRowMapper.to_values(entity)))
+            self._move_scan_forward(conn, entity)
+            self._move_failure_forward(conn, entity)
+
+    @staticmethod
+    def _move_scan_forward(conn: Connection, entity: CatalogDiscovery) -> None:
+        at = entity.last_discovered_at
+        if at is None:
+            return
+        older = or_(t.c.last_discovered_at.is_(None), t.c.last_discovered_at < at)
+        conn.execute(update(t).where(t.c.catalog == entity.catalog, older).values(last_discovered_at=at))
+
+    @staticmethod
+    def _move_failure_forward(conn: Connection, entity: CatalogDiscovery) -> None:
+        failure = entity.last_failure
+        if failure is None:
+            return
+        older = or_(t.c.failed_at.is_(None), t.c.failed_at < failure.failed_at)
+        conn.execute(
+            update(t)
+            .where(t.c.catalog == entity.catalog, older)
+            .values(**CatalogDiscoveryRowMapper.failure_values(failure))
+        )
 
     def get(self, entity_id: EntityId) -> CatalogDiscovery | None:
         """Return the catalog's record, or None."""

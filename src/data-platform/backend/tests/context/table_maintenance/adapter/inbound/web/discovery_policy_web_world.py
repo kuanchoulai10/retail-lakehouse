@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from context.table_maintenance.application.port.inbound.table_discovery_policy import (
     EnsureDefaultTableDiscoveryPolicyUseCaseInput,
 )
+from context.table_maintenance.application.service.catalog_discovery import ListScannedCatalogsService
 from context.table_maintenance.application.service.table_discovery_policy import (
     CreateTableDiscoveryPolicyService,
     DeleteTableDiscoveryPolicyService,
@@ -24,6 +25,7 @@ from context.table_maintenance.application.service.table_discovery_policy_attach
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import build_client
 from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import FakeReadTableMetadataGateway
+from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import InMemoryCatalogDiscoveriesRepo
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_repo import (
     InMemoryTableDiscoveryPoliciesRepo,
 )
@@ -64,6 +66,7 @@ class DiscoveryPolicyWebWorld:
         self.policies = InMemoryTableDiscoveryPoliciesRepo(attachments=self.attachments)
         self.catalog = FakeReadTableMetadataGateway()
         self.tables = InMemoryTablesRepo()
+        self.discoveries = InMemoryCatalogDiscoveriesRepo()
         EnsureDefaultTableDiscoveryPolicyService(self.policies, clock=lambda: NOW).execute(
             EnsureDefaultTableDiscoveryPolicyUseCaseInput()
         )
@@ -82,6 +85,7 @@ class DiscoveryPolicyWebWorld:
             list_table_discovery_policy_attachments=ListTableDiscoveryPolicyAttachmentsService(
                 policies, attachments, self.catalog, self.tables
             ),
+            list_scanned_catalogs=ListScannedCatalogsService(attachments, policies, self.discoveries),
         )
 
     def create(self, name: str, *rules: dict[str, Any], **changes: Any) -> dict[str, Any]:  # noqa: ANN401

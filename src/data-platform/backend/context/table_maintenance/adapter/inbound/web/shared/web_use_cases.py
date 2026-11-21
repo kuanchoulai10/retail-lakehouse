@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from context.table_maintenance.application.port.inbound.catalog_discovery import ListScannedCatalogsUseCase
     from context.table_maintenance.application.port.inbound.table import (
         GetTableCurrentMetricsUseCase,
         GetTableMetricTrendsUseCase,
@@ -77,6 +78,7 @@ class WebUseCases:
     attach_table_discovery_policy: AttachTableDiscoveryPolicyUseCase
     detach_table_discovery_policy: DetachTableDiscoveryPolicyUseCase
     list_table_discovery_policy_attachments: ListTableDiscoveryPolicyAttachmentsUseCase
+    list_scanned_catalogs: ListScannedCatalogsUseCase
     list_table_maintenance_policies: ListTableMaintenancePoliciesUseCase
     create_table_maintenance_policy: CreateTableMaintenancePolicyUseCase
     get_table_maintenance_policy: GetTableMaintenancePolicyUseCase

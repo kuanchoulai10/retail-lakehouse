@@ -9,6 +9,8 @@ import pytest
 from context.table_maintenance.application.domain.model.catalog_discovery import (
     CatalogDiscovery,
     CatalogDiscoveryId,
+    CatalogScanFailure,
+    CatalogScanFailureReason,
 )
 from context.table_maintenance.application.domain.model.table import (
     Table,
@@ -26,10 +28,7 @@ from context.table_maintenance.application.port.inbound.table import (
     ProcessTableHintUseCaseInput,
     SyncDiscoveredTablesUseCaseInput,
 )
-from context.table_maintenance.application.port.outbound.table import (
-    CatalogNotFoundError,
-    TableMetadataObservation,
-)
+from context.table_maintenance.application.port.outbound.table import TableMetadataObservation
 from context.table_maintenance.application.service.table import (
     GetTableService,
     ListTablesService,
@@ -103,16 +102,13 @@ def test_a_namespace_sync_records_no_discovery(sync, discoveries_repo):
     assert discoveries_repo.list_all() == []
 
 
-def test_a_failed_sync_records_no_discovery(sync, discoveries_repo, catalog, monkeypatch):
-    """A sync that cannot list the catalog saw nothing, so it records nothing."""
-
-    def unknown(_input):
-        raise CatalogNotFoundError("iceberg")
-
-    monkeypatch.setattr(catalog, "list_tables", unknown)
-    with pytest.raises(CatalogNotFoundError):
-        sync.execute(_catalog_wide())
-    assert discoveries_repo.list_all() == []
+def test_a_failed_sync_records_its_failure_and_no_scan_time(sync, discoveries_repo, catalog):
+    """A sync that cannot list the catalog saw nothing: it records the failure, and no time a table was discovered."""
+    catalog.drop_catalog("iceberg")
+    sync.execute(_catalog_wide())
+    (only,) = discoveries_repo.list_all()
+    assert only.last_discovered_at is None
+    assert only.current_failure is not None
 
 
 def test_a_sync_does_not_save_tables_only_because_it_saw_them(
@@ -298,3 +294,14 @@ def test_getting_a_table_shows_the_last_commit_and_the_last_discovery(tables_rep
     discoveries_repo.save(CatalogDiscovery.first("iceberg", EARLIER))
     out = GetTableService(tables_repo, discoveries_repo, policies_repo).execute(GetTableUseCaseInput(uuid="u-1"))
     assert (out.last_committed_at, out.last_discovered_at) == (COMMIT, EARLIER)
+
+
+def test_a_table_in_a_catalog_that_only_failed_shows_no_last_discovery(tables_repo, discoveries_repo, policies_repo):
+    """A catalog no scan has completed in records only a failure, so its tables show no last discovery."""
+    _row(tables_repo, EARLIER)
+    failure = CatalogScanFailure(reason=CatalogScanFailureReason.CANNOT_ACCESS, detail="refused", failed_at=EARLIER)
+    discoveries_repo.save(CatalogDiscovery.failed("iceberg", failure))
+    listed = ListTablesService(tables_repo, discoveries_repo, policies_repo).execute(ListTablesUseCaseInput())
+    got = GetTableService(tables_repo, discoveries_repo, policies_repo).execute(GetTableUseCaseInput(uuid="u-1"))
+    assert [i.last_discovered_at for i in listed.items] == [None]
+    assert got.last_discovered_at is None

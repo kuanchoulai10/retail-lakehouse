@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.adapter.inbound.web.catalog_discovery import router as catalog_discovery_router
 from context.table_maintenance.adapter.inbound.web.error_handlers import (
     register_error_handlers,
 )
@@ -50,6 +51,7 @@ def register_routes(app: FastAPI, use_cases: WebUseCases) -> None:
         table_discovery_rules_router,
         table_discovery_policy_router,
         table_discovery_policy_attachment_router,
+        catalog_discovery_router,
         table_maintenance_policy_router,
         table_maintenance_policy_attachment_router,
         table_router,

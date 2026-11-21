@@ -52,7 +52,9 @@ class ListTablesService(ListTablesUseCase):
             with translate_domain_errors():
                 status = TableStatus(request.status)
             tables = self._tables_repo.list_by_statuses([status])
-        discovered: dict[str, datetime] = {d.catalog: d.last_discovered_at for d in self._discoveries_repo.list_all()}
+        discovered: dict[str, datetime | None] = {
+            d.catalog: d.last_discovered_at for d in self._discoveries_repo.list_all()
+        }
         names = attention_policy_names(tables, self._policies_repo)
         return ListTablesUseCaseOutput(
             items=tuple(

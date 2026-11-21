@@ -6,21 +6,27 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import IntegrityError
 
 from context.table_maintenance.adapter.outbound.catalog_discovery.sql import (
     CatalogDiscoveriesSqlRepo,
     catalog_discoveries_table,
 )
+from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from context.table_maintenance.application.domain.model.catalog_discovery import (
     CatalogDiscovery,
     CatalogDiscoveryId,
+    CatalogScanFailure,
+    CatalogScanFailureReason,
 )
 from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import (
     InMemoryCatalogDiscoveriesRepo,
 )
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from sqlalchemy import Engine
 
     from context.table_maintenance.application.port.outbound.catalog_discovery import CatalogDiscoveriesRepo
@@ -44,6 +50,7 @@ def test_round_trip_keeps_the_catalog_and_time(repo: CatalogDiscoveriesRepo):
     loaded = repo.get(CatalogDiscoveryId("iceberg"))
     assert loaded is not None
     assert loaded.model_dump() == saved.model_dump()
+    assert loaded.last_discovered_at is not None
     assert loaded.last_discovered_at.tzinfo is not None
 
 
@@ -97,7 +104,7 @@ def test_a_scan_that_loses_the_insert_race_moves_the_time_forward(engine: Engine
     """Both scans found no row; the one whose insert hits the other's row tries again and moves the time forward."""
     repo = CatalogDiscoveriesSqlRepo(engine)
     original = repo._save_once
-    calls: list[datetime] = []
+    calls: list[datetime | None] = []
 
     def racing(entity: CatalogDiscovery) -> None:
         calls.append(entity.last_discovered_at)
@@ -113,3 +120,72 @@ def test_a_scan_that_loses_the_insert_race_moves_the_time_forward(engine: Engine
     loaded = repo.get(CatalogDiscoveryId("iceberg"))
     assert loaded is not None
     assert loaded.last_discovered_at == NOW + timedelta(minutes=10)
+
+
+def _failure(at: datetime, reason: CatalogScanFailureReason = CatalogScanFailureReason.CANNOT_ACCESS):
+    return CatalogScanFailure(reason=reason, detail=f"{reason.value} at {at.isoformat()}", failed_at=at)
+
+
+def test_a_catalog_that_only_failed_round_trips(repo: CatalogDiscoveriesRepo):
+    """A catalog never scanned but refused is stored with no scan time and loads back equal."""
+    saved = CatalogDiscovery.failed("iceberg", _failure(NOW))
+    repo.save(saved)
+
+    loaded = repo.get(CatalogDiscoveryId("iceberg"))
+    assert loaded is not None
+    assert loaded.model_dump() == saved.model_dump()
+    assert loaded.last_discovered_at is None
+    assert loaded.last_failure is not None
+    assert loaded.last_failure.reason is CatalogScanFailureReason.CANNOT_ACCESS
+    assert loaded.last_failure.failed_at.tzinfo is not None
+
+
+def test_failure_and_success_times_move_forward_independently(repo: CatalogDiscoveriesRepo):
+    """An older failure never overwrites a newer one, an older scan never a newer one, and each moves on its own."""
+    later = NOW + timedelta(minutes=10)
+    repo.save(CatalogDiscovery.failed("iceberg", _failure(later, CatalogScanFailureReason.NOT_FOUND)))
+    repo.save(CatalogDiscovery.failed("iceberg", _failure(NOW)))
+    repo.save(CatalogDiscovery.first("iceberg", later))
+    repo.save(CatalogDiscovery.first("iceberg", NOW))
+
+    loaded = repo.get(CatalogDiscoveryId("iceberg"))
+    assert loaded is not None
+    assert loaded.last_discovered_at == later
+    assert loaded.last_failure == _failure(later, CatalogScanFailureReason.NOT_FOUND)
+
+
+def test_a_newer_failure_replaces_the_stored_one_and_keeps_the_scan_time(repo: CatalogDiscoveriesRepo):
+    """A failure after the last scan is stored with its reason and detail; the scan time stays."""
+    repo.save(CatalogDiscovery.first("iceberg", NOW))
+    repo.save(CatalogDiscovery.failed("iceberg", _failure(NOW + timedelta(minutes=5))))
+    repo.save(
+        CatalogDiscovery.failed("iceberg", _failure(NOW + timedelta(minutes=10), CatalogScanFailureReason.NOT_FOUND))
+    )
+
+    loaded = repo.get(CatalogDiscoveryId("iceberg"))
+    assert loaded is not None
+    assert loaded.last_discovered_at == NOW
+    assert loaded.current_failure == _failure(NOW + timedelta(minutes=10), CatalogScanFailureReason.NOT_FOUND)
+
+
+def test_a_scan_after_a_failure_makes_it_not_current(repo: CatalogDiscoveriesRepo):
+    """A completed scan saved after a failure clears the current failure and keeps the failure."""
+    repo.save(CatalogDiscovery.failed("iceberg", _failure(NOW)))
+    repo.save(CatalogDiscovery.first("iceberg", NOW + timedelta(minutes=10)))
+
+    loaded = repo.get(CatalogDiscoveryId("iceberg"))
+    assert loaded is not None
+    assert loaded.current_failure is None
+    assert loaded.last_failure == _failure(NOW)
+
+
+def test_an_older_catalog_discoveries_table_gains_the_failure_columns(tmp_path: Path) -> None:
+    """A table stored before failures were recorded gets their columns when the schema is created again."""
+    engine = create_engine(f"sqlite:///{tmp_path / 'db.sqlite'}")
+    with engine.begin() as connection:
+        connection.execute(
+            text("CREATE TABLE catalog_discoveries (catalog VARCHAR PRIMARY KEY, last_discovered_at VARCHAR NOT NULL)")
+        )
+    create_schema(engine)
+    columns = {c["name"] for c in inspect(engine).get_columns("catalog_discoveries")}
+    assert {"failure_reason", "failure_detail", "failed_at"} <= columns

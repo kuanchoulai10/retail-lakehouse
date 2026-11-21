@@ -9,8 +9,12 @@ from context.table_maintenance.application.domain.model.catalog_discovery import
 
 
 class CatalogDiscoveriesRepo(Repository[CatalogDiscovery]):
-    """Persist when discovery last scanned each catalog, one record per catalog."""
+    """Persist when discovery last scanned each catalog, and last failed to, one record per catalog."""
 
     @abstractmethod
     def save(self, entity: CatalogDiscovery) -> None:
-        """Insert the record, or move the stored one's time forward to it; an older time changes nothing."""
+        """Insert the record, or move each of the stored times forward to the entity's on its own.
+
+        The scan time and the failure each move only forward: an older one changes nothing, and
+        moving one never touches the other.
+        """

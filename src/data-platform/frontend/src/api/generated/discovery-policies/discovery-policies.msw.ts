@@ -21,6 +21,7 @@ import type {
 import type {
   AttachTableDiscoveryPolicyApiRequest,
   CreateTableDiscoveryPolicyApiRequest,
+  ScannedCatalogsApiResponse,
   TableDiscoveryPoliciesApiResponse,
   TableDiscoveryPolicyApiResponse,
   TableDiscoveryPolicyAttachmentApiResponse,
@@ -43,6 +44,8 @@ export const getListTableDiscoveryPolicyAttachmentsResponseMock = (overrideRespo
 export const getAttachTableDiscoveryPolicyResponseMock = (overrideResponse: Partial<Extract<TableDiscoveryPolicyAttachmentApiResponse, object>> = {}): TableDiscoveryPolicyAttachmentApiResponse => ({attached_at: faker.date.past().toISOString().slice(0, 19) + 'Z', id: faker.string.alpha({length: {min: 10, max: 20}}), policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), target: {path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), table_uuid: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), type: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse})
 
 export const getGetTableDiscoveryPolicyVersionResponseMock = (overrideResponse: Partial<Extract<TableDiscoveryPolicyVersionApiResponse, object>> = {}): TableDiscoveryPolicyVersionApiResponse => ({created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', description: faker.string.alpha({length: {min: 10, max: 20}}), id: faker.string.alpha({length: {min: 10, max: 20}}), is_default: faker.datatype.boolean(), name: faker.string.alpha({length: {min: 10, max: 20}}), no_match_outcome: faker.helpers.arrayElement(['manage','unmanage'] as const), rules: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({conditions: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({attribute: faker.helpers.arrayElement(['namespace','table_name'] as const), operator: "glob", values: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))})), id: faker.string.alpha({length: {min: 10, max: 20}}), outcome: faker.helpers.arrayElement(['manage','unmanage'] as const)})), version: faker.number.int(), ...overrideResponse})
+
+export const getListScannedCatalogsResponseMock = (overrideResponse: Partial<Extract<ScannedCatalogsApiResponse, object>> = {}): ScannedCatalogsApiResponse => ({catalogs: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), failure: faker.helpers.arrayElement([{detail: faker.string.alpha({length: {min: 10, max: 20}}), failed_at: faker.date.past().toISOString().slice(0, 19) + 'Z', reason: faker.helpers.arrayElement(['cannot_access','not_found'] as const)},null,]), last_discovered_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,])})), ...overrideResponse})
 
 
 export const getListTableDiscoveryPoliciesMockHandler = (overrideResponse?: TableDiscoveryPoliciesApiResponse | ((info: Parameters<HttpResponseResolver>[0]) => Promise<TableDiscoveryPoliciesApiResponse> | TableDiscoveryPoliciesApiResponse), options?: RequestHandlerOptions) => {
@@ -148,6 +151,18 @@ export const getGetTableDiscoveryPolicyVersionMockHandler = (overrideResponse?: 
       })
   }, options)
 }
+
+export const getListScannedCatalogsMockHandler = (overrideResponse?: ScannedCatalogsApiResponse | ((info: Parameters<HttpResponseResolver>[0]) => Promise<ScannedCatalogsApiResponse> | ScannedCatalogsApiResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/v1/scanned-catalogs', async (info: Parameters<HttpResponseResolver>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListScannedCatalogsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getDiscoveryPoliciesMock = () => [
   getListTableDiscoveryPoliciesMockHandler(),
   getCreateTableDiscoveryPolicyMockHandler(),
@@ -157,5 +172,6 @@ export const getDiscoveryPoliciesMock = () => [
   getListTableDiscoveryPolicyAttachmentsMockHandler(),
   getAttachTableDiscoveryPolicyMockHandler(),
   getDetachTableDiscoveryPolicyMockHandler(),
-  getGetTableDiscoveryPolicyVersionMockHandler()
+  getGetTableDiscoveryPolicyVersionMockHandler(),
+  getListScannedCatalogsMockHandler()
 ]

@@ -1,10 +1,20 @@
 """Inbound ports for the catalog_discovery group.
 
-A catalog's discovery has no use case of its own: syncing the discovered
-tables records it, and the table listing reads it, both through
-``CatalogDiscoveriesRepo``.
+Syncing the discovered tables records a catalog's discovery, and the table
+listing reads it, both through ``CatalogDiscoveriesRepo``; listing the
+scanned catalogs reports each one's scan state.
 """
 
 from __future__ import annotations
 
-__all__ = []
+from context.table_maintenance.application.port.inbound.catalog_discovery.list_scanned_catalogs import (
+    ListScannedCatalogsUseCase,
+    ListScannedCatalogsUseCaseInput,
+    ListScannedCatalogsUseCaseOutput,
+)
+
+__all__ = [
+    "ListScannedCatalogsUseCase",
+    "ListScannedCatalogsUseCaseInput",
+    "ListScannedCatalogsUseCaseOutput",
+]

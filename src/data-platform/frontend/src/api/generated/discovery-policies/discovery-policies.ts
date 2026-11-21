@@ -27,6 +27,7 @@ import type {
   AttachTableDiscoveryPolicyApiRequest,
   CreateTableDiscoveryPolicyApiRequest,
   HTTPValidationError,
+  ScannedCatalogsApiResponse,
   TableDiscoveryPoliciesApiResponse,
   TableDiscoveryPolicyApiResponse,
   TableDiscoveryPolicyAttachmentApiResponse,
@@ -878,6 +879,107 @@ export function useGetTableDiscoveryPolicyVersion<TData = Awaited<ReturnType<typ
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetTableDiscoveryPolicyVersionQueryOptions(name,version,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getListScannedCatalogsUrl = () => {
+
+
+
+
+  return `/v1/scanned-catalogs`
+}
+
+/**
+ * List the catalogs a managing discovery policy is attached in, with each one's last scan and current failure.
+ * @summary List Scanned Catalogs
+ */
+export const listScannedCatalogs = async ( options?: Parameters<typeof apiFetch>[1]): Promise<ScannedCatalogsApiResponse> => {
+
+  return apiFetch<ScannedCatalogsApiResponse>(getListScannedCatalogsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListScannedCatalogsQueryKey = () => {
+    return [
+    `/v1/scanned-catalogs`
+    ] as const;
+    }
+
+
+export const getListScannedCatalogsQueryOptions = <TData = Awaited<ReturnType<typeof listScannedCatalogs>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listScannedCatalogs>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListScannedCatalogsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listScannedCatalogs>>> = ({ signal }) => listScannedCatalogs({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listScannedCatalogs>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListScannedCatalogsQueryResult = NonNullable<Awaited<ReturnType<typeof listScannedCatalogs>>>
+export type ListScannedCatalogsQueryError = unknown
+
+
+export function useListScannedCatalogs<TData = Awaited<ReturnType<typeof listScannedCatalogs>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listScannedCatalogs>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScannedCatalogs>>,
+          TError,
+          Awaited<ReturnType<typeof listScannedCatalogs>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListScannedCatalogs<TData = Awaited<ReturnType<typeof listScannedCatalogs>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listScannedCatalogs>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScannedCatalogs>>,
+          TError,
+          Awaited<ReturnType<typeof listScannedCatalogs>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListScannedCatalogs<TData = Awaited<ReturnType<typeof listScannedCatalogs>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listScannedCatalogs>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Scanned Catalogs
+ */
+
+export function useListScannedCatalogs<TData = Awaited<ReturnType<typeof listScannedCatalogs>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listScannedCatalogs>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListScannedCatalogsQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

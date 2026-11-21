@@ -479,6 +479,35 @@
         "title": "CatalogCommitTriggerApiRequest",
         "type": "object"
       },
+      "CatalogScanFailureApiResponse": {
+        "description": "Describe a scan that could not read its catalog: the credential was refused, or the catalog is gone.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "failed_at": {
+            "format": "date-time",
+            "title": "Failed At",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "cannot_access",
+              "not_found"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "detail",
+          "failed_at"
+        ],
+        "title": "CatalogScanFailureApiResponse",
+        "type": "object"
+      },
       "CatalogTableApiResponse": {
         "description": "Describe an Iceberg table: everything the table page's Overview, Schema, Snapshots and Properties show.",
         "properties": {
@@ -2963,6 +2992,61 @@
           "small_manifests"
         ],
         "title": "RewriteManifestsTargetApiRequest",
+        "type": "object"
+      },
+      "ScannedCatalogApiResponse": {
+        "description": "Describe a catalog discovery scans: its last completed scan, null before the first, and its current failure.\n\n``failure`` is null unless the last failed scan is newer than the last completed one.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CatalogScanFailureApiResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_discovered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Discovered At"
+          }
+        },
+        "required": [
+          "catalog",
+          "last_discovered_at",
+          "failure"
+        ],
+        "title": "ScannedCatalogApiResponse",
+        "type": "object"
+      },
+      "ScannedCatalogsApiResponse": {
+        "description": "List the catalogs discovery scans, by name.",
+        "properties": {
+          "catalogs": {
+            "items": {
+              "$ref": "#/components/schemas/ScannedCatalogApiResponse"
+            },
+            "title": "Catalogs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "catalogs"
+        ],
+        "title": "ScannedCatalogsApiResponse",
         "type": "object"
       },
       "ScheduleTriggerApiRequest": {
@@ -8358,6 +8442,28 @@
         "summary": "Get Platform Settings",
         "tags": [
           "platform-settings"
+        ]
+      }
+    },
+    "/v1/scanned-catalogs": {
+      "get": {
+        "description": "List the catalogs a managing discovery policy is attached in, with each one's last scan and current failure.",
+        "operationId": "list_scanned_catalogs",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScannedCatalogsApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Scanned Catalogs",
+        "tags": [
+          "discovery-policies"
         ]
       }
     },

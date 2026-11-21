@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.application.domain.model.catalog_discovery import (
     CatalogDiscovery,
     CatalogDiscoveryId,
+    CatalogScanFailure,
+    CatalogScanFailureReason,
 )
 from context.table_maintenance.application.domain.model.table import (
     TableChange,
@@ -27,6 +29,8 @@ from context.table_maintenance.application.port.inbound.table import (
     SyncDiscoveredTablesUseCaseOutput,
 )
 from context.table_maintenance.application.port.outbound.table import (
+    CatalogAccessDeniedError,
+    CatalogNotFoundError,
     ReadTableMetadataGatewayListInput,
     SendTableChangeGatewayInput,
 )
@@ -114,18 +118,40 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         table was discovered, so a table is saved only when something about it
         changed; a table it drops keeps the catalog's previous discovery as the
         last time it was seen.
+
+        A scan whose catalog refuses the credential (CatalogAccessDeniedError) or no
+        longer exists (CatalogNotFoundError) records a ``CatalogScanFailure`` on the
+        catalog's discovery at the time it started, changes no table and returns with
+        ``failure`` set: retrying a refusal changes nothing. Any other error still fails
+        the scan. A single table the credential cannot load is counted in ``skipped``,
+        and that scan drops no table, since a table that cannot be read must never read
+        as dropped.
         """
         now = self._clock()
         decider = DiscoveryDecider.for_catalog(
             request.catalog, self._discovery_attachments_repo, self._discovery_policies_repo
         )
         seen_change = TableChange.SEEN if request.namespace is None else None
-        refs = self._catalog_gateway.list_tables(ReadTableMetadataGatewayListInput(request.catalog, request.namespace))
+        try:
+            refs = self._catalog_gateway.list_tables(
+                ReadTableMetadataGatewayListInput(request.catalog, request.namespace)
+            )
+        except (CatalogAccessDeniedError, CatalogNotFoundError) as exc:
+            reason = self._record_failure(request.catalog, exc, now)
+            return SyncDiscoveredTablesUseCaseOutput(
+                registered=0, renamed=0, dropped=0, skipped=0, failure=reason.value
+            )
         seen: set[str] = set()
         known: list[KnownTableOutcome] = []
         registered = skipped = 0
+        read_every_table = True
         for ref in refs:
-            found = self._catalog_gateway.load_table(ref)
+            try:
+                found = self._catalog_gateway.load_table(ref)
+            except CatalogAccessDeniedError:
+                skipped += 1
+                read_every_table = False
+                continue
             if found is None:
                 continue
             seen.add(found.table_uuid)
@@ -142,7 +168,8 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         dropped = 0
         if request.namespace is None:
             with translate_domain_errors():
-                dropped = self._drop_missing(request, seen, now)
+                if read_every_table:
+                    dropped = self._drop_missing(request, seen, now)
                 self._record_discovery(request.catalog, now)
         return SyncDiscoveredTablesUseCaseOutput(
             registered=registered,
@@ -179,6 +206,23 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
             now,
             last_committed_at=last_commit_of(found),
         )
+
+    def _record_failure(
+        self, catalog: str, error: CatalogAccessDeniedError | CatalogNotFoundError, now: datetime
+    ) -> CatalogScanFailureReason:
+        reason = (
+            CatalogScanFailureReason.CANNOT_ACCESS
+            if isinstance(error, CatalogAccessDeniedError)
+            else CatalogScanFailureReason.NOT_FOUND
+        )
+        failure = CatalogScanFailure(reason=reason, detail=str(error), failed_at=now)
+        discovery = self._discoveries_repo.get(CatalogDiscoveryId(catalog))
+        if discovery is None:
+            discovery = CatalogDiscovery.failed(catalog, failure)
+        else:
+            discovery.record_failure(failure)
+        self._discoveries_repo.save(discovery)
+        return reason
 
     def _record_discovery(self, catalog: str, now: datetime) -> None:
         discovery = self._discoveries_repo.get(CatalogDiscoveryId(catalog))

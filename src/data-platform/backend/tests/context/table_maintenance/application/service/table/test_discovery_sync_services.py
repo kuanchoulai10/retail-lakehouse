@@ -8,6 +8,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from context.table_maintenance.application.domain.model.catalog_discovery import (
+    CatalogDiscoveryId,
+    CatalogScanFailure,
+    CatalogScanFailureReason,
+)
 from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
 from context.table_maintenance.application.domain.model.table import (
     Table,
@@ -31,10 +36,7 @@ from context.table_maintenance.application.port.inbound.table import (
     ProcessTableHintUseCaseInput,
     SyncDiscoveredTablesUseCaseInput,
 )
-from context.table_maintenance.application.port.outbound.table import (
-    CatalogNotFoundError,
-    TableMetadataObservation,
-)
+from context.table_maintenance.application.port.outbound.table import TableMetadataObservation
 from context.table_maintenance.application.service.table import (
     ProcessTableHintService,
     SyncDiscoveredTablesService,
@@ -55,6 +57,7 @@ from tests.context.table_maintenance.fakes.track_calls import track_calls
 
 if TYPE_CHECKING:
     from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import FakeReadTableMetadataGateway
+    from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import InMemoryCatalogDiscoveriesRepo
     from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_repo import (
         InMemoryTableDiscoveryPoliciesRepo,
     )
@@ -100,6 +103,7 @@ class _World:
     policies: InMemoryTableDiscoveryPoliciesRepo
     attachments: InMemoryTableDiscoveryPolicyAttachmentsRepo
     catalog: FakeReadTableMetadataGateway
+    discoveries: InMemoryCatalogDiscoveriesRepo
 
     def attach(self, target, policy):
         """Store the policy if it is new, and attach it to the target, replacing what the target held."""
@@ -125,9 +129,9 @@ class _World:
 
 
 @pytest.fixture
-def world(tables_repo, discovery_policies, discovery_attachments, catalog):
-    """Provide the fakes a scan reads, with nothing attached."""
-    return _World(tables_repo, discovery_policies, discovery_attachments, catalog)
+def world(tables_repo, discovery_policies, discovery_attachments, catalog, discoveries_repo):
+    """Provide the fakes a scan reads, with nothing attached and no catalog discovered yet."""
+    return _World(tables_repo, discovery_policies, discovery_attachments, catalog, discoveries_repo)
 
 
 def _row(repo, now, uuid, name, *, by=MANAGE_ALL):
@@ -265,21 +269,119 @@ def test_the_scan_reads_attachments_once_per_catalog(sync, world, log):
     assert log == [("attachments.list_in_catalog", "iceberg"), ("policies.get_many", "2")]
 
 
-# --- sync: unknown tables ---
+# --- sync: a catalog or a table the scan cannot read ---
 
 
-def test_sync_of_unknown_catalog_fails_and_drops_nothing(sync, tables_repo, catalog, signals, now, monkeypatch):
-    """A catalog the gateway cannot open fails the run; it does not read as every table vanishing."""
-    _row(tables_repo, now, "u-1", _name("kept"))
-
-    def unknown(_input):
-        raise CatalogNotFoundError("iceberg")
-
-    monkeypatch.setattr(catalog, "list_tables", unknown)
-    with pytest.raises(CatalogNotFoundError):
-        sync.execute(_catalog_wide())
-    assert tables_repo.get(TableId("u-1")).status == TableStatus.MANAGED
+def test_a_refused_catalog_is_recorded_and_changes_nothing(sync, world, signals, now):
+    """A catalog that refuses the credential records ``cannot_access`` at the scan's start and changes no table."""
+    world.attach(catalog_target("iceberg"), MANAGE_ALL)
+    _row(world.tables, now, "u-1", _name("kept"))
+    world.catalog.deny("iceberg")
+    out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg", namespace=None))
+    assert out.failure == "cannot_access"
+    assert (out.registered, out.renamed, out.dropped, out.skipped, out.ensured) == (0, 0, 0, 0, 0)
+    failure = world.discoveries.get(CatalogDiscoveryId("iceberg")).current_failure
+    assert failure == CatalogScanFailure(
+        reason=CatalogScanFailureReason.CANNOT_ACCESS,
+        detail="the platform's catalog credential cannot read catalog iceberg",
+        failed_at=now,
+    )
+    assert world.discoveries.get(CatalogDiscoveryId("iceberg")).last_discovered_at is None
+    assert world.tables.get(TableId("u-1")).status == TableStatus.MANAGED
     assert signals.calls == []
+
+
+def test_a_refused_namespace_scan_is_recorded_on_its_catalog(sync, world, now):
+    """A namespace scan of a refused catalog records the failure on the catalog too."""
+    world.catalog.deny("iceberg")
+    out = sync.execute(_namespace())
+    assert out.failure == "cannot_access"
+    failure = world.discoveries.get(CatalogDiscoveryId("iceberg")).current_failure
+    assert failure.reason is CatalogScanFailureReason.CANNOT_ACCESS
+
+
+def test_a_later_good_scan_makes_the_failure_not_current(
+    world, discovery_policies, discovery_attachments, signals, now
+):
+    """Once the catalog is readable again, the next completed scan clears the current failure and keeps it."""
+    times = iter((now, now + timedelta(minutes=5)))
+    sync = SyncDiscoveredTablesService(
+        world.tables,
+        discovery_policies,
+        discovery_attachments,
+        world.discoveries,
+        world.catalog,
+        signals,
+        clock=lambda: next(times),
+    )
+    world.catalog.add_table("iceberg", "sales", "orders", "u-1")
+    world.catalog.deny("iceberg")
+    sync.execute(_catalog_wide())
+    world.catalog.allow("iceberg")
+    out = sync.execute(_catalog_wide())
+    discovery = world.discoveries.get(CatalogDiscoveryId("iceberg"))
+    assert out.failure is None
+    assert out.registered == 1
+    assert discovery.current_failure is None
+    assert discovery.last_failure is not None
+
+
+def test_a_missing_catalog_is_recorded_not_found(sync, world, signals, now):
+    """A catalog that no longer exists records ``not_found`` and drops nothing; it never reads as every table gone."""
+    _row(world.tables, now, "u-1", _name("kept"))
+    world.catalog.drop_catalog("iceberg")
+    out = sync.execute(_catalog_wide())
+    assert out.failure == "not_found"
+    assert out.dropped == 0
+    failure = world.discoveries.get(CatalogDiscoveryId("iceberg")).current_failure
+    assert failure == CatalogScanFailure(
+        reason=CatalogScanFailureReason.NOT_FOUND, detail="catalog iceberg not found", failed_at=now
+    )
+    assert world.tables.get(TableId("u-1")).status == TableStatus.MANAGED
+    assert signals.calls == []
+
+
+def test_a_refused_table_is_skipped_and_nothing_is_dropped(sync, world, signals, now):
+    """A table the credential cannot load is skipped, and that scan drops no table, the refused one or any other."""
+    world.attach_to_catalog(MANAGE_ALL)
+    _row(world.tables, now, "u-refused", _name("secret"))
+    _row(world.tables, now, "u-gone", _name("gone"))
+    world.catalog.add_table("iceberg", "sales", "secret", "u-refused")
+    world.catalog.add_table("iceberg", "sales", "orders", "u-1")
+    world.catalog.deny_table("iceberg", "sales", "secret")
+    out = sync.execute(_catalog_wide())
+    assert out.failure is None
+    assert (out.registered, out.skipped, out.dropped) == (1, 1, 0)
+    assert world.tables.get(TableId("u-refused")).status == TableStatus.MANAGED
+    assert world.tables.get(TableId("u-gone")).status == TableStatus.MANAGED
+    assert ("u-gone", "stopped", False) not in _calls(signals)
+
+
+def test_a_scan_after_the_refused_table_is_readable_drops_again(sync, world, now):
+    """The drop pass is off only for the scan that met a refused table."""
+    _row(world.tables, now, "u-gone", _name("gone"))
+    world.catalog.add_table("iceberg", "sales", "secret", "u-refused")
+    world.catalog.deny_table("iceberg", "sales", "secret")
+    sync.execute(_catalog_wide())
+    world.catalog.denied_tables.clear()
+    out = sync.execute(_catalog_wide())
+    assert out.dropped == 1
+    assert world.tables.get(TableId("u-gone")).status == TableStatus.DROPPED
+
+
+def test_any_other_catalog_error_still_fails_the_scan(sync, world, monkeypatch):
+    """An error that is neither a refusal nor a missing catalog fails the run, to be retried, and records nothing."""
+
+    def broken(_input):
+        raise RuntimeError("polaris unavailable")
+
+    monkeypatch.setattr(world.catalog, "list_tables", broken)
+    with pytest.raises(RuntimeError):
+        sync.execute(_catalog_wide())
+    assert world.discoveries.get(CatalogDiscoveryId("iceberg")) is None
+
+
+# --- sync: unknown tables ---
 
 
 def test_sync_registers_a_managed_table_and_sends_managed(sync, tables_repo, world, catalog, signals):

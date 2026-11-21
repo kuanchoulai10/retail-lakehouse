@@ -10,6 +10,7 @@ from context.table_maintenance.application.domain.model.table import (
     DEFAULT_OPERATION_COOLDOWNS,
     DEFAULT_PARTITION_SELECTION_SETTINGS,
 )
+from context.table_maintenance.application.service.catalog_discovery import ListScannedCatalogsService
 from context.table_maintenance.application.service.table import (
     GetTableCurrentMetricsService,
     GetTableMetricTrendsService,
@@ -155,6 +156,7 @@ def build_use_cases(
         list_table_discovery_policy_attachments=ListTableDiscoveryPolicyAttachmentsService(
             discovery_policies, discovery_attachments, catalog, tables
         ),
+        list_scanned_catalogs=ListScannedCatalogsService(discovery_attachments, discovery_policies, discoveries),
         attach_table_maintenance_policy=AttachTableMaintenancePolicyService(
             policies, attachments, catalog, tables, table_changes, clock=clock
         ),
