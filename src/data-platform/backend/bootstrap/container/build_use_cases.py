@@ -24,6 +24,14 @@ from context.table_maintenance.application.service.table import (
     TriggerTableMaintenanceService,
     TriggerTableReconciliationService,
 )
+from context.table_maintenance.application.service.table_discovery_policy import (
+    CreateTableDiscoveryPolicyService,
+    DeleteTableDiscoveryPolicyService,
+    GetTableDiscoveryPolicyService,
+    GetTableDiscoveryPolicyVersionService,
+    ListTableDiscoveryPoliciesService,
+    UpdateTableDiscoveryPolicyService,
+)
 from context.table_maintenance.application.service.table_discovery_rules import (
     GetTableDiscoveryRulesService,
     ListCoveredCatalogsService,
@@ -101,6 +109,8 @@ def build_use_cases(
     """
     tables = repos.tables
     rules = repos.table_discovery_rules
+    discovery_policies = repos.table_discovery_policies
+    discovery_attachments = repos.table_discovery_policy_attachments
     policies = repos.table_maintenance_policies
     attachments = repos.table_maintenance_policy_attachments
     runs = repos.table_maintenance_runs
@@ -126,6 +136,12 @@ def build_use_cases(
         replace_table_discovery_rules=ReplaceTableDiscoveryRulesService(
             rules, gateways.send_discovery_request, catalog_names, clock=clock
         ),
+        list_table_discovery_policies=ListTableDiscoveryPoliciesService(discovery_policies, discovery_attachments),
+        create_table_discovery_policy=CreateTableDiscoveryPolicyService(discovery_policies, clock=clock),
+        get_table_discovery_policy=GetTableDiscoveryPolicyService(discovery_policies),
+        get_table_discovery_policy_version=GetTableDiscoveryPolicyVersionService(discovery_policies),
+        update_table_discovery_policy=UpdateTableDiscoveryPolicyService(discovery_policies, clock=clock),
+        delete_table_discovery_policy=DeleteTableDiscoveryPolicyService(discovery_policies, discovery_attachments),
         attach_table_maintenance_policy=AttachTableMaintenancePolicyService(
             policies, attachments, catalog, tables, table_changes, clock=clock
         ),

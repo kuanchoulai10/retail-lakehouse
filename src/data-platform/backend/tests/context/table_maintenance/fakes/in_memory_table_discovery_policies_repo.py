@@ -32,7 +32,9 @@ class InMemoryTableDiscoveryPoliciesRepo(TableDiscoveryPoliciesRepo):
 
     Each read returns a copy, so two readers hold independent copies and the second ``update``
     from the same version is stale, as in the database. Given ``attachments``, a delete of a policy
-    attached there is refused, as the SQL foreign key refuses it.
+    attached there is refused, as the SQL foreign key refuses it. Link ``attachments`` only in repo
+    contract tests: a service test builds the fake unlinked, so a service that forgets its own
+    attached check deletes the policy and the test fails.
     """
 
     def __init__(self, *, attachments: TableDiscoveryPolicyAttachmentsRepo | None = None) -> None:

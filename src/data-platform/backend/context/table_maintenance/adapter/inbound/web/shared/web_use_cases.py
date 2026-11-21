@@ -17,6 +17,14 @@ if TYPE_CHECKING:
         TriggerTableMaintenanceUseCase,
         TriggerTableReconciliationUseCase,
     )
+    from context.table_maintenance.application.port.inbound.table_discovery_policy import (
+        CreateTableDiscoveryPolicyUseCase,
+        DeleteTableDiscoveryPolicyUseCase,
+        GetTableDiscoveryPolicyUseCase,
+        GetTableDiscoveryPolicyVersionUseCase,
+        ListTableDiscoveryPoliciesUseCase,
+        UpdateTableDiscoveryPolicyUseCase,
+    )
     from context.table_maintenance.application.port.inbound.table_discovery_rules import (
         GetTableDiscoveryRulesUseCase,
         ListCoveredCatalogsUseCase,
@@ -55,6 +63,12 @@ class WebUseCases:
     get_table_discovery_rules: GetTableDiscoveryRulesUseCase
     replace_table_discovery_rules: ReplaceTableDiscoveryRulesUseCase
     list_covered_catalogs: ListCoveredCatalogsUseCase
+    list_table_discovery_policies: ListTableDiscoveryPoliciesUseCase
+    create_table_discovery_policy: CreateTableDiscoveryPolicyUseCase
+    get_table_discovery_policy: GetTableDiscoveryPolicyUseCase
+    get_table_discovery_policy_version: GetTableDiscoveryPolicyVersionUseCase
+    update_table_discovery_policy: UpdateTableDiscoveryPolicyUseCase
+    delete_table_discovery_policy: DeleteTableDiscoveryPolicyUseCase
     list_table_maintenance_policies: ListTableMaintenancePoliciesUseCase
     create_table_maintenance_policy: CreateTableMaintenancePolicyUseCase
     get_table_maintenance_policy: GetTableMaintenancePolicyUseCase

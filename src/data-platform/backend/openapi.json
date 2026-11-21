@@ -1135,6 +1135,45 @@
         "title": "CreateTableApiRequest",
         "type": "object"
       },
+      "CreateTableDiscoveryPolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry a new discovery policy's name and its whole content; its rules may not name an id.",
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "no_match_outcome": {
+            "description": "What happens to a table that no rule matches: managed or not.",
+            "enum": [
+              "manage",
+              "unmanage"
+            ],
+            "title": "No Match Outcome",
+            "type": "string"
+          },
+          "rules": {
+            "description": "The rules, read top to bottom; the first whose conditions all hold decides.",
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryRuleApiRequest"
+            },
+            "title": "Rules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "no_match_outcome",
+          "rules"
+        ],
+        "title": "CreateTableDiscoveryPolicyApiRequest",
+        "type": "object"
+      },
       "CreateTableMaintenancePolicyApiRequest": {
         "additionalProperties": false,
         "description": "Carry a new policy's name and its whole content; an operation block left out is not done.",
@@ -1280,6 +1319,140 @@
           "target"
         ],
         "title": "DetachTableMaintenancePolicyApiRequest",
+        "type": "object"
+      },
+      "DiscoveryConditionApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry one condition: the attribute it reads, how it matches and the values it matches.\n\nThe condition holds when any value matches. A ``glob`` is case-sensitive, and on the dot-joined\nnamespace ``*`` crosses dots.",
+        "properties": {
+          "attribute": {
+            "enum": [
+              "namespace",
+              "table_name"
+            ],
+            "title": "Attribute",
+            "type": "string"
+          },
+          "operator": {
+            "const": "glob",
+            "title": "Operator",
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "attribute",
+          "operator",
+          "values"
+        ],
+        "title": "DiscoveryConditionApiRequest",
+        "type": "object"
+      },
+      "DiscoveryConditionApiResponse": {
+        "description": "Describe one condition of a rule.",
+        "properties": {
+          "attribute": {
+            "enum": [
+              "namespace",
+              "table_name"
+            ],
+            "title": "Attribute",
+            "type": "string"
+          },
+          "operator": {
+            "const": "glob",
+            "title": "Operator",
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "attribute",
+          "operator",
+          "values"
+        ],
+        "title": "DiscoveryConditionApiResponse",
+        "type": "object"
+      },
+      "DiscoveryRuleApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry one rule: its outcome for a table that all of its conditions match.\n\nLeave ``id`` out (or null) for a new rule; send a rule's ``dr-`` id to keep it across versions.",
+        "properties": {
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryConditionApiRequest"
+            },
+            "title": "Conditions",
+            "type": "array"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "outcome": {
+            "enum": [
+              "manage",
+              "unmanage"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome",
+          "conditions"
+        ],
+        "title": "DiscoveryRuleApiRequest",
+        "type": "object"
+      },
+      "DiscoveryRuleApiResponse": {
+        "description": "Describe one rule, with the ``dr-`` id that links it across versions.",
+        "properties": {
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryConditionApiResponse"
+            },
+            "title": "Conditions",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "manage",
+              "unmanage"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "outcome",
+          "conditions"
+        ],
+        "title": "DiscoveryRuleApiResponse",
         "type": "object"
       },
       "ExpireSnapshotsOptionsApiRequest": {
@@ -1468,6 +1641,77 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ListedTableDiscoveryPolicyApiResponse": {
+        "description": "Describe a listed discovery policy at its current version with how many targets it is attached to.",
+        "properties": {
+          "attachment_count": {
+            "title": "Attachment Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_default": {
+            "description": "Whether this is the platform default discovery policy, which decides where nothing is attached.",
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "no_match_outcome": {
+            "description": "What happens to a table that no rule matches: managed or not.",
+            "enum": [
+              "manage",
+              "unmanage"
+            ],
+            "title": "No Match Outcome",
+            "type": "string"
+          },
+          "rules": {
+            "description": "The rules, read top to bottom; the first whose conditions all hold decides.",
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryRuleApiResponse"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "is_default",
+          "version",
+          "created_at",
+          "updated_at",
+          "description",
+          "no_match_outcome",
+          "rules",
+          "attachment_count"
+        ],
+        "title": "ListedTableDiscoveryPolicyApiResponse",
         "type": "object"
       },
       "ListedTableMaintenancePolicyApiResponse": {
@@ -3728,6 +3972,149 @@
         "title": "TableCurrentMetricsApiResponse",
         "type": "object"
       },
+      "TableDiscoveryPoliciesApiResponse": {
+        "description": "List every discovery policy, the default first, then by name.",
+        "properties": {
+          "policies": {
+            "items": {
+              "$ref": "#/components/schemas/ListedTableDiscoveryPolicyApiResponse"
+            },
+            "title": "Policies",
+            "type": "array"
+          }
+        },
+        "required": [
+          "policies"
+        ],
+        "title": "TableDiscoveryPoliciesApiResponse",
+        "type": "object"
+      },
+      "TableDiscoveryPolicyApiResponse": {
+        "description": "Describe a discovery policy at its current version.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_default": {
+            "description": "Whether this is the platform default discovery policy, which decides where nothing is attached.",
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "no_match_outcome": {
+            "description": "What happens to a table that no rule matches: managed or not.",
+            "enum": [
+              "manage",
+              "unmanage"
+            ],
+            "title": "No Match Outcome",
+            "type": "string"
+          },
+          "rules": {
+            "description": "The rules, read top to bottom; the first whose conditions all hold decides.",
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryRuleApiResponse"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "is_default",
+          "version",
+          "created_at",
+          "updated_at",
+          "description",
+          "no_match_outcome",
+          "rules"
+        ],
+        "title": "TableDiscoveryPolicyApiResponse",
+        "type": "object"
+      },
+      "TableDiscoveryPolicyVersionApiResponse": {
+        "description": "Describe one stored version of a discovery policy; ``created_at`` is when that version was written.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_default": {
+            "description": "Whether this is the platform default discovery policy, which decides where nothing is attached.",
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "no_match_outcome": {
+            "description": "What happens to a table that no rule matches: managed or not.",
+            "enum": [
+              "manage",
+              "unmanage"
+            ],
+            "title": "No Match Outcome",
+            "type": "string"
+          },
+          "rules": {
+            "description": "The rules, read top to bottom; the first whose conditions all hold decides.",
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryRuleApiResponse"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "is_default",
+          "version",
+          "created_at",
+          "description",
+          "no_match_outcome",
+          "rules"
+        ],
+        "title": "TableDiscoveryPolicyVersionApiResponse",
+        "type": "object"
+      },
       "TableDiscoveryRuleApiRequest": {
         "additionalProperties": false,
         "description": "Carry one rule of a rule list; a rule without ``id`` is new.",
@@ -4861,6 +5248,45 @@
           }
         },
         "title": "UpdateNamespacePropertiesApiRequest",
+        "type": "object"
+      },
+      "UpdateTableDiscoveryPolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry a discovery policy's whole new content and the version it was edited from.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "no_match_outcome": {
+            "description": "What happens to a table that no rule matches: managed or not.",
+            "enum": [
+              "manage",
+              "unmanage"
+            ],
+            "title": "No Match Outcome",
+            "type": "string"
+          },
+          "rules": {
+            "description": "The rules, read top to bottom; the first whose conditions all hold decides.",
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryRuleApiRequest"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "description",
+          "no_match_outcome",
+          "rules"
+        ],
+        "title": "UpdateTableDiscoveryPolicyApiRequest",
         "type": "object"
       },
       "UpdateTableMaintenancePolicyApiRequest": {
@@ -6948,6 +7374,248 @@
         "summary": "Get View",
         "tags": [
           "views"
+        ]
+      }
+    },
+    "/v1/discovery-policies": {
+      "get": {
+        "description": "List every discovery policy at its current version with its attachment count, the default first.",
+        "operationId": "list_table_discovery_policies",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableDiscoveryPoliciesApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Table Discovery Policies",
+        "tags": [
+          "discovery-policies"
+        ]
+      },
+      "post": {
+        "description": "Create a discovery policy at version 1; each rule gets a new ``dr-`` id.",
+        "operationId": "create_table_discovery_policy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTableDiscoveryPolicyApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableDiscoveryPolicyApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Table Discovery Policy",
+        "tags": [
+          "discovery-policies"
+        ]
+      }
+    },
+    "/v1/discovery-policies/{name}": {
+      "delete": {
+        "description": "Delete a discovery policy and its versions; 409 while it is attached or when it is the default.",
+        "operationId": "delete_table_discovery_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Table Discovery Policy",
+        "tags": [
+          "discovery-policies"
+        ]
+      },
+      "get": {
+        "description": "Return a discovery policy at its current version.",
+        "operationId": "get_table_discovery_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableDiscoveryPolicyApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Discovery Policy",
+        "tags": [
+          "discovery-policies"
+        ]
+      },
+      "put": {
+        "description": "Replace a discovery policy's content from the version read (409 if stale); the version increments.",
+        "operationId": "update_table_discovery_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTableDiscoveryPolicyApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableDiscoveryPolicyApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Table Discovery Policy",
+        "tags": [
+          "discovery-policies"
+        ]
+      }
+    },
+    "/v1/discovery-policies/{name}/versions/{version}": {
+      "get": {
+        "description": "Return one stored version of a discovery policy.",
+        "operationId": "get_table_discovery_policy_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableDiscoveryPolicyVersionApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Discovery Policy Version",
+        "tags": [
+          "discovery-policies"
         ]
       }
     },
