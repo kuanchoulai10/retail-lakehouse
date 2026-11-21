@@ -70,6 +70,13 @@ export function useReturnFocus(isOpen: boolean) {
     returnTo.current = focusBeforeOpening();
   }, [isOpen]);
 
+  const remember = useCallback((content?: Element | null) => {
+    const candidate = focusBeforeOpening();
+    if (candidate !== null && !content?.contains(candidate)) {
+      returnTo.current = candidate;
+    }
+  }, []);
+
   const onCloseAutoFocus = useCallback((event: Event) => {
     const target = returnTo.current;
     if (target?.isConnected) {
@@ -78,5 +85,5 @@ export function useReturnFocus(isOpen: boolean) {
     }
   }, []);
 
-  return { onCloseAutoFocus };
+  return { onCloseAutoFocus, remember };
 }

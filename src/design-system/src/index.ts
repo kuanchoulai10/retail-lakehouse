@@ -1,4 +1,5 @@
 export { cn } from "./lib/cn";
+export { useMatchesMedia } from "./lib/useMatchesMedia";
 export { applyTheme } from "./theme/applyTheme";
 export { ThemeProvider } from "./theme/ThemeProvider";
 export { readTheme, writeTheme } from "./theme/themeStorage";
