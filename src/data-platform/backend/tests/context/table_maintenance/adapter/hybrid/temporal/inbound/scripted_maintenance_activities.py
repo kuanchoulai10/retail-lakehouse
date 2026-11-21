@@ -58,8 +58,9 @@ class ScriptedMaintenanceActivities:
     ``raises`` keeps each priority raise request; its reply is ``raise_reply`` when set, else the run
     raised to the requested priority (P0 when none is named), and the requests in
     ``raise_errors`` (by position, from 0) fail non-retryably. ``raise_hook``, when set, runs inside
-    each raise with the request. A job in ``vanish_after_delete[app_name]`` reads ``NOT_FOUND`` once
-    that long has passed since its first delete, until it is submitted again.
+    each raise with the request. A job reads ``NOT_FOUND`` from the first delete that succeeded after
+    its latest submit on, until it is submitted again; one in ``vanish_after_delete[app_name]`` only
+    once that long has passed since that delete (a later delete does not move it).
 
     ``skips`` keeps each skip request; a skip replies with the run skipped, and the runs in
     ``skip_errors`` (by run id) fail their skip as not found, non-retryably.
@@ -93,6 +94,7 @@ class ScriptedMaintenanceActivities:
         self.pods_calls: list[str] = []
         self.pods_times: list[datetime] = []
         self.delete_times: dict[str, datetime] = {}
+        self._deleted_since_submit: dict[str, datetime] = {}
         self.delete_failures: dict[str, int] = {}
         self.driver_starts: dict[str, tuple[timedelta, timedelta] | None] = {}
         self.submitted_at: dict[str, datetime] = {}
@@ -174,12 +176,10 @@ class ScriptedMaintenanceActivities:
         return {"driver_started_at": driver_started_at, **state}
 
     def _vanished(self, app_name: str, polled_at: datetime) -> bool:
-        deleted_at = self.delete_times.get(app_name)
-        if app_name not in self.vanish_after_delete or deleted_at is None:
+        deleted_at = self._deleted_since_last_submit(app_name)
+        if deleted_at is None:
             return False
-        if self.submitted_at[app_name] > deleted_at:
-            return False
-        return polled_at - deleted_at >= self.vanish_after_delete[app_name]
+        return polled_at - deleted_at >= self.vanish_after_delete.get(app_name, timedelta(0))
 
     def _driver_started_at(self, app_name: str, polled_at: datetime) -> str | None:
         submitted_at = self.submitted_at[app_name]
@@ -188,6 +188,12 @@ class ScriptedMaintenanceActivities:
             return None
         started = submitted_at + start[1]
         return (started.replace(tzinfo=None) if app_name in self.naive_driver_starts else started).isoformat()
+
+    def _deleted_since_last_submit(self, app_name: str) -> datetime | None:
+        deleted_at = self._deleted_since_submit.get(app_name)
+        if deleted_at is None or self.submitted_at[app_name] > deleted_at:
+            return None
+        return deleted_at
 
     @activity.defn(name=TableMaintenanceActivity.RECORD_MAINTENANCE_ATTEMPT_RUNNING)
     async def record_maintenance_attempt_running(self, request: dict) -> dict:
@@ -232,6 +238,8 @@ class ScriptedMaintenanceActivities:
         if self.deletes.count(app_name) <= self.delete_failures.get(app_name, 0):
             raise ApplicationError("apiserver unavailable", type="RuntimeError", non_retryable=True)
         self.delete_times.setdefault(app_name, activity.info().scheduled_time)
+        if self._deleted_since_last_submit(app_name) is None:
+            self._deleted_since_submit[app_name] = activity.info().scheduled_time
         return {
             "run_id": request["run_id"],
             "operation": request["operation"],

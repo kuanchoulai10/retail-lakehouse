@@ -48,6 +48,7 @@ _FENCE_MISSING_PATCH = "fence-missing-job"
 _FENCE_CANCELLED_PATCH = "fence-cancelled-attempt"
 _CANCELLED = "cancelled"
 _DECISION_PATCH = "classify-attempt-failure"
+_JOBS_GONE_PATCH = "wait-until-run-jobs-are-gone"
 _STARTED_STATES = frozenset({"RUNNING", "COMPLETED"})
 _PLANNED_POLICY_KEYS = ("policy_id", "policy_name", "policy_version", "policy_target")
 _NOT_REACHED = "the table's maintenance stopped before this run started"
@@ -63,7 +64,11 @@ class TableMaintenanceWorkflow:
     (``run_ids``, in plan order), whose runs it created, pending, in one transaction before starting
     this workflow, so every run exists before anything is submitted. The workflow runs them in plan order: a
     run's first submit comes only after the previous run's last attempt was recorded and its Spark
-    jobs deleted, which frees the executors kept for evidence before the next job queues.
+    jobs are gone, so a table has one Spark job at a time and the executors kept for evidence are freed
+    before the next job queues. Each job of the ended run is deleted and polled, as a fence polls,
+    until it reads ``NOT_FOUND`` and has no live pods, however long that takes; nothing is recorded,
+    since the run already ended. Histories from before this wait only ask for the deletes (patch
+    ``wait-until-run-jobs-are-gone``).
 
     Each run gets up to ``max_attempts`` attempts (input, 3 by default). An attempt is submitted
     straight to Spark, whose scheduler queues it, and ends with the job's ``operation_result``
@@ -109,7 +114,9 @@ class TableMaintenanceWorkflow:
     table not found) leaves its run pending, and recording it answers so: that counts no record
     failure, and a run whose submit was refused that way is skipped with the refusal (``submit
     failed: ...``) as its reason and submitted no more. At the end, also after a cancellation, the
-    Spark job of every attempt not yet deleted is deleted, every run of the plan none of whose
+    Spark job of every attempt not yet gone is deleted and waited for in the same way, even if another
+    cancel arrives meanwhile, so the workflow never closes with a job still deleting (the same patch;
+    older histories only ask for the deletes). Then every run of the plan none of whose
     submits returned is skipped
     (``skip_maintenance_run``, which leaves a run no longer pending as it is), and the parent
     reconciliation workflow is told the runs finished and how many results could not be recorded.
@@ -158,12 +165,12 @@ class TableMaintenanceWorkflow:
 
     @workflow.run
     async def run(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
-        """Run the plan's runs in order, deleting each one's jobs when it ends, then clean up and report."""
+        """Run the plan's runs in order, waiting when each ends until its jobs are gone, then clean up and report."""
         operations: list[dict[str, Any]] = list(input.plan["operations"])
         try:
             for operation in operations:
                 await self._run_operation(operation)
-                await self._delete_jobs_of(operation["operation"])
+                await self._free_jobs_of(operation["operation"])
         finally:
             await self._finish(input.parent_workflow_id)
 
@@ -444,9 +451,14 @@ class TableMaintenanceWorkflow:
         unconfirmed = await self._await_gone(
             name,
             attempt,
-            MaintenanceAttemptEnding.MISSING,
             job_gone=True,
-            unconfirmed_error=lambda still: f"{_NOT_REPLACED}: {still} {minutes} minutes after the priority raise",
+            unconfirmed=lambda still: self._failure(
+                name,
+                attempt,
+                f"{_NOT_REPLACED}: {still} {minutes} minutes after the priority raise",
+                MaintenanceAttemptEnding.MISSING,
+                still_running=True,
+            ),
         )
         if unconfirmed is not None:
             return unconfirmed
@@ -544,31 +556,29 @@ class TableMaintenanceWorkflow:
         gone, and only then does the caller go on.
         """
         minutes = int(self._policy.fencing.confirm_bound.total_seconds() // 60)
-        unconfirmed = await self._await_gone(
-            name,
-            attempt,
-            ending,
-            bounded=bounded,
-            unconfirmed_error=lambda still: f"{reason}; {still} {minutes} minutes after {since}",
-        )
+
+        def unconfirmed_fence(still: str) -> OperationResultSignal:
+            error = f"{reason}; {still} {minutes} minutes after {since}"
+            return self._failure(name, attempt, error, ending, still_running=True)
+
+        unconfirmed = await self._await_gone(name, attempt, unconfirmed=unconfirmed_fence if bounded else None)
         return unconfirmed or self._failure(name, attempt, reason, ending)
 
-    async def _await_gone(  # noqa: PLR0913
+    async def _await_gone(
         self,
         name: str,
         attempt: int,
-        ending: MaintenanceAttemptEnding,
         *,
-        unconfirmed_error: Callable[[str], str],
-        bounded: bool = True,
+        unconfirmed: Callable[[str], OperationResultSignal] | None,
         job_gone: bool = False,
     ) -> OperationResultSignal | None:
         """Delete an attempt's job and poll until its pods (and, with ``job_gone``, the job) are gone.
 
-        Returns None when they were gone within the confirm bound. Otherwise, when ``bounded``, the
-        attempt is recorded at the bound as failed with ``unconfirmed_error`` of what was still there
-        and possibly still running, polling goes on slower until they are gone, and that failure is
-        returned.
+        Returns None when they were gone within the confirm bound. Otherwise, when bounded (an
+        ``unconfirmed`` given), the attempt is recorded at the bound as the failure ``unconfirmed``
+        builds from what was still there, polling goes on slower until they are gone, and that
+        failure is returned. Unbounded, nothing is recorded and the wait lasts however long they take,
+        slower once past the bound.
         """
         fencing = self._policy.fencing
         key = (name, attempt)
@@ -580,14 +590,14 @@ class TableMaintenanceWorkflow:
             job_absent = deleted and (not job_gone or await self._job_absent(name, attempt))
             if job_absent and await self._pods_gone(name, attempt):
                 return outcome
-            if bounded and key not in self._settled_attempts and workflow.now() >= confirm_by:
+            if unconfirmed is not None and key not in self._settled_attempts and workflow.now() >= confirm_by:
                 if not deleted:
                     still = "its job could still not be deleted"
                 elif not job_absent:
                     still = "its job was still there"
                 else:
                     still = "its pods were still running"
-                outcome = self._failure(name, attempt, unconfirmed_error(still), ending, still_running=True)
+                outcome = unconfirmed(still)
                 await self._record(outcome)
                 self._settled_attempts.add(key)
             slow = key in self._settled_attempts or workflow.now() >= confirm_by
@@ -663,32 +673,52 @@ class TableMaintenanceWorkflow:
             )
             return None
 
-    async def _delete_jobs_of(self, name: str) -> None:
-        """Delete the Spark job of every attempt of the run of ``name``, once that run ended.
+    async def _free_jobs_of(self, name: str) -> None:
+        """Delete the job of every attempt of the run of ``name``, once that run ended, and wait until all are gone.
 
-        This frees the executors kept for evidence before the next run's job queues. A delete that
-        fails is logged and left for ``_finish`` to try again.
+        This keeps one Spark job of the table at a time and frees the executors kept for evidence
+        before the next run's job queues (see ``_await_jobs_gone``). A history from before this wait
+        only asks for the deletes; a delete that fails there is logged and left for ``_finish`` to try again.
         """
-        for attempt in [a for n, a in self._started_attempts if n == name]:
+        attempts = [(n, a) for n, a in self._started_attempts if n == name]
+        if workflow.patched(_JOBS_GONE_PATCH):
+            await self._await_jobs_gone(attempts)
+            return
+        for _, attempt in attempts:
             if await self._delete_job(name, attempt):
                 self._started_attempts.remove((name, attempt))
 
-    async def _finish(self, parent_workflow_id: str) -> None:
-        """Delete the started jobs still left, skip every run of the plan not started, then report to the parent.
+    async def _await_jobs_gone(self, attempts: list[tuple[str, int]]) -> None:
+        """Delete each attempt's job and wait until it reads ``NOT_FOUND`` with no live pods, recording nothing.
 
+        The wait is a fence's (``_await_gone``), unbounded: its run already ended, so there is no attempt
+        left to fail, and it lasts however long the job takes to go, polling slower past the confirm bound.
+        """
+        for name, attempt in attempts:
+            await self._await_gone(name, attempt, unconfirmed=None, job_gone=True)
+            self._started_attempts.remove((name, attempt))
+
+    async def _finish(self, parent_workflow_id: str) -> None:
+        """Free the started jobs still left, skip every run of the plan not started, then report to the parent.
+
+        The jobs still left (those of a run a cancel interrupted) are waited for until gone, as after a run,
+        even if another cancel arrives meanwhile; a history from before that wait only asks for their deletes.
         A run has started once one of its submits returned. Every run exists (the parent created them all
         before it started this workflow), so a run the workflow never reached is skipped, and so is one none
         of whose submits returned (a submit a cancel interrupted may never have left the run pending); a
         skip leaves a run that did leave pending as it is. A failed skip, a run not found included, is logged.
         """
-        for name, attempt in self._started_attempts:
-            try:
-                await self._activity(
-                    TableMaintenanceActivity.DELETE_MAINTENANCE_JOB,
-                    {"run_id": self._run_of[name], "operation": name, "attempt": attempt},
-                )
-            except ActivityError as error:
-                workflow.logger.warning("deleting the job of %s attempt %s failed: %s", name, attempt, error)
+        if self._started_attempts and workflow.patched(_JOBS_GONE_PATCH):
+            await _to_the_end(self._await_jobs_gone(list(self._started_attempts)))
+        else:
+            for name, attempt in self._started_attempts:
+                try:
+                    await self._activity(
+                        TableMaintenanceActivity.DELETE_MAINTENANCE_JOB,
+                        {"run_id": self._run_of[name], "operation": name, "attempt": attempt},
+                    )
+                except ActivityError as error:
+                    workflow.logger.warning("deleting the job of %s attempt %s failed: %s", name, attempt, error)
         for name in self._operations:
             if name not in self._submitted and name not in self._skipped:
                 await self._skip(name)

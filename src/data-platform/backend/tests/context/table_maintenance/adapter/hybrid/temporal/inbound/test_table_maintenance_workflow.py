@@ -6,13 +6,14 @@ import asyncio
 import itertools
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from temporalio.client import WorkflowFailureError
+from temporalio.client import WorkflowFailureError, WorkflowHistory
 from temporalio.exceptions import ApplicationError, CancelledError
 from temporalio.testing import WorkflowEnvironment
-from temporalio.worker import UnsandboxedWorkflowRunner, Worker
+from temporalio.worker import Replayer, UnsandboxedWorkflowRunner, Worker
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
@@ -61,6 +62,8 @@ ATTEMPT_DEADLINE_SECONDS = 21600
 QUEUE_WAIT_LIMIT_SECONDS = 86400
 PLANNED_POLICY = ("mp-00000000000000000000000004", 2, {"type": "namespace", "path": ["iceberg", "sales"]})
 PLANNED_POLICY_NAME = "nightly"
+# Once a run ended, each of its attempts' jobs is checked once more (status, pods) until it is gone.
+AFTER_RUN_CHECK = 1
 
 
 def _plan(*operations: str, start_size: str | None = None) -> dict:
@@ -327,7 +330,9 @@ def test_stale_attempt_callback_is_ignored():
             (COMPACTION, 2, False, "spark job failed"),
             (COMPACTION, 3, True, None),
         ]
-        assert h.fakes.status_calls == [f"{RUN_IDS[0]}-{COMPACTION}-2"]
+        attempts = [f"{RUN_IDS[0]}-{COMPACTION}-{attempt}" for attempt in (1, 2, 3)]
+        # Attempt 2's one poll, then the check after the run that each attempt's job is gone.
+        assert h.fakes.status_calls == [attempts[1], *attempts]
 
     _run(scenario)
 
@@ -370,7 +375,7 @@ def test_polling_detects_missing_job_and_completed_without_callback():
         ]
         assert h.fakes.records[1]["metrics"] == {"completed_without_callback": 1}
         completed_polls = h.fakes.status_calls.count(f"{RUN_IDS[0]}-{COMPACTION}-2")
-        assert completed_polls == 5
+        assert completed_polls == 5 + AFTER_RUN_CHECK
 
     _run(scenario)
 
@@ -418,7 +423,7 @@ def test_completed_window_restarts_when_state_leaves_completed():
         await h.run_maintenance(COMPACTION)
 
         assert h.recorded() == [(COMPACTION, 1, True, None)]
-        assert h.fakes.status_calls.count(f"{RUN_IDS[0]}-{COMPACTION}-1") == 7
+        assert h.fakes.status_calls.count(f"{RUN_IDS[0]}-{COMPACTION}-1") == 7 + AFTER_RUN_CHECK
 
     _run(scenario)
 
@@ -523,6 +528,9 @@ async def _cancel_while_blocked(
             await h.env.sleep(advance)
         await eventually(lambda: _value(blocked()), bool)
         await handle.cancel()
+        # The blocked activity is let go once the cancel reached it: the jobs are then waited for until gone.
+        await eventually(lambda: _cancel_requested_for_an_activity(h), bool, timeout=REAL_TIMEOUT_SECONDS)
+        gate.set()
         with pytest.raises(WorkflowFailureError) as caught:
             await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
     finally:
@@ -545,7 +553,7 @@ def test_cancel_during_status_poll_activity_cancels_the_workflow():
             lambda: len(h.fakes.status_calls) == 1,
             advance=timedelta(seconds=31),
         )
-        assert h.fakes.status_calls == [f"{RUN_IDS[0]}-{COMPACTION}-1"]
+        assert h.fakes.status_calls == [f"{RUN_IDS[0]}-{COMPACTION}-1"] * (1 + AFTER_RUN_CHECK)
         assert [s["run_id"] for s in h.fakes.skips] == [RUN_IDS[1]]
 
     _run(scenario)
@@ -625,7 +633,8 @@ def test_timed_out_attempt_deletes_the_job_before_the_next_attempt():
         second_submit = _first_after(commands, "submit_maintenance_operation", pods)
         assert names.index("submit_maintenance_operation") < delete < pods < second_submit
         assert h.recorded() == [(COMPACTION, 1, False, "spark job timed out"), (COMPACTION, 2, True, None)]
-        assert h.fakes.pods_calls == [FIRST]
+        # The fence's one poll, then the check after the run that each attempt's job is gone.
+        assert h.fakes.pods_calls == [FIRST, FIRST, f"{RUN_IDS[0]}-{COMPACTION}-2"]
 
     _run(scenario)
 
@@ -639,10 +648,11 @@ def test_next_attempt_is_not_submitted_while_pods_are_live():
         handle = await h.start_maintenance(COMPACTION, attempt_deadline_seconds=FENCE_DEADLINE_SECONDS)
         await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
 
-        assert h.fakes.pods_calls == [FIRST] * 4
-        gaps = [b - a for a, b in itertools.pairwise(h.fakes.pods_times)]
+        assert h.fakes.pods_calls == [*[FIRST] * 4, FIRST, f"{RUN_IDS[0]}-{COMPACTION}-2"]
+        fence_polls = h.fakes.pods_times[:4]
+        gaps = [b - a for a, b in itertools.pairwise(fence_polls)]
         assert all(timedelta(seconds=30) <= g < timedelta(seconds=60) for g in gaps)
-        assert h.submit_times()[1] > h.fakes.pods_times[-1]
+        assert h.submit_times()[1] > fence_polls[-1]
         assert h.recorded() == [(COMPACTION, 1, False, "spark job timed out"), (COMPACTION, 2, True, None)]
 
     _run(scenario)
@@ -699,8 +709,8 @@ def test_missing_job_is_fenced_before_the_next_attempt():
             commands, "submit_maintenance_operation", names.index("submit_maintenance_operation") + 1
         )
         assert names.index("delete_maintenance_job") < second_submit
-        assert h.fakes.pods_calls == [FIRST] * 4
-        assert h.submit_times()[1] > h.fakes.pods_times[-1]
+        assert h.fakes.pods_calls == [*[FIRST] * 4, FIRST, f"{RUN_IDS[0]}-{COMPACTION}-2"]
+        assert h.submit_times()[1] > h.fakes.pods_times[3]
         assert h.recorded() == [(COMPACTION, 1, False, "spark job missing"), (COMPACTION, 2, True, None)]
 
     _run(scenario)
@@ -849,11 +859,11 @@ def test_unconfirmed_deletion_fails_the_operation_and_waits_for_the_pods():
         next_submit = _first_after(commands, "submit_maintenance_operation", names.index("delete_maintenance_job"))
         assert commands[next_submit][1] - deleted_at >= timedelta(minutes=20)
         assert names.index("record_maintenance_operation_result") < next_submit
-        last_live_poll = max(t for t in h.fakes.pods_times if t - deleted_at < timedelta(minutes=20))
+        fence_polls = h.fakes.pods_times[:-2]  # the last two check, after each run, that its job is gone
+        last_live_poll = max(t for t in fence_polls if t - deleted_at < timedelta(minutes=20))
         assert last_live_poll - deleted_at >= timedelta(minutes=15)
         slow_gaps = [
-            b - a
-            for a, b in itertools.pairwise(t for t in h.fakes.pods_times if t - deleted_at >= timedelta(minutes=15))
+            b - a for a, b in itertools.pairwise(t for t in fence_polls if t - deleted_at >= timedelta(minutes=15))
         ]
         assert slow_gaps
         assert all(g >= timedelta(minutes=5) for g in slow_gaps)
@@ -1285,6 +1295,7 @@ def test_queued_attempt_polls_slowly_after_the_fast_window():
 
         submitted = h.submit_times()[0]
         polls = [t for t, name in zip(h.fakes.status_times, h.fakes.status_calls, strict=True) if name == FIRST_APP]
+        polls = polls[:-AFTER_RUN_CHECK]
         bound = 20 + (timedelta(hours=24) - timedelta(minutes=10)) // timedelta(minutes=10) + 1
         assert len(polls) <= bound
         limit = submitted + timedelta(seconds=QUEUE_WAIT_LIMIT_SECONDS)
@@ -1456,7 +1467,8 @@ def test_raise_leaves_a_running_attempt_alone():
         assert h.recorded() == [(COMPACTION, 1, True, None)]
         assert [r["attempt"] for r in h.fakes.running_records] == [1]
         names = _names(await h.commands())
-        assert "get_maintenance_job_status" not in names[names.index("raise_maintenance_run_priority") :]
+        raised = names.index("raise_maintenance_run_priority")
+        assert "get_maintenance_job_status" not in names[raised : names.index("delete_maintenance_job")]
         assert await h.parent_payloads() == [_report(raises_received=1)]
 
     _run(scenario)
@@ -1574,7 +1586,8 @@ def test_queued_job_that_cannot_be_replaced_fails_still_running():
         assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1), (EXPIRE, 1)]
         deleted_at = h.fakes.delete_times[FIRST_APP]
         assert h.submit_times()[1] - deleted_at >= timedelta(minutes=20)
-        slow = [t for t in h.fakes.status_times if t - deleted_at >= timedelta(minutes=15)]
+        polls = [t for t, name in zip(h.fakes.status_times, h.fakes.status_calls, strict=True) if name == FIRST_APP]
+        slow = [t for t in polls[:-AFTER_RUN_CHECK] if t - deleted_at >= timedelta(minutes=15)]
         assert all(b - a >= timedelta(minutes=5) for a, b in itertools.pairwise(slow))
 
     _run(scenario)
@@ -2244,3 +2257,93 @@ def test_a_submit_refused_before_its_attempt_started_skips_the_run_with_the_refu
         assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
 
     _run(scenario)
+
+
+JOB_STAYS = timedelta(minutes=3)
+PODS_STAY = timedelta(minutes=1)
+
+
+def test_the_next_run_submits_only_once_the_previous_runs_job_is_gone():
+    """Run 2 is submitted only once run 1's job reads ``NOT_FOUND`` and has no live pods, not at its delete.
+
+    A foreground delete leaves the SparkApplication in place, its driver being killed, until its pods are
+    gone, and only one Spark job of a table may exist at a time. The job here outlives its pods.
+    """
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)], (EXPIRE, 1): [(1, True, None)]}
+        h.fakes.vanish_after_delete[FIRST_APP] = JOB_STAYS
+        h.fakes.pods_live_for[FIRST_APP] = PODS_STAY
+        await h.run_maintenance(COMPACTION, EXPIRE)
+
+        deleted_at = h.fakes.delete_times[FIRST_APP]
+        expire_submitted_at = h.submit_times()[1]
+        assert expire_submitted_at - deleted_at >= JOB_STAYS
+        polls = [at for app, at in zip(h.fakes.status_calls, h.fakes.status_times, strict=True) if app == FIRST_APP]
+        assert any(deleted_at + JOB_STAYS <= at <= expire_submitted_at for at in polls)
+        assert h.recorded() == [(COMPACTION, 1, True, None), (EXPIRE, 1, True, None)]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
+
+    _run(scenario)
+
+
+def test_the_workflow_reports_only_once_the_last_runs_job_is_gone():
+    """The last run's job is gone before the parent is told, so the next plan's first job cannot overlap it."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
+        h.fakes.vanish_after_delete[FIRST_APP] = JOB_STAYS
+        await h.run_maintenance(COMPACTION)
+
+        commands = await h.commands()
+        report = _first_after(commands, "signal_parent", 0)
+        assert commands[report][1] - h.fakes.delete_times[FIRST_APP] >= JOB_STAYS
+        assert h.fakes.deletes == [FIRST_APP]
+
+    _run(scenario)
+
+
+def test_a_cancelled_workflow_reports_only_once_every_job_of_its_run_is_gone():
+    """A cancel during attempt 2 waits, before the report, until attempt 1's job is gone too, as the fence waits."""
+
+    async def scenario(h: Harness) -> None:
+        second = _app(0, COMPACTION, 2)
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, False, "boom")]}
+        h.fakes.vanish_after_delete[FIRST_APP] = JOB_STAYS
+        cancelled: list[bool] = []
+
+        async def cancel(app_name: str, _scheduled: datetime) -> None:
+            if app_name == second and not cancelled:
+                await _cancel_inside_the_activity(h, cancelled)
+
+        h.fakes.status_hook = cancel
+        handle = await h.start_maintenance(COMPACTION, EXPIRE)
+        with pytest.raises(WorkflowFailureError):
+            await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+        assert cancelled == [True]
+
+        commands = await h.commands()
+        report = _first_after(commands, "signal_parent", 0)
+        assert commands[report][1] - h.fakes.delete_times[FIRST_APP] >= JOB_STAYS
+        assert h.recorded() == [(COMPACTION, 1, False, "boom"), (COMPACTION, 2, False, "cancelled")]
+
+    _run(scenario)
+
+
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def test_history_from_before_waiting_for_jobs_gone_replays():
+    """A plan recorded before runs waited for their jobs to be gone replays on the new code without non-determinism.
+
+    Its first run succeeded; its second failed once and was cancelled during attempt 2. So the history holds both
+    the delete after a run and the deletes at the end, which the code before issued without waiting.
+    """
+
+    async def go() -> None:
+        history = WorkflowHistory.from_json(
+            WORKFLOW_ID, (FIXTURES / "maintenance_runs_before_waiting_for_jobs_gone.json").read_text()
+        )
+        await Replayer(workflows=[TableMaintenanceWorkflow]).replay_workflow(history)
+
+    asyncio.run(go())
