@@ -205,10 +205,12 @@ describe("DiscoveryPoliciesPage", { timeout: 15_000 }, () => {
     renderPage();
     await screen.findByText("Sales tables");
     const alerts = await screen.findAllByRole("alert");
-    expect(alerts.map((alert) => alert.textContent)).toEqual([
-      "Discovery cannot read catalog finance: the platform's catalog credential cannot read catalog finance",
-      "Catalog legacy no longer exists",
+    expect(alerts.map((alert) => within(alert).getByText(/:$/).textContent)).toEqual([
+      "Cannot access: finance",
+      "Catalog not found: legacy",
     ]);
+    expect(within(alerts[0]!).getByText("the platform's catalog credential cannot read catalog finance")).toBeInTheDocument();
+    expect(within(alerts[1]!).getByText("catalog legacy not found")).toBeInTheDocument();
     expect(within(alerts[0]!).getByText("finance", { selector: ".font-mono" })).toBeInTheDocument();
     const list = screen.getByRole("table");
     expect(alerts[1]!.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

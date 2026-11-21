@@ -35,6 +35,15 @@ export const Loaded: Story = {
     const rules = within(canvas.getByRole("table", { name: RULES_TABLE }));
     await expect(rules.getByText("orders*")).toBeVisible();
     await expect(rules.getByText("tmp_*")).toBeVisible();
+    // Attached to namespace iceberg.sales, so rule 1's namespace globs only tell its child namespaces apart.
+    await expect(
+      await rules.findByText(
+        "Attached to namespace iceberg.sales: a namespace glob only tells its child namespaces apart.",
+      ),
+    ).toBeVisible();
+    const attached = within(canvas.getByRole("region", { name: "Attached to" }));
+    await expect(attached.getByRole("link", { name: "iceberg.sales" })).toBeVisible();
+    await expect(await attached.findByText(/^Scanned/)).toBeVisible();
     await expect(canvas.getByRole("button", { name: "Save" })).toBeDisabled();
     const current = canvas.getAllByRole("link", { name: "Discovery policies" }).filter((link) => link.getAttribute("aria-current") === "page");
     await expect(current).toHaveLength(1);

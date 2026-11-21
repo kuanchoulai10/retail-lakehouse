@@ -103,9 +103,8 @@ export const CannotAccess: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const alert = await canvas.findByRole("alert");
-    await expect(alert).toHaveTextContent(
-      "Discovery cannot read catalog finance: the platform's catalog credential cannot read catalog finance",
-    );
+    await expect(alert).toHaveTextContent("Cannot access: finance");
+    await expect(within(alert).getByText("the platform's catalog credential cannot read catalog finance")).toBeVisible();
     await expect(await canvas.findByText("Sales tables, without the temporary ones")).toBeVisible();
   },
 };

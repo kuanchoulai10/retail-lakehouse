@@ -4,8 +4,10 @@ import { getGetPlatformSettingsMockHandler } from "@/api/generated/platform-sett
 import { getListGenericTablesMockHandler } from "@/api/generated/generic-tables/generic-tables.msw";
 import { getGetNamespaceMockHandler, getListNamespacesMockHandler } from "@/api/generated/namespaces/namespaces.msw";
 import {
+  getAttachTableDiscoveryPolicyMockHandler,
   getCreateTableDiscoveryPolicyMockHandler,
   getDeleteTableDiscoveryPolicyMockHandler,
+  getDetachTableDiscoveryPolicyMockHandler,
   getGetTableDiscoveryPolicyMockHandler,
   getGetTableDiscoveryPolicyVersionMockHandler,
   getListScannedCatalogsMockHandler,
@@ -227,6 +229,14 @@ export function lakehouseHandlers() {
     getListTableDiscoveryPolicyAttachmentsMockHandler(({ params }) => ({
       attachments: DISCOVERY_POLICY_ATTACHMENTS.filter((attachment) => attachment.policy_name === params.name),
     })),
+    getAttachTableDiscoveryPolicyMockHandler(async ({ params, request }) => ({
+      id: "da-01m7s6c3tqee0rhg00xry2zqqy",
+      policy_id: (DISCOVERY_POLICIES.find((p) => p.name === params.name) ?? DISCOVERY_POLICIES[1]!).id,
+      policy_name: params.name,
+      target: { ...(await request.json()).target, table_uuid: null },
+      attached_at: "2026-11-09T09:00:00Z",
+    })),
+    getDetachTableDiscoveryPolicyMockHandler(),
     getListScannedCatalogsMockHandler(SCANNED_CATALOGS),
     getGetTableDiscoveryRulesMockHandler({ version: 1, rules: RULES }),
     getReplaceTableDiscoveryRulesMockHandler({ version: 2, rules: RULES }),

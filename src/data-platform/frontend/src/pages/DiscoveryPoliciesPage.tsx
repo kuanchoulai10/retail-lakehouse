@@ -14,6 +14,7 @@ import { CreateDiscoveryPolicyDialog } from "@/components/CreateDiscoveryPolicyD
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { ResourceListPage } from "@/components/ResourceListPage";
 import { errorMessage } from "@/format";
+import { scanFailureLabel } from "@/lib/catalogScanState";
 import { discoveryPolicyPath } from "@/lib/discoveryPolicyPaths";
 
 type Policy = ListedTableDiscoveryPolicyApiResponse;
@@ -38,20 +39,17 @@ function inListOrder(policies: Policy[]): Policy[] {
 
 function ScanFailureBanner({ catalog }: { catalog: ScannedCatalogApiResponse }) {
   if (catalog.failure === null) return null;
-  const name = <span className="font-mono">{catalog.catalog}</span>;
   return (
     <Banner
       type="negative"
       title={
-        catalog.failure.reason === "not_found" ? (
-          <>Catalog {name} no longer exists</>
-        ) : (
-          <>
-            Discovery cannot read catalog {name}: {catalog.failure.detail}
-          </>
-        )
+        <>
+          {scanFailureLabel(catalog.failure.reason)}: <span className="font-mono">{catalog.catalog}</span>
+        </>
       }
-    />
+    >
+      {catalog.failure.detail}
+    </Banner>
   );
 }
 

@@ -7,8 +7,10 @@ import {
   getListTableDiscoveryPoliciesQueryKey,
   updateTableDiscoveryPolicy,
   useGetTableDiscoveryPolicy,
+  useListTableDiscoveryPolicyAttachments,
 } from "@/api/generated/discovery-policies/discovery-policies";
 import type { TableDiscoveryPolicyApiResponse, UpdateTableDiscoveryPolicyApiRequest } from "@/api/generated/model";
+import { DiscoveryPolicyAttachments } from "@/components/DiscoveryPolicyAttachments";
 import { DiscoveryRuleEditor } from "@/components/DiscoveryRuleEditor";
 import { DiscoveryRulesTable } from "@/components/DiscoveryRulesTable";
 import { SelectField, type SelectOption } from "@/components/forms/SelectField";
@@ -26,6 +28,7 @@ import {
   type DiscoveryPolicyDraft,
   type DiscoveryRuleDraft,
 } from "@/lib/discoveryPolicyDraft";
+import { ruleHints } from "@/lib/discoveryRuleHints";
 import { isConflict } from "@/lib/updateErrorMessage";
 
 const CONFLICT_MESSAGE = "Someone else changed this policy. Reload to see their version.";
@@ -99,6 +102,7 @@ function DefaultPolicy({ policy }: { policy: Policy }) {
       </Banner>
       <DescriptionList items={[{ term: "When no rule matches", description: outcomeLabel(draft.noMatchOutcome) }]} />
       <DiscoveryRulesTable rules={draft.rules} readOnly />
+      <DiscoveryPolicyAttachments policyName={policy.name} />
     </div>
   );
 }
@@ -114,9 +118,13 @@ function PolicyDraftEditor({ policy }: { policy: Policy }) {
   const [savedNotice, setSavedNotice] = useState(false);
   const newKeys = useRef(0);
   const rulesHeadingId = useId();
+  const attachments = useListTableDiscoveryPolicyAttachments(policy.name);
 
   const current = draft ?? base;
   const dirty = draft !== null && contentKey(draft) !== contentKey(base);
+  // The hints follow the draft, so a rule shows them before it is saved.
+  const targets = (attachments.data?.attachments ?? []).map((attachment) => attachment.target);
+  const hints = Object.fromEntries(current.rules.map((rule) => [rule.key, ruleHints(rule, targets)]));
 
   const save = useMutation({
     mutationFn: (body: UpdateTableDiscoveryPolicyApiRequest) => updateTableDiscoveryPolicy(policy.name, body),
@@ -227,9 +235,11 @@ function PolicyDraftEditor({ policy }: { policy: Policy }) {
             edit: (rule) => setEditing({ mode: "edit", rule }),
             remove: (rule) => changeRules((rules) => rules.filter((r) => r.key !== rule.key)),
           }}
+          hints={hints}
           emptyState={`No rules. ${outcomeLabel(current.noMatchOutcome)} every table.`}
         />
       </section>
+      <DiscoveryPolicyAttachments policyName={policy.name} />
       {editing !== null && (
         <DiscoveryRuleEditor
           title={editing.mode === "add" ? "Add rule" : "Edit rule"}
