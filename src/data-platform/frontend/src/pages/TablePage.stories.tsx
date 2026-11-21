@@ -22,6 +22,7 @@ import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageSc
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
 import { DESKTOP, PHONE } from "@/stories/phone";
 import {
+  DRY_RUN_DEFAULT_MAINTENANCE,
   effectivePolicies,
   ESCALATED_RUN,
   ESCALATED_RUN_ID,
@@ -37,7 +38,6 @@ import {
   PARTITION_SCOPE_RUN_ID,
   PENDING_RUN_ID,
   pendingRun,
-  POLICIES,
   QUEUE_TIMEOUT_RUN,
   QUEUE_TIMEOUT_RUN_ID,
   queuedRun,
@@ -714,21 +714,11 @@ export const Policy: Story = {
 
 export const PolicyDryRun: Story = {
   beforeEach({ msw }) {
-    const scratch = POLICIES[2]!;
     const [, discovery] = effectivePolicies("iceberg", ["retail"], "orders").policies;
     msw.use(
       getGetTableEffectivePoliciesMockHandler({
         policies: [
-          {
-            kind: "maintenance",
-            policy_id: scratch.id,
-            policy_name: scratch.name,
-            version: scratch.version,
-            description: scratch.description,
-            dry_run: true,
-            target: null,
-            attachment_id: null,
-          },
+          DRY_RUN_DEFAULT_MAINTENANCE,
           discovery!,
         ],
       }),
@@ -766,7 +756,7 @@ export const PolicyNotRecorded: Story = {
   play: async ({ canvasElement }) => {
     const panel = within(await within(canvasElement).findByRole("region", { name: "Policies" }));
     await expect(await panel.findByRole("link", { name: "retail-nightly v4" })).toBeVisible();
-    await expect(panel.getByRole("button", { name: "Attach maintenance policy" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Attach policy for maintenance" })).toBeVisible();
     await expect(within(canvasElement).getByText("no discovery policy in this catalog manages tables")).toBeVisible();
   },
 };

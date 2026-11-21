@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import {
   getListTableMaintenancePoliciesQueryKey,
-  getListTableMaintenancePolicyMappingsQueryKey,
+  getListTableMaintenancePolicyAttachmentsQueryKey,
 } from "./generated/maintenance-policies/maintenance-policies";
 import { invalidateEffectivePolicies } from "./invalidateEffectivePolicies";
 
@@ -12,7 +12,7 @@ export function invalidatePolicyAttachments(queryClient: QueryClient, policyName
     invalidateEffectivePolicies(queryClient).then(() => undefined),
     queryClient.invalidateQueries({ queryKey: getListTableMaintenancePoliciesQueryKey(), exact: true }),
     ...policyNames.map((name) =>
-      queryClient.invalidateQueries({ queryKey: getListTableMaintenancePolicyMappingsQueryKey(name) }),
+      queryClient.invalidateQueries({ queryKey: getListTableMaintenancePolicyAttachmentsQueryKey(name) }),
     ),
   ]);
 }

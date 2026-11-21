@@ -104,7 +104,7 @@ function AttachmentRow({ attachment, scanned, detaching, onDetach, detachRef }: 
 }
 
 // Where one discovery policy is attached, each target with its catalog's scan state, and the
-// attach and detach actions. Detaching removes a mapping, not the policy, so it does not ask.
+// attach and detach actions. Detaching removes an attachment, not the policy, so it does not ask.
 export function DiscoveryPolicyAttachments({ policyName }: { policyName: string }) {
   const queryClient = useQueryClient();
   const headingId = useId();

@@ -1,4 +1,4 @@
-"""Build a web client whose policy and mapping routes run the real services on in-memory fakes."""
+"""Build a web client whose policy and attachment routes run the real services on in-memory fakes."""
 
 from __future__ import annotations
 
@@ -93,9 +93,7 @@ class PolicyWebWorld:
             attach_table_maintenance_policy=AttachTableMaintenancePolicyService(
                 policies, attachments, catalog, tables, changes, clock=lambda: NOW
             ),
-            detach_table_maintenance_policy=DetachTableMaintenancePolicyService(
-                policies, attachments, catalog, tables, changes
-            ),
+            detach_table_maintenance_policy=DetachTableMaintenancePolicyService(policies, attachments, tables, changes),
             list_table_maintenance_policy_attachments=ListTableMaintenancePolicyAttachmentsService(
                 policies, attachments, catalog, tables
             ),
@@ -111,7 +109,11 @@ class PolicyWebWorld:
         return response.json()
 
     def attach(self, name: str, type_: str, path: list[str]) -> Any:  # noqa: ANN401
-        """Attach a policy through the API and return the response."""
+        """Attach a policy to a target through the API and return the response."""
         return self.client.put(
-            f"/v1/maintenance-policies/{name}/mappings", json={"target": {"type": type_, "path": path}}
+            f"/v1/maintenance-policies/{name}/attachments", json={"target": {"type": type_, "path": path}}
         )
+
+    def detach(self, name: str, attachment_id: str) -> Any:  # noqa: ANN401
+        """Detach one of a policy's attachments through the API and return the response."""
+        return self.client.delete(f"/v1/maintenance-policies/{name}/attachments/{attachment_id}")

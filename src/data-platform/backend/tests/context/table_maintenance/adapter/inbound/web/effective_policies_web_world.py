@@ -129,13 +129,13 @@ class EffectivePoliciesWebWorld:
             ),
         )
 
-    def attach_maintenance(self, name: str, type_: str, path: list[str]) -> Any:  # noqa: ANN401
-        """Attach a maintenance policy through the API and return the response."""
+    def attach_maintenance(self, name: str, type_: str, path: list[str]) -> dict[str, Any]:
+        """Attach a maintenance policy through the API and return the response body."""
         response = self.client.put(
-            f"/v1/maintenance-policies/{name}/mappings", json={"target": {"type": type_, "path": path}}
+            f"/v1/maintenance-policies/{name}/attachments", json={"target": {"type": type_, "path": path}}
         )
         assert response.status_code == 200, response.text
-        return response
+        return response.json()
 
     def attach_discovery(self, name: str, type_: str, path: list[str]) -> dict[str, Any]:
         """Attach a discovery policy through the API and return the response body."""
@@ -158,8 +158,3 @@ class EffectivePoliciesWebWorld:
                 name=name, content={**SALES_TABLES_CONTENT, **changes}, version=version
             )
         )
-
-    def maintenance_attachment_id(self) -> str:
-        """Return the id of the one maintenance attachment; the attach route does not answer it yet."""
-        (attachment,) = self.maintenance_attachments.list_all()
-        return attachment.id.value

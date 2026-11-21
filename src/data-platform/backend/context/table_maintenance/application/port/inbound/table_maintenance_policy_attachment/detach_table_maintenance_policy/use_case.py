@@ -16,8 +16,8 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
 class DetachTableMaintenancePolicyUseCase(
     UseCase[DetachTableMaintenancePolicyUseCaseInput, DetachTableMaintenancePolicyUseCaseOutput]
 ):
-    """Detach the maintenance policy from a catalog, namespace or table."""
+    """Detach one of a maintenance policy's attachments, named by its ``pa-`` id."""
 
     @abstractmethod
     def execute(self, request: DetachTableMaintenancePolicyUseCaseInput) -> DetachTableMaintenancePolicyUseCaseOutput:
-        """Detach the maintenance policy from a catalog, namespace or table."""
+        """Detach one of a maintenance policy's attachments, named by its ``pa-`` id."""

@@ -344,8 +344,9 @@ describe("TablePage", { timeout: 15_000 }, () => {
           }),
         "GET /v1/maintenance-policies": () =>
           jsonResponse({ policies: [policyFixture({ name: "default" }), policyFixture({ name: "scratch" })] }),
-        "PUT /v1/maintenance-policies/scratch/mappings": () =>
+        "PUT /v1/maintenance-policies/scratch/attachments": () =>
           jsonResponse({
+            id: "pa-01m7sd16b1ef2vww335cwcg9k8",
             policy_name: "scratch",
             target: { type: "table", path: ["iceberg", "retail", "orders"], table_uuid: "uuid-orders" },
             attached_at: "2026-11-12T09:00:00Z",
@@ -355,13 +356,13 @@ describe("TablePage", { timeout: 15_000 }, () => {
     renderAt(PAGE);
     expect(await screen.findAllByText("Platform default")).toHaveLength(2);
     expect(screen.getByText("no discovery policy in this catalog manages tables")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Attach maintenance policy" }));
+    await userEvent.click(screen.getByRole("button", { name: "Attach policy for maintenance" }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.click(within(dialog).getByRole("combobox", { name: "Policy" }));
     await userEvent.click(await screen.findByRole("option", { name: "scratch" }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Attach" }));
     await waitFor(() => expect(callsTo(calls, "GET", byName)).toHaveLength(2));
-    expect(bodyOf(calls, "PUT", "/v1/maintenance-policies/scratch/mappings")).toEqual({
+    expect(bodyOf(calls, "PUT", "/v1/maintenance-policies/scratch/attachments")).toEqual({
       target: { type: "table", path: ["iceberg", "retail", "orders"] },
     });
     expect(callsTo(calls, "GET", "/v1/tables/uuid-orders/effective-policies")).toHaveLength(0);

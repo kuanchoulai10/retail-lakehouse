@@ -22,11 +22,10 @@ import type {
   ApplicableTableMaintenancePolicyApiResponse,
   AttachTableMaintenancePolicyApiRequest,
   CreateTableMaintenancePolicyApiRequest,
-  DetachTableMaintenancePolicyApiRequest,
   TableMaintenancePoliciesApiResponse,
   TableMaintenancePolicyApiResponse,
-  TableMaintenancePolicyMappingApiResponse,
-  TableMaintenancePolicyMappingsApiResponse,
+  TableMaintenancePolicyAttachmentApiResponse,
+  TableMaintenancePolicyAttachmentsApiResponse,
   TableMaintenancePolicyVersionApiResponse,
   UpdateTableMaintenancePolicyApiRequest
 } from '../model';
@@ -42,9 +41,9 @@ export const getGetTableMaintenancePolicyResponseMock = (overrideResponse: Parti
 
 export const getUpdateTableMaintenancePolicyResponseMock = (overrideResponse: Partial<Extract<TableMaintenancePolicyApiResponse, object>> = {}): TableMaintenancePolicyApiResponse => ({created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', description: faker.string.alpha({length: {min: 10, max: 20}}), dry_run: faker.datatype.boolean(), expire_snapshots: faker.helpers.arrayElement([{options: faker.helpers.arrayElement([{max_concurrent_deletes: faker.helpers.arrayElement([faker.number.int(),null,]), stream_results: faker.helpers.arrayElement([faker.datatype.boolean(),null,])},null,]), target: {max_snapshot_age_seconds: faker.helpers.arrayElement([faker.number.int(),null,]), min_snapshots_to_keep: faker.helpers.arrayElement([faker.number.int(),null,])}},null,]), id: faker.string.alpha({length: {min: 10, max: 20}}), is_default: faker.datatype.boolean(), name: faker.string.alpha({length: {min: 10, max: 20}}), on: {catalog_commit: faker.helpers.arrayElement([{debounce_seconds: faker.number.int()},null,]), schedule: {every_seconds: faker.number.int()}}, remove_orphan_files: faker.helpers.arrayElement([{options: faker.helpers.arrayElement([{max_concurrent_deletes: faker.helpers.arrayElement([faker.number.int(),null,]), prefix_mismatch_mode: faker.helpers.arrayElement([faker.helpers.arrayElement(['ERROR','IGNORE','DELETE'] as const),null,])},null,]), target: {older_than_seconds: faker.number.int()}},null,]), rewrite_data_files: faker.helpers.arrayElement([{options: faker.helpers.arrayElement([{delete_file_threshold: faker.helpers.arrayElement([faker.number.int(),null,]), max_concurrent_file_group_rewrites: faker.helpers.arrayElement([faker.number.int(),null,]), max_file_group_size_bytes: faker.helpers.arrayElement([faker.number.int(),null,]), min_input_files: faker.helpers.arrayElement([faker.number.int(),null,]), partial_progress_enabled: faker.helpers.arrayElement([faker.datatype.boolean(),null,]), partial_progress_max_commits: faker.helpers.arrayElement([faker.number.int(),null,]), remove_dangling_deletes: faker.helpers.arrayElement([faker.datatype.boolean(),null,]), rewrite_all: faker.helpers.arrayElement([faker.datatype.boolean(),null,]), sort_order: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), strategy: faker.helpers.arrayElement([faker.helpers.arrayElement(['binpack','sort'] as const),null,])},null,]), target: {per: faker.helpers.arrayElement(['partition','table'] as const), reducible_files: {at_most: faker.number.int()}}},null,]), rewrite_manifests: faker.helpers.arrayElement([{options: faker.helpers.arrayElement([{use_caching: faker.helpers.arrayElement([faker.datatype.boolean(),null,])},null,]), target: {small_manifests: {at_most: faker.number.int()}}},null,]), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', version: faker.number.int(), ...overrideResponse})
 
-export const getListTableMaintenancePolicyMappingsResponseMock = (overrideResponse: Partial<Extract<TableMaintenancePolicyMappingsApiResponse, object>> = {}): TableMaintenancePolicyMappingsApiResponse => ({mappings: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({attached_at: faker.date.past().toISOString().slice(0, 19) + 'Z', orphaned: faker.datatype.boolean(), policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), target: {path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), table_uuid: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), type: faker.string.alpha({length: {min: 10, max: 20}})}})), ...overrideResponse})
+export const getListTableMaintenancePolicyAttachmentsResponseMock = (overrideResponse: Partial<Extract<TableMaintenancePolicyAttachmentsApiResponse, object>> = {}): TableMaintenancePolicyAttachmentsApiResponse => ({attachments: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({attached_at: faker.date.past().toISOString().slice(0, 19) + 'Z', id: faker.string.alpha({length: {min: 10, max: 20}}), orphaned: faker.datatype.boolean(), policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), target: {path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), table_uuid: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), type: faker.string.alpha({length: {min: 10, max: 20}})}})), ...overrideResponse})
 
-export const getAttachTableMaintenancePolicyResponseMock = (overrideResponse: Partial<Extract<TableMaintenancePolicyMappingApiResponse, object>> = {}): TableMaintenancePolicyMappingApiResponse => ({attached_at: faker.date.past().toISOString().slice(0, 19) + 'Z', policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), target: {path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), table_uuid: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), type: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse})
+export const getAttachTableMaintenancePolicyResponseMock = (overrideResponse: Partial<Extract<TableMaintenancePolicyAttachmentApiResponse, object>> = {}): TableMaintenancePolicyAttachmentApiResponse => ({attached_at: faker.date.past().toISOString().slice(0, 19) + 'Z', id: faker.string.alpha({length: {min: 10, max: 20}}), policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), target: {path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), table_uuid: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), type: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse})
 
 export const getGetTableMaintenancePolicyVersionResponseMock = (overrideResponse: Partial<Extract<TableMaintenancePolicyVersionApiResponse, object>> = {}): TableMaintenancePolicyVersionApiResponse => ({created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', description: faker.string.alpha({length: {min: 10, max: 20}}), dry_run: faker.datatype.boolean(), expire_snapshots: faker.helpers.arrayElement([{options: faker.helpers.arrayElement([{max_concurrent_deletes: faker.helpers.arrayElement([faker.number.int(),null,]), stream_results: faker.helpers.arrayElement([faker.datatype.boolean(),null,])},null,]), target: {max_snapshot_age_seconds: faker.helpers.arrayElement([faker.number.int(),null,]), min_snapshots_to_keep: faker.helpers.arrayElement([faker.number.int(),null,])}},null,]), id: faker.string.alpha({length: {min: 10, max: 20}}), is_default: faker.datatype.boolean(), name: faker.string.alpha({length: {min: 10, max: 20}}), on: {catalog_commit: faker.helpers.arrayElement([{debounce_seconds: faker.number.int()},null,]), schedule: {every_seconds: faker.number.int()}}, remove_orphan_files: faker.helpers.arrayElement([{options: faker.helpers.arrayElement([{max_concurrent_deletes: faker.helpers.arrayElement([faker.number.int(),null,]), prefix_mismatch_mode: faker.helpers.arrayElement([faker.helpers.arrayElement(['ERROR','IGNORE','DELETE'] as const),null,])},null,]), target: {older_than_seconds: faker.number.int()}},null,]), rewrite_data_files: faker.helpers.arrayElement([{options: faker.helpers.arrayElement([{delete_file_threshold: faker.helpers.arrayElement([faker.number.int(),null,]), max_concurrent_file_group_rewrites: faker.helpers.arrayElement([faker.number.int(),null,]), max_file_group_size_bytes: faker.helpers.arrayElement([faker.number.int(),null,]), min_input_files: faker.helpers.arrayElement([faker.number.int(),null,]), partial_progress_enabled: faker.helpers.arrayElement([faker.datatype.boolean(),null,]), partial_progress_max_commits: faker.helpers.arrayElement([faker.number.int(),null,]), remove_dangling_deletes: faker.helpers.arrayElement([faker.datatype.boolean(),null,]), rewrite_all: faker.helpers.arrayElement([faker.datatype.boolean(),null,]), sort_order: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), strategy: faker.helpers.arrayElement([faker.helpers.arrayElement(['binpack','sort'] as const),null,])},null,]), target: {per: faker.helpers.arrayElement(['partition','table'] as const), reducible_files: {at_most: faker.number.int()}}},null,]), rewrite_manifests: faker.helpers.arrayElement([{options: faker.helpers.arrayElement([{use_caching: faker.helpers.arrayElement([faker.datatype.boolean(),null,])},null,]), target: {small_manifests: {at_most: faker.number.int()}}},null,]), version: faker.number.int(), ...overrideResponse})
 
@@ -121,36 +120,36 @@ export const getUpdateTableMaintenancePolicyMockHandler = (overrideResponse?: Ta
   }, options)
 }
 
-export const getDetachTableMaintenancePolicyMockHandler = (overrideResponse?: void | ((info: Parameters<HttpResponseResolver<{ name: string }, DetachTableMaintenancePolicyApiRequest>>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
-  return http.delete<{ name: string }, DetachTableMaintenancePolicyApiRequest>('*/v1/maintenance-policies/:name/mappings', async (info: Parameters<HttpResponseResolver<{ name: string }, DetachTableMaintenancePolicyApiRequest>>[0]) => {
-  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
-
-    return new HttpResponse(null,
-      { status: 204
-      })
-  }, options)
-}
-
-export const getListTableMaintenancePolicyMappingsMockHandler = (overrideResponse?: TableMaintenancePolicyMappingsApiResponse | ((info: Parameters<HttpResponseResolver<{ name: string }>>[0]) => Promise<TableMaintenancePolicyMappingsApiResponse> | TableMaintenancePolicyMappingsApiResponse), options?: RequestHandlerOptions) => {
-  return http.get<{ name: string }>('*/v1/maintenance-policies/:name/mappings', async (info: Parameters<HttpResponseResolver<{ name: string }>>[0]) => {
+export const getListTableMaintenancePolicyAttachmentsMockHandler = (overrideResponse?: TableMaintenancePolicyAttachmentsApiResponse | ((info: Parameters<HttpResponseResolver<{ name: string }>>[0]) => Promise<TableMaintenancePolicyAttachmentsApiResponse> | TableMaintenancePolicyAttachmentsApiResponse), options?: RequestHandlerOptions) => {
+  return http.get<{ name: string }>('*/v1/maintenance-policies/:name/attachments', async (info: Parameters<HttpResponseResolver<{ name: string }>>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getListTableMaintenancePolicyMappingsResponseMock(),
+    : getListTableMaintenancePolicyAttachmentsResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getAttachTableMaintenancePolicyMockHandler = (overrideResponse?: TableMaintenancePolicyMappingApiResponse | ((info: Parameters<HttpResponseResolver<{ name: string }, AttachTableMaintenancePolicyApiRequest>>[0]) => Promise<TableMaintenancePolicyMappingApiResponse> | TableMaintenancePolicyMappingApiResponse), options?: RequestHandlerOptions) => {
-  return http.put<{ name: string }, AttachTableMaintenancePolicyApiRequest>('*/v1/maintenance-policies/:name/mappings', async (info: Parameters<HttpResponseResolver<{ name: string }, AttachTableMaintenancePolicyApiRequest>>[0]) => {
+export const getAttachTableMaintenancePolicyMockHandler = (overrideResponse?: TableMaintenancePolicyAttachmentApiResponse | ((info: Parameters<HttpResponseResolver<{ name: string }, AttachTableMaintenancePolicyApiRequest>>[0]) => Promise<TableMaintenancePolicyAttachmentApiResponse> | TableMaintenancePolicyAttachmentApiResponse), options?: RequestHandlerOptions) => {
+  return http.put<{ name: string }, AttachTableMaintenancePolicyApiRequest>('*/v1/maintenance-policies/:name/attachments', async (info: Parameters<HttpResponseResolver<{ name: string }, AttachTableMaintenancePolicyApiRequest>>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getAttachTableMaintenancePolicyResponseMock(),
       { status: 200
+      })
+  }, options)
+}
+
+export const getDetachTableMaintenancePolicyMockHandler = (overrideResponse?: void | ((info: Parameters<HttpResponseResolver<{ name: string; attachmentId: string }>>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.delete<{ name: string; attachmentId: string }>('*/v1/maintenance-policies/:name/attachments/:attachmentId', async (info: Parameters<HttpResponseResolver<{ name: string; attachmentId: string }>>[0]) => {
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+
+    return new HttpResponse(null,
+      { status: 204
       })
   }, options)
 }
@@ -185,9 +184,9 @@ export const getMaintenancePoliciesMock = () => [
   getDeleteTableMaintenancePolicyMockHandler(),
   getGetTableMaintenancePolicyMockHandler(),
   getUpdateTableMaintenancePolicyMockHandler(),
-  getDetachTableMaintenancePolicyMockHandler(),
-  getListTableMaintenancePolicyMappingsMockHandler(),
+  getListTableMaintenancePolicyAttachmentsMockHandler(),
   getAttachTableMaintenancePolicyMockHandler(),
+  getDetachTableMaintenancePolicyMockHandler(),
   getGetTableMaintenancePolicyVersionMockHandler(),
   getGetTableApplicableMaintenancePolicyMockHandler()
 ]

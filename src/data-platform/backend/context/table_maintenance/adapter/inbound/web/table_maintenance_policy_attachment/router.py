@@ -1,4 +1,4 @@
-"""Define the policy mapping and applicable policy router."""
+"""Define the maintenance policy attachment and applicable policy router."""
 
 from __future__ import annotations
 
@@ -14,10 +14,9 @@ from context.table_maintenance.adapter.inbound.web.shared import (
 from context.table_maintenance.adapter.inbound.web.table_maintenance_policy_attachment.dto import (
     ApplicableTableMaintenancePolicyApiResponse,
     AttachTableMaintenancePolicyApiRequest,
-    DetachTableMaintenancePolicyApiRequest,
-    ListedTableMaintenancePolicyMappingApiResponse,
-    TableMaintenancePolicyMappingApiResponse,
-    TableMaintenancePolicyMappingsApiResponse,
+    ListedTableMaintenancePolicyAttachmentApiResponse,
+    TableMaintenancePolicyAttachmentApiResponse,
+    TableMaintenancePolicyAttachmentsApiResponse,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
     AttachTableMaintenancePolicyUseCaseInput,
@@ -36,15 +35,18 @@ router = APIRouter(tags=["maintenance-policies"])
 UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
 
 
-@router.get("/maintenance-policies/{name}/mappings")
-def list_table_maintenance_policy_mappings(name: str, use_cases: UseCases) -> TableMaintenancePolicyMappingsApiResponse:
-    """List the targets a policy is attached to, marking those no longer in the catalog as orphaned."""
+@router.get("/maintenance-policies/{name}/attachments")
+def list_table_maintenance_policy_attachments(
+    name: str, use_cases: UseCases
+) -> TableMaintenancePolicyAttachmentsApiResponse:
+    """List the targets a maintenance policy is attached to, marking those no longer in the catalog as orphaned."""
     output = use_cases.list_table_maintenance_policy_attachments.execute(
         ListTableMaintenancePolicyAttachmentsUseCaseInput(policy_name=name)
     )
-    return TableMaintenancePolicyMappingsApiResponse(
-        mappings=[
-            ListedTableMaintenancePolicyMappingApiResponse(
+    return TableMaintenancePolicyAttachmentsApiResponse(
+        attachments=[
+            ListedTableMaintenancePolicyAttachmentApiResponse(
+                id=item.id,
                 target=PolicyTargetApiResponse(type=item.type, path=list(item.path), table_uuid=item.table_uuid),
                 policy_id=item.policy_id,
                 policy_name=item.policy_name,
@@ -56,17 +58,21 @@ def list_table_maintenance_policy_mappings(name: str, use_cases: UseCases) -> Ta
     )
 
 
-@router.put("/maintenance-policies/{name}/mappings")
+@router.put("/maintenance-policies/{name}/attachments")
 def attach_table_maintenance_policy(
     name: str, body: AttachTableMaintenancePolicyApiRequest, use_cases: UseCases
-) -> TableMaintenancePolicyMappingApiResponse:
-    """Attach a policy to a target that exists in the catalog, replacing the target's attachment."""
+) -> TableMaintenancePolicyAttachmentApiResponse:
+    """Attach a maintenance policy to a target that exists in the catalog, replacing the target's attachment.
+
+    The target keeps its attachment's id. A catalog the platform's credential cannot read answers 403.
+    """
     output = use_cases.attach_table_maintenance_policy.execute(
         AttachTableMaintenancePolicyUseCaseInput(
             target_type=body.target.type, path=tuple(body.target.path), policy_name=name
         )
     )
-    return TableMaintenancePolicyMappingApiResponse(
+    return TableMaintenancePolicyAttachmentApiResponse(
+        id=output.id,
         target=PolicyTargetApiResponse(type=output.target_type, path=list(output.path), table_uuid=output.table_uuid),
         policy_id=output.policy_id,
         policy_name=output.policy_name,
@@ -74,18 +80,14 @@ def attach_table_maintenance_policy(
     )
 
 
-@router.delete("/maintenance-policies/{name}/mappings", status_code=status.HTTP_204_NO_CONTENT)
-def detach_table_maintenance_policy(
-    name: str, body: DetachTableMaintenancePolicyApiRequest, use_cases: UseCases
-) -> Response:
-    """Detach a policy from a target; 404 when that policy is not the one attached there."""
+@router.delete("/maintenance-policies/{name}/attachments/{attachment_id}", status_code=status.HTTP_204_NO_CONTENT)
+def detach_table_maintenance_policy(name: str, attachment_id: str, use_cases: UseCases) -> Response:
+    """Detach one of a maintenance policy's attachments by its ``pa-`` id, whether or not its target still exists.
+
+    404 when the policy has no such attachment.
+    """
     use_cases.detach_table_maintenance_policy.execute(
-        DetachTableMaintenancePolicyUseCaseInput(
-            target_type=body.target.type,
-            path=tuple(body.target.path),
-            table_uuid=body.target.table_uuid,
-            policy_name=name,
-        )
+        DetachTableMaintenancePolicyUseCaseInput(policy_name=name, attachment_id=attachment_id)
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

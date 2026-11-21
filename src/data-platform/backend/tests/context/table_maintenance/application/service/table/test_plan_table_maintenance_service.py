@@ -1186,15 +1186,15 @@ def test_detaching_the_new_policy_does_not_bring_the_block_back(
     CreateTableMaintenancePolicyService(policies, clock=lambda: now).execute(
         CreateTableMaintenancePolicyUseCaseInput(name="gold", content=DEFAULT.to_primitives())
     )
-    AttachTableMaintenancePolicyService(
+    attached = AttachTableMaintenancePolicyService(
         policies, attachments, catalog, tables_repo, RecordingSendTableChangeGateway(), clock=lambda: now
     ).execute(
         AttachTableMaintenancePolicyUseCaseInput(target_type="namespace", path=("iceberg", "sales"), policy_name="gold")
     )
     assert _checks(_plan(planner, now))["rewrite_data_files"].verdict == "due"
-    DetachTableMaintenancePolicyService(
-        policies, attachments, catalog, tables_repo, RecordingSendTableChangeGateway()
-    ).execute(DetachTableMaintenancePolicyUseCaseInput(target_type="namespace", path=("iceberg", "sales")))
+    DetachTableMaintenancePolicyService(policies, attachments, tables_repo, RecordingSendTableChangeGateway()).execute(
+        DetachTableMaintenancePolicyUseCaseInput(policy_name="gold", attachment_id=attached.id)
+    )
     plan = _plan(planner, now)
     assert plan.policy_id == DEFAULT_POLICY_ID.value
     assert _checks(plan)["rewrite_data_files"].verdict == "due"

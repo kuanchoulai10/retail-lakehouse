@@ -16,10 +16,10 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
 class ListTableMaintenancePolicyAttachmentsUseCase(
     UseCase[ListTableMaintenancePolicyAttachmentsUseCaseInput, ListTableMaintenancePolicyAttachmentsUseCaseOutput]
 ):
-    """List policy attachments."""
+    """List one maintenance policy's attachments."""
 
     @abstractmethod
     def execute(
         self, request: ListTableMaintenancePolicyAttachmentsUseCaseInput
     ) -> ListTableMaintenancePolicyAttachmentsUseCaseOutput:
-        """List policy attachments."""
+        """List one maintenance policy's attachments."""

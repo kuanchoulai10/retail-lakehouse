@@ -7,7 +7,7 @@ import { apiError } from "@/stories/apiError";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
 import { PHONE } from "@/stories/phone";
-import { effectivePolicies, POLICIES } from "@/stories/storyData";
+import { DRY_RUN_DEFAULT_MAINTENANCE, effectivePolicies } from "@/stories/storyData";
 import { EffectivePoliciesPanel } from "./EffectivePoliciesPanel";
 
 const meta = {
@@ -44,7 +44,7 @@ export const AttachedHere: Story = {
     const [maintenance, discovery] = await rows(canvasElement);
     await expect(maintenance).toHaveTextContent("Attached here");
     await expect(within(maintenance!).getByRole("button", { name: "Detach maintenance policy" })).toBeVisible();
-    await expect(within(maintenance!).getByRole("button", { name: "Replace maintenance policy" })).toBeVisible();
+    await expect(within(maintenance!).getByRole("button", { name: "Replace policy for maintenance" })).toBeVisible();
     await expect(discovery).toHaveTextContent("From catalog iceberg");
     await expect(within(discovery!).queryByRole("button", { name: "Detach discovery policy" })).toBeNull();
   },
@@ -68,20 +68,10 @@ export const PlatformDefaultInDryRun: Story = {
   args: { scope: { type: "catalog", catalog: "analytics" } },
   beforeEach({ msw }) {
     const [, discovery] = effectivePolicies("analytics").policies;
-    const scratch = POLICIES[2]!;
     msw.use(
       getGetEffectivePoliciesMockHandler({
         policies: [
-          {
-            kind: "maintenance",
-            policy_id: scratch.id,
-            policy_name: scratch.name,
-            version: scratch.version,
-            description: scratch.description,
-            dry_run: true,
-            target: null,
-            attachment_id: null,
-          },
+          DRY_RUN_DEFAULT_MAINTENANCE,
           discovery!,
         ],
       }),
@@ -107,7 +97,7 @@ export const LoadError: Story = {
 
 export const DetachFails: Story = {
   beforeEach({ msw }) {
-    msw.use(apiError("delete", "/v1/maintenance-policies/:name/mappings", "database unavailable", 500));
+    msw.use(apiError("delete", "/v1/maintenance-policies/:name/attachments/:attachmentId", "database unavailable", 500));
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -122,7 +112,7 @@ export const DetachFails: Story = {
 export const Keyboard: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const replace = await canvas.findByRole("button", { name: "Replace maintenance policy" });
+    const replace = await canvas.findByRole("button", { name: "Replace policy for maintenance" });
     replace.focus();
     await userEvent.tab();
     await expect(canvas.getByRole("button", { name: "Detach maintenance policy" })).toHaveFocus();
@@ -131,7 +121,7 @@ export const Keyboard: Story = {
     await userEvent.tab();
     await expect(canvas.getByRole("link", { name: "iceberg" })).toHaveFocus();
     await userEvent.tab();
-    const attachDiscovery = canvas.getByRole("button", { name: "Attach discovery policy" });
+    const attachDiscovery = canvas.getByRole("button", { name: "Attach policy for discovery" });
     await expect(attachDiscovery).toHaveFocus();
     await userEvent.keyboard("{Enter}");
     const dialog = await screen.findByRole("dialog", { name: "Attach policy" });

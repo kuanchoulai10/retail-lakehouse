@@ -83,15 +83,19 @@ class _World:
             registered.unmanage(UNMANAGED.match, NOW)
         self.tables.create(registered)
 
-    def attach(self, type_: str, path: tuple[str, ...], policy: str) -> None:
-        AttachTableMaintenancePolicyService(
-            self.policies, self.attachments, self.catalog, self.tables, self.changes, clock=lambda: NOW
-        ).execute(AttachTableMaintenancePolicyUseCaseInput(target_type=type_, path=path, policy_name=policy))
+    def attach(self, type_: str, path: tuple[str, ...], policy: str) -> str:
+        return (
+            AttachTableMaintenancePolicyService(
+                self.policies, self.attachments, self.catalog, self.tables, self.changes, clock=lambda: NOW
+            )
+            .execute(AttachTableMaintenancePolicyUseCaseInput(target_type=type_, path=path, policy_name=policy))
+            .id
+        )
 
-    def detach(self, type_: str, path: tuple[str, ...]) -> None:
-        DetachTableMaintenancePolicyService(
-            self.policies, self.attachments, self.catalog, self.tables, self.changes
-        ).execute(DetachTableMaintenancePolicyUseCaseInput(target_type=type_, path=path))
+    def detach(self, policy: str, attachment_id: str) -> None:
+        DetachTableMaintenancePolicyService(self.policies, self.attachments, self.tables, self.changes).execute(
+            DetachTableMaintenancePolicyUseCaseInput(policy_name=policy, attachment_id=attachment_id)
+        )
 
     def update(self, name: str, version: int) -> None:
         UpdateTableMaintenancePolicyService(
@@ -157,9 +161,9 @@ def test_attach_under_a_nearer_attachment_wakes_nothing(world: _World) -> None:
 
 def test_detach_wakes_the_tables_falling_back(world: _World) -> None:
     """Detaching wakes the tables that now resolve to another policy."""
-    world.attach("table", ("prod", "sales", "us", "orders"), "gold")
+    attachment_id = world.attach("table", ("prod", "sales", "us", "orders"), "gold")
     world.changes.calls.clear()
-    world.detach("table", ("prod", "sales", "us", "orders"))
+    world.detach("gold", attachment_id)
     assert world.woken() == ["u-us"]
 
 
@@ -193,7 +197,7 @@ def test_a_failed_wake_does_not_undo_the_change_or_stop_other_wakes(world: _Worl
         world.policies,
         world.attachments,
         failing,
-        lambda: world.attach("catalog", ("prod",), DEFAULT_POLICY_NAME) or "done",
+        lambda: world.attach("catalog", ("prod",), DEFAULT_POLICY_NAME) and "done",
     )
     assert result == "done"
     assert failing.attempts == 2

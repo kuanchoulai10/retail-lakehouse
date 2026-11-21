@@ -7,11 +7,11 @@
 import type { PolicyTargetApiResponse } from './policyTargetApiResponse';
 
 /**
- * Describe a listed mapping; ``orphaned`` when its target is no longer in the catalog.
+ * Describe a maintenance policy attached to a target, under the attachment's ``pa-`` id.
  */
-export interface ListedTableMaintenancePolicyMappingApiResponse {
+export interface TableMaintenancePolicyAttachmentApiResponse {
   attached_at: string;
-  orphaned: boolean;
+  id: string;
   policy_id: string;
   policy_name: string;
   target: PolicyTargetApiResponse;

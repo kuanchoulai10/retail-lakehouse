@@ -6,6 +6,6 @@ from base import UseCaseInput
 
 
 class ListTableMaintenancePolicyAttachmentsUseCaseInput(UseCaseInput):
-    """Carry the request to list attachments, optionally of one policy."""
+    """Carry the request to list one maintenance policy's attachments."""
 
-    policy_name: str | None = None
+    policy_name: str

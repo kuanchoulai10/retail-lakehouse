@@ -20,7 +20,7 @@ def world() -> EffectivePoliciesWebWorld:
 
 def test_by_uuid_answers_one_entry_per_kind_in_order(world: EffectivePoliciesWebWorld) -> None:
     """GET /tables/{uuid}/effective-policies lists maintenance then discovery, each from its own level."""
-    world.attach_maintenance("gold", "table", ORDERS)
+    maintenance = world.attach_maintenance("gold", "table", ORDERS)
     discovery = world.attach_discovery("sales-tables", "namespace", ["prod", "sales"])
 
     response = world.client.get("/v1/tables/u-1/effective-policies")
@@ -29,13 +29,13 @@ def test_by_uuid_answers_one_entry_per_kind_in_order(world: EffectivePoliciesWeb
     maintenance_entry, discovery_entry = response.json()["policies"]
     assert maintenance_entry == {
         "kind": "maintenance",
-        "policy_id": world.maintenance_attachments.list_all()[0].policy_id.value,
+        "policy_id": maintenance["policy_id"],
         "policy_name": "gold",
         "version": 1,
         "description": "Platform default",
         "dry_run": True,
         "target": {"type": "table", "path": ORDERS, "table_uuid": "u-1"},
-        "attachment_id": world.maintenance_attachment_id(),
+        "attachment_id": maintenance["id"],
     }
     assert discovery_entry == {
         "kind": "discovery",
@@ -83,7 +83,7 @@ def test_by_uuid_a_table_without_a_record_is_404(world: EffectivePoliciesWebWorl
 
 def test_by_location_answers_a_table_without_a_record(world: EffectivePoliciesWebWorld) -> None:
     """GET /effective-policies places an unrecorded table by the catalog and finds its own attachments."""
-    world.attach_maintenance("gold", "table", RETURNS)
+    maintenance = world.attach_maintenance("gold", "table", RETURNS)
     discovery = world.attach_discovery("sales-tables", "table", RETURNS)
 
     response = world.client.get(
@@ -93,7 +93,7 @@ def test_by_location_answers_a_table_without_a_record(world: EffectivePoliciesWe
     assert response.status_code == 200, response.text
     policies = response.json()["policies"]
     assert [p["kind"] for p in policies] == ["maintenance", "discovery"]
-    assert [p["attachment_id"] for p in policies] == [world.maintenance_attachment_id(), discovery["id"]]
+    assert [p["attachment_id"] for p in policies] == [maintenance["id"], discovery["id"]]
     assert [p["target"] for p in policies] == [{"type": "table", "path": RETURNS, "table_uuid": "u-2"}] * 2
 
 

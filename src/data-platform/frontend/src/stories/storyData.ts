@@ -11,7 +11,7 @@ import type {
   ListedTableDiscoveryPolicyApiResponse,
   ListedTableDiscoveryPolicyAttachmentApiResponse,
   ListedTableMaintenancePolicyApiResponse,
-  ListedTableMaintenancePolicyMappingApiResponse,
+  ListedTableMaintenancePolicyAttachmentApiResponse,
   MaintenanceEffectivePolicyApiResponse,
   NamespaceApiResponse,
   PolicyTargetApiResponse,
@@ -1186,11 +1186,9 @@ export const POLICIES: ListedTableMaintenancePolicyApiResponse[] = [
   }),
 ];
 
-// The id of retail-nightly's attachment to namespace iceberg.retail, which the mappings do not carry.
-const RETAIL_NIGHTLY_ATTACHMENT_ID = "pa-01m7sd16b1ef2vww335cwcg9k8";
-
-export const POLICY_MAPPINGS: ListedTableMaintenancePolicyMappingApiResponse[] = [
+export const POLICY_ATTACHMENTS: ListedTableMaintenancePolicyAttachmentApiResponse[] = [
   {
+    id: "pa-01m7sd16b1ef2vww335cwcg9k8",
     policy_id: RETAIL_NIGHTLY_POLICY_ID,
     policy_name: "retail-nightly",
     target: { type: "namespace", path: ["iceberg", "retail"], table_uuid: null },
@@ -1198,6 +1196,7 @@ export const POLICY_MAPPINGS: ListedTableMaintenancePolicyMappingApiResponse[] =
     attached_at: "2026-11-03T09:00:00Z",
   },
   {
+    id: "pa-01m7s9x4ht0e1r6zq8fkd2wmnc",
     policy_id: RETAIL_NIGHTLY_POLICY_ID,
     policy_name: "retail-nightly",
     target: { type: "catalog", path: ["legacy"], table_uuid: null },
@@ -1222,17 +1221,17 @@ function nearest<T extends { target: PolicyTargetApiResponse }>(attachments: T[]
   return candidates.map((key) => byTarget.get(key)).find((a) => a !== undefined);
 }
 
-// What applies where in the story lakehouse, worked out from POLICY_MAPPINGS and
+// What applies where in the story lakehouse, worked out from POLICY_ATTACHMENTS and
 // DISCOVERY_POLICY_ATTACHMENTS as the API does: retail-nightly is attached to namespace
 // iceberg.retail, core-tables to catalog iceberg and sales-tables to namespace iceberg.sales; any
 // other place has the platform default of that kind.
 export function effectivePolicies(catalog: string, namespace: string[] = [], table?: string): EffectivePoliciesApiResponse {
   const candidates = candidateTargets(catalog, namespace, table);
-  const mapping = nearest(
-    POLICY_MAPPINGS.filter((m) => !m.orphaned),
+  const maintenanceAttachment = nearest(
+    POLICY_ATTACHMENTS.filter((a) => !a.orphaned),
     candidates,
   );
-  const maintenancePolicy = POLICIES.find((p) => p.name === (mapping?.policy_name ?? "default"))!;
+  const maintenancePolicy = POLICIES.find((p) => p.name === (maintenanceAttachment?.policy_name ?? "default"))!;
   const maintenance: MaintenanceEffectivePolicyApiResponse = {
     kind: "maintenance",
     policy_id: maintenancePolicy.id,
@@ -1240,8 +1239,8 @@ export function effectivePolicies(catalog: string, namespace: string[] = [], tab
     version: maintenancePolicy.version,
     description: maintenancePolicy.description,
     dry_run: maintenancePolicy.dry_run,
-    target: mapping?.target ?? null,
-    attachment_id: mapping === undefined ? null : RETAIL_NIGHTLY_ATTACHMENT_ID,
+    target: maintenanceAttachment?.target ?? null,
+    attachment_id: maintenanceAttachment?.id ?? null,
   };
   const attachment = nearest(
     DISCOVERY_POLICY_ATTACHMENTS.filter((a) => !a.orphaned),
@@ -1262,6 +1261,20 @@ export function effectivePolicies(catalog: string, namespace: string[] = [], tab
   };
   return { policies: [maintenance, discovery] };
 }
+
+// A maintenance entry for a place with nothing attached, as if the platform default were the
+// dry-run scratch policy: the stories that show the panel's dry-run badge use it.
+const DRY_RUN_POLICY = POLICIES.find((p) => p.name === "scratch")!;
+export const DRY_RUN_DEFAULT_MAINTENANCE: MaintenanceEffectivePolicyApiResponse = {
+  kind: "maintenance",
+  policy_id: DRY_RUN_POLICY.id,
+  policy_name: DRY_RUN_POLICY.name,
+  version: DRY_RUN_POLICY.version,
+  description: DRY_RUN_POLICY.description,
+  dry_run: true,
+  target: null,
+  attachment_id: null,
+};
 
 function setting(
   key: string,

@@ -10,20 +10,21 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     DetachTableMaintenancePolicyUseCaseInput,
     DetachTableMaintenancePolicyUseCaseOutput,
 )
-from context.table_maintenance.application.service.shared import policy_target_from_request
+from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
+    TableMaintenancePolicyName,
+)
+from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
+    TableMaintenancePolicyAttachmentId,
+)
+from context.table_maintenance.application.service.shared import translate_domain_errors
 from context.table_maintenance.application.service.table_maintenance_policy_attachment.notify_policy_change import (  # noqa: E501
     notify_policy_change,
 )
 
 if TYPE_CHECKING:
-    from context.table_maintenance.application.port.outbound.table import (
-        ReadTableMetadataGateway,
-        SendTableChangeGateway,
-        TablesRepo,
-    )
+    from context.table_maintenance.application.port.outbound.table import SendTableChangeGateway, TablesRepo
     from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
         TableMaintenancePoliciesRepo,
-        TableMaintenancePolicyId,
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
         TableMaintenancePolicyAttachmentsRepo,
@@ -31,39 +32,37 @@ if TYPE_CHECKING:
 
 
 class DetachTableMaintenancePolicyService(DetachTableMaintenancePolicyUseCase):
-    """Remove the policy attached to a catalog, namespace or table."""
+    """Remove one of a maintenance policy's attachments, named by its ``pa-`` id."""
 
     def __init__(
         self,
         policies_repo: TableMaintenancePoliciesRepo,
         attachments_repo: TableMaintenancePolicyAttachmentsRepo,
-        gateway: ReadTableMetadataGateway,
         tables_repo: TablesRepo,
         table_changes: SendTableChangeGateway,
     ) -> None:
-        """Bind the repos, the catalog gateway and the table change gateway."""
+        """Bind the repos and the table change gateway."""
         self._policies_repo = policies_repo
         self._attachments_repo = attachments_repo
-        self._gateway = gateway
         self._tables_repo = tables_repo
         self._table_changes = table_changes
 
     def execute(self, request: DetachTableMaintenancePolicyUseCaseInput) -> DetachTableMaintenancePolicyUseCaseOutput:
-        """Detach the policy and tell every managed table whose applicable policy changes.
+        """Delete the attachment; a malformed id is ValidationError, and an unknown policy is NotFoundError.
 
-        A target with nothing attached, or with another policy than ``policy_name`` when it is
-        given, is NotFoundError.
+        An id that is not stored, or that belongs to another policy, is NotFoundError. The catalog is not
+        read, so an attachment whose target is gone is detached the same way. Every managed table whose
+        applicable policy changes is told so; a refused detach tells none.
         """
-        target = policy_target_from_request(
-            self._gateway, request.target_type, request.path, request.table_uuid, must_exist=False
-        )
-        attachment = self._attachments_repo.get_by_target(target)
-        described = f"{request.target_type} {'.'.join(request.path)}"
-        if attachment is None:
-            raise NotFoundError(f"no policy is attached to {described}")
-        if request.policy_name is not None and not self._is_named(attachment.policy_id, request.policy_name):
-            raise NotFoundError(f"policy {request.policy_name} is not attached to {described}")
-        attachment_id = attachment.id
+        with translate_domain_errors():
+            policy_name = TableMaintenancePolicyName(value=request.policy_name)
+            attachment_id = TableMaintenancePolicyAttachmentId(request.attachment_id)
+        policy = self._policies_repo.get_by_name(policy_name)
+        if policy is None:
+            raise NotFoundError(f"table maintenance policy {request.policy_name} not found")
+        attachment = self._attachments_repo.get(attachment_id)
+        if attachment is None or attachment.policy_id != policy.id:
+            raise NotFoundError(f"policy {policy.name.value} has no attachment {attachment_id.value}")
         notify_policy_change(
             self._tables_repo,
             self._policies_repo,
@@ -72,8 +71,3 @@ class DetachTableMaintenancePolicyService(DetachTableMaintenancePolicyUseCase):
             lambda: self._attachments_repo.delete(attachment_id),
         )
         return DetachTableMaintenancePolicyUseCaseOutput()
-
-    def _is_named(self, policy_id: TableMaintenancePolicyId, name: str) -> bool:
-        """Return whether the policy with ``policy_id`` is the one called ``name`` now."""
-        policy = self._policies_repo.get(policy_id)
-        return policy is not None and policy.name.value == name

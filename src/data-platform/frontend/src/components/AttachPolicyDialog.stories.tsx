@@ -110,7 +110,7 @@ export const AttachDiscoveryFails: Story = {
 
 export const AttachFails: Story = {
   beforeEach({ msw }) {
-    msw.use(apiError("put", "/v1/maintenance-policies/scratch/mappings", "namespace iceberg.retail not found", 404));
+    msw.use(apiError("put", "/v1/maintenance-policies/scratch/attachments", "namespace iceberg.retail not found", 404));
   },
   play: async ({ args }) => {
     const dialog = await screen.findByRole("dialog", { name: "Attach policy" });

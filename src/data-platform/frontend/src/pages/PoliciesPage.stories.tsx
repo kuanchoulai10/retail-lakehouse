@@ -72,7 +72,7 @@ export const NoDefault: Story = {
 
 export const AttachmentsLoading: Story = {
   beforeEach({ msw }) {
-    msw.use(apiPending("/v1/maintenance-policies/retail-nightly/mappings"));
+    msw.use(apiPending("/v1/maintenance-policies/retail-nightly/attachments"));
   },
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByText("Compacts whole tables once a day");

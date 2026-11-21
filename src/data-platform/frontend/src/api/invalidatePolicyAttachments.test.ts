@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   getGetTableMaintenancePolicyQueryKey,
   getListTableMaintenancePoliciesQueryKey,
-  getListTableMaintenancePolicyMappingsQueryKey,
+  getListTableMaintenancePolicyAttachmentsQueryKey,
 } from "./generated/maintenance-policies/maintenance-policies";
 import {
   getGetEffectivePoliciesQueryKey,
@@ -13,16 +13,16 @@ import {
 import { invalidatePolicyAttachments } from "./invalidatePolicyAttachments";
 
 describe("invalidatePolicyAttachments", () => {
-  it("marks what applies anywhere, the policy list and the named policies' mappings stale, nothing else", async () => {
+  it("marks what applies anywhere, the policy list and the named policies' attachments stale, nothing else", async () => {
     const client = new QueryClient();
     const keys = {
       catalog: getGetEffectivePoliciesQueryKey({ catalog: "iceberg" }),
       namespace: getGetEffectivePoliciesQueryKey({ catalog: "iceberg", namespace: "retail" }),
       table: getGetTableEffectivePoliciesQueryKey("uuid-orders"),
       list: getListTableMaintenancePoliciesQueryKey(),
-      nightly: getListTableMaintenancePolicyMappingsQueryKey("nightly"),
-      scratch: getListTableMaintenancePolicyMappingsQueryKey("scratch"),
-      other: getListTableMaintenancePolicyMappingsQueryKey("other"),
+      nightly: getListTableMaintenancePolicyAttachmentsQueryKey("nightly"),
+      scratch: getListTableMaintenancePolicyAttachmentsQueryKey("scratch"),
+      other: getListTableMaintenancePolicyAttachmentsQueryKey("other"),
       policy: getGetTableMaintenancePolicyQueryKey("nightly"),
       record: getGetTableQueryKey("uuid-orders"),
     };

@@ -1294,59 +1294,6 @@
         "title": "CreateViewApiRequest",
         "type": "object"
       },
-      "DetachPolicyTargetApiRequest": {
-        "additionalProperties": false,
-        "description": "Name the target to detach from; a table no longer in the catalog is named by its ``table_uuid``.",
-        "properties": {
-          "path": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Path",
-            "type": "array"
-          },
-          "table_uuid": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Table Uuid"
-          },
-          "type": {
-            "enum": [
-              "catalog",
-              "namespace",
-              "table"
-            ],
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "type",
-          "path"
-        ],
-        "title": "DetachPolicyTargetApiRequest",
-        "type": "object"
-      },
-      "DetachTableMaintenancePolicyApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the target to detach the policy from.",
-        "properties": {
-          "target": {
-            "$ref": "#/components/schemas/DetachPolicyTargetApiRequest"
-          }
-        },
-        "required": [
-          "target"
-        ],
-        "title": "DetachTableMaintenancePolicyApiRequest",
-        "type": "object"
-      },
       "DiscoveryConditionApiRequest": {
         "additionalProperties": false,
         "description": "Carry one condition: the attribute it reads, how it matches and the values it matches.\n\nThe condition holds when any value matches. A ``glob`` is case-sensitive, and on the dot-joined\nnamespace ``*`` crosses dots.",
@@ -1982,12 +1929,16 @@
         "title": "ListedTableMaintenancePolicyApiResponse",
         "type": "object"
       },
-      "ListedTableMaintenancePolicyMappingApiResponse": {
-        "description": "Describe a listed mapping; ``orphaned`` when its target is no longer in the catalog.",
+      "ListedTableMaintenancePolicyAttachmentApiResponse": {
+        "description": "Describe a listed attachment; ``orphaned`` when its target no longer exists in the catalog.",
         "properties": {
           "attached_at": {
             "format": "date-time",
             "title": "Attached At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
             "type": "string"
           },
           "orphaned": {
@@ -2007,13 +1958,14 @@
           }
         },
         "required": [
+          "id",
           "target",
           "policy_id",
           "policy_name",
           "attached_at",
           "orphaned"
         ],
-        "title": "ListedTableMaintenancePolicyMappingApiResponse",
+        "title": "ListedTableMaintenancePolicyAttachmentApiResponse",
         "type": "object"
       },
       "MaintenanceEffectivePolicyApiResponse": {
@@ -4581,12 +4533,16 @@
         "title": "TableMaintenancePolicyApiResponse",
         "type": "object"
       },
-      "TableMaintenancePolicyMappingApiResponse": {
-        "description": "Describe a policy attached to a target.",
+      "TableMaintenancePolicyAttachmentApiResponse": {
+        "description": "Describe a maintenance policy attached to a target, under the attachment's ``pa-`` id.",
         "properties": {
           "attached_at": {
             "format": "date-time",
             "title": "Attached At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
             "type": "string"
           },
           "policy_id": {
@@ -4602,29 +4558,30 @@
           }
         },
         "required": [
+          "id",
           "target",
           "policy_id",
           "policy_name",
           "attached_at"
         ],
-        "title": "TableMaintenancePolicyMappingApiResponse",
+        "title": "TableMaintenancePolicyAttachmentApiResponse",
         "type": "object"
       },
-      "TableMaintenancePolicyMappingsApiResponse": {
-        "description": "List a policy's mappings.",
+      "TableMaintenancePolicyAttachmentsApiResponse": {
+        "description": "List a maintenance policy's attachments.",
         "properties": {
-          "mappings": {
+          "attachments": {
             "items": {
-              "$ref": "#/components/schemas/ListedTableMaintenancePolicyMappingApiResponse"
+              "$ref": "#/components/schemas/ListedTableMaintenancePolicyAttachmentApiResponse"
             },
-            "title": "Mappings",
+            "title": "Attachments",
             "type": "array"
           }
         },
         "required": [
-          "mappings"
+          "attachments"
         ],
-        "title": "TableMaintenancePolicyMappingsApiResponse",
+        "title": "TableMaintenancePolicyAttachmentsApiResponse",
         "type": "object"
       },
       "TableMaintenancePolicyVersionApiResponse": {
@@ -8197,54 +8154,10 @@
         ]
       }
     },
-    "/v1/maintenance-policies/{name}/mappings": {
-      "delete": {
-        "description": "Detach a policy from a target; 404 when that policy is not the one attached there.",
-        "operationId": "detach_table_maintenance_policy",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DetachTableMaintenancePolicyApiRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Detach Table Maintenance Policy",
-        "tags": [
-          "maintenance-policies"
-        ]
-      },
+    "/v1/maintenance-policies/{name}/attachments": {
       "get": {
-        "description": "List the targets a policy is attached to, marking those no longer in the catalog as orphaned.",
-        "operationId": "list_table_maintenance_policy_mappings",
+        "description": "List the targets a maintenance policy is attached to, marking those no longer in the catalog as orphaned.",
+        "operationId": "list_table_maintenance_policy_attachments",
         "parameters": [
           {
             "in": "path",
@@ -8261,7 +8174,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TableMaintenancePolicyMappingsApiResponse"
+                  "$ref": "#/components/schemas/TableMaintenancePolicyAttachmentsApiResponse"
                 }
               }
             },
@@ -8278,13 +8191,13 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Table Maintenance Policy Mappings",
+        "summary": "List Table Maintenance Policy Attachments",
         "tags": [
           "maintenance-policies"
         ]
       },
       "put": {
-        "description": "Attach a policy to a target that exists in the catalog, replacing the target's attachment.",
+        "description": "Attach a maintenance policy to a target that exists in the catalog, replacing the target's attachment.\n\nThe target keeps its attachment's id. A catalog the platform's credential cannot read answers 403.",
         "operationId": "attach_table_maintenance_policy",
         "parameters": [
           {
@@ -8312,7 +8225,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TableMaintenancePolicyMappingApiResponse"
+                  "$ref": "#/components/schemas/TableMaintenancePolicyAttachmentApiResponse"
                 }
               }
             },
@@ -8330,6 +8243,51 @@
           }
         },
         "summary": "Attach Table Maintenance Policy",
+        "tags": [
+          "maintenance-policies"
+        ]
+      }
+    },
+    "/v1/maintenance-policies/{name}/attachments/{attachment_id}": {
+      "delete": {
+        "description": "Detach one of a maintenance policy's attachments by its ``pa-`` id, whether or not its target still exists.\n\n404 when the policy has no such attachment.",
+        "operationId": "detach_table_maintenance_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "required": true,
+            "schema": {
+              "title": "Attachment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Detach Table Maintenance Policy",
         "tags": [
           "maintenance-policies"
         ]

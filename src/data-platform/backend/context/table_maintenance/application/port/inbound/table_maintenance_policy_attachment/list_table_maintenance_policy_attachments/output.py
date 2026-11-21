@@ -13,9 +13,11 @@ class ListTableMaintenancePolicyAttachmentsUseCaseOutput(UseCaseOutput):
     class TableMaintenancePolicyAttachment(UseCaseOutput):
         """One attachment of the listing; ``orphaned`` when its target is no longer in the catalog.
 
-        ``policy_id`` is the attached policy and ``policy_name`` its current name.
+        ``id`` is the attachment's ``pa-`` id, ``policy_id`` the attached policy and ``policy_name`` its
+        current name.
         """
 
+        id: str
         type: str
         path: tuple[str, ...]
         table_uuid: str | None

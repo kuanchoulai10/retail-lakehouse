@@ -1,4 +1,4 @@
-"""List policy attachments."""
+"""List one maintenance policy's attachments."""
 
 from __future__ import annotations
 

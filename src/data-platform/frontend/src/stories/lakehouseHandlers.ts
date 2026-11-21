@@ -23,7 +23,7 @@ import {
   getGetTableMaintenancePolicyMockHandler,
   getGetTableMaintenancePolicyVersionMockHandler,
   getListTableMaintenancePoliciesMockHandler,
-  getListTableMaintenancePolicyMappingsMockHandler,
+  getListTableMaintenancePolicyAttachmentsMockHandler,
   getUpdateTableMaintenancePolicyMockHandler,
 } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
 import {
@@ -79,7 +79,7 @@ import {
   pendingRun,
   PLATFORM_SETTINGS,
   POLICIES,
-  POLICY_MAPPINGS,
+  POLICY_ATTACHMENTS,
   QUEUE_TIMEOUT_RUN,
   RECONCILIATIONS,
   RETAIL,
@@ -233,8 +233,8 @@ export function lakehouseHandlers() {
     getDetachTableDiscoveryPolicyMockHandler(),
     getListScannedCatalogsMockHandler(SCANNED_CATALOGS),
     getListTableMaintenancePoliciesMockHandler({ policies: POLICIES }),
-    getListTableMaintenancePolicyMappingsMockHandler(({ params }) => ({
-      mappings: POLICY_MAPPINGS.filter((mapping) => mapping.policy_name === params.name),
+    getListTableMaintenancePolicyAttachmentsMockHandler(({ params }) => ({
+      attachments: POLICY_ATTACHMENTS.filter((attachment) => attachment.policy_name === params.name),
     })),
     getGetTableMaintenancePolicyMockHandler(({ params }) => POLICIES.find((p) => p.name === params.name) ?? POLICIES[0]!),
     getCreateTableMaintenancePolicyMockHandler(async ({ request }) => ({
@@ -261,6 +261,7 @@ export function lakehouseHandlers() {
     }),
     getGetTableEffectivePoliciesMockHandler(effectivePolicies(ORDERS.catalog, ORDERS.namespace, ORDERS.name)),
     getAttachTableMaintenancePolicyMockHandler(async ({ params, request }) => ({
+      id: "pa-01m7sdb2kq9e4z5r7t8vwx3y6c",
       policy_id: (POLICIES.find((p) => p.name === params.name) ?? POLICIES[0]!).id,
       policy_name: params.name,
       target: { ...((await request.json()).target), table_uuid: null },

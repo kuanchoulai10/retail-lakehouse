@@ -64,7 +64,8 @@ class AttachTableMaintenancePolicyService(AttachTableMaintenancePolicyUseCase):
     def execute(self, request: AttachTableMaintenancePolicyUseCaseInput) -> AttachTableMaintenancePolicyUseCaseOutput:
         """Attach the policy, rejecting a target missing from the catalog and an unknown policy.
 
-        Every managed table whose applicable policy changes is told so.
+        A target that already holds an attachment keeps its id. Every managed table whose applicable
+        policy changes is told so.
         """
         with translate_domain_errors():
             policy_name = TableMaintenancePolicyName(value=request.policy_name)
@@ -81,6 +82,7 @@ class AttachTableMaintenancePolicyService(AttachTableMaintenancePolicyUseCase):
             lambda: self._save(target, policy_id),
         )
         return AttachTableMaintenancePolicyUseCaseOutput(
+            id=attachment.id.value,
             target_type=attachment.target.type.value,
             path=attachment.target.path,
             table_uuid=attachment.target.table_uuid,

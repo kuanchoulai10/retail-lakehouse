@@ -37,24 +37,12 @@ function effectiveQuery(scope: PolicyScope) {
   );
 }
 
-// Removes the maintenance attachment on the entry's target. It is named by its target until
-// maintenance attachments are detached by id, as discovery ones are.
-function detachMaintenanceAttachment(scope: PolicyScope, entry: MaintenanceEffectivePolicyApiResponse): Promise<void> {
-  const target = entry.target;
-  if (target === null) return Promise.reject(new Error("the platform default is not attached"));
-  return detachTableMaintenancePolicy(entry.policy_name, {
-    target: {
-      type: scope.type,
-      path: target.path,
-      ...(target.table_uuid === null ? {} : { table_uuid: target.table_uuid }),
-    },
-  });
-}
-
-function detachEntry(scope: PolicyScope, entry: Entry): Promise<void> {
-  if (entry.kind === "maintenance") return detachMaintenanceAttachment(scope, entry);
+// Removes the attachment the entry names, by its pa- or da- id; the platform default has none.
+function detachEntry(entry: Entry): Promise<void> {
   if (entry.attachment_id === null) return Promise.reject(new Error("the platform default is not attached"));
-  return detachTableDiscoveryPolicy(entry.policy_name, entry.attachment_id);
+  return entry.kind === "maintenance"
+    ? detachTableMaintenancePolicy(entry.policy_name, entry.attachment_id)
+    : detachTableDiscoveryPolicy(entry.policy_name, entry.attachment_id);
 }
 
 function versionPath(entry: Entry): string {
@@ -106,7 +94,8 @@ function EntryRow({ scope, entry, detaching, onAttach, onDetach, attachRef, deta
         {entry.kind === "maintenance" && entry.dry_run && <Badge>Dry run</Badge>}
       </p>
       <Origin origin={origin} />
-      {/* Each button says its kind to a screen reader ("Attach maintenance policy"); the row label says it on screen. */}
+      {/* Each button says its kind to a screen reader; the row label says it on screen. The name starts
+          with the visible label ("Attach policy for maintenance"), so voice control finds it (WCAG 2.5.3). */}
       <div className="flex flex-wrap gap-2 pt-1">
         <Button
           ref={attachRef}
@@ -115,7 +104,7 @@ function EntryRow({ scope, entry, detaching, onAttach, onDetach, attachRef, deta
           size="small"
           onClick={onAttach}
         >
-          {here ? "Replace" : "Attach"} <span className="sr-only">{entry.kind}</span> policy
+          {here ? "Replace" : "Attach"} policy <span className="sr-only">for {entry.kind}</span>
         </Button>
         {here && (
           <Button
@@ -152,7 +141,7 @@ export function EffectivePoliciesPanel({ scope }: { scope: PolicyScope }) {
   const effective = useQuery(effectiveQuery(scope));
 
   const detach = useMutation({
-    mutationFn: (entry: Entry) => detachEntry(scope, entry),
+    mutationFn: (entry: Entry) => detachEntry(entry),
     // A write can fail after part of it landed, so the panel refetches either way. A detached
     // row's Detach is gone once the answer is read again, so focus moves to that row's Attach;
     // a refused detach keeps it, and focus goes back to it, which the browser drops while disabled.

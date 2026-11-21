@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import type { ListedTableMaintenancePolicyMappingApiResponse } from "../api/generated/model";
+import type { ListedTableMaintenancePolicyAttachmentApiResponse } from "../api/generated/model";
 import { bodyOf, callsTo, stubCatalogApi, type StubHandler } from "../test/catalogApiStub";
 import {
   jsonResponse,
@@ -27,22 +27,30 @@ const POLICIES = [
   policyFixture({ id: SCRATCH_POLICY_ID, name: "scratch", description: "", version: 1, attachment_count: 0 }),
 ];
 
-function mapping(
-  target: ListedTableMaintenancePolicyMappingApiResponse["target"],
+function attachment(
+  id: string,
+  target: ListedTableMaintenancePolicyAttachmentApiResponse["target"],
   orphaned = false,
-): ListedTableMaintenancePolicyMappingApiResponse {
-  return { policy_id: NIGHTLY_POLICY_ID, policy_name: "nightly", target, orphaned, attached_at: "2026-11-03T09:00:00Z" };
+): ListedTableMaintenancePolicyAttachmentApiResponse {
+  return {
+    id,
+    policy_id: NIGHTLY_POLICY_ID,
+    policy_name: "nightly",
+    target,
+    orphaned,
+    attached_at: "2026-11-03T09:00:00Z",
+  };
 }
 
-const NIGHTLY_MAPPINGS = [
-  mapping({ type: "namespace", path: ["iceberg", "retail"], table_uuid: null }),
-  mapping({ type: "catalog", path: ["legacy"], table_uuid: null }, true),
+const NIGHTLY_ATTACHMENTS = [
+  attachment("pa-01m7sd16b1ef2vww335cwcg9k8", { type: "namespace", path: ["iceberg", "retail"], table_uuid: null }),
+  attachment("pa-01m7sd16b1ef2vww335cwcg9k9", { type: "catalog", path: ["legacy"], table_uuid: null }, true),
 ];
 
 function stubApi(responses: Record<string, StubHandler> = {}) {
   return stubCatalogApi({
     "GET /v1/maintenance-policies": () => jsonResponse({ policies: POLICIES }),
-    "GET /v1/maintenance-policies/nightly/mappings": () => jsonResponse({ mappings: NIGHTLY_MAPPINGS }),
+    "GET /v1/maintenance-policies/nightly/attachments": () => jsonResponse({ attachments: NIGHTLY_ATTACHMENTS }),
     ...responses,
   });
 }
@@ -103,8 +111,8 @@ describe("PoliciesPage", () => {
     expect(within(row).queryByRole("link", { name: "legacy" })).not.toBeInTheDocument();
     expect(within(row).getByText("No longer in the catalog")).toBeInTheDocument();
     expect(within(policyRow("scratch")).getByText("Not attached")).toBeInTheDocument();
-    expect(calls.filter((call) => call.path.endsWith("/mappings")).map((call) => call.path)).toEqual([
-      "/v1/maintenance-policies/nightly/mappings",
+    expect(calls.filter((call) => call.path.endsWith("/attachments")).map((call) => call.path)).toEqual([
+      "/v1/maintenance-policies/nightly/attachments",
     ]);
   });
 

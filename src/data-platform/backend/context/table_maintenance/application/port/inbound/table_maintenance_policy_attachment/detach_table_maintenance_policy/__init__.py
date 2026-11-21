@@ -1,4 +1,4 @@
-"""Detach the maintenance policy from a catalog, namespace or table."""
+"""Detach one of a maintenance policy's attachments, named by its ``pa-`` id."""
 
 from __future__ import annotations
 

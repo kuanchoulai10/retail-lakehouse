@@ -27,13 +27,12 @@ import type {
   ApplicableTableMaintenancePolicyApiResponse,
   AttachTableMaintenancePolicyApiRequest,
   CreateTableMaintenancePolicyApiRequest,
-  DetachTableMaintenancePolicyApiRequest,
   GetApplicableMaintenancePolicyParams,
   HTTPValidationError,
   TableMaintenancePoliciesApiResponse,
   TableMaintenancePolicyApiResponse,
-  TableMaintenancePolicyMappingApiResponse,
-  TableMaintenancePolicyMappingsApiResponse,
+  TableMaintenancePolicyAttachmentApiResponse,
+  TableMaintenancePolicyAttachmentsApiResponse,
   TableMaintenancePolicyVersionApiResponse,
   UpdateTableMaintenancePolicyApiRequest
 } from '../model';
@@ -624,110 +623,21 @@ export const useUpdateTableMaintenancePolicy = <TError = HTTPValidationError,
       > => {
       return useMutation(getUpdateTableMaintenancePolicyMutationOptions(options), queryClient);
     }
-    export const getDetachTableMaintenancePolicyUrl = (name: string,) => {
+    export const getListTableMaintenancePolicyAttachmentsUrl = (name: string,) => {
 
 
 
 
-  return `/v1/maintenance-policies/${encodeURIComponent(String(name))}/mappings`
+  return `/v1/maintenance-policies/${encodeURIComponent(String(name))}/attachments`
 }
 
 /**
- * Detach a policy from a target; 404 when that policy is not the one attached there.
- * @summary Detach Table Maintenance Policy
+ * List the targets a maintenance policy is attached to, marking those no longer in the catalog as orphaned.
+ * @summary List Table Maintenance Policy Attachments
  */
-export const detachTableMaintenancePolicy = async (name: string,
-    detachTableMaintenancePolicyApiRequest: DetachTableMaintenancePolicyApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+export const listTableMaintenancePolicyAttachments = async (name: string, options?: Parameters<typeof apiFetch>[1]): Promise<TableMaintenancePolicyAttachmentsApiResponse> => {
 
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return apiFetch<void>(getDetachTableMaintenancePolicyUrl(name),
-  {
-    ...options,
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(detachTableMaintenancePolicyApiRequest)
-  }
-);}
-
-
-
-
-
-export const getDetachTableMaintenancePolicyMutationKey = () => ['detachTableMaintenancePolicy'] as const;
-
-export const getDetachTableMaintenancePolicyMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, TError,DetachTableMaintenancePolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, TError,DetachTableMaintenancePolicyMutationVariables, TContext> => {
-
-const mutationKey = getDetachTableMaintenancePolicyMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, DetachTableMaintenancePolicyMutationVariables> = (props) => {
-          const {name,data} = props ?? {};
-
-          return  detachTableMaintenancePolicy(name,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type DetachTableMaintenancePolicyMutationResult = NonNullable<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>>
-    export type DetachTableMaintenancePolicyMutationBody = DetachTableMaintenancePolicyApiRequest
-    export type DetachTableMaintenancePolicyMutationError = HTTPValidationError
-    export type DetachTableMaintenancePolicyMutationVariables = {name: string;data: DetachTableMaintenancePolicyApiRequest}
-
-    /**
- * @summary Detach Table Maintenance Policy
- */
-export const useDetachTableMaintenancePolicy = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, TError,DetachTableMaintenancePolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof detachTableMaintenancePolicy>>,
-        TError,
-        DetachTableMaintenancePolicyMutationVariables,
-        TContext
-      > => {
-      return useMutation(getDetachTableMaintenancePolicyMutationOptions(options), queryClient);
-    }
-    export const getListTableMaintenancePolicyMappingsUrl = (name: string,) => {
-
-
-
-
-  return `/v1/maintenance-policies/${encodeURIComponent(String(name))}/mappings`
-}
-
-/**
- * List the targets a policy is attached to, marking those no longer in the catalog as orphaned.
- * @summary List Table Maintenance Policy Mappings
- */
-export const listTableMaintenancePolicyMappings = async (name: string, options?: Parameters<typeof apiFetch>[1]): Promise<TableMaintenancePolicyMappingsApiResponse> => {
-
-  return apiFetch<TableMaintenancePolicyMappingsApiResponse>(getListTableMaintenancePolicyMappingsUrl(name),
+  return apiFetch<TableMaintenancePolicyAttachmentsApiResponse>(getListTableMaintenancePolicyAttachmentsUrl(name),
   {
     ...options,
     method: 'GET'
@@ -740,69 +650,69 @@ export const listTableMaintenancePolicyMappings = async (name: string, options?:
 
 
 
-export const getListTableMaintenancePolicyMappingsQueryKey = (name: string,) => {
+export const getListTableMaintenancePolicyAttachmentsQueryKey = (name: string,) => {
     return [
-    `/v1/maintenance-policies/${name}/mappings`
+    `/v1/maintenance-policies/${name}/attachments`
     ] as const;
     }
 
 
-export const getListTableMaintenancePolicyMappingsQueryOptions = <TData = Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>, TError = HTTPValidationError>(name: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getListTableMaintenancePolicyAttachmentsQueryOptions = <TData = Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>, TError = HTTPValidationError>(name: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListTableMaintenancePolicyMappingsQueryKey(name);
+  const queryKey =  queryOptions?.queryKey ?? getListTableMaintenancePolicyAttachmentsQueryKey(name);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>> = ({ signal }) => listTableMaintenancePolicyMappings(name, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>> = ({ signal }) => listTableMaintenancePolicyAttachments(name, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: name !== null && name !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: name !== null && name !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type ListTableMaintenancePolicyMappingsQueryResult = NonNullable<Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>>
-export type ListTableMaintenancePolicyMappingsQueryError = HTTPValidationError
+export type ListTableMaintenancePolicyAttachmentsQueryResult = NonNullable<Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>>
+export type ListTableMaintenancePolicyAttachmentsQueryError = HTTPValidationError
 
 
-export function useListTableMaintenancePolicyMappings<TData = Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>, TError = HTTPValidationError>(
- name: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>, TError, TData>> & Pick<
+export function useListTableMaintenancePolicyAttachments<TData = Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>, TError = HTTPValidationError>(
+ name: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>,
+          Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>,
           TError,
-          Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>
+          Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListTableMaintenancePolicyMappings<TData = Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>, TError = HTTPValidationError>(
- name: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>, TError, TData>> & Pick<
+export function useListTableMaintenancePolicyAttachments<TData = Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>, TError = HTTPValidationError>(
+ name: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>,
+          Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>,
           TError,
-          Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>
+          Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>
         > , 'initialData'
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListTableMaintenancePolicyMappings<TData = Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>, TError = HTTPValidationError>(
- name: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export function useListTableMaintenancePolicyAttachments<TData = Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>, TError = HTTPValidationError>(
+ name: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary List Table Maintenance Policy Mappings
+ * @summary List Table Maintenance Policy Attachments
  */
 
-export function useListTableMaintenancePolicyMappings<TData = Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>, TError = HTTPValidationError>(
- name: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTableMaintenancePolicyMappings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export function useListTableMaintenancePolicyAttachments<TData = Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>, TError = HTTPValidationError>(
+ name: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTableMaintenancePolicyAttachments>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getListTableMaintenancePolicyMappingsQueryOptions(name,options)
+  const queryOptions = getListTableMaintenancePolicyAttachmentsQueryOptions(name,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -819,15 +729,17 @@ export const getAttachTableMaintenancePolicyUrl = (name: string,) => {
 
 
 
-  return `/v1/maintenance-policies/${encodeURIComponent(String(name))}/mappings`
+  return `/v1/maintenance-policies/${encodeURIComponent(String(name))}/attachments`
 }
 
 /**
- * Attach a policy to a target that exists in the catalog, replacing the target's attachment.
+ * Attach a maintenance policy to a target that exists in the catalog, replacing the target's attachment.
+ *
+ * The target keeps its attachment's id. A catalog the platform's credential cannot read answers 403.
  * @summary Attach Table Maintenance Policy
  */
 export const attachTableMaintenancePolicy = async (name: string,
-    attachTableMaintenancePolicyApiRequest: AttachTableMaintenancePolicyApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<TableMaintenancePolicyMappingApiResponse> => {
+    attachTableMaintenancePolicyApiRequest: AttachTableMaintenancePolicyApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<TableMaintenancePolicyAttachmentApiResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -843,7 +755,7 @@ export const attachTableMaintenancePolicy = async (name: string,
     }
     return headers;
   };
-return apiFetch<TableMaintenancePolicyMappingApiResponse>(getAttachTableMaintenancePolicyUrl(name),
+return apiFetch<TableMaintenancePolicyAttachmentApiResponse>(getAttachTableMaintenancePolicyUrl(name),
   {
     ...options,
     method: 'PUT',
@@ -902,6 +814,84 @@ export const useAttachTableMaintenancePolicy = <TError = HTTPValidationError,
         TContext
       > => {
       return useMutation(getAttachTableMaintenancePolicyMutationOptions(options), queryClient);
+    }
+    export const getDetachTableMaintenancePolicyUrl = (name: string,
+    attachmentId: string,) => {
+
+
+
+
+  return `/v1/maintenance-policies/${encodeURIComponent(String(name))}/attachments/${encodeURIComponent(String(attachmentId))}`
+}
+
+/**
+ * Detach one of a maintenance policy's attachments by its ``pa-`` id, whether or not its target still exists.
+ *
+ * 404 when the policy has no such attachment.
+ * @summary Detach Table Maintenance Policy
+ */
+export const detachTableMaintenancePolicy = async (name: string,
+    attachmentId: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDetachTableMaintenancePolicyUrl(name,attachmentId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDetachTableMaintenancePolicyMutationKey = () => ['detachTableMaintenancePolicy'] as const;
+
+export const getDetachTableMaintenancePolicyMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, TError,DetachTableMaintenancePolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, TError,DetachTableMaintenancePolicyMutationVariables, TContext> => {
+
+const mutationKey = getDetachTableMaintenancePolicyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, DetachTableMaintenancePolicyMutationVariables> = (props) => {
+          const {name,attachmentId} = props ?? {};
+
+          return  detachTableMaintenancePolicy(name,attachmentId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DetachTableMaintenancePolicyMutationResult = NonNullable<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>>
+
+    export type DetachTableMaintenancePolicyMutationError = HTTPValidationError
+    export type DetachTableMaintenancePolicyMutationVariables = {name: string;attachmentId: string}
+
+    /**
+ * @summary Detach Table Maintenance Policy
+ */
+export const useDetachTableMaintenancePolicy = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, TError,DetachTableMaintenancePolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof detachTableMaintenancePolicy>>,
+        TError,
+        DetachTableMaintenancePolicyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDetachTableMaintenancePolicyMutationOptions(options), queryClient);
     }
     export const getGetTableMaintenancePolicyVersionUrl = (name: string,
     version: number,) => {

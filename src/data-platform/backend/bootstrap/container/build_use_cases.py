@@ -160,7 +160,7 @@ def build_use_cases(
             policies, attachments, catalog, tables, table_changes, clock=clock
         ),
         detach_table_maintenance_policy=DetachTableMaintenancePolicyService(
-            policies, attachments, catalog, tables, table_changes
+            policies, attachments, tables, table_changes
         ),
         list_table_maintenance_policy_attachments=ListTableMaintenancePolicyAttachmentsService(
             policies, attachments, catalog, tables

@@ -1,6 +1,6 @@
 import { Badge, Skeleton, TextLink } from "@retail-lakehouse/design-system";
 import { Link } from "react-router";
-import { useListTableMaintenancePolicyMappings } from "@/api/generated/maintenance-policies/maintenance-policies";
+import { useListTableMaintenancePolicyAttachments } from "@/api/generated/maintenance-policies/maintenance-policies";
 import type { PolicyTargetApiResponse } from "@/api/generated/model";
 import { errorMessage } from "@/format";
 import { targetPagePath } from "@/lib/policyPaths";
@@ -32,9 +32,9 @@ function Target({ target, orphaned }: { target: PolicyTargetApiResponse; orphane
 // Where one policy is attached. The list gives only a count, so the targets are read only for
 // a policy that has some.
 export function PolicyAttachments({ name, count }: { name: string; count: number }) {
-  const mappings = useListTableMaintenancePolicyMappings(name, { query: { enabled: count > 0 } });
+  const attachments = useListTableMaintenancePolicyAttachments(name, { query: { enabled: count > 0 } });
   if (count === 0) return <span className="text-on-surface-variant">Not attached</span>;
-  if (mappings.isPending) {
+  if (attachments.isPending) {
     return (
       <>
         <Skeleton className="h-4 w-32" />
@@ -42,13 +42,13 @@ export function PolicyAttachments({ name, count }: { name: string; count: number
       </>
     );
   }
-  if (mappings.isError) {
-    return <span className="text-negative-text">Could not load attachments: {errorMessage(mappings.error)}</span>;
+  if (attachments.isError) {
+    return <span className="text-negative-text">Could not load attachments: {errorMessage(attachments.error)}</span>;
   }
   return (
     <ul className="m-0 flex list-none flex-col gap-1 p-0">
-      {mappings.data.mappings.map((mapping) => (
-        <Target key={`${mapping.target.type}:${mapping.target.path.join("\u001f")}`} {...mapping} />
+      {attachments.data.attachments.map((attachment) => (
+        <Target key={attachment.id} {...attachment} />
       ))}
     </ul>
   );

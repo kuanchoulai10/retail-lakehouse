@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 
 class ListTableMaintenancePolicyAttachmentsService(ListTableMaintenancePolicyAttachmentsUseCase):
-    """List policy attachments, optionally only those of one policy, marking those left behind."""
+    """List one maintenance policy's attachments, marking those whose target is gone."""
 
     def __init__(
         self,
@@ -44,33 +44,28 @@ class ListTableMaintenancePolicyAttachmentsService(ListTableMaintenancePolicyAtt
     def execute(
         self, request: ListTableMaintenancePolicyAttachmentsUseCaseInput
     ) -> ListTableMaintenancePolicyAttachmentsUseCaseOutput:
-        """Return the attachments, each orphaned when its target no longer exists; an unknown policy is not found.
+        """Return the policy's attachments, each orphaned when its target no longer exists.
 
-        The attachments and their policies are two reads: an attachment whose policy was detached
-        and deleted in between has no policy left to name, so it is skipped.
+        An unknown policy is NotFoundError. A target in a catalog the platform's credential cannot read
+        is not orphaned, and the listing still answers.
         """
-        if request.policy_name is None:
-            attachments = self._attachments_repo.list_all()
-        else:
-            with translate_domain_errors():
-                name = TableMaintenancePolicyName(value=request.policy_name)
-            policy = self._policies_repo.get_by_name(name)
-            if policy is None:
-                raise NotFoundError(f"table maintenance policy {request.policy_name} not found")
-            attachments = self._attachments_repo.list_for_policy(policy.id)
-        names = {p.id.value: p.name.value for p in self._policies_repo.get_many([a.policy_id for a in attachments])}
+        with translate_domain_errors():
+            name = TableMaintenancePolicyName(value=request.policy_name)
+        policy = self._policies_repo.get_by_name(name)
+        if policy is None:
+            raise NotFoundError(f"table maintenance policy {request.policy_name} not found")
         return ListTableMaintenancePolicyAttachmentsUseCaseOutput(
             items=tuple(
                 ListTableMaintenancePolicyAttachmentsUseCaseOutput.TableMaintenancePolicyAttachment(
+                    id=a.id.value,
                     type=a.target.type.value,
                     path=a.target.path,
                     table_uuid=a.target.table_uuid,
                     policy_id=a.policy_id.value,
-                    policy_name=names[a.policy_id.value],
+                    policy_name=policy.name.value,
                     attached_at=a.attached_at,
                     orphaned=not target_in_catalog(a.target, self._gateway, self._tables_repo),
                 )
-                for a in attachments
-                if a.policy_id.value in names
+                for a in self._attachments_repo.list_for_policy(policy.id)
             )
         )

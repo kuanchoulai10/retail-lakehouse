@@ -1,4 +1,4 @@
-"""Define the policy mapping and applicable policy API DTOs; the target DTOs are shared (``web.shared``)."""
+"""Define the maintenance policy attachment and applicable policy DTOs; the target DTOs are shared (``web.shared``)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 from context.table_maintenance.adapter.inbound.web.shared import (
-    DetachPolicyTargetApiRequest,
     PolicyTargetApiRequest,
     PolicyTargetApiResponse,
 )
@@ -28,26 +27,20 @@ class AttachTableMaintenancePolicyApiRequest(BaseModel):
     target: PolicyTargetApiRequest
 
 
-class DetachTableMaintenancePolicyApiRequest(BaseModel):
-    """Carry the target to detach the policy from."""
+class TableMaintenancePolicyAttachmentApiResponse(BaseModel):
+    """Describe a maintenance policy attached to a target, under the attachment's ``pa-`` id."""
 
-    model_config = ConfigDict(extra="forbid")
-
-    target: DetachPolicyTargetApiRequest
-
-
-class TableMaintenancePolicyMappingApiResponse(BaseModel):
-    """Describe a policy attached to a target."""
-
+    id: str
     target: PolicyTargetApiResponse
     policy_id: str
     policy_name: str
     attached_at: datetime
 
 
-class ListedTableMaintenancePolicyMappingApiResponse(BaseModel):
-    """Describe a listed mapping; ``orphaned`` when its target is no longer in the catalog."""
+class ListedTableMaintenancePolicyAttachmentApiResponse(BaseModel):
+    """Describe a listed attachment; ``orphaned`` when its target no longer exists in the catalog."""
 
+    id: str
     target: PolicyTargetApiResponse
     policy_id: str
     policy_name: str
@@ -55,10 +48,10 @@ class ListedTableMaintenancePolicyMappingApiResponse(BaseModel):
     orphaned: bool
 
 
-class TableMaintenancePolicyMappingsApiResponse(BaseModel):
-    """List a policy's mappings."""
+class TableMaintenancePolicyAttachmentsApiResponse(BaseModel):
+    """List a maintenance policy's attachments."""
 
-    mappings: list[ListedTableMaintenancePolicyMappingApiResponse]
+    attachments: list[ListedTableMaintenancePolicyAttachmentApiResponse]
 
 
 class ApplicableTableMaintenancePolicyApiResponse(BaseModel):

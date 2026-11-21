@@ -23,16 +23,6 @@ class PolicyTargetApiRequest(BaseModel):
     path: list[str]
 
 
-class DetachPolicyTargetApiRequest(BaseModel):
-    """Name the target to detach from; a table no longer in the catalog is named by its ``table_uuid``."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    type: PolicyTargetKind
-    path: list[str]
-    table_uuid: str | None = None
-
-
 class PolicyTargetApiResponse(BaseModel):
     """Describe a target; a table target carries the uuid it is keyed by."""
 

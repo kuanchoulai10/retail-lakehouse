@@ -5,7 +5,7 @@ import {
   deleteTableMaintenancePolicy,
   getGetTableMaintenancePolicyQueryKey,
   getListTableMaintenancePoliciesQueryKey,
-  getListTableMaintenancePolicyMappingsQueryKey,
+  getListTableMaintenancePolicyAttachmentsQueryKey,
   useListTableMaintenancePolicies,
 } from "@/api/generated/maintenance-policies/maintenance-policies";
 import type { ListedTableMaintenancePolicyApiResponse } from "@/api/generated/model";
@@ -60,7 +60,7 @@ export function PoliciesPage() {
     mutationFn: (policy: Policy) => deleteTableMaintenancePolicy(policy.name),
     onSuccess: (_result, policy) => {
       queryClient.removeQueries({ queryKey: getGetTableMaintenancePolicyQueryKey(policy.name) });
-      queryClient.removeQueries({ queryKey: getListTableMaintenancePolicyMappingsQueryKey(policy.name) });
+      queryClient.removeQueries({ queryKey: getListTableMaintenancePolicyAttachmentsQueryKey(policy.name) });
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: getListTableMaintenancePoliciesQueryKey(), exact: true });
