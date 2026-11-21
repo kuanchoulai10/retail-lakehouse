@@ -1,6 +1,6 @@
 import { Badge, Banner, Button, Skeleton, TextLink } from "@retail-lakehouse/design-system";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router";
 import {
   detachTableDiscoveryPolicy,
@@ -61,9 +61,10 @@ interface RowProps {
   scanned: ScannedCatalogApiResponse[] | null;
   detaching: boolean;
   onDetach: (attachment: Attachment) => void;
+  detachRef: (button: HTMLButtonElement | null) => void;
 }
 
-function AttachmentRow({ attachment, scanned, detaching, onDetach }: RowProps) {
+function AttachmentRow({ attachment, scanned, detaching, onDetach, detachRef }: RowProps) {
   const { target, orphaned } = attachment;
   const name = targetName(target);
   const href = orphaned ? null : targetPagePath(target);
@@ -88,6 +89,7 @@ function AttachmentRow({ attachment, scanned, detaching, onDetach }: RowProps) {
         )}
       </div>
       <Button
+        ref={detachRef}
         type="button"
         styleType="outlined"
         size="small"
@@ -107,6 +109,9 @@ export function DiscoveryPolicyAttachments({ policyName }: { policyName: string 
   const queryClient = useQueryClient();
   const headingId = useId();
   const attachButton = useRef<HTMLButtonElement>(null);
+  const detachButtons = useRef(new Map<string, HTMLButtonElement>());
+  // The row whose Detach gets focus back once a refused detach settles and the button is enabled again.
+  const refocus = useRef<string | null>(null);
   const [attaching, setAttaching] = useState(false);
   const attachments = useListTableDiscoveryPolicyAttachments(policyName);
   const scanned = useListScannedCatalogs();
@@ -114,12 +119,20 @@ export function DiscoveryPolicyAttachments({ policyName }: { policyName: string 
   const detach = useMutation({
     mutationFn: (attachment: Attachment) => detachTableDiscoveryPolicy(policyName, attachment.id),
     // A write can fail after part of it landed, so the page refetches either way. The detached row
-    // is gone once the list is read again, so focus moves to Attach rather than being lost.
-    onSettled: async (_result, error) => {
+    // is gone once the list is read again, so focus moves to Attach rather than being lost; a refused
+    // detach keeps the row, and focus goes back to its Detach, which the browser drops while disabled.
+    onSettled: async (_result, error, attachment) => {
       await invalidateDiscoveryPolicyAttachments(queryClient);
       if (error === null) attachButton.current?.focus();
+      else refocus.current = attachment.id;
     },
   });
+
+  useEffect(() => {
+    if (detach.isPending || refocus.current === null) return;
+    detachButtons.current.get(refocus.current)?.focus();
+    refocus.current = null;
+  }, [detach.isPending]);
 
   let body;
   if (attachments.isPending) {
@@ -152,6 +165,10 @@ export function DiscoveryPolicyAttachments({ policyName }: { policyName: string 
             scanned={scanned.data?.catalogs ?? null}
             detaching={detach.isPending}
             onDetach={(chosen) => detach.mutate(chosen)}
+            detachRef={(button) => {
+              if (button === null) detachButtons.current.delete(attachment.id);
+              else detachButtons.current.set(attachment.id, button);
+            }}
           />
         ))}
       </ul>

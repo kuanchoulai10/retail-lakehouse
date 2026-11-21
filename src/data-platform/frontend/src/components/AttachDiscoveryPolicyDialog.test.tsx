@@ -59,6 +59,11 @@ async function choose(user: ReturnType<typeof userEvent.setup>, field: string, o
 }
 
 describe("AttachDiscoveryPolicyDialog", { timeout: 15_000 }, () => {
+  it("says an attach replaces the policy the target has", () => {
+    renderDialog();
+    expect(within(dialog()).getByText(/replaces the policy the target has\./)).toBeInTheDocument();
+  });
+
   it("starts on a catalog, asking only which one", async () => {
     renderDialog();
     expect(within(dialog()).getByRole("combobox", { name: "Type" })).toHaveTextContent("Catalog");

@@ -235,6 +235,32 @@ describe("DiscoveryPolicyAttachments", { timeout: 15_000 }, () => {
     expect(within(section()).getByRole("button", { name: "Attach" })).toHaveFocus();
   });
 
+  it("detaches an orphaned target by its id", async () => {
+    const calls = stubApi([attachment({ orphaned: true })], [scanned("iceberg")], {
+      [`DELETE ${ATTACHMENTS}/da-01m7s6c3tqee0rhg00xry2zqqx`]: () => new Response(null, { status: 204 }),
+    });
+    const user = userEvent.setup();
+    renderAttachments();
+    await user.click(await screen.findByRole("button", { name: "Detach from iceberg.sales" }));
+
+    await waitFor(() =>
+      expect(callsTo(calls, "DELETE", `${ATTACHMENTS}/da-01m7s6c3tqee0rhg00xry2zqqx`)).toHaveLength(1),
+    );
+  });
+
+  it("returns focus to the row's Detach after a refused detach", async () => {
+    stubApi([CATALOG, NAMESPACE], [scanned("iceberg")], {
+      [`DELETE ${ATTACHMENTS}/da-namespace`]: () => jsonResponse({ detail: "database unavailable" }, 500),
+    });
+    const user = userEvent.setup();
+    renderAttachments();
+    const detach = await screen.findByRole("button", { name: "Detach from iceberg.sales" });
+    await user.click(detach);
+
+    await screen.findByText("Could not detach from iceberg.sales: database unavailable");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Detach from iceberg.sales" })).toHaveFocus());
+  });
+
   it("shows a refused detach and refetches anyway", async () => {
     const calls = stubApi([NAMESPACE], [scanned("iceberg")], {
       [`DELETE ${ATTACHMENTS}/da-namespace`]: () =>

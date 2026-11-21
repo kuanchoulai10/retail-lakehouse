@@ -8,6 +8,7 @@ import {
   getListTableDiscoveryPolicyAttachmentsMockHandler,
 } from "@/api/generated/discovery-policies/discovery-policies.msw";
 import type { ListedTableDiscoveryPolicyAttachmentApiResponse } from "@/api/generated/model";
+import { apiError } from "@/stories/apiError";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
 import { PHONE } from "@/stories/phone";
@@ -157,6 +158,20 @@ export const Detach: Story = {
     await expect(screen.queryByRole("dialog")).toBeNull();
     await waitFor(() => expect(screen.queryByRole("button", { name: "Detach from analytics" })).toBeNull());
     await waitFor(() => expect(screen.getByRole("button", { name: "Attach" })).toHaveFocus());
+  },
+};
+
+// A refused detach keeps the row, says why, and hands focus back to that row's Detach.
+export const DetachFails: Story = {
+  beforeEach({ msw }) {
+    msw.use(apiError("delete", "/v1/discovery-policies/:name/attachments/:attachmentId", "database unavailable", 500));
+  },
+  play: async () => {
+    const detach = await screen.findByRole("button", { name: "Detach from iceberg.sales" });
+    detach.focus();
+    await userEvent.keyboard("{Enter}");
+    await expect(await screen.findByText("Could not detach from iceberg.sales: database unavailable")).toBeVisible();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Detach from iceberg.sales" })).toHaveFocus());
   },
 };
 
