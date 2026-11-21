@@ -1101,7 +1101,7 @@ export const PLATFORM_SETTINGS: PlatformSettingsApiResponse = {
     ]),
     group("partition_selection", "Compaction partition selection", [
       setting("maintenance_compaction_partitions_per_job", "Partitions per job", 10, "partitions",
-        "The most partitions one rewrite data files job compacts; those with the most reducible files go first, the rest wait for a later check."),
+        "The most partitions one rewrite data files job compacts; those over the target for the longest wait go first, oldest first, then the ones with the most reducible files; the rest wait for a later check."),
       setting("maintenance_compaction_quiet_seconds", "Quiet period", 120, "seconds",
         "A partition written more recently than this waits for a later check, so compaction does not race its writers."),
       setting("maintenance_compaction_max_quiet_wait_seconds", "Longest wait for quiet", 3600, "seconds",

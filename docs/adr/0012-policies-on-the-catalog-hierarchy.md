@@ -92,7 +92,7 @@ remove_orphan_files:
 
 With `per: partition`, each partition is compared with `reducible_files.at_most` on its own, and only the partitions over it are compacted, passed to `rewrite_data_files` as `where` clauses (`build_partition_filters`, which renders `days(ts)`, `bucket` and the other transforms). With `per: table` the table's total is compared and the whole table is rewritten. Two platform settings shape the selection:
 
-- **At most N partitions per Spark job** (10 by default), those with the most reducible files first. The rest are still over the target at the next check; a partition over the target for the longest wait goes first at a later check (see the 2026-11-21 note below).
+- **At most N partitions per Spark job** (10 by default), those over the target for the longest wait first (oldest first), then those with the most reducible files. The rest are still over the target at the next check, and a partition over the target for the longest wait goes first (see the 2026-11-21 note below).
 - **A partition written to recently is skipped** (a quiet period of a few minutes since its last write), unless it has been over the target for longer than a maximum wait (1 hour by default).
 
 There is no scoring, no cost-benefit ranking and no compaction round (KCL-89). The run records the `where` clauses it passed, so each run shows which partitions it compacted (KCL-80).

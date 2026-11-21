@@ -130,8 +130,8 @@ def _partition_selection(settings: PlatformSettings) -> tuple[GetPlatformSetting
             "Partitions per job",
             settings.compaction_partitions_per_job,
             "partitions",
-            "The most partitions one rewrite data files job compacts; those with the most reducible files go first, "
-            "the rest wait for a later check.",
+            "The most partitions one rewrite data files job compacts; those over the target for the longest wait go "
+            "first, oldest first, then the ones with the most reducible files; the rest wait for a later check.",
         ),
         _item(
             "maintenance_compaction_quiet_seconds",

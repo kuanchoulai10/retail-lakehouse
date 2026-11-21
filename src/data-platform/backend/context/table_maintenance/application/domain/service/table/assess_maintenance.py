@@ -81,7 +81,8 @@ def assess_maintenance(
     ``cooldowns.failure_backoff_cap``.
 
     A compaction per partition takes only the partitions over the target that
-    ``partition_selection`` allows: the most reducible files first, at most ``partitions_per_job``,
+    ``partition_selection`` allows: those over the target for the longest wait first (oldest first), then
+    the most reducible files first, at most ``partitions_per_job``,
     leaving out those still being written (see ``select_compaction_partitions``). When every
     partition over the target is still being written, the compaction is ``WAITING_FOR_WRITES``.
     The assessment also returns the partitions over the target with since when, whatever

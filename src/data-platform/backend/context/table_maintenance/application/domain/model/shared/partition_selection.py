@@ -11,7 +11,9 @@ from context.table_maintenance.application.domain.model.shared.partition_stats i
 class PartitionSelection(ValueObject):
     """Hold which over-target partitions a compaction job takes and which wait for writes to settle.
 
-    Both lists are most reducible files first. ``waiting_until`` is the earliest time a waiting
+    ``selected`` is in the order the job takes them: partitions over the target for the longest wait
+    first, oldest ``since`` first, then the rest, most reducible files first. ``waiting`` is most
+    reducible files first. ``waiting_until`` is the earliest time a waiting
     partition is allowed to run, or None when none waits.
     """
 

@@ -137,8 +137,8 @@ def test_platform_settings_list_partition_selection():
             "Partitions per job",
             10,
             "partitions",
-            "The most partitions one rewrite data files job compacts; those with the most reducible files go first, "
-            "the rest wait for a later check.",
+            "The most partitions one rewrite data files job compacts; those over the target for the longest wait go "
+            "first, oldest first, then the ones with the most reducible files; the rest wait for a later check.",
         ),
         (
             "maintenance_compaction_quiet_seconds",
