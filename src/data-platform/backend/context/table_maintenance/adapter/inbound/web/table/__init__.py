@@ -15,6 +15,14 @@ from context.table_maintenance.adapter.inbound.web.table.dto import (
     TriggerTableMaintenanceApiResponse,
     TriggerTableReconciliationApiResponse,
 )
+from context.table_maintenance.adapter.inbound.web.table.effective_policies_dto import (
+    DiscoveryEffectivePolicyApiResponse,
+    EffectivePoliciesApiResponse,
+    MaintenanceEffectivePolicyApiResponse,
+)
+from context.table_maintenance.adapter.inbound.web.table.effective_policies_router import (
+    effective_policies_router,
+)
 from context.table_maintenance.adapter.inbound.web.table.router import router
 from context.table_maintenance.adapter.inbound.web.table.table_metrics_exposition import (
     render_table_metrics_exposition,
@@ -24,6 +32,9 @@ from context.table_maintenance.adapter.inbound.web.table.table_metrics_router im
 )
 
 __all__ = [
+    "DiscoveryEffectivePolicyApiResponse",
+    "EffectivePoliciesApiResponse",
+    "MaintenanceEffectivePolicyApiResponse",
     "SetTablePriorityApiRequest",
     "TableApiResponse",
     "TableCommitApiResponse",
@@ -35,6 +46,7 @@ __all__ = [
     "TriggerTableMaintenanceApiRequest",
     "TriggerTableMaintenanceApiResponse",
     "TriggerTableReconciliationApiResponse",
+    "effective_policies_router",
     "render_table_metrics_exposition",
     "router",
     "table_metrics_router",

@@ -31,8 +31,10 @@ import type {
   CatalogTableSchemaComparisonApiResponse,
   CatalogTableSchemaVersionsApiResponse,
   CreateTableApiRequest,
+  EffectivePoliciesApiResponse,
   GetCatalogTablePartitionSpecComparisonParams,
   GetCatalogTableSchemaComparisonParams,
+  GetEffectivePoliciesParams,
   GetTableMetricTrendsParams,
   HTTPValidationError,
   ListTableCommitsParams,
@@ -1378,6 +1380,117 @@ export function useGetCatalogTableSchemaComparison<TData = Awaited<ReturnType<ty
 
 
 
+export const getGetEffectivePoliciesUrl = (params: GetEffectivePoliciesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/effective-policies?${stringifiedParams}` : `/v1/effective-policies`
+}
+
+/**
+ * Return the policy of each kind that applies to a catalog, a dot-joined namespace in it, or a table in it.
+ *
+ * A table is found in the catalog by name, so it need not be one table maintenance has a record of. 404
+ * when the catalog does not hold the catalog, namespace or table; 403 when the platform cannot read the catalog.
+ * @summary Get Effective Policies
+ */
+export const getEffectivePolicies = async (params: GetEffectivePoliciesParams, options?: Parameters<typeof apiFetch>[1]): Promise<EffectivePoliciesApiResponse> => {
+
+  return apiFetch<EffectivePoliciesApiResponse>(getGetEffectivePoliciesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEffectivePoliciesQueryKey = (params?: GetEffectivePoliciesParams,) => {
+    return [
+    `/v1/effective-policies`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetEffectivePoliciesQueryOptions = <TData = Awaited<ReturnType<typeof getEffectivePolicies>>, TError = HTTPValidationError>(params: GetEffectivePoliciesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEffectivePolicies>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEffectivePoliciesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEffectivePolicies>>> = ({ signal }) => getEffectivePolicies(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEffectivePolicies>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetEffectivePoliciesQueryResult = NonNullable<Awaited<ReturnType<typeof getEffectivePolicies>>>
+export type GetEffectivePoliciesQueryError = HTTPValidationError
+
+
+export function useGetEffectivePolicies<TData = Awaited<ReturnType<typeof getEffectivePolicies>>, TError = HTTPValidationError>(
+ params: GetEffectivePoliciesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEffectivePolicies>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEffectivePolicies>>,
+          TError,
+          Awaited<ReturnType<typeof getEffectivePolicies>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetEffectivePolicies<TData = Awaited<ReturnType<typeof getEffectivePolicies>>, TError = HTTPValidationError>(
+ params: GetEffectivePoliciesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEffectivePolicies>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEffectivePolicies>>,
+          TError,
+          Awaited<ReturnType<typeof getEffectivePolicies>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetEffectivePolicies<TData = Awaited<ReturnType<typeof getEffectivePolicies>>, TError = HTTPValidationError>(
+ params: GetEffectivePoliciesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEffectivePolicies>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Effective Policies
+ */
+
+export function useGetEffectivePolicies<TData = Awaited<ReturnType<typeof getEffectivePolicies>>, TError = HTTPValidationError>(
+ params: GetEffectivePoliciesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEffectivePolicies>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetEffectivePoliciesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 export const getListTablesUrl = (params?: ListTablesParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -1692,6 +1805,109 @@ export function useListTableCommits<TData = Awaited<ReturnType<typeof listTableC
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getListTableCommitsQueryOptions(tableUuid,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetTableEffectivePoliciesUrl = (tableUuid: string,) => {
+
+
+
+
+  return `/v1/tables/${encodeURIComponent(String(tableUuid))}/effective-policies`
+}
+
+/**
+ * Return the policy of each kind that applies to a table table maintenance records, and the level it applies from.
+ *
+ * 404 when table maintenance has no record of the uuid.
+ * @summary Get Table Effective Policies
+ */
+export const getTableEffectivePolicies = async (tableUuid: string, options?: Parameters<typeof apiFetch>[1]): Promise<EffectivePoliciesApiResponse> => {
+
+  return apiFetch<EffectivePoliciesApiResponse>(getGetTableEffectivePoliciesUrl(tableUuid),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTableEffectivePoliciesQueryKey = (tableUuid: string,) => {
+    return [
+    `/v1/tables/${tableUuid}/effective-policies`
+    ] as const;
+    }
+
+
+export const getGetTableEffectivePoliciesQueryOptions = <TData = Awaited<ReturnType<typeof getTableEffectivePolicies>>, TError = HTTPValidationError>(tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableEffectivePolicies>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTableEffectivePoliciesQueryKey(tableUuid);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTableEffectivePolicies>>> = ({ signal }) => getTableEffectivePolicies(tableUuid, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: tableUuid !== null && tableUuid !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTableEffectivePolicies>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTableEffectivePoliciesQueryResult = NonNullable<Awaited<ReturnType<typeof getTableEffectivePolicies>>>
+export type GetTableEffectivePoliciesQueryError = HTTPValidationError
+
+
+export function useGetTableEffectivePolicies<TData = Awaited<ReturnType<typeof getTableEffectivePolicies>>, TError = HTTPValidationError>(
+ tableUuid: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableEffectivePolicies>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTableEffectivePolicies>>,
+          TError,
+          Awaited<ReturnType<typeof getTableEffectivePolicies>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTableEffectivePolicies<TData = Awaited<ReturnType<typeof getTableEffectivePolicies>>, TError = HTTPValidationError>(
+ tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableEffectivePolicies>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTableEffectivePolicies>>,
+          TError,
+          Awaited<ReturnType<typeof getTableEffectivePolicies>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTableEffectivePolicies<TData = Awaited<ReturnType<typeof getTableEffectivePolicies>>, TError = HTTPValidationError>(
+ tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableEffectivePolicies>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Table Effective Policies
+ */
+
+export function useGetTableEffectivePolicies<TData = Awaited<ReturnType<typeof getTableEffectivePolicies>>, TError = HTTPValidationError>(
+ tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableEffectivePolicies>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTableEffectivePoliciesQueryOptions(tableUuid,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

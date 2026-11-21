@@ -25,6 +25,9 @@ import type {
   CatalogTableSchemaComparisonApiResponse,
   CatalogTableSchemaVersionsApiResponse,
   CreateTableApiRequest,
+  DiscoveryEffectivePolicyApiResponse,
+  EffectivePoliciesApiResponse,
+  MaintenanceEffectivePolicyApiResponse,
   RenameTableApiRequest,
   ResetTablePropertiesApiRequest,
   SetTablePriorityApiRequest,
@@ -74,6 +77,12 @@ export const getListCatalogTableSchemaVersionsResponseMock = (overrideResponse: 
 
 export const getGetCatalogTableSchemaComparisonResponseMock = (overrideResponse: Partial<Extract<CatalogTableSchemaComparisonApiResponse, object>> = {}): CatalogTableSchemaComparisonApiResponse => ({base_schema_id: faker.helpers.arrayElement([faker.number.int(),null,]), fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({changes: faker.helpers.arrayElements(['added','removed','renamed','type_changed','nullability_changed','doc_changed'] as const), depth: faker.number.int(), doc: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), field_id: faker.number.int(), path: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))),null,]), previous_doc: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), previous_path: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))),null,]), previous_required: faker.helpers.arrayElement([faker.datatype.boolean(),null,]), previous_type: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), required: faker.helpers.arrayElement([faker.datatype.boolean(),null,]), type: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,])})), schema_id: faker.number.int(), ...overrideResponse})
 
+export const getGetEffectivePoliciesResponseMaintenanceEffectivePolicyApiResponseMock = (overrideResponse: Partial<MaintenanceEffectivePolicyApiResponse> = {}): MaintenanceEffectivePolicyApiResponse => ({...{attachment_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), description: faker.string.alpha({length: {min: 10, max: 20}}), dry_run: faker.datatype.boolean(), kind: "maintenance", policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), target: faker.helpers.arrayElement([{path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), table_uuid: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), type: faker.string.alpha({length: {min: 10, max: 20}})},null,]), version: faker.number.int()}, ...overrideResponse});
+
+export const getGetEffectivePoliciesResponseDiscoveryEffectivePolicyApiResponseMock = (overrideResponse: Partial<DiscoveryEffectivePolicyApiResponse> = {}): DiscoveryEffectivePolicyApiResponse => ({...{attachment_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), description: faker.string.alpha({length: {min: 10, max: 20}}), kind: "discovery", no_match_outcome: faker.helpers.arrayElement(['manage','unmanage'] as const), policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), target: faker.helpers.arrayElement([{path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), table_uuid: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), type: faker.string.alpha({length: {min: 10, max: 20}})},null,]), version: faker.number.int()}, ...overrideResponse});
+
+export const getGetEffectivePoliciesResponseMock = (overrideResponse: Partial<Extract<EffectivePoliciesApiResponse, object>> = {}): EffectivePoliciesApiResponse => ({policies: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.helpers.arrayElement([{...getGetEffectivePoliciesResponseMaintenanceEffectivePolicyApiResponseMock()},{...getGetEffectivePoliciesResponseDiscoveryEffectivePolicyApiResponseMock()},]))), ...overrideResponse})
+
 export const getListTablesResponseMock = (): TableApiResponse[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), last_committed_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), last_discovered_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), matched_policy_id: faker.string.alpha({length: {min: 10, max: 20}}), matched_policy_version: faker.number.int(), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
         [faker.string.alphanumeric(5)]: {}
       }, priority: faker.string.alpha({length: {min: 10, max: 20}}), registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}})})))
@@ -85,6 +94,12 @@ export const getGetTableResponseMock = (overrideResponse: Partial<Extract<TableA
 export const getListTableCommitsResponseMock = (overrideResponse: Partial<Extract<TableCommitsApiResponse, object>> = {}): TableCommitsApiResponse => ({items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({added_data_files: faker.helpers.arrayElement([faker.number.int(),null,]), added_delete_files: faker.helpers.arrayElement([faker.number.int(),null,]), added_records: faker.helpers.arrayElement([faker.number.int(),null,]), committed_at: faker.date.past().toISOString().slice(0, 19) + 'Z', deleted_data_files: faker.helpers.arrayElement([faker.number.int(),null,]), deleted_records: faker.helpers.arrayElement([faker.number.int(),null,]), operation: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), parent_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), removed_delete_files: faker.helpers.arrayElement([faker.number.int(),null,]), schema_id: faker.helpers.arrayElement([faker.number.int(),null,]), snapshot_id: faker.string.alpha({length: {min: 10, max: 20}}), summary: {
         [faker.string.alphanumeric(5)]: faker.string.alpha({length: {min: 10, max: 20}})
       }, writer: faker.string.alpha({length: {min: 10, max: 20}})})), truncated: faker.datatype.boolean(), ...overrideResponse})
+
+export const getGetTableEffectivePoliciesResponseMaintenanceEffectivePolicyApiResponseMock = (overrideResponse: Partial<MaintenanceEffectivePolicyApiResponse> = {}): MaintenanceEffectivePolicyApiResponse => ({...{attachment_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), description: faker.string.alpha({length: {min: 10, max: 20}}), dry_run: faker.datatype.boolean(), kind: "maintenance", policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), target: faker.helpers.arrayElement([{path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), table_uuid: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), type: faker.string.alpha({length: {min: 10, max: 20}})},null,]), version: faker.number.int()}, ...overrideResponse});
+
+export const getGetTableEffectivePoliciesResponseDiscoveryEffectivePolicyApiResponseMock = (overrideResponse: Partial<DiscoveryEffectivePolicyApiResponse> = {}): DiscoveryEffectivePolicyApiResponse => ({...{attachment_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), description: faker.string.alpha({length: {min: 10, max: 20}}), kind: "discovery", no_match_outcome: faker.helpers.arrayElement(['manage','unmanage'] as const), policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), target: faker.helpers.arrayElement([{path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), table_uuid: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), type: faker.string.alpha({length: {min: 10, max: 20}})},null,]), version: faker.number.int()}, ...overrideResponse});
+
+export const getGetTableEffectivePoliciesResponseMock = (overrideResponse: Partial<Extract<EffectivePoliciesApiResponse, object>> = {}): EffectivePoliciesApiResponse => ({policies: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.helpers.arrayElement([{...getGetTableEffectivePoliciesResponseMaintenanceEffectivePolicyApiResponseMock()},{...getGetTableEffectivePoliciesResponseDiscoveryEffectivePolicyApiResponseMock()},]))), ...overrideResponse})
 
 export const getTriggerTableMaintenanceResponseMock = (overrideResponse: Partial<Extract<TriggerTableMaintenanceApiResponse, object>> = {}): TriggerTableMaintenanceApiResponse => ({accepted: faker.datatype.boolean(), ...overrideResponse})
 
@@ -243,6 +258,18 @@ export const getGetCatalogTableSchemaComparisonMockHandler = (overrideResponse?:
   }, options)
 }
 
+export const getGetEffectivePoliciesMockHandler = (overrideResponse?: EffectivePoliciesApiResponse | ((info: Parameters<HttpResponseResolver>[0]) => Promise<EffectivePoliciesApiResponse> | EffectivePoliciesApiResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/v1/effective-policies', async (info: Parameters<HttpResponseResolver>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetEffectivePoliciesResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getListTablesMockHandler = (overrideResponse?: TableApiResponse[] | ((info: Parameters<HttpResponseResolver>[0]) => Promise<TableApiResponse[]> | TableApiResponse[]), options?: RequestHandlerOptions) => {
   return http.get('*/v1/tables', async (info: Parameters<HttpResponseResolver>[0]) => {
 
@@ -274,6 +301,18 @@ export const getListTableCommitsMockHandler = (overrideResponse?: TableCommitsAp
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getListTableCommitsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetTableEffectivePoliciesMockHandler = (overrideResponse?: EffectivePoliciesApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<EffectivePoliciesApiResponse> | EffectivePoliciesApiResponse), options?: RequestHandlerOptions) => {
+  return http.get<{ tableUuid: string }>('*/v1/tables/:tableUuid/effective-policies', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetTableEffectivePoliciesResponseMock(),
       { status: 200
       })
   }, options)
@@ -351,9 +390,11 @@ export const getTablesMock = () => [
   getRenameTableMockHandler(),
   getListCatalogTableSchemaVersionsMockHandler(),
   getGetCatalogTableSchemaComparisonMockHandler(),
+  getGetEffectivePoliciesMockHandler(),
   getListTablesMockHandler(),
   getGetTableMockHandler(),
   getListTableCommitsMockHandler(),
+  getGetTableEffectivePoliciesMockHandler(),
   getTriggerTableMaintenanceMockHandler(),
   getGetTableMetricTrendsMockHandler(),
   getGetTableCurrentMetricsMockHandler(),

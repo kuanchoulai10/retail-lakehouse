@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.catalog_discovery import ListScannedCatalogsUseCase
     from context.table_maintenance.application.port.inbound.table import (
+        GetEffectivePoliciesUseCase,
         GetTableCurrentMetricsUseCase,
         GetTableMetricTrendsUseCase,
         GetTableUseCase,
@@ -81,6 +82,7 @@ class UseCases:
     detach_table_maintenance_policy: DetachTableMaintenancePolicyUseCase
     list_table_maintenance_policy_attachments: ListTableMaintenancePolicyAttachmentsUseCase
     resolve_applicable_table_maintenance_policy: ResolveApplicableTableMaintenancePolicyUseCase
+    get_effective_policies: GetEffectivePoliciesUseCase
     create_table_maintenance_policy: CreateTableMaintenancePolicyUseCase
     delete_table_maintenance_policy: DeleteTableMaintenancePolicyUseCase
     get_table_maintenance_policy: GetTableMaintenancePolicyUseCase

@@ -1412,6 +1412,73 @@
         "title": "DiscoveryConditionApiResponse",
         "type": "object"
       },
+      "DiscoveryEffectivePolicyApiResponse": {
+        "description": "Describe the discovery policy that applies, at its latest version, and the level it applies from.\n\n``target`` is the nearest attachment's target and ``attachment_id`` its ``da-`` id; both are null when\nthe platform default applies.",
+        "properties": {
+          "attachment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attachment Id"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "kind": {
+            "const": "discovery",
+            "title": "Kind",
+            "type": "string"
+          },
+          "no_match_outcome": {
+            "enum": [
+              "manage",
+              "unmanage"
+            ],
+            "title": "No Match Outcome",
+            "type": "string"
+          },
+          "policy_id": {
+            "title": "Policy Id",
+            "type": "string"
+          },
+          "policy_name": {
+            "title": "Policy Name",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PolicyTargetApiResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "policy_id",
+          "policy_name",
+          "version",
+          "description",
+          "no_match_outcome",
+          "target",
+          "attachment_id"
+        ],
+        "title": "DiscoveryEffectivePolicyApiResponse",
+        "type": "object"
+      },
       "DiscoveryRuleApiRequest": {
         "additionalProperties": false,
         "description": "Carry one rule: its outcome for a table that all of its conditions match.\n\nLeave ``id`` out (or null) for a new rule; send a rule's ``dr-`` id to keep it across versions.",
@@ -1479,6 +1546,37 @@
           "conditions"
         ],
         "title": "DiscoveryRuleApiResponse",
+        "type": "object"
+      },
+      "EffectivePoliciesApiResponse": {
+        "description": "List the policy of each kind that applies: maintenance first, then discovery.",
+        "properties": {
+          "policies": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "discovery": "#/components/schemas/DiscoveryEffectivePolicyApiResponse",
+                  "maintenance": "#/components/schemas/MaintenanceEffectivePolicyApiResponse"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/MaintenanceEffectivePolicyApiResponse"
+                },
+                {
+                  "$ref": "#/components/schemas/DiscoveryEffectivePolicyApiResponse"
+                }
+              ]
+            },
+            "title": "Policies",
+            "type": "array"
+          }
+        },
+        "required": [
+          "policies"
+        ],
+        "title": "EffectivePoliciesApiResponse",
         "type": "object"
       },
       "ExpireSnapshotsOptionsApiRequest": {
@@ -1916,6 +2014,69 @@
           "orphaned"
         ],
         "title": "ListedTableMaintenancePolicyMappingApiResponse",
+        "type": "object"
+      },
+      "MaintenanceEffectivePolicyApiResponse": {
+        "description": "Describe the maintenance policy that applies, at its latest version, and the level it applies from.\n\n``target`` is the nearest attachment's target and ``attachment_id`` its ``pa-`` id; both are null when\nthe platform default applies.",
+        "properties": {
+          "attachment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attachment Id"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "kind": {
+            "const": "maintenance",
+            "title": "Kind",
+            "type": "string"
+          },
+          "policy_id": {
+            "title": "Policy Id",
+            "type": "string"
+          },
+          "policy_name": {
+            "title": "Policy Name",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PolicyTargetApiResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "policy_id",
+          "policy_name",
+          "version",
+          "description",
+          "dry_run",
+          "target",
+          "attachment_id"
+        ],
+        "title": "MaintenanceEffectivePolicyApiResponse",
         "type": "object"
       },
       "MaintenanceTriggersApiRequest": {
@@ -7771,6 +7932,81 @@
         ]
       }
     },
+    "/v1/effective-policies": {
+      "get": {
+        "description": "Return the policy of each kind that applies to a catalog, a dot-joined namespace in it, or a table in it.\n\nA table is found in the catalog by name, so it need not be one table maintenance has a record of. 404\nwhen the catalog does not hold the catalog, namespace or table; 403 when the platform cannot read the catalog.",
+        "operationId": "get_effective_policies",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "namespace",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Namespace"
+            }
+          },
+          {
+            "in": "query",
+            "name": "table",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Table"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectivePoliciesApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Effective Policies",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
     "/v1/maintenance-policies": {
       "get": {
         "description": "List every policy at its current version with its attachment count.",
@@ -8585,6 +8821,49 @@
           }
         },
         "summary": "List Table Commits",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/effective-policies": {
+      "get": {
+        "description": "Return the policy of each kind that applies to a table table maintenance records, and the level it applies from.\n\n404 when table maintenance has no record of the uuid.",
+        "operationId": "get_table_effective_policies",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectivePoliciesApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Effective Policies",
         "tags": [
           "tables"
         ]

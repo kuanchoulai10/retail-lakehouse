@@ -1,0 +1,134 @@
+"""Test the effective-policies routes over the real services on in-memory fakes."""
+
+from __future__ import annotations
+
+import pytest
+
+from tests.context.table_maintenance.adapter.inbound.web.effective_policies_web_world import (
+    EffectivePoliciesWebWorld,
+)
+
+ORDERS = ["prod", "sales", "eu", "orders"]
+RETURNS = ["prod", "sales", "eu", "returns"]
+
+
+@pytest.fixture
+def world() -> EffectivePoliciesWebWorld:
+    """Provide a client over both kinds of policy and the catalog prod."""
+    return EffectivePoliciesWebWorld()
+
+
+def test_by_uuid_answers_one_entry_per_kind_in_order(world: EffectivePoliciesWebWorld) -> None:
+    """GET /tables/{uuid}/effective-policies lists maintenance then discovery, each from its own level."""
+    world.attach_maintenance("gold", "table", ORDERS)
+    discovery = world.attach_discovery("sales-tables", "namespace", ["prod", "sales"])
+
+    response = world.client.get("/v1/tables/u-1/effective-policies")
+
+    assert response.status_code == 200, response.text
+    maintenance_entry, discovery_entry = response.json()["policies"]
+    assert maintenance_entry == {
+        "kind": "maintenance",
+        "policy_id": world.maintenance_attachments.list_all()[0].policy_id.value,
+        "policy_name": "gold",
+        "version": 1,
+        "description": "Platform default",
+        "dry_run": True,
+        "target": {"type": "table", "path": ORDERS, "table_uuid": "u-1"},
+        "attachment_id": world.maintenance_attachment_id(),
+    }
+    assert discovery_entry == {
+        "kind": "discovery",
+        "policy_id": discovery["policy_id"],
+        "policy_name": "sales-tables",
+        "version": 1,
+        "description": "Sales tables",
+        "no_match_outcome": "manage",
+        "target": {"type": "namespace", "path": ["prod", "sales"], "table_uuid": None},
+        "attachment_id": discovery["id"],
+    }
+
+
+def test_by_uuid_with_nothing_attached_answers_both_defaults(world: EffectivePoliciesWebWorld) -> None:
+    """The platform defaults have no target and no attachment."""
+    policies = world.client.get("/v1/tables/u-1/effective-policies").json()["policies"]
+
+    assert [(p["kind"], p["policy_id"], p["policy_name"], p["target"], p["attachment_id"]) for p in policies] == [
+        ("maintenance", "mp-00000000000000000000000000", "default", None, None),
+        ("discovery", "dp-00000000000000000000000000", "default", None, None),
+    ]
+    assert (policies[0]["dry_run"], policies[1]["no_match_outcome"]) == (False, "unmanage")
+    assert "no_match_outcome" not in policies[0]
+    assert "dry_run" not in policies[1]
+
+
+def test_by_uuid_a_table_without_a_record_is_404(world: EffectivePoliciesWebWorld) -> None:
+    """A uuid table maintenance has no record of answers 404, though the catalog holds the table."""
+    assert world.client.get("/v1/tables/u-2/effective-policies").status_code == 404
+
+
+def test_by_location_answers_a_table_without_a_record(world: EffectivePoliciesWebWorld) -> None:
+    """GET /effective-policies places an unrecorded table by the catalog and finds its own attachments."""
+    world.attach_maintenance("gold", "table", RETURNS)
+    discovery = world.attach_discovery("sales-tables", "table", RETURNS)
+
+    response = world.client.get(
+        "/v1/effective-policies", params={"catalog": "prod", "namespace": "sales.eu", "table": "returns"}
+    )
+
+    assert response.status_code == 200, response.text
+    policies = response.json()["policies"]
+    assert [p["kind"] for p in policies] == ["maintenance", "discovery"]
+    assert [p["attachment_id"] for p in policies] == [world.maintenance_attachment_id(), discovery["id"]]
+    assert [p["target"] for p in policies] == [{"type": "table", "path": RETURNS, "table_uuid": "u-2"}] * 2
+
+
+def test_by_location_answers_a_namespace_and_a_catalog(world: EffectivePoliciesWebWorld) -> None:
+    """A dot-joined namespace and a catalog are answered from their own level up."""
+    world.attach_maintenance("gold", "catalog", ["prod"])
+    world.attach_discovery("sales-tables", "namespace", ["prod", "sales"])
+
+    namespace = world.client.get("/v1/effective-policies", params={"catalog": "prod", "namespace": "sales.eu"})
+    catalog = world.client.get("/v1/effective-policies", params={"catalog": "prod"})
+
+    assert [p["target"]["path"] for p in namespace.json()["policies"]] == [["prod"], ["prod", "sales"]]
+    assert [(p["policy_name"], p["target"]) for p in catalog.json()["policies"]] == [
+        ("gold", {"type": "catalog", "path": ["prod"], "table_uuid": None}),
+        ("default", None),
+    ]
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"catalog": "gone"},
+        {"catalog": "prod", "namespace": "nowhere"},
+        {"catalog": "prod", "namespace": "sales.eu", "table": "missing"},
+    ],
+)
+def test_by_location_a_missing_place_is_404(world: EffectivePoliciesWebWorld, params: dict[str, str]) -> None:
+    """A catalog, namespace or table the catalog does not hold answers 404."""
+    assert world.client.get("/v1/effective-policies", params=params).status_code == 404
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"catalog": "prod"},
+        {"catalog": "prod", "namespace": "sales.eu"},
+        {"catalog": "prod", "namespace": "sales.eu", "table": "orders"},
+    ],
+)
+def test_by_location_a_refused_catalog_is_403(world: EffectivePoliciesWebWorld, params: dict[str, str]) -> None:
+    """A catalog the platform cannot read answers 403, as attach does."""
+    world.catalog.deny("prod")
+
+    assert world.client.get("/v1/effective-policies", params=params).status_code == 403
+
+
+@pytest.mark.parametrize("params", [{}, {"namespace": "sales.eu"}, {"catalog": "prod", "table": "orders"}])
+def test_by_location_without_a_catalog_or_a_namespace_for_a_table_is_422(
+    world: EffectivePoliciesWebWorld, params: dict[str, str]
+) -> None:
+    """A request naming no catalog, or a table without its namespace, answers 422."""
+    assert world.client.get("/v1/effective-policies", params=params).status_code == 422

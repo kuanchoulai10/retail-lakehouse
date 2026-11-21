@@ -35,6 +35,8 @@ UTILITY_FILES = {
     "apply_discovery_change.py",
     "read_scanned_catalogs.py",
     "policy_target_from_request.py",
+    "policy_candidates.py",
+    "policy_target_fields.py",
     "notify_policy_change.py",
     "target_in_catalog.py",
     "table_output_fields.py",

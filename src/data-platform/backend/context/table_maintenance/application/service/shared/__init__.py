@@ -5,6 +5,12 @@ from __future__ import annotations
 from context.table_maintenance.application.service.shared.applied_policy_ref_of import (
     applied_policy_ref_of,
 )
+from context.table_maintenance.application.service.shared.policy_candidates import (
+    policy_candidates,
+)
+from context.table_maintenance.application.service.shared.policy_target_fields import (
+    policy_target_fields,
+)
 from context.table_maintenance.application.service.shared.policy_target_from_request import (
     policy_target_from_request,
 )
@@ -17,6 +23,8 @@ from context.table_maintenance.application.service.shared.translate_domain_error
 
 __all__ = [
     "applied_policy_ref_of",
+    "policy_candidates",
+    "policy_target_fields",
     "policy_target_from_request",
     "target_in_catalog",
     "translate_domain_errors",

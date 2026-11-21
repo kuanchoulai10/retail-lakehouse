@@ -11,6 +11,9 @@ from context.table_maintenance.application.service.table.attention_policy_names 
 from context.table_maintenance.application.service.table.discovery_decider import (
     DiscoveryDecider,
 )
+from context.table_maintenance.application.service.table.get_effective_policies import (
+    GetEffectivePoliciesService,
+)
 from context.table_maintenance.application.service.table.get_table import (
     GetTableService,
 )
@@ -81,6 +84,7 @@ __all__ = [
     "KnownTableOutcome",
     "apply_discovery_to_known_table",
     "attention_policy_names",
+    "GetEffectivePoliciesService",
     "GetTableService",
     "GetTableCurrentMetricsService",
     "GetTableMetricTrendsService",

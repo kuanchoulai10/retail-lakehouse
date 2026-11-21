@@ -12,6 +12,7 @@ from context.table_maintenance.application.domain.model.table import (
 )
 from context.table_maintenance.application.service.catalog_discovery import ListScannedCatalogsService
 from context.table_maintenance.application.service.table import (
+    GetEffectivePoliciesService,
     GetTableCurrentMetricsService,
     GetTableMetricTrendsService,
     GetTableService,
@@ -165,6 +166,9 @@ def build_use_cases(
             policies, attachments, catalog, tables
         ),
         resolve_applicable_table_maintenance_policy=resolve_applicable_policy,
+        get_effective_policies=GetEffectivePoliciesService(
+            policies, attachments, discovery_policies, discovery_attachments, catalog, tables
+        ),
         create_table_maintenance_policy=CreateTableMaintenancePolicyService(policies, clock=clock),
         delete_table_maintenance_policy=DeleteTableMaintenancePolicyService(policies, attachments),
         get_table_maintenance_policy=GetTableMaintenancePolicyService(policies),
