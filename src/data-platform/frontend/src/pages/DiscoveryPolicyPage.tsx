@@ -11,6 +11,7 @@ import {
   useListTableDiscoveryPolicyAttachments,
 } from "@/api/generated/discovery-policies/discovery-policies";
 import type { TableDiscoveryPolicyApiResponse, UpdateTableDiscoveryPolicyApiRequest } from "@/api/generated/model";
+import { invalidateEffectivePolicies } from "@/api/invalidateEffectivePolicies";
 import { DiscoveryPolicyAttachments } from "@/components/DiscoveryPolicyAttachments";
 import { DiscoveryRuleEditor } from "@/components/DiscoveryRuleEditor";
 import { DiscoveryRulesTable, type DiscoveryRuleActions } from "@/components/DiscoveryRulesTable";
@@ -135,6 +136,7 @@ function PolicyDraftEditor({ policy }: { policy: Policy }) {
         queryClient.invalidateQueries({ queryKey: getGetTableDiscoveryPolicyQueryKey(policy.name) }),
         queryClient.invalidateQueries({ queryKey: getListTableDiscoveryPoliciesQueryKey(), exact: true }),
         queryClient.invalidateQueries({ queryKey: getListScannedCatalogsQueryKey() }),
+        invalidateEffectivePolicies(queryClient),
       ]);
       if (error === null) {
         setDraft(null);

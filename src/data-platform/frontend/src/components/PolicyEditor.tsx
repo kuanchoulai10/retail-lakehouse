@@ -10,6 +10,7 @@ import {
   updateTableMaintenancePolicy,
 } from "@/api/generated/maintenance-policies/maintenance-policies";
 import type { RewriteDataFilesTargetApiRequestPer, TableMaintenancePolicyApiResponse } from "@/api/generated/model";
+import { invalidateEffectivePolicies } from "@/api/invalidateEffectivePolicies";
 import { errorMessage } from "@/format";
 import {
   contentFromDraft,
@@ -83,6 +84,7 @@ export function PolicyEditor({ policy, content, defaults, onClose }: Props) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getListTableMaintenancePoliciesQueryKey(), exact: true }),
         queryClient.invalidateQueries({ queryKey: getGetTableMaintenancePolicyQueryKey(write.name) }),
+        invalidateEffectivePolicies(queryClient),
       ]);
       if (error === null) onClose();
     },

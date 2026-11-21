@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
+import { getGetEffectivePoliciesQueryKey, getGetTableEffectivePoliciesQueryKey } from "../api/generated/tables/tables";
 import { bodyOf, callsTo, stubCatalogApi, type StubbedCall } from "../test/catalogApiStub";
 import { jsonResponse, policyContentFixture, policyFixture } from "../test/fixtures";
 import { PolicyEditor } from "./PolicyEditor";
@@ -17,11 +18,12 @@ function writesOf(calls: StubbedCall[]): StubbedCall[] {
 
 function renderEditor(element: ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  render(
     <QueryClientProvider client={client}>
       <MemoryRouter>{element}</MemoryRouter>
     </QueryClientProvider>,
   );
+  return client;
 }
 
 function section(name: string): HTMLElement {
@@ -80,6 +82,24 @@ describe("PolicyEditor", () => {
       expire_snapshots: null,
       version: 4,
     });
+  });
+
+  it("marks what applies anywhere stale after a save, since the policy's version and content changed", async () => {
+    stubCatalogApi({
+      "PUT /v1/maintenance-policies/nightly": () => jsonResponse({ ...NIGHTLY, version: 5 }),
+    });
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    const client = renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={onClose} />);
+    const byLocation = getGetEffectivePoliciesQueryKey({ catalog: "iceberg" });
+    const byUuid = getGetTableEffectivePoliciesQueryKey("uuid-orders");
+    client.setQueryData(byLocation, {});
+    client.setQueryData(byUuid, {});
+    await user.click(await screen.findByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(client.getQueryState(byLocation)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(byUuid)?.isInvalidated).toBe(true);
   });
 
   it("seeds an operation the policy left out from the platform default when it is put in", async () => {

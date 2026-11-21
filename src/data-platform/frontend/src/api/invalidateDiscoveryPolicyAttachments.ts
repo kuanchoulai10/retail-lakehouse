@@ -21,6 +21,6 @@ export function invalidateDiscoveryPolicyAttachments(queryClient: QueryClient): 
     queryClient.invalidateQueries({ predicate: (query) => isAttachmentsKey(query.queryKey[0]) }),
     queryClient.invalidateQueries({ queryKey: getListTableDiscoveryPoliciesQueryKey(), exact: true }),
     queryClient.invalidateQueries({ queryKey: getListScannedCatalogsQueryKey() }),
-    invalidateEffectivePolicies(queryClient).then(() => undefined),
+    invalidateEffectivePolicies(queryClient),
   ]);
 }

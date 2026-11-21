@@ -7,6 +7,7 @@ import type {
   ListedTableDiscoveryPolicyAttachmentApiResponse,
   TableDiscoveryPolicyApiResponse,
 } from "../api/generated/model";
+import { getGetEffectivePoliciesQueryKey, getGetTableEffectivePoliciesQueryKey } from "../api/generated/tables/tables";
 import { callsTo, stubCatalogApi, type StubHandler } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
 import { DiscoveryPolicyPage } from "./DiscoveryPolicyPage";
@@ -80,7 +81,7 @@ function stubApi(
 
 function renderAt(name = "sales-tables") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[`/discovery-policies/${name}`]}>
         <Routes>
@@ -89,6 +90,7 @@ function renderAt(name = "sales-tables") {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return client;
 }
 
 function rulesTable(): HTMLElement {
@@ -196,6 +198,23 @@ describe("DiscoveryPolicyPage", () => {
       },
     ]);
     expect(callsTo(calls, "GET", PATH).length).toBeGreaterThan(1);
+  });
+
+  it("marks what applies anywhere stale after a save, since the version and the no-match outcome changed", async () => {
+    stubApi({ [`PUT ${PATH}`]: () => jsonResponse(policy({ version: 4 })) });
+    const user = userEvent.setup();
+    const client = renderAt();
+    await loaded();
+    const byLocation = getGetEffectivePoliciesQueryKey({ catalog: "iceberg" });
+    const byUuid = getGetTableEffectivePoliciesQueryKey("uuid-orders");
+    client.setQueryData(byLocation, {});
+    client.setQueryData(byUuid, {});
+    await user.click(screen.getByRole("button", { name: "Move rule 2 up" }));
+    await user.click(saveButton());
+
+    expect(await screen.findByText("Saved. Discovering tables…")).toBeInTheDocument();
+    expect(client.getQueryState(byLocation)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(byUuid)?.isInvalidated).toBe(true);
   });
 
   it("adds a rule, sent without an id", async () => {

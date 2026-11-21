@@ -125,7 +125,9 @@ export const Keyboard: Story = {
     await expect(attachDiscovery).toHaveFocus();
     await userEvent.keyboard("{Enter}");
     const dialog = await screen.findByRole("dialog", { name: "Attach policy" });
-    await userEvent.click(await within(dialog).findByRole("combobox", { name: "Policy" }));
+    const policy = await within(dialog).findByRole("combobox", { name: "Policy" });
+    policy.focus();
+    await userEvent.keyboard("{Enter}");
     await expect(await screen.findByRole("option", { name: "sales-tables" })).toBeVisible();
     await expect(screen.queryByRole("option", { name: "retail-nightly" })).toBeNull();
     await userEvent.keyboard("{Escape}");

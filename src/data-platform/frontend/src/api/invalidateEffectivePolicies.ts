@@ -11,8 +11,8 @@ function isByTableKey(key: unknown): boolean {
 
 // After any attach or detach, of either kind: what applies anywhere, asked by location or by a
 // table's uuid, since one attachment changes it for every target below it.
-export function invalidateEffectivePolicies(queryClient: QueryClient): Promise<void[]> {
-  return Promise.all([
+export async function invalidateEffectivePolicies(queryClient: QueryClient): Promise<void> {
+  await Promise.all([
     queryClient.invalidateQueries({ queryKey: [BY_LOCATION_URL] }),
     queryClient.invalidateQueries({ predicate: (query) => isByTableKey(query.queryKey[0]) }),
   ]);
