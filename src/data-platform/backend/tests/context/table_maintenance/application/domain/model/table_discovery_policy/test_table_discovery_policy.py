@@ -194,6 +194,17 @@ def test_replace_refuses_a_stale_version():
     assert (policy.version, policy.content) == (1, _content())
 
 
+def test_replace_refuses_an_older_version():
+    """A save based on a version older than the current one is refused, and nothing changes."""
+    policy = TableDiscoveryPolicy.create(NAME, _content(), T0)
+    policy.replace(_content("manage"), 1, T1)
+
+    with pytest.raises(StaleDiscoveryPolicyVersion, match="sales-tables is at version 2, not 1"):
+        policy.replace(_content("unmanage"), 1, T1)
+
+    assert (policy.version, policy.content) == (2, _content("manage"))
+
+
 def test_a_stale_version_is_reported_before_an_unknown_rule_id():
     """A stale request is a conflict whatever its content holds."""
     policy = TableDiscoveryPolicy.create(NAME, _content(), T0)
