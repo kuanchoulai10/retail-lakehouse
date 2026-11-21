@@ -1,5 +1,5 @@
 import { useTable, type RowData, type SortingState } from "@tanstack/react-table";
-import { Fragment, type MouseEvent, type ReactNode } from "react";
+import { Fragment, type ComponentProps, type MouseEvent, type ReactNode } from "react";
 import {
   IconArrowDown,
   IconArrowUp,
@@ -19,25 +19,37 @@ export type DataTableProps<T extends RowData> = {
   emptyState?: ReactNode;
   className?: string;
   /**
-   * Gives every row a detail row below it, opened by a toggle in the first cell or a click on
-   * the row. The detail row spans all columns.
+   * Names the row in its button: "Expand <label>" / "Collapse <label>", or "Open <label>". Defaults
+   * to the row id.
    */
-  renderDetail?: (row: T) => ReactNode;
-  /** Names the row in its toggle: "Expand <label>" / "Collapse <label>". Defaults to the row id. */
   getRowLabel?: (row: T) => string;
-  /**
-   * Row ids (as given by getRowId) that start expanded. Read once on mount; unknown ids are
-   * ignored. Needs renderDetail to show anything.
-   */
-  initialExpandedRowIds?: string[];
-  /**
-   * Opens a row somewhere else, such as a side panel: a plain click on the row, or its first cell's
-   * button, calls it. Not combined with renderDetail.
-   */
-  onOpenRow?: (row: T) => void;
-  /** The row whose panel is open: its button reads aria-expanded="true" and the row is drawn selected. */
-  openRowId?: string | null;
-};
+} & (
+  | {
+      /**
+       * Gives every row a detail row below it, opened by a toggle in the first cell or a click on
+       * the row. The detail row spans all columns.
+       */
+      renderDetail?: (row: T) => ReactNode;
+      /**
+       * Row ids (as given by getRowId) that start expanded. Read once on mount; unknown ids are
+       * ignored. Needs renderDetail to show anything.
+       */
+      initialExpandedRowIds?: string[];
+      onOpenRow?: undefined;
+      openRowId?: undefined;
+    }
+  | {
+      /**
+       * Opens a row somewhere else, such as a side panel: a plain click on the row, or its first
+       * cell's button, calls it. A row either expands or opens, so renderDetail is not allowed.
+       */
+      onOpenRow: (row: T) => void;
+      /** The row whose panel is open: its button reads aria-expanded="true" and the row is drawn selected. */
+      openRowId?: string | null;
+      renderDetail?: undefined;
+      initialExpandedRowIds?: undefined;
+    }
+);
 
 const stickyFirst = "first:sticky first:left-0 first:z-10";
 const hoverOverlay =
@@ -47,15 +59,41 @@ const ariaSort = { asc: "ascending", desc: "descending" } as const;
 
 const INTERACTIVE = "a, button, input, select, textarea, [role='button'], [role='link']";
 
-// A row click opens the detail row unless it landed on a control inside the row or ended a text
-// selection, so links, buttons and inputs in cells keep their own behaviour and text stays copyable.
+// A row click expands the row, or opens its panel, unless it carried a modifier key, landed on a
+// control inside the row or ended a text selection, so links, buttons and inputs in cells keep their
+// own behaviour and text stays copyable.
 function isPlainRowClick(event: MouseEvent<HTMLTableRowElement>): boolean {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+    return false;
+  }
   const target = event.target instanceof Element ? event.target.closest(INTERACTIVE) : null;
   if (target !== null && target !== event.currentTarget && event.currentTarget.contains(target)) {
     return false;
   }
   const selection = event.currentTarget.ownerDocument.getSelection();
   return selection === null || selection.isCollapsed;
+}
+
+// The first cell's button, shared by the expand toggle and the button that opens a panel.
+function RowButton({
+  rotated = false,
+  className,
+  ...rest
+}: ComponentProps<"button"> & { rotated?: boolean }) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        "-ml-1 inline-flex min-h-row min-w-6 shrink-0 cursor-pointer items-center justify-center rounded-sm",
+        "text-on-surface-variant focus-visible:outline-2 focus-visible:outline-offset-2",
+        "focus-visible:outline-focus-ring",
+        className,
+      )}
+      {...rest}
+    >
+      <IconChevronRight aria-hidden="true" className={cn("size-4", rotated && "rotate-90")} />
+    </button>
+  );
 }
 
 export function DataTable<T extends RowData>({
@@ -72,9 +110,6 @@ export function DataTable<T extends RowData>({
   onOpenRow,
   openRowId,
 }: DataTableProps<T>) {
-  if (import.meta.env.DEV && renderDetail !== undefined && onOpenRow !== undefined) {
-    throw new Error("DataTable: a row either expands (renderDetail) or opens (onOpenRow), not both.");
-  }
   const expandable = renderDetail !== undefined;
   const openable = onOpenRow !== undefined;
   const table = useTable({
@@ -157,10 +192,7 @@ export function DataTable<T extends RowData>({
               row.toggleExpanded();
             };
             const opened = openable && openRowId === row.id;
-            const open = (event: MouseEvent) => {
-              event.stopPropagation();
-              onOpenRow?.(row.original);
-            };
+            const open = () => onOpenRow?.(row.original);
             return (
               <Fragment key={row.id}>
                 <TableRow
@@ -174,7 +206,7 @@ export function DataTable<T extends RowData>({
                       ? (event: MouseEvent<HTMLTableRowElement>) => {
                           if (!isPlainRowClick(event)) return;
                           if (openable) {
-                            onOpenRow(row.original);
+                            onOpenRow?.(row.original);
                             event.currentTarget.querySelector<HTMLElement>("[data-open-row]")?.focus();
                           } else {
                             row.toggleExpanded();
@@ -192,43 +224,24 @@ export function DataTable<T extends RowData>({
                         hoverOverlay,
                       )}
                     >
-                      {expandable && index === 0 ? (
+                      {index === 0 && (expandable || openable) ? (
                         <span className="inline-flex items-center gap-1">
-                          <button
-                            type="button"
-                            aria-expanded={expanded}
-                            aria-label={`${expanded ? "Collapse" : "Expand"} ${label}`}
-                            onClick={toggle}
-                            className={cn(
-                              "-ml-1 inline-flex min-h-row min-w-6 shrink-0 cursor-pointer items-center justify-center rounded-sm",
-                              "text-on-surface-variant focus-visible:outline-2 focus-visible:outline-offset-2",
-                              "focus-visible:outline-focus-ring",
-                            )}
-                          >
-                            <IconChevronRight
-                              aria-hidden="true"
-                              className={cn("size-4", expanded && "rotate-90")}
+                          {expandable ? (
+                            <RowButton
+                              rotated={expanded}
+                              aria-expanded={expanded}
+                              aria-label={`${expanded ? "Collapse" : "Expand"} ${label}`}
+                              onClick={toggle}
                             />
-                          </button>
-                          <table.FlexRender cell={cell} />
-                        </span>
-                      ) : openable && index === 0 ? (
-                        <span className="inline-flex items-center gap-1">
-                          <button
-                            type="button"
-                            data-open-row=""
-                            aria-haspopup="dialog"
-                            aria-expanded={opened}
-                            aria-label={`Open ${label}`}
-                            onClick={open}
-                            className={cn(
-                              "-ml-1 inline-flex min-h-row min-w-6 shrink-0 cursor-pointer items-center justify-center rounded-sm",
-                              "text-on-surface-variant focus-visible:outline-2 focus-visible:outline-offset-2",
-                              "focus-visible:outline-focus-ring",
-                            )}
-                          >
-                            <IconChevronRight aria-hidden="true" className="size-4" />
-                          </button>
+                          ) : (
+                            <RowButton
+                              data-open-row=""
+                              aria-haspopup="dialog"
+                              aria-expanded={opened}
+                              aria-label={`Open ${label}`}
+                              onClick={open}
+                            />
+                          )}
                           <table.FlexRender cell={cell} />
                         </span>
                       ) : (

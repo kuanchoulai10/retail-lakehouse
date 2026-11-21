@@ -5,10 +5,11 @@ import {
   expectFocusRing,
   expectNoHorizontalPageScroll,
   portalQueries,
+  resolvedColor,
 } from "../../stories/assertions";
 import { Drawer } from "../Drawer/Drawer";
 import { createDataTableColumnHelper } from "./createDataTableColumnHelper";
-import { DataTable } from "./DataTable";
+import { DataTable, type DataTableProps } from "./DataTable";
 
 type Row = { id: string; name: string; status: string; files: number };
 
@@ -397,11 +398,15 @@ export const OpenRowInPanel: Story = {
     const heading = await portalQueries(canvasElement).findByRole("heading", { name: "sales.orders" });
     await waitFor(() => expect(heading).toHaveFocus());
     await expect(first.closest("tr")).toHaveClass("bg-inverse-primary");
+    const selected = resolvedColor("inverse-primary", canvasElement);
+    await expect(getComputedStyle(first.closest("td")!).backgroundColor).toBe(selected);
 
     await userEvent.click(canvas.getByText("sales.customers"));
     await expect(second).toHaveAttribute("aria-expanded", "true");
     await expect(first).toHaveAttribute("aria-expanded", "false");
     await expect(first.closest("tr")).not.toHaveClass("bg-inverse-primary");
+    await expect(getComputedStyle(first.closest("td")!).backgroundColor).not.toBe(selected);
+    await expect(getComputedStyle(second.closest("td")!).backgroundColor).toBe(selected);
     const switched = await portalQueries(canvasElement).findByRole("heading", { name: "sales.customers" });
     await waitFor(() => expect(switched).toHaveFocus());
 
@@ -411,3 +416,74 @@ export const OpenRowInPanel: Story = {
     await expect(second).toHaveAttribute("aria-expanded", "false");
   },
 };
+
+const onOpenRowSpy = fn();
+const openRowColumns = helper.columns([
+  helper.accessor("name", { header: "Name", enableSorting: false }),
+  helper.accessor("status", {
+    header: "Status",
+    enableSorting: false,
+    cell: (info) => (
+      <span className="inline-flex gap-2">
+        <a href={`#${info.getValue()}`} onClick={(event) => event.preventDefault()}>
+          {info.getValue()}
+        </a>
+        <button type="button">{`Note ${info.row.original.id}`}</button>
+      </span>
+    ),
+  }),
+]);
+
+export const OpenRowClickRules: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  render: () => (
+    <DataTable<Row>
+      caption="Tables with an open spy"
+      columns={openRowColumns}
+      data={rows}
+      getRowId={(row) => row.id}
+      getRowLabel={(row) => row.name}
+      onOpenRow={onOpenRowSpy}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    onOpenRowSpy.mockClear();
+    await userEvent.click(canvas.getAllByRole("link", { name: "active" })[0]!);
+    await userEvent.click(canvas.getByRole("button", { name: "Note 1" }));
+    await expect(onOpenRowSpy).toHaveBeenCalledTimes(0);
+
+    const nameCell = canvas.getByText("sales.orders");
+    const modified = userEvent.setup();
+    for (const key of ["Meta", "Control", "Shift", "Alt"]) {
+      await modified.keyboard(`{${key}>}`);
+      await modified.click(nameCell);
+      await modified.keyboard(`{/${key}}`);
+    }
+    await expect(onOpenRowSpy).toHaveBeenCalledTimes(0);
+
+    const selection = window.getSelection()!;
+    const range = document.createRange();
+    range.selectNodeContents(nameCell);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    nameCell.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await expect(onOpenRowSpy).toHaveBeenCalledTimes(0);
+    selection.removeAllRanges();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Open sales.orders" }));
+    await expect(onOpenRowSpy).toHaveBeenCalledTimes(1);
+    await expect(onOpenRowSpy).toHaveBeenLastCalledWith(rows[0]);
+
+    onOpenRowSpy.mockClear();
+    await userEvent.click(canvas.getByText("sales.customers"));
+    await expect(onOpenRowSpy).toHaveBeenCalledTimes(1);
+    await expect(onOpenRowSpy).toHaveBeenLastCalledWith(rows[1]);
+    await expect(canvas.getByRole("button", { name: "Open sales.customers" })).toHaveFocus();
+  },
+};
+
+// A row either expands or opens: tsc fails here if DataTableProps stops refusing both.
+// @ts-expect-error renderDetail and onOpenRow are never passed together
+const bothProps: DataTableProps<Row> = { caption: "Both", columns: plainColumns, data: rows, renderDetail, onOpenRow: onOpen };
+void bothProps;
