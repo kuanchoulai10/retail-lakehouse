@@ -424,6 +424,22 @@ def test_record_result_rejects_bad_requests(recorder, started_run, now):
         _record(recorder, now, attempt=2)
 
 
+def test_recording_an_attempt_of_a_run_still_pending_changes_nothing(recorder, runs_repo, tables_repo, table, now):
+    """A run whose first submit never started its attempt is still pending: the record answers so and saves nothing.
+
+    The workflow records a failure for every attempt it began, also one a cancel or a refused submit stopped before
+    the submit saved the attempt; that is not a failed record, so it is neither refused nor saved.
+    """
+    _stored_run(runs_repo, table, now)
+    saves: list[tuple[str, str]] = []
+    track_calls(runs_repo, "update", "run", saves, lambda r: r.id.value)
+    track_calls(tables_repo, "update", "table", saves, lambda t: t.id.value)
+    out = _record(recorder, now, attempt=1, succeeded=False, error="cancelled", ended_by="cancelled")
+    assert (out.status, out.failure_class, out.next_step) == ("pending", None, None)
+    assert saves == []
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).status is RunStatus.PENDING
+
+
 # --- callback ---
 
 

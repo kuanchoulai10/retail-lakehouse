@@ -51,6 +51,7 @@ _DECISION_PATCH = "classify-attempt-failure"
 _STARTED_STATES = frozenset({"RUNNING", "COMPLETED"})
 _PLANNED_POLICY_KEYS = ("policy_id", "policy_name", "policy_version", "policy_target")
 _NOT_REACHED = "the table's maintenance stopped before this run started"
+_PENDING = "pending"
 
 
 @workflow.defn(name=TABLE_MAINTENANCE_WORKFLOW)
@@ -104,8 +105,12 @@ class TableMaintenanceWorkflow:
     under the policy applying when it records. Every attempt runs with the ``filters`` and procedure
     arguments its run was created with, also after running out of memory; the submit reads them from
     the run. A failed run, a failed submit included, never stops the workflow: the next run still
-    runs. At the end, also after a cancellation, the Spark job of every attempt
-    not yet deleted is deleted, every run of the plan none of whose submits returned is skipped
+    runs. An attempt whose submit never saved it (a cancel, or a submit refused first, such as for a
+    table not found) leaves its run pending, and recording it answers so: that counts no record
+    failure, and a run whose submit was refused that way is skipped with the refusal (``submit
+    failed: ...``) as its reason and submitted no more. At the end, also after a cancellation, the
+    Spark job of every attempt not yet deleted is deleted, every run of the plan none of whose
+    submits returned is skipped
     (``skip_maintenance_run``, which leaves a run no longer pending as it is), and the parent
     reconciliation workflow is told the runs finished and how many results could not be recorded.
 
@@ -135,6 +140,7 @@ class TableMaintenanceWorkflow:
         self._run_ids = list(input.run_ids)
         self._run_of: dict[str, str] = dict(zip(self._operations, self._run_ids, strict=True))
         self._submitted: set[str] = set()
+        self._skipped: set[str] = set()
         self._current: str | None = None
         self._policy = TableMaintenanceAttemptPolicy(
             max_attempts=input.max_attempts,
@@ -146,7 +152,6 @@ class TableMaintenanceWorkflow:
         self._started_attempts: list[tuple[str, int]] = []
         self._settled_attempts: set[tuple[str, int]] = set()
         self._record_failures = 0
-        self._priority: str = input.plan.get("priority", "P3")
         self._raise_requests: list[RaisePrioritySignal] = []
         self._dropped_raise = False
         self._raises_received = 0
@@ -198,6 +203,9 @@ class TableMaintenanceWorkflow:
                 return
             decision = await self._record(outcome) or {}
             if outcome.succeeded:
+                return
+            if decision.get("status") == _PENDING:
+                await self._skip(outcome.operation, outcome.error or _NOT_REACHED)
                 return
             step = decision.get("next_step")
             if step not in (None, MaintenanceNextStep.RETRY_SAME) and workflow.patched(_DECISION_PATCH):
@@ -373,7 +381,6 @@ class TableMaintenanceWorkflow:
             for name in self._unfinished_runs():
                 reply = await self._raise_run(name, request)
                 if name == self._current and reply is not None:
-                    self._priority = reply["priority"]
                     raised = raised or bool(reply["raised"])
             self._raise_requests.pop(0)
         return raised
@@ -683,7 +690,7 @@ class TableMaintenanceWorkflow:
             except ActivityError as error:
                 workflow.logger.warning("deleting the job of %s attempt %s failed: %s", name, attempt, error)
         for name in self._operations:
-            if name not in self._submitted:
+            if name not in self._submitted and name not in self._skipped:
                 await self._skip(name)
         try:
             await self._activity(
@@ -703,12 +710,14 @@ class TableMaintenanceWorkflow:
             workflow.logger.warning("signalling the parent failed: %s", error)
         await workflow.wait_condition(workflow.all_handlers_finished)
 
-    async def _skip(self, name: str) -> None:
+    async def _skip(self, name: str, reason: str = _NOT_REACHED) -> None:
+        """Skip the run of ``name``, saying why; a failed skip is logged."""
+        self._skipped.add(name)
         run_id = self._run_of[name]
         try:
             await self._activity(
                 TableMaintenanceActivity.SKIP_MAINTENANCE_RUN,
-                {"run_id": run_id, "reason": _NOT_REACHED, "now": _now()},
+                {"run_id": run_id, "reason": reason, "now": _now()},
             )
         except ActivityError as error:
             workflow.logger.warning("skipping run %s failed: %s", run_id, error)

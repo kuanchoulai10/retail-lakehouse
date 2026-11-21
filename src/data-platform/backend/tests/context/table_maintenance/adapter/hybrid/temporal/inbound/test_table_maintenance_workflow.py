@@ -2222,3 +2222,25 @@ def test_a_skip_that_finds_no_run_is_only_logged():
         assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
 
     _run(scenario)
+
+
+def test_a_submit_refused_before_its_attempt_started_skips_the_run_with_the_refusal():
+    """A submit refused before it saved the attempt leaves the run pending: it is skipped with the refusal, not retried.
+
+    The record answers that the run is still pending, so the workflow counts no record failure, submits that run
+    no more, skips it saying what the submit refused, and goes on to the next run.
+    """
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.submit_errors = {(COMPACTION, 1): "table u1 not found"}
+        h.fakes.record_replies = {(COMPACTION, 1): {"status": "pending"}}
+        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
+        await h.run_maintenance(COMPACTION, EXPIRE)
+
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1), (EXPIRE, 1)]
+        assert [(s["run_id"], s["reason"]) for s in h.fakes.skips] == [
+            (RUN_IDS[0], "submit failed: table u1 not found")
+        ]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
+
+    _run(scenario)
