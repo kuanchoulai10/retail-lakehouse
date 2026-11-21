@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.table import DEFAULT_PARTITION_SELECTION_SETTINGS
 from context.table_maintenance.application.service.table import PlanTableMaintenanceService
 from tests.context.table_maintenance.fakes.in_memory_table_metrics_store import InMemoryTableMetricsStore
 
@@ -31,13 +30,11 @@ def plan_service_on_fakes(
 ) -> PlanTableMaintenanceUseCase:
     """Return the plan service on the given fakes, with an empty in-memory metrics store when none is given.
 
-    The service keeps its own partition selection unless one is given.
+    The partition selection is passed only when one is given, so the service keeps its own default otherwise.
     """
-    selection = DEFAULT_PARTITION_SELECTION_SETTINGS if partition_selection is None else partition_selection
+    store = InMemoryTableMetricsStore() if metrics_store is None else metrics_store
+    if partition_selection is None:
+        return PlanTableMaintenanceService(tables_repo, catalog, resolve_applicable_policy, metrics_store=store)
     return PlanTableMaintenanceService(
-        tables_repo,
-        catalog,
-        resolve_applicable_policy,
-        metrics_store=InMemoryTableMetricsStore() if metrics_store is None else metrics_store,
-        partition_selection=selection,
+        tables_repo, catalog, resolve_applicable_policy, metrics_store=store, partition_selection=partition_selection
     )

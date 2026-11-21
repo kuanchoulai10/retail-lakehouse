@@ -12,6 +12,7 @@ from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
     OverTargetPartition,
+    SpecFilter,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -446,6 +447,66 @@ def test_a_stale_copy_does_not_overwrite_a_rename(planner, tables_repo, catalog,
     stored = stored_get(TableId("u-1"))
     assert stored.name == renamed
     assert len(stored.over_target_partitions) == 3
+
+
+def test_the_repo_is_written_only_when_the_record_changes(planner, tables_repo, catalog, monkeypatch, now):
+    """The record is written once for the same partitions, and not at all when none is over the target."""
+    calls = []
+    write = tables_repo.record_over_target_partitions
+
+    def counting_write(table_id, partitions):
+        calls.append(partitions)
+        return write(table_id, partitions)
+
+    monkeypatch.setattr(tables_repo, "record_over_target_partitions", counting_write)
+    _table(tables_repo, now)
+    _three_regions(catalog, now)
+    _plan(planner, now)
+    _plan(planner, now)
+    assert len(calls) == 1
+    _table(tables_repo, now, uuid="u-2", name=TableName(catalog="iceberg", namespace="sales", table="clean"))
+    catalog.add_table("iceberg", "sales", "clean", "u-2")
+    catalog.observations[("iceberg", "sales", "clean")] = TableMetadataObservation(
+        table_uuid="u-2",
+        current_snapshot_id=12,
+        specs=[{"spec_id": 0, "fields": [_field("region")]}],
+        partitions=[_partition(0, ["eu"], files=1)],
+    )
+    _plan(planner, now, uuid="u-2")
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+    "wheres",
+    [pytest.param([""], id="empty"), pytest.param(["", "x"], id="mixed")],
+)
+def test_an_empty_where_compacts_the_whole_table(planner, tables_repo, catalog, monkeypatch, wheres, now):
+    """A rendered where that is empty, alone or beside another, compacts the whole table."""
+    monkeypatch.setattr(
+        "context.table_maintenance.application.service.table.plan_table_maintenance.build_partition_filters",
+        lambda *_args: tuple(SpecFilter(spec_id=i, where=where) for i, where in enumerate(wheres)),
+    )
+    _table(tables_repo, now)
+    _three_regions(catalog, now)
+    compaction = _plan(planner, now).operations[0]
+    assert (compaction.operation, compaction.filters) == ("rewrite_data_files", ())
+
+
+@pytest.mark.parametrize("skip", ["dropped", "unmanaged"])
+def test_a_skipped_plan_leaves_them(planner, tables_repo, catalog, skip, now):
+    """A skipped plan leaves the partitions over the target as stored."""
+    table = _table(tables_repo, now)
+    _three_regions(catalog, now)
+    _plan(planner, now)
+    stored = tables_repo.get(TableId("u-1"))
+    assert len(stored.over_target_partitions) == 3
+    if skip == "dropped":
+        stored.mark_dropped(now)
+    else:
+        stored.unmanage(now)
+    tables_repo.update(stored)
+    assert _plan(planner, now).status == "skip"
+    assert tables_repo.get(table.id).over_target_partitions == stored.over_target_partitions
 
 
 def test_the_plan_uses_the_injected_selection(tables_repo, catalog, resolve_applicable_policy, now):
