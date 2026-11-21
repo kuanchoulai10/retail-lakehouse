@@ -16,6 +16,7 @@ from context.table_maintenance.application.domain.model.shared import (
     MeasurementUnit,
     OperationAssessment,
     OperationVerdict,
+    OverTargetPartition,
     PartitionFieldInfo,
     PartitionSpecInfo,
     PartitionStats,
@@ -28,6 +29,7 @@ from context.table_maintenance.application.domain.model.table import (
     AttentionMark,
     OperationCooldowns,
     OperationState,
+    PartitionSelectionSettings,
     Table,
     TableId,
     TableName,
@@ -234,10 +236,12 @@ def test_per_partition_counts_the_partitions_over_target():
         over("reducible_files", 16, 5),
         Measurement(key="target_file_size", observed=536870912, unit=MeasurementUnit.BYTES),
         Measurement(key="qualifying_partitions", observed=2, unit=MeasurementUnit.COUNT),
+        Measurement(key="selected_partitions", observed=2, unit=MeasurementUnit.COUNT),
+        Measurement(key="waiting_partitions", observed=0, unit=MeasurementUnit.COUNT),
     )
     assert (a.measured, a.qualifying_partitions, a.threshold) == (16, 2, 5)
     assert a.planned is not None
-    assert a.planned.partitions == (o.partitions[0], o.partitions[2])
+    assert a.planned.partitions == (o.partitions[2], o.partitions[0])
 
 
 def test_a_target_of_zero_makes_any_reducible_file_due():
@@ -513,3 +517,158 @@ def test_disabled_wins_over_needs_attention():
     policy = policy_with_operation(DEFAULT, Op.REWRITE_DATA_FILES, None)
     a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, policy)
     assert a.verdict == OperationVerdict.DISABLED
+
+
+SELECTION = PartitionSelectionSettings.platform_default()
+
+
+def written(partition: PartitionStats, at: datetime) -> PartitionStats:
+    """Return the partition as last written at ``at``."""
+    return partition.with_changes(last_written_at=at)
+
+
+def _measurement(a, key):
+    return next(m for m in a.measurements if m.key == key)
+
+
+def _compaction_of(assessment):
+    return next(o for o in assessment.operations if o.operation == Op.REWRITE_DATA_FILES)
+
+
+def test_per_partition_plans_only_the_partitions_over_target():
+    """Per partition, only the partitions over the target are planned, most reducible files first."""
+    o = obs(partitions=(part(9, value=1), part(1, value=2), part(7, value=3)))
+    a = _compaction_of(assess_maintenance(table(), compaction(), o, NOW))
+    assert a.planned.partitions == (o.partitions[0], o.partitions[2])
+
+
+def test_the_job_takes_at_most_the_cap():
+    """A job takes at most the platform's partitions per job; the rest stay over the target."""
+    o = obs(partitions=tuple(part(6 + i, value=i) for i in range(12)))
+    a = _compaction_of(assess_maintenance(table(), compaction(), o, NOW, partition_selection=SELECTION))
+    assert len(a.planned.partitions) == 10
+    assert _measurement(a, "selected_partitions").observed == 10
+    assert _measurement(a, "qualifying_partitions").observed == 12
+    assert _measurement(a, "waiting_partitions").observed == 0
+
+
+def test_all_partitions_under_target_is_not_due():
+    """With every partition under the target nothing is selected, waiting or tracked."""
+    result = assess_maintenance(table(), compaction(), obs(partitions=(part(3),)), NOW)
+    a = _compaction_of(result)
+    assert a.verdict == OperationVerdict.NOT_DUE
+    assert (_measurement(a, "selected_partitions").observed, _measurement(a, "waiting_partitions").observed) == (0, 0)
+    assert result.over_target_partitions == ()
+
+
+def test_every_partition_being_written_waits():
+    """When every partition over the target is being written the compaction waits for writes."""
+    o = obs(partitions=tuple(written(part(9, value=v), NOW - timedelta(seconds=30)) for v in (1, 2)))
+    a = _compaction_of(assess_maintenance(table(), compaction(), o, NOW))
+    assert (a.verdict, a.planned, a.next_eligible_at) == (
+        OperationVerdict.WAITING_FOR_WRITES,
+        None,
+        NOW + timedelta(seconds=90),
+    )
+    assert _measurement(a, "waiting_partitions").observed == 2
+
+
+def test_some_waiting_some_selected_is_due():
+    """A partition that waits does not hold back one that may run."""
+    o = obs(partitions=(written(part(9, value=1), NOW - timedelta(seconds=30)), part(9, value=2)))
+    a = _compaction_of(assess_maintenance(table(), compaction(), o, NOW))
+    assert a.verdict == OperationVerdict.DUE
+    assert (_measurement(a, "selected_partitions").observed, _measurement(a, "waiting_partitions").observed) == (1, 1)
+
+
+def test_a_partition_over_target_for_an_hour_runs_while_written():
+    """A partition over the target for the longest wait runs although it is still being written."""
+    hot = written(part(9, value=1), NOW - timedelta(seconds=10))
+    t = table()
+    t.record_over_target_partitions((OverTargetPartition(spec_id=0, values=(1,), since=NOW - timedelta(minutes=61)),))
+    a = _compaction_of(assess_maintenance(t, compaction(), obs(partitions=(hot,)), NOW))
+    assert a.planned.partitions == (hot,)
+
+
+def test_waiting_and_cooldown_reads_cooldown():
+    """A compaction that waits and is in cooldown says it is cooling down."""
+    t = table()
+    t.record_operation_result(Op.REWRITE_DATA_FILES, True, NOW - timedelta(minutes=10))
+    o = obs(partitions=(written(part(9), NOW - timedelta(seconds=30)),))
+    a = _compaction_of(assess_maintenance(t, compaction(), o, NOW))
+    assert (a.verdict, a.next_eligible_at) == (
+        OperationVerdict.COOLDOWN,
+        NOW - timedelta(minutes=10) + PLATFORM.rewrite_data_files,
+    )
+
+
+def test_waiting_and_needs_attention_reads_needs_attention():
+    """A compaction that waits and needs attention says so, and the over-target partitions are still tracked."""
+    t = _needing_attention(Op.REWRITE_DATA_FILES)
+    result = assess_maintenance(t, compaction(), obs(partitions=(written(part(9), NOW),)), NOW)
+    a = _compaction_of(result)
+    assert (a.verdict, a.planned, a.next_eligible_at) == (OperationVerdict.NEEDS_ATTENTION, None, None)
+    assert len(result.over_target_partitions) == 1
+
+
+def test_the_assessment_returns_the_tracked_partitions():
+    """The assessment keeps the since of a tracked partition and starts a new one at now."""
+    t = table()
+    t.record_over_target_partitions((OverTargetPartition(spec_id=0, values=(3,), since=NOW - timedelta(hours=2)),))
+    o = obs(partitions=(part(9, value=1), part(1, value=2), part(9, value=3)))
+    assert assess_maintenance(t, compaction(), o, NOW).over_target_partitions == (
+        OverTargetPartition(spec_id=0, values=(1,), since=NOW),
+        OverTargetPartition(spec_id=0, values=(3,), since=NOW - timedelta(hours=2)),
+    )
+
+
+def test_tracking_continues_during_cooldown():
+    """A cooldown does not hide the over-target partitions, so their since is not restarted."""
+    t = table()
+    t.record_operation_result(Op.REWRITE_DATA_FILES, True, NOW - timedelta(minutes=10))
+    result = assess_maintenance(t, compaction(), obs(partitions=(part(9),)), NOW)
+    assert _compaction_of(result).verdict == OperationVerdict.COOLDOWN
+    assert len(result.over_target_partitions) == 1
+
+
+def test_per_table_ignores_quiet_and_the_cap():
+    """Per table, the whole table is compacted with no cap, no quiet period and no tracking."""
+    o = obs(partitions=tuple(written(part(9, value=i), NOW) for i in range(12)))
+    result = assess_maintenance(table(), compaction(per=CompactionUnit.TABLE), o, NOW)
+    a = _compaction_of(result)
+    assert (a.verdict, a.planned.partitions, result.over_target_partitions) == (OperationVerdict.DUE, (), ())
+
+
+def test_no_compaction_block_tracks_nothing():
+    """A policy without a compaction block tracks no partition."""
+    policy = DEFAULT.with_changes(rewrite_data_files=None)
+    assert assess_maintenance(table(), policy, obs(partitions=(part(9),)), NOW).over_target_partitions == ()
+
+
+def test_partitions_of_an_older_spec_are_selected():
+    """Partitions of an older spec are compared and selected with the current ones."""
+    month = PartitionSpecInfo(
+        spec_id=1,
+        fields=(
+            PartitionFieldInfo(field_id=1001, name="m", source_column="ts", source_type="timestamp", transform="month"),
+        ),
+    )
+    o = obs(specs=(DAY_SPEC, month), partitions=(part(9, value=1), part(8, spec_id=1, value=2)))
+    a = _compaction_of(assess_maintenance(table(), compaction(), o, NOW))
+    assert {p.spec_id for p in a.planned.partitions} == {0, 1}
+
+
+def test_a_selected_unpartitioned_partition_plans_the_whole_table():
+    """A selected partition of an unpartitioned spec plans the whole table."""
+    flat = PartitionSpecInfo(spec_id=1, fields=())
+    unpartitioned = PartitionStats(
+        spec_id=1,
+        values=(),
+        data_file_count=9,
+        position_delete_file_count=0,
+        equality_delete_file_count=0,
+        total_data_file_size_bytes=0,
+    )
+    o = obs(specs=(DAY_SPEC, flat), partitions=(part(9, value=1), unpartitioned))
+    a = _compaction_of(assess_maintenance(table(), compaction(), o, NOW))
+    assert (a.verdict, a.planned.partitions) == (OperationVerdict.DUE, ())

@@ -142,7 +142,7 @@ def test_partition_scope_selects_only_partitions_over_threshold():
     o = obs(partitions=(part(2, value=1), part(5, value=2), part(6, value=3), part(9, value=4)))
     plan = plan_of(table(), compact_only(), o, NOW)
     assert ops(plan) == [Op.REWRITE_DATA_FILES]
-    assert plan.operations[0].partitions == (o.partitions[2], o.partitions[3])
+    assert plan.operations[0].partitions == (o.partitions[3], o.partitions[2])
 
 
 def test_table_scope_sums_partitions():

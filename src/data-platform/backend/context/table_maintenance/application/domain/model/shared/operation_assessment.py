@@ -26,7 +26,9 @@ class OperationAssessment(ValueObject):
     """Hold the verdict on one operation and the measures behind it.
 
     ``planned`` is set iff ``verdict`` is ``DUE``; a disabled operation has no
-    measures and no ``next_eligible_at``.
+    measures and no ``next_eligible_at``. A compaction whose over-target partitions all wait for
+    writes to settle is ``WAITING_FOR_WRITES``: nothing is planned, and ``next_eligible_at`` is
+    the earliest time one of them is allowed to run.
     """
 
     operation: MaintenanceOperation

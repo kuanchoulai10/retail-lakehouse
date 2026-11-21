@@ -12,11 +12,15 @@ from context.table_maintenance.application.domain.model.shared import (
     MeasurementUnit,
     OperationAssessment,
     OperationVerdict,
+    OverTargetPartition,
     PlannedOperation,
     SizeSource,
     TableObservation,
 )
-from context.table_maintenance.application.domain.model.table import DEFAULT_OPERATION_COOLDOWNS
+from context.table_maintenance.application.domain.model.table import (
+    DEFAULT_OPERATION_COOLDOWNS,
+    DEFAULT_PARTITION_SELECTION_SETTINGS,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     CompactionUnit,
     ExpireSnapshotsSpec,
@@ -36,11 +40,21 @@ from context.table_maintenance.application.domain.service.table.any_condition_ho
 from context.table_maintenance.application.domain.service.table.compute_reducible_files import (
     compute_reducible_files,
 )
+from context.table_maintenance.application.domain.service.table.select_compaction_partitions import (
+    select_compaction_partitions,
+)
+from context.table_maintenance.application.domain.service.table.track_over_target_partitions import (
+    track_over_target_partitions,
+)
 
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from context.table_maintenance.application.domain.model.table import OperationCooldowns, Table
+    from context.table_maintenance.application.domain.model.table import (
+        OperationCooldowns,
+        PartitionSelectionSettings,
+        Table,
+    )
 
 DEFAULT_SMALL_MANIFEST_BYTES = 8 * 1024 * 1024
 MANIFEST_TARGET_SIZE_PROPERTY = "commit.manifest.target-size-bytes"
@@ -53,6 +67,7 @@ def assess_maintenance(
     now: datetime,
     *,
     cooldowns: OperationCooldowns = DEFAULT_OPERATION_COOLDOWNS,
+    partition_selection: PartitionSelectionSettings = DEFAULT_PARTITION_SELECTION_SETTINGS,
 ) -> MaintenanceAssessment:
     """Evaluate every operation of a table against a policy's target state, regardless of the table's status.
 
@@ -64,11 +79,21 @@ def assess_maintenance(
     under an earlier applicable policy is lifted by the plan, not ignored here. The cooldown is the
     platform's (``cooldowns``); the failure backoff doubles it per consecutive failure up to
     ``cooldowns.failure_backoff_cap``.
+
+    A compaction per partition takes only the partitions over the target that
+    ``partition_selection`` allows: the most reducible files first, at most ``partitions_per_job``,
+    leaving out those still being written (see ``select_compaction_partitions``). When every
+    partition over the target is still being written, the compaction is ``WAITING_FOR_WRITES``.
+    The assessment also returns the partitions over the target with since when, whatever
+    the compaction's verdict, so the plan can record them.
     """
+    assessed = [
+        _assess(op, table, policy, observation, now, cooldowns, partition_selection)
+        for op in MaintenanceOperation.ordered()
+    ]
     return MaintenanceAssessment(
-        operations=tuple(
-            _assess(op, table, policy, observation, now, cooldowns) for op in MaintenanceOperation.ordered()
-        )
+        operations=tuple(assessment for assessment, _ in assessed),
+        over_target_partitions=next((tracked for _, tracked in assessed if tracked), ()),
     )
 
 
@@ -79,11 +104,18 @@ def _assess(
     observation: TableObservation,
     now: datetime,
     cooldowns: OperationCooldowns,
-) -> OperationAssessment:
+    partition_selection: PartitionSelectionSettings,
+) -> tuple[OperationAssessment, tuple[OverTargetPartition, ...]]:
+    """Return the assessment of one operation and the over-target partitions it tracked.
+
+    The tracked partitions leave ``_measure`` beside the assessment, so the needs-attention and
+    cooldown overrides below cannot drop them.
+    """
     if policy.spec_for(op) is None:
-        return OperationAssessment(operation=op, verdict=OperationVerdict.DISABLED)
-    measured, planned = _measure(op, policy, observation, now)
-    if op == MaintenanceOperation.REMOVE_ORPHAN_FILES or any_condition_holds(measured.measurements):
+        return OperationAssessment(operation=op, verdict=OperationVerdict.DISABLED), ()
+    measured, planned, tracked = _measure(op, table, policy, observation, now, partition_selection)
+    waiting = measured.verdict == OperationVerdict.WAITING_FOR_WRITES
+    if op == MaintenanceOperation.REMOVE_ORPHAN_FILES or (not waiting and any_condition_holds(measured.measurements)):
         assessment = measured.with_changes(
             verdict=OperationVerdict.DUE,
             planned=PlannedOperation(operation=op) if planned is None else planned,
@@ -92,45 +124,53 @@ def _assess(
         assessment = measured
     state = table.operation_state(op)
     if state.attention is not None:
-        return assessment.with_changes(verdict=OperationVerdict.NEEDS_ATTENTION, planned=None)
+        return (
+            assessment.with_changes(verdict=OperationVerdict.NEEDS_ATTENTION, next_eligible_at=None, planned=None),
+            tracked,
+        )
     if state.last_attempt_at is None:
-        return assessment
+        return assessment, tracked
     next_eligible_at = state.last_attempt_at + state.effective_cooldown(
         cooldowns.for_operation(op), cooldowns.failure_backoff_cap
     )
     if now >= next_eligible_at:
-        return assessment
-    return assessment.with_changes(
-        verdict=OperationVerdict.COOLDOWN,
-        next_eligible_at=next_eligible_at,
-        planned=None,
+        return assessment, tracked
+    return (
+        assessment.with_changes(
+            verdict=OperationVerdict.COOLDOWN,
+            next_eligible_at=next_eligible_at,
+            planned=None,
+        ),
+        tracked,
     )
 
 
 def _measure(
     op: MaintenanceOperation,
+    table: Table,
     policy: MaintenancePolicyContent,
     observation: TableObservation,
     now: datetime,
-) -> tuple[OperationAssessment, PlannedOperation | None]:
-    """Return the not-due assessment with its measurements, and the operation to plan if it is due.
+    partition_selection: PartitionSelectionSettings,
+) -> tuple[OperationAssessment, PlannedOperation | None, tuple[OverTargetPartition, ...]]:
+    """Return the not-due assessment with its measurements, the operation to plan if due, and the tracked partitions.
 
-    A planned operation of None means the whole table.
+    A planned operation of None means the whole table. Only a compaction per partition tracks partitions.
     """
     match op:
         case MaintenanceOperation.REWRITE_DATA_FILES if policy.rewrite_data_files is not None:
-            return _measure_compaction(policy.rewrite_data_files, observation)
+            return _measure_compaction(policy.rewrite_data_files, observation, table, now, partition_selection)
         case MaintenanceOperation.REWRITE_MANIFESTS if policy.rewrite_manifests is not None:
-            return _measure_manifests(policy.rewrite_manifests, observation), None
+            return _measure_manifests(policy.rewrite_manifests, observation), None, ()
         case MaintenanceOperation.EXPIRE_SNAPSHOTS if policy.expire_snapshots is not None:
-            return _measure_snapshots(policy.expire_snapshots, observation, now), None
+            return _measure_snapshots(policy.expire_snapshots, observation, now), None, ()
         case MaintenanceOperation.REMOVE_ORPHAN_FILES:
             # No target the platform can measure: nothing to compare, the block alone makes it due.
-            return OperationAssessment(operation=op, verdict=OperationVerdict.NOT_DUE), None
+            return OperationAssessment(operation=op, verdict=OperationVerdict.NOT_DUE), None, ()
         case _:
             # The policy leaves the operation out: nothing to measure. ``_assess`` reports it
             # disabled before measuring, so this keeps the same verdict.
-            return OperationAssessment(operation=op, verdict=OperationVerdict.DISABLED), None
+            return OperationAssessment(operation=op, verdict=OperationVerdict.DISABLED), None, ()
 
 
 def _over(key: str, observed: int, at_most: int) -> Measurement:
@@ -145,12 +185,18 @@ def _over(key: str, observed: int, at_most: int) -> Measurement:
 
 
 def _measure_compaction(
-    spec: RewriteDataFilesSpec, observation: TableObservation
-) -> tuple[OperationAssessment, PlannedOperation | None]:
+    spec: RewriteDataFilesSpec,
+    observation: TableObservation,
+    table: Table,
+    now: datetime,
+    partition_selection: PartitionSelectionSettings,
+) -> tuple[OperationAssessment, PlannedOperation | None, tuple[OverTargetPartition, ...]]:
     """Measure the reducible files against the target, per partition or across the table.
 
     Per partition, each partition is compared on its own; the reducible files are the sum over the
-    partitions over the target, which are the qualifying partitions.
+    partitions over the target, which are the qualifying partitions. The job takes the selection
+    of those partitions; if all of them wait for writes to settle, the verdict is
+    ``WAITING_FOR_WRITES`` until the earliest of them may run.
     """
     op = MaintenanceOperation.REWRITE_DATA_FILES
     at_most = spec.target.reducible_files.at_most
@@ -174,9 +220,11 @@ def _measure_compaction(
         measured = base.with_changes(
             measured=total, measurements=(_over("reducible_files", total, at_most), target_size)
         )
-        return measured, None
+        return measured, None, ()
     qualifying = [(p, r) for p, r in reducible if r > at_most]
     total = sum(r for _, r in qualifying)
+    tracked = track_over_target_partitions(table.over_target_partitions, [p for p, _ in qualifying], now)
+    selection = select_compaction_partitions(qualifying, tracked, now, partition_selection)
     measured = base.with_changes(
         measured=total,
         qualifying_partitions=len(qualifying),
@@ -184,13 +232,19 @@ def _measure_compaction(
             _over("reducible_files", total, at_most),
             target_size,
             Measurement(key="qualifying_partitions", observed=len(qualifying), unit=MeasurementUnit.COUNT),
+            Measurement(key="selected_partitions", observed=len(selection.selected), unit=MeasurementUnit.COUNT),
+            Measurement(key="waiting_partitions", observed=len(selection.waiting), unit=MeasurementUnit.COUNT),
         ),
     )
-    selected = tuple(p for p, _ in qualifying)
+    if selection.all_waiting:
+        waiting = measured.with_changes(
+            verdict=OperationVerdict.WAITING_FOR_WRITES, next_eligible_at=selection.waiting_until
+        )
+        return waiting, None, tracked
     partitioned = {s.spec_id for s in observation.specs if not s.is_unpartitioned}
-    if not selected or any(p.spec_id not in partitioned for p in selected):
-        return measured, None
-    return measured, PlannedOperation(operation=op, partitions=selected)
+    if not selection.selected or any(p.spec_id not in partitioned for p in selection.selected):
+        return measured, None, tracked
+    return measured, PlannedOperation(operation=op, partitions=selection.selected), tracked
 
 
 def _measure_manifests(spec: RewriteManifestsSpec, observation: TableObservation) -> OperationAssessment:
