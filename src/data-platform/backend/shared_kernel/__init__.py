@@ -6,8 +6,9 @@ Stdlib only. It imports no other project package and no third-party package, bec
 
 from __future__ import annotations
 
+from shared_kernel.any_prefixed_id_pattern import any_prefixed_id_pattern
 from shared_kernel.new_prefixed_id import new_prefixed_id
 from shared_kernel.prefixed_id_from_parts import prefixed_id_from_parts
 from shared_kernel.prefixed_id_pattern import prefixed_id_pattern
 
-__all__ = ["new_prefixed_id", "prefixed_id_from_parts", "prefixed_id_pattern"]
+__all__ = ["any_prefixed_id_pattern", "new_prefixed_id", "prefixed_id_from_parts", "prefixed_id_pattern"]

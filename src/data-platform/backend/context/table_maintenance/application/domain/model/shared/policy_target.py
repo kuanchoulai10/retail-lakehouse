@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydantic import model_validator
 
 from base import ValueObject
-from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment.policy_target_type import (  # noqa: E501
+from context.table_maintenance.application.domain.model.shared.policy_target_type import (
     PolicyTargetType,
 )
 

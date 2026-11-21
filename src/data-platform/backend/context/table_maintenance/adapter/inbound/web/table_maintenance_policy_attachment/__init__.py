@@ -5,11 +5,8 @@ from __future__ import annotations
 from context.table_maintenance.adapter.inbound.web.table_maintenance_policy_attachment.dto import (
     ApplicableTableMaintenancePolicyApiResponse,
     AttachTableMaintenancePolicyApiRequest,
-    DetachPolicyTargetApiRequest,
     DetachTableMaintenancePolicyApiRequest,
     ListedTableMaintenancePolicyMappingApiResponse,
-    PolicyTargetApiRequest,
-    PolicyTargetApiResponse,
     TableMaintenancePolicyMappingApiResponse,
     TableMaintenancePolicyMappingsApiResponse,
 )
@@ -20,11 +17,8 @@ from context.table_maintenance.adapter.inbound.web.table_maintenance_policy_atta
 __all__ = [
     "ApplicableTableMaintenancePolicyApiResponse",
     "AttachTableMaintenancePolicyApiRequest",
-    "DetachPolicyTargetApiRequest",
     "DetachTableMaintenancePolicyApiRequest",
     "ListedTableMaintenancePolicyMappingApiResponse",
-    "PolicyTargetApiRequest",
-    "PolicyTargetApiResponse",
     "TableMaintenancePolicyMappingApiResponse",
     "TableMaintenancePolicyMappingsApiResponse",
     "router",

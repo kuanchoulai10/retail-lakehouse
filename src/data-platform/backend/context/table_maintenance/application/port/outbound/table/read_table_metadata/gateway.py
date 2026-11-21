@@ -29,7 +29,22 @@ if TYPE_CHECKING:
 
 
 class ReadTableMetadataGateway(Gateway):
-    """Read table identities and statistics from the Iceberg catalog."""
+    """Read table identities and statistics from the Iceberg catalog.
+
+    Every read of a catalog the server refuses the platform's credential for raises
+    CatalogAccessDeniedError.
+    """
+
+    @abstractmethod
+    def catalog_exists(self, catalog: str) -> bool:
+        """Return whether the catalog exists, holding tables or not."""
+
+    @abstractmethod
+    def namespace_exists(self, catalog: str, namespace: str) -> bool:
+        """Return whether the dot-joined namespace exists, holding tables or not.
+
+        A catalog that does not exist raises CatalogNotFoundError.
+        """
 
     @abstractmethod
     def list_tables(

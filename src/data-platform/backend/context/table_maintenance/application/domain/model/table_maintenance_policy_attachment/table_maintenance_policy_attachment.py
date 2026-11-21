@@ -5,11 +5,9 @@ from __future__ import annotations
 from datetime import datetime
 
 from base import AggregateRoot
+from context.table_maintenance.application.domain.model.shared import PolicyTarget
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     TableMaintenancePolicyId,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment.policy_target import (
-    PolicyTarget,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment.table_maintenance_policy_attachment_id import (  # noqa: E501
     TableMaintenancePolicyAttachmentId,

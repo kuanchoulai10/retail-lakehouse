@@ -28,7 +28,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     ListTableMaintenancePolicyAttachmentsUseCaseInput,
     ResolveApplicableTableMaintenancePolicyUseCaseInput,
 )
-from context.table_maintenance.application.port.outbound.table import CatalogNotFoundError
+from context.table_maintenance.application.port.outbound.table import CatalogAccessDeniedError
 from context.table_maintenance.application.service.table_maintenance_policy import (
     CreateTableMaintenancePolicyService,
     DeleteTableMaintenancePolicyService,
@@ -339,17 +339,56 @@ def test_delete_attached_policy_conflicts(world):
     service.execute(DeleteTableMaintenancePolicyUseCaseInput(name="gold"))
 
 
-def test_attach_to_catalog_the_gateway_cannot_open_is_404(world, monkeypatch):
+def test_attach_to_catalog_the_gateway_cannot_open_is_404(world):
     """A catalog unknown to the gateway answers NotFoundError for catalog, namespace and table targets."""
-
-    def unknown(_input):
-        raise CatalogNotFoundError("nope")
-
-    monkeypatch.setattr(world.gateway, "list_tables", unknown)
-    monkeypatch.setattr(world.gateway, "load_table", lambda _ref: (_ for _ in ()).throw(CatalogNotFoundError("nope")))
-    for type_, path in [("catalog", ("nope",)), ("namespace", ("nope", "a")), ("table", ("nope", "a", "t"))]:
+    world.gateway.drop_catalog("prod")
+    for type_, path in [("catalog", ("prod",)), ("namespace", ("prod", "sales")), ("table", ("prod", "sales", "t"))]:
         with pytest.raises(NotFoundError):
             world.attach(type_, path, "gold")
+    assert world.attachments.list_all() == []
+
+
+def test_attach_to_an_empty_catalog(world):
+    """A catalog that holds no table exists, so a policy may be attached to it."""
+    world.gateway.add_catalog("empty")
+    world.attach("catalog", ("empty",), "gold")
+    assert [a.target.path for a in world.attachments.list_all()] == [("empty",)]
+
+
+def test_attach_to_an_empty_namespace(world):
+    """A namespace that holds no table exists, so a policy may be attached to it."""
+    world.gateway.add_namespace("prod", "new")
+    world.attach("namespace", ("prod", "new"), "gold")
+    assert [a.target.path for a in world.attachments.list_all()] == [("prod", "new")]
+
+
+def test_attach_to_a_missing_namespace_is_not_found(world):
+    """A namespace the catalog does not hold is NotFoundError, and nothing is stored."""
+    with pytest.raises(NotFoundError, match=r"^namespace prod\.new not found$"):
+        world.attach("namespace", ("prod", "new"), "gold")
+    assert world.attachments.list_all() == []
+
+
+def test_attach_to_an_emptied_catalog_and_namespace(world):
+    """A catalog or namespace whose tables were all dropped still exists."""
+    world.gateway.drop_table("prod", "sales.eu", "orders")
+    world.gateway.drop_table("prod", "sales", "customers")
+    world.attach("catalog", ("prod",), "gold")
+    world.attach("namespace", ("prod", "sales", "eu"), "gold")
+    assert len(world.attachments.list_all()) == 2
+
+
+@pytest.mark.parametrize(
+    ("type_", "path"),
+    [("catalog", ("secret",)), ("namespace", ("secret", "hr")), ("table", ("secret", "hr", "staff"))],
+)
+def test_attach_in_a_refused_catalog_is_access_denied(world, type_, path):
+    """A catalog the platform's credential cannot read is CatalogAccessDeniedError, and nothing is stored."""
+    world.gateway.add_table("secret", "hr", "staff", "u-s")
+    world.gateway.deny("secret")
+    with pytest.raises(CatalogAccessDeniedError, match="cannot read catalog secret"):
+        world.attach(type_, path, "gold")
+    assert world.attachments.list_all() == []
 
 
 def test_detach_of_another_policy_is_404_and_keeps_the_attachment(world):
@@ -376,7 +415,7 @@ def _orphaned(world):
 
 
 def test_list_marks_attachments_whose_target_left_the_catalog_orphaned(world):
-    """An attachment is orphaned once its catalog, namespace or table is no longer in the catalog."""
+    """An attachment is orphaned once its target no longer exists; an emptied catalog or namespace still does."""
     world.attach("catalog", ("prod",), "gold")
     world.attach("namespace", ("prod", "sales", "eu"), "gold")
     world.attach("namespace", ("prod", "sales"), "silver")
@@ -385,11 +424,14 @@ def test_list_marks_attachments_whose_target_left_the_catalog_orphaned(world):
     world.gateway.drop_table("prod", "sales.eu", "orders")
     world.gateway.drop_table("prod", "sales", "customers")
     assert _orphaned(world) == {
-        ("catalog", ("prod",)): True,
-        ("namespace", ("prod", "sales", "eu")): True,
-        ("namespace", ("prod", "sales")): True,
+        ("catalog", ("prod",)): False,
+        ("namespace", ("prod", "sales", "eu")): False,
+        ("namespace", ("prod", "sales")): False,
         ("table", ("prod", "sales", "customers")): True,
     }
+    world.gateway.drop_namespace("prod", "sales.eu")
+    assert _orphaned(world)[("namespace", ("prod", "sales", "eu"))] is True
+    assert _orphaned(world)[("namespace", ("prod", "sales"))] is False
 
 
 def test_list_keeps_a_renamed_table_attachment_not_orphaned(world):
@@ -409,15 +451,22 @@ def test_list_marks_a_table_recreated_under_the_same_name_orphaned(world):
     assert _orphaned(world) == {("table", ("prod", "sales", "eu", "orders")): True}
 
 
-def test_list_marks_attachments_of_an_unknown_catalog_orphaned(world, monkeypatch):
+def test_list_marks_attachments_of_an_unknown_catalog_orphaned(world):
     """A catalog the gateway no longer knows leaves its attachments orphaned instead of failing the list."""
     world.attach("catalog", ("prod",), "gold")
+    world.attach("namespace", ("prod", "sales"), "gold")
+    world.attach("table", ("prod", "sales", "customers"), "gold")
+    world.gateway.drop_catalog("prod")
+    assert set(_orphaned(world).values()) == {True}
 
-    def unknown(_input):
-        raise CatalogNotFoundError("prod")
 
-    monkeypatch.setattr(world.gateway, "list_tables", unknown)
-    assert _orphaned(world) == {("catalog", ("prod",)): True}
+def test_list_keeps_attachments_in_a_refused_catalog_not_orphaned(world):
+    """A catalog the credential cannot read is not known to be gone, so its attachments are not orphaned."""
+    world.attach("catalog", ("prod",), "gold")
+    world.attach("namespace", ("prod", "sales"), "gold")
+    world.attach("table", ("prod", "sales", "customers"), "gold")
+    world.gateway.deny("prod")
+    assert set(_orphaned(world).values()) == {False}
 
 
 def test_resolve_by_uuid_alone_reads_the_registered_table(world):

@@ -10,14 +10,12 @@ from pydantic import PositiveInt, model_validator
 from base import AggregateRoot
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
+    PolicyTarget,
 )
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     TableMaintenancePolicyId,
     TableMaintenancePolicyName,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
-    PolicyTarget,
 )
 from context.table_maintenance.application.domain.model.table_reconciliation.operation_outcome import (
     OperationOutcome,

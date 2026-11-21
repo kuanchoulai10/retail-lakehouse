@@ -1,5 +1,8 @@
 """Read tables and their statistics from the catalog."""
 
+from context.table_maintenance.application.port.outbound.table.read_table_metadata.catalog_access_denied_error import (  # noqa: E501
+    CatalogAccessDeniedError,
+)
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.catalog_not_found_error import (
     CatalogNotFoundError,
 )
@@ -26,6 +29,7 @@ from context.table_maintenance.application.port.outbound.table.read_table_metada
 )
 
 __all__ = [
+    "CatalogAccessDeniedError",
     "CatalogNotFoundError",
     "ReadTableMetadataGateway",
     "TableCommitSelection",

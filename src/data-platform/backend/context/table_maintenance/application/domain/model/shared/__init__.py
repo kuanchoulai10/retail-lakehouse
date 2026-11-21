@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.domain.model.shared.checked_policy_name import (
+    checked_policy_name,
+)
 from context.table_maintenance.application.domain.model.shared.compute_size import (
     ComputeSize,
 )
@@ -65,6 +68,12 @@ from context.table_maintenance.application.domain.model.shared.platform_compute_
 from context.table_maintenance.application.domain.model.shared.platform_settings import (
     PlatformSettings,
 )
+from context.table_maintenance.application.domain.model.shared.policy_target import (
+    PolicyTarget,
+)
+from context.table_maintenance.application.domain.model.shared.policy_target_type import (
+    PolicyTargetType,
+)
 from context.table_maintenance.application.domain.model.shared.positive_duration import (
     PositiveDuration,
 )
@@ -115,6 +124,8 @@ __all__ = [
     "PlannedOperation",
     "PlatformSettings",
     "PlatformComputeSize",
+    "PolicyTarget",
+    "PolicyTargetType",
     "PositiveDuration",
     "SizeMemory",
     "SizeSource",
@@ -124,4 +135,5 @@ __all__ = [
     "TableObservation",
     "TablePriority",
     "WholeSeconds",
+    "checked_policy_name",
 ]

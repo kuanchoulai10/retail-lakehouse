@@ -6,7 +6,7 @@ from enum import StrEnum
 
 
 class PolicyTargetType(StrEnum):
-    """The kind of object a maintenance policy is attached to."""
+    """The kind of object a policy is attached to."""
 
     CATALOG = "catalog"
     NAMESPACE = "namespace"

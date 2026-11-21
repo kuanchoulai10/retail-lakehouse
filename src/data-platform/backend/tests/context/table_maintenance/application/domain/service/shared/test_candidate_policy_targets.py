@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
 from context.table_maintenance.application.domain.model.table import TableName
-from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
-    PolicyTarget,
-    PolicyTargetType,
-)
-from context.table_maintenance.application.domain.service.table_maintenance_policy_attachment import (
+from context.table_maintenance.application.domain.service.shared import (
     candidate_policy_targets,
 )
 

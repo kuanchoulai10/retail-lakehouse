@@ -15,6 +15,7 @@ from context.table_maintenance.adapter.outbound.table_maintenance_policy.sql imp
 from context.table_maintenance.adapter.outbound.table_maintenance_policy_attachment.sql import (
     TableMaintenancePolicyAttachmentsSqlRepo,
 )
+from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     MaintenancePolicyContent,
     TableMaintenancePolicy,
@@ -22,8 +23,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
-    PolicyTarget,
-    PolicyTargetType,
     TableMaintenancePolicyAttachment,
 )
 from context.table_maintenance.application.exceptions import ConflictError

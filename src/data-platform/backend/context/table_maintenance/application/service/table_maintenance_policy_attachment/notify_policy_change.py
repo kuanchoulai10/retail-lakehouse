@@ -7,9 +7,7 @@ from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.table import TableChange, TableStatus
 from context.table_maintenance.application.domain.model.table_maintenance_policy import DEFAULT_POLICY_ID
-from context.table_maintenance.application.domain.service.table_maintenance_policy_attachment import (
-    candidate_policy_targets,
-)
+from context.table_maintenance.application.domain.service.shared import candidate_policy_targets, nearest_attached
 from context.table_maintenance.application.port.outbound.table import SendTableChangeGatewayInput
 
 if TYPE_CHECKING:
@@ -62,8 +60,8 @@ def _resolve(
     versions = {p.id.value: p.version for p in policies_repo.list_all()}
     resolved: _ResolvedPolicies = {}
     for table in tables:
-        candidates = candidate_policy_targets(table.name, table.id.value)
-        policy_id = next((attached[c.key()] for c in candidates if c.key() in attached), DEFAULT_POLICY_ID.value)
+        nearest = nearest_attached(candidate_policy_targets(table.name, table.id.value), attached)
+        policy_id = DEFAULT_POLICY_ID.value if nearest is None else nearest[1]
         resolved[table.id.value] = (policy_id, versions.get(policy_id))
     return resolved
 

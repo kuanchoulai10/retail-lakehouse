@@ -151,6 +151,7 @@ A small top-level package beside `base/`, for code that both `base` and Temporal
 - `prefixed_id_from_parts(prefix, unix_ms, random_bits)` — a prefixed id such as `mr-01h455vb4pex5vsknk084sn02q`: the prefix, a dash and a UUIDv7 as 26 lowercase Crockford base32 characters (the TypeID suffix encoding). Deterministic, so a workflow passes `int(workflow.now().timestamp() * 1000)` and `workflow.random().getrandbits(74)`. The prefix is 2 to 8 lowercase letters, else `ValueError`.
 - `new_prefixed_id(prefix)` — the same with `uuid.uuid7()`, for code that may use the clock and the system random source.
 - `prefixed_id_pattern(prefix)` — the compiled pattern `^<prefix>-[0-7][0-9a-hjkmnp-tv-z]{25}$`.
+- `any_prefixed_id_pattern()` — the same for every valid prefix, `^[a-z]{2,8}-…$`, for a rule that refuses anything shaped like an id (the policy names' `checked_policy_name`).
 
 The format and the prefix list are in `docs/adr/0011-prefixed-resource-ids.md`.
 

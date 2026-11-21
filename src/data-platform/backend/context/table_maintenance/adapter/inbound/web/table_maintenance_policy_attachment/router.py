@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Annotated
 from fastapi import APIRouter, Depends, Response, status
 
 from context.table_maintenance.adapter.inbound.web.shared import (
+    PolicyTargetApiResponse,
     WebUseCases,
     use_cases_dependency,
 )
@@ -15,7 +16,6 @@ from context.table_maintenance.adapter.inbound.web.table_maintenance_policy_atta
     AttachTableMaintenancePolicyApiRequest,
     DetachTableMaintenancePolicyApiRequest,
     ListedTableMaintenancePolicyMappingApiResponse,
-    PolicyTargetApiResponse,
     TableMaintenancePolicyMappingApiResponse,
     TableMaintenancePolicyMappingsApiResponse,
 )

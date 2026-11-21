@@ -1,17 +1,16 @@
-"""Define the policy mapping and applicable policy API DTOs.
-
-A target is ``{"type", "path"}`` as in Polaris's policy mappings, with the catalog as the first path
-element because this API is not scoped to one catalog: ``[catalog]``, ``[catalog, ns1, ...]`` or
-``[catalog, ns1, ..., table]``.
-"""
+"""Define the policy mapping and applicable policy API DTOs; the target DTOs are shared (``web.shared``)."""
 
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from context.table_maintenance.adapter.inbound.web.shared import (
+    DetachPolicyTargetApiRequest,
+    PolicyTargetApiRequest,
+    PolicyTargetApiResponse,
+)
 from context.table_maintenance.adapter.inbound.web.table_maintenance_policy import (
     ExpireSnapshotsSpecApiRequest,
     MaintenanceTriggersApiRequest,
@@ -19,27 +18,6 @@ from context.table_maintenance.adapter.inbound.web.table_maintenance_policy impo
     RewriteDataFilesSpecApiRequest,
     RewriteManifestsSpecApiRequest,
 )
-
-PolicyTargetKind = Literal["catalog", "namespace", "table"]
-
-
-class PolicyTargetApiRequest(BaseModel):
-    """Name a catalog, namespace or table to attach a policy to."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    type: PolicyTargetKind
-    path: list[str]
-
-
-class DetachPolicyTargetApiRequest(BaseModel):
-    """Name the target to detach from; a table no longer in the catalog is named by its ``table_uuid``."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    type: PolicyTargetKind
-    path: list[str]
-    table_uuid: str | None = None
 
 
 class AttachTableMaintenancePolicyApiRequest(BaseModel):
@@ -56,14 +34,6 @@ class DetachTableMaintenancePolicyApiRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     target: DetachPolicyTargetApiRequest
-
-
-class PolicyTargetApiResponse(BaseModel):
-    """Describe a target; a table target carries the uuid it is keyed by."""
-
-    type: str
-    path: list[str]
-    table_uuid: str | None
 
 
 class TableMaintenancePolicyMappingApiResponse(BaseModel):

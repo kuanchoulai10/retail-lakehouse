@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
-from pyiceberg.exceptions import NoSuchNamespaceError, NoSuchTableError, RESTError
+from pyiceberg.exceptions import ForbiddenError, NoSuchNamespaceError, NoSuchTableError, RESTError, UnauthorizedError
 
 from context.table_maintenance.adapter.outbound.table.pyiceberg.commit_page_mapper import (
     commit_page_from_table,
@@ -16,6 +17,7 @@ from context.table_maintenance.adapter.outbound.table.pyiceberg.table_metadata_m
     table_metadata_from_table,
 )
 from context.table_maintenance.application.port.outbound.table import (
+    CatalogAccessDeniedError,
     CatalogNotFoundError,
     ReadTableMetadataGateway,
     ReadTableMetadataGatewayListInput,
@@ -27,7 +29,7 @@ from context.table_maintenance.application.port.outbound.table import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
     from pyiceberg.catalog import Catalog
     from pyiceberg.table import Table
@@ -39,14 +41,30 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
     Only "table or namespace does not exist" is mapped to None or an empty
     list. A catalog that cannot be opened because the server rejects its name
     (a bare RESTError, such as Polaris answering 404 for an unknown
-    warehouse) raises CatalogNotFoundError. Every other failure, including
-    server, availability and authorisation errors, propagates, so a failing
-    catalog can never look like an empty catalog.
+    warehouse) raises CatalogNotFoundError. A refusal of the credential
+    (ForbiddenError or UnauthorizedError) while opening, listing or loading
+    raises CatalogAccessDeniedError. Every other failure, including server
+    and availability errors, propagates, so a failing catalog can never look
+    like an empty catalog.
     """
 
     def __init__(self, catalog_factory: Callable[[str], Catalog]) -> None:
         """Keep the factory that opens the PyIceberg catalog for a Polaris catalog name."""
         self._catalog_factory = catalog_factory
+
+    def catalog_exists(self, catalog: str) -> bool:
+        """Return whether the catalog opens; one the server rejects by name does not exist."""
+        try:
+            self._open(catalog)
+        except CatalogNotFoundError:
+            return False
+        return True
+
+    def namespace_exists(self, catalog: str, namespace: str) -> bool:
+        """Return whether the dot-joined namespace exists, asking PyIceberg for its levels."""
+        opened = self._open(catalog)
+        with _refusal_is_access_denied(catalog):
+            return opened.namespace_exists(tuple(namespace.split(".")))
 
     def list_tables(
         self,
@@ -54,18 +72,19 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
     ) -> list[TableMetadataRef]:
         """List the tables of one namespace, or walk every namespace when none is given, sorted by name."""
         catalog = self._open(input.catalog)
-        if input.namespace is not None:
-            return self._tables_of(catalog, input.catalog, tuple(input.namespace.split(".")))
-        refs: list[TableMetadataRef] = []
-        pending: list[tuple[str, ...]] = [tuple(n) for n in catalog.list_namespaces()]
-        while pending:
-            namespace = pending.pop(0)
-            refs.extend(self._tables_of(catalog, input.catalog, namespace))
-            try:
-                pending.extend(tuple(n) for n in catalog.list_namespaces(namespace))
-            except NoSuchNamespaceError:
-                continue
-        return sorted(refs, key=lambda r: (r.namespace, r.table))
+        with _refusal_is_access_denied(input.catalog):
+            if input.namespace is not None:
+                return self._tables_of(catalog, input.catalog, tuple(input.namespace.split(".")))
+            refs: list[TableMetadataRef] = []
+            pending: list[tuple[str, ...]] = [tuple(n) for n in catalog.list_namespaces()]
+            while pending:
+                namespace = pending.pop(0)
+                refs.extend(self._tables_of(catalog, input.catalog, namespace))
+                try:
+                    pending.extend(tuple(n) for n in catalog.list_namespaces(namespace))
+                except NoSuchNamespaceError:
+                    continue
+            return sorted(refs, key=lambda r: (r.namespace, r.table))
 
     def load_table(self, ref: TableMetadataRef) -> TableMetadata | None:
         """Return the table with its uuid and newest commit, or None when the table or namespace does not exist."""
@@ -94,7 +113,8 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
 
     def _open(self, name: str) -> Catalog:
         try:
-            return self._catalog_factory(name)
+            with _refusal_is_access_denied(name):
+                return self._catalog_factory(name)
         except RESTError as exc:
             if type(exc) is not RESTError:
                 raise
@@ -104,7 +124,8 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
         catalog = self._open(ref.catalog)
         identifier = (*ref.namespace.split("."), ref.table)
         try:
-            return catalog.load_table(identifier)
+            with _refusal_is_access_denied(ref.catalog):
+                return catalog.load_table(identifier)
         except NoSuchTableError:
             return None
 
@@ -122,3 +143,12 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
             )
             for identifier in identifiers
         ]
+
+
+@contextmanager
+def _refusal_is_access_denied(catalog: str) -> Iterator[None]:
+    """Raise CatalogAccessDeniedError for a credential the server refuses on ``catalog``."""
+    try:
+        yield
+    except (ForbiddenError, UnauthorizedError) as exc:
+        raise CatalogAccessDeniedError(catalog) from exc

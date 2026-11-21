@@ -14,6 +14,7 @@ from context.table_maintenance.application.exceptions import (
     ValidationError,
 )
 from context.table_maintenance.application.port.outbound.table import (
+    CatalogAccessDeniedError,
     CatalogNotFoundError,
     MetricHistoryUnavailableError,
 )
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
 _STATUS_BY_ERROR: dict[type[Exception], int] = {
     NotFoundError: status.HTTP_404_NOT_FOUND,
     CatalogNotFoundError: status.HTTP_404_NOT_FOUND,
+    CatalogAccessDeniedError: status.HTTP_403_FORBIDDEN,
     ConflictError: status.HTTP_409_CONFLICT,
     MetricHistoryUnavailableError: status.HTTP_502_BAD_GATEWAY,
     ValidationError: status.HTTP_422_UNPROCESSABLE_CONTENT,

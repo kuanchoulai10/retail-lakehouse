@@ -23,7 +23,7 @@ from context.table_maintenance.application.port.inbound.table import (
     ProcessTableHintUseCaseInput,
     ProcessTableHintUseCaseOutput,
 )
-from context.table_maintenance.application.port.outbound.table import CatalogNotFoundError
+from context.table_maintenance.application.port.outbound.table import CatalogAccessDeniedError, CatalogNotFoundError
 from tests.context.table_maintenance.adapter.inbound.event_consumer.fake_event_source import (
     FakeEventSource,
 )
@@ -185,6 +185,19 @@ def test_unknown_catalog_is_not_retried() -> None:
     record = _record(1)
     source = FakeEventSource([record])
     use_case = RecordingUseCase([CatalogNotFoundError("nope")])
+
+    sleeps = _run(source, use_case)
+
+    assert len(use_case.calls) == 1
+    assert source.committed == [record]
+    assert sleeps == []
+
+
+def test_refused_catalog_is_not_retried() -> None:
+    """A hint for a catalog the credential cannot read is dropped without retry and committed."""
+    record = _record(1)
+    source = FakeEventSource([record])
+    use_case = RecordingUseCase([CatalogAccessDeniedError("secret")])
 
     sleeps = _run(source, use_case)
 

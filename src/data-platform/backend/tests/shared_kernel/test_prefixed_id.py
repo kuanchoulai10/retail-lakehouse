@@ -6,7 +6,7 @@ import uuid
 
 import pytest
 
-from shared_kernel import new_prefixed_id, prefixed_id_from_parts, prefixed_id_pattern
+from shared_kernel import any_prefixed_id_pattern, new_prefixed_id, prefixed_id_from_parts, prefixed_id_pattern
 
 TYPEID_SPEC_UUID = uuid.UUID("0188bac7-4afa-78aa-bc3b-bd1eef28d881")
 TYPEID_SPEC_SUFFIX = "01h2xcejqtf2nbrexx3vqjhp41"
@@ -100,6 +100,20 @@ def test_the_pattern_rejects_a_wrong_prefix_or_alphabet():
     assert not pattern.fullmatch("mr-" + "u" + TYPEID_SPEC_SUFFIX[1:])
     assert not pattern.fullmatch("mr-" + TYPEID_SPEC_SUFFIX.upper())
     assert not pattern.fullmatch("mr-" + TYPEID_SPEC_SUFFIX[:-1])
+
+
+def test_the_any_prefix_pattern_accepts_every_valid_prefix_and_only_the_id_shape():
+    """The any-prefix pattern takes a prefix of 2 to 8 lowercase letters and the same suffix as one prefix's."""
+    pattern = any_prefixed_id_pattern()
+
+    assert pattern.fullmatch("mr-" + TYPEID_SPEC_SUFFIX)
+    assert pattern.fullmatch("abcdefgh-" + TYPEID_SPEC_SUFFIX)
+    assert not pattern.fullmatch("m-" + TYPEID_SPEC_SUFFIX)
+    assert not pattern.fullmatch("abcdefghi-" + TYPEID_SPEC_SUFFIX)
+    assert not pattern.fullmatch("MR-" + TYPEID_SPEC_SUFFIX)
+    assert not pattern.fullmatch("mr-8" + TYPEID_SPEC_SUFFIX[1:])
+    assert not pattern.fullmatch("mr-" + TYPEID_SPEC_SUFFIX[:-1])
+    assert not pattern.fullmatch("mr-nightly")
 
 
 @pytest.mark.parametrize("prefix", ["MR", "m", "mr-", "abcdefghi", "m1", ""])

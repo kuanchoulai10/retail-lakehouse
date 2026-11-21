@@ -4,20 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.outbound.table import (
     CatalogNotFoundError,
-    ReadTableMetadataGatewayListInput,
     TableMetadataRef,
 )
-from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
-    PolicyTarget,
-    PolicyTargetType,
-)
-from context.table_maintenance.application.service.shared import translate_domain_errors
-from context.table_maintenance.application.service.table_maintenance_policy_attachment.scope_target_in_listing import (  # noqa: E501
-    scope_target_in_listing,
-)
+from context.table_maintenance.application.service.shared.translate_domain_errors import translate_domain_errors
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table import ReadTableMetadataGateway
@@ -34,9 +27,9 @@ def policy_target_from_request(
     """Build the target a request names.
 
     A table target takes its uuid from the catalog unless ``table_uuid`` is given, and a missing
-    table is NotFoundError. With ``must_exist`` a catalog or namespace must also hold at least one
-    table, itself or in a child namespace, because the table-reading gateway cannot list
-    catalogs or namespaces and an empty one reads as a missing one.
+    table is NotFoundError. With ``must_exist`` a catalog or namespace must also exist; it may
+    hold no table. A catalog the platform's credential cannot read raises
+    CatalogAccessDeniedError, untouched.
     """
     with translate_domain_errors():
         kind = PolicyTargetType(target_type)
@@ -67,4 +60,6 @@ def policy_target_from_request(
 
 
 def _exists(gateway: ReadTableMetadataGateway, kind: PolicyTargetType, path: tuple[str, ...]) -> bool:
-    return scope_target_in_listing(kind, path, gateway.list_tables(ReadTableMetadataGatewayListInput(catalog=path[0])))
+    if kind == PolicyTargetType.CATALOG:
+        return gateway.catalog_exists(path[0])
+    return gateway.namespace_exists(path[0], ".".join(path[1:]))

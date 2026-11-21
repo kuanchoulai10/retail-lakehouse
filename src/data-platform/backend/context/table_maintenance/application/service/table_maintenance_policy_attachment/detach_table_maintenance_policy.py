@@ -10,11 +10,9 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     DetachTableMaintenancePolicyUseCaseInput,
     DetachTableMaintenancePolicyUseCaseOutput,
 )
+from context.table_maintenance.application.service.shared import policy_target_from_request
 from context.table_maintenance.application.service.table_maintenance_policy_attachment.notify_policy_change import (  # noqa: E501
     notify_policy_change,
-)
-from context.table_maintenance.application.service.table_maintenance_policy_attachment.policy_target_from_request import (  # noqa: E501
-    policy_target_from_request,
 )
 
 if TYPE_CHECKING:

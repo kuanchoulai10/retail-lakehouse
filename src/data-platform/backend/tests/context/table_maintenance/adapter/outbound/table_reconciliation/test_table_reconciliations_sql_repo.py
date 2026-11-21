@@ -17,16 +17,14 @@ from context.table_maintenance.application.domain.model.shared import (
     Measurement,
     MeasurementComparison,
     MeasurementUnit,
+    PolicyTarget,
+    PolicyTargetType,
 )
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_ID,
     TableMaintenancePolicyId,
     TableMaintenancePolicyName,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
-    PolicyTarget,
-    PolicyTargetType,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRunId,

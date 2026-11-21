@@ -17,12 +17,9 @@ from context.table_maintenance.application.port.outbound.table_maintenance_polic
 from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
     TableMaintenancePolicyAttachment,
 )
-from context.table_maintenance.application.service.shared import translate_domain_errors
+from context.table_maintenance.application.service.shared import policy_target_from_request, translate_domain_errors
 from context.table_maintenance.application.service.table_maintenance_policy_attachment.notify_policy_change import (  # noqa: E501
     notify_policy_change,
-)
-from context.table_maintenance.application.service.table_maintenance_policy_attachment.policy_target_from_request import (  # noqa: E501
-    policy_target_from_request,
 )
 
 if TYPE_CHECKING:

@@ -61,16 +61,37 @@ def test_attach_with_a_bad_target_type_is_422(world: PolicyWebWorld) -> None:
 
 
 def test_list_mappings_marks_orphans(world: PolicyWebWorld) -> None:
-    """GET mappings lists the policy's attachments; one whose target left the catalog is orphaned."""
+    """GET mappings lists the policy's attachments; one whose target no longer exists is orphaned."""
     world.attach("gold", "catalog", ["prod"])
     world.attach("gold", "namespace", ["prod", "sales"])
+    world.attach("gold", "namespace", ["prod", "sales", "eu"])
     world.catalog.drop_table("prod", "sales.eu", "orders")
+    world.catalog.drop_namespace("prod", "sales.eu")
     body = world.client.get("/v1/maintenance-policies/gold/mappings").json()
-    assert sorted((m["target"]["type"], m["orphaned"]) for m in body["mappings"]) == [
-        ("catalog", True),
-        ("namespace", True),
+    assert sorted((m["target"]["path"], m["orphaned"]) for m in body["mappings"]) == [
+        (["prod"], False),
+        (["prod", "sales"], False),
+        (["prod", "sales", "eu"], True),
     ]
     assert {(m["policy_id"], m["policy_name"]) for m in body["mappings"]} == {(_gold_id(world), "gold")}
+
+
+def test_list_mappings_in_a_refused_catalog_stays_200_and_not_orphaned(world: PolicyWebWorld) -> None:
+    """A catalog the credential cannot read does not fail the list; its mapping is not orphaned."""
+    world.attach("gold", "catalog", ["prod"])
+    world.catalog.deny("prod")
+    response = world.client.get("/v1/maintenance-policies/gold/mappings")
+    assert response.status_code == 200, response.text
+    assert [m["orphaned"] for m in response.json()["mappings"]] == [False]
+
+
+def test_attach_in_a_refused_catalog_is_403(world: PolicyWebWorld) -> None:
+    """Attaching in a catalog the credential cannot read answers 403 naming it, and nothing is attached."""
+    world.catalog.deny("prod")
+    response = world.attach("gold", "catalog", ["prod"])
+    assert response.status_code == 403
+    assert response.json() == {"detail": "the platform's catalog credential cannot read catalog prod"}
+    assert world.attachments.list_all() == []
 
 
 def test_list_mappings_of_an_unknown_policy_is_404(world: PolicyWebWorld) -> None:

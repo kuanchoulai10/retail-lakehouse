@@ -10,14 +10,12 @@ from context.table_maintenance.application.domain.model.shared import (
     Measurement,
     MeasurementComparison,
     MeasurementUnit,
+    PolicyTarget,
 )
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     TableMaintenancePolicyId,
     TableMaintenancePolicyName,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
-    PolicyTarget,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRunId,

@@ -8,9 +8,10 @@ from context.table_maintenance.application.domain.model.table import TableId, Ta
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_ID,
 )
-from context.table_maintenance.application.domain.service.table_maintenance_policy_attachment import (
+from context.table_maintenance.application.domain.service.shared import (
     candidate_policy_targets,
     enclosing_policy_targets,
+    nearest_attached,
 )
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
@@ -22,7 +23,7 @@ from context.table_maintenance.application.port.outbound.table import CatalogNot
 from context.table_maintenance.application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
-    from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import PolicyTarget
+    from context.table_maintenance.application.domain.model.shared import PolicyTarget
     from context.table_maintenance.application.port.outbound.table import ReadTableMetadataGateway, TablesRepo
     from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
         TableMaintenancePoliciesRepo,
@@ -53,9 +54,9 @@ class ResolveApplicableTableMaintenancePolicyService(ResolveApplicableTableMaint
     ) -> ResolveApplicableTableMaintenancePolicyUseCaseOutput:
         """Return the nearest attached policy, or the default one with no target."""
         candidates = self._candidates(request)
-        attached = {a.target.key(): a for a in self._attachments_repo.get_many_by_targets(candidates)}
-        matched = next((c for c in candidates if c.key() in attached), None)
-        policy_id = DEFAULT_POLICY_ID if matched is None else attached[matched.key()].policy_id
+        attached = {a.target.key(): a.policy_id for a in self._attachments_repo.get_many_by_targets(candidates)}
+        nearest = nearest_attached(candidates, attached)
+        matched, policy_id = (None, DEFAULT_POLICY_ID) if nearest is None else nearest
         policy = self._policies_repo.get(policy_id)
         if policy is None:
             raise NotFoundError(f"table maintenance policy {policy_id.value} not found")

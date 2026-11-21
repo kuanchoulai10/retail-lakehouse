@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
-    PolicyTarget,
-    PolicyTargetType,
-)
+from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
 
 
 def enclosing_policy_targets(catalog: str, namespace: str | None) -> tuple[PolicyTarget, ...]:

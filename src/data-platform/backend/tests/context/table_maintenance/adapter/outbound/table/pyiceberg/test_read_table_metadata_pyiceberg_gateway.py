@@ -12,7 +12,7 @@ import pyarrow as pa
 import pytest
 from pyiceberg.catalog import Catalog
 from pyiceberg.catalog.sql import SqlCatalog
-from pyiceberg.exceptions import RESTError, ServerError
+from pyiceberg.exceptions import ForbiddenError, RESTError, ServerError, UnauthorizedError
 from pyiceberg.partitioning import PartitionField, PartitionSpec
 from pyiceberg.schema import Schema
 from pyiceberg.transforms import BucketTransform, DayTransform, IdentityTransform
@@ -23,6 +23,7 @@ from context.table_maintenance.adapter.outbound.table.pyiceberg import (
     commit_page_from_table,
 )
 from context.table_maintenance.application.port.outbound.table import (
+    CatalogAccessDeniedError,
     CatalogNotFoundError,
     ReadTableMetadataGatewayListInput,
     TableCommitSelection,
@@ -578,6 +579,97 @@ def test_unknown_catalog_raises_catalog_not_found() -> None:
         gateway.list_tables(ReadTableMetadataGatewayListInput("nope", "db"))
     with pytest.raises(CatalogNotFoundError):
         gateway.load_table(_ref())
+
+
+@pytest.mark.parametrize("refusal", [ForbiddenError, UnauthorizedError])
+def test_forbidden_on_open_is_access_denied(refusal: type[RESTError]) -> None:
+    """A catalog whose opening the server refuses for the credential is CatalogAccessDeniedError on every read."""
+
+    def factory(name: str) -> Catalog:
+        raise refusal("refused")
+
+    gateway = ReadTableMetadataPyIcebergGateway(factory)
+
+    for read in (
+        lambda: gateway.catalog_exists("secret"),
+        lambda: gateway.namespace_exists("secret", "db"),
+        lambda: gateway.list_tables(ReadTableMetadataGatewayListInput("secret")),
+        lambda: gateway.load_table(_ref()),
+        lambda: gateway.observe_table(_ref()),
+        lambda: gateway.list_commits(_ref(), TableCommitSelection(limit=1)),
+    ):
+        with pytest.raises(CatalogAccessDeniedError, match="cannot read catalog"):
+            read()
+
+
+def _refusing_catalog(refusal: type[RESTError]) -> MagicMock:
+    stub = MagicMock(spec=Catalog)
+    stub.list_namespaces.side_effect = refusal("refused")
+    stub.list_tables.side_effect = refusal("refused")
+    stub.load_table.side_effect = refusal("refused")
+    stub.namespace_exists.side_effect = refusal("refused")
+    return stub
+
+
+@pytest.mark.parametrize("refusal", [ForbiddenError, UnauthorizedError])
+def test_forbidden_on_listing_and_loading_is_access_denied(refusal: type[RESTError]) -> None:
+    """A refusal after the catalog opened (listing, loading, a namespace check) is CatalogAccessDeniedError."""
+    gateway = ReadTableMetadataPyIcebergGateway(lambda name: _refusing_catalog(refusal))
+
+    for read in (
+        lambda: gateway.namespace_exists(CATALOG, "db"),
+        lambda: gateway.list_tables(ReadTableMetadataGatewayListInput(CATALOG)),
+        lambda: gateway.list_tables(ReadTableMetadataGatewayListInput(CATALOG, "db")),
+        lambda: gateway.load_table(_ref()),
+    ):
+        with pytest.raises(CatalogAccessDeniedError, match=f"cannot read catalog {CATALOG}$"):
+            read()
+
+
+def test_catalog_exists_opens_the_catalog(gateway: ReadTableMetadataPyIcebergGateway) -> None:
+    """A catalog that opens exists, even when it holds nothing."""
+    assert gateway.catalog_exists(CATALOG) is True
+
+
+def test_catalog_exists_is_false_for_an_unknown_catalog() -> None:
+    """A catalog the server rejects by name does not exist."""
+
+    def factory(name: str) -> Catalog:
+        raise RESTError("RESTError: unknown warehouse")
+
+    assert ReadTableMetadataPyIcebergGateway(factory).catalog_exists("nope") is False
+
+
+def test_namespace_exists_reads_the_dotted_namespace() -> None:
+    """The dotted namespace is split into its levels before PyIceberg is asked."""
+    stub = MagicMock(spec=Catalog)
+    stub.namespace_exists.return_value = True
+    gateway = ReadTableMetadataPyIcebergGateway(lambda name: stub)
+
+    assert gateway.namespace_exists(CATALOG, "sales.eu") is True
+    stub.namespace_exists.assert_called_once_with(("sales", "eu"))
+
+
+def test_namespace_exists_for_an_empty_and_a_missing_namespace(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    """An empty namespace exists, a parent of a nested one exists, and one never created does not."""
+    catalog.create_namespace("db")
+    catalog.create_namespace(("db", "inner"))
+
+    assert gateway.namespace_exists(CATALOG, "db") is True
+    assert gateway.namespace_exists(CATALOG, "db.inner") is True
+    assert gateway.namespace_exists(CATALOG, "ghost") is False
+
+
+def test_namespace_exists_in_an_unknown_catalog_raises_catalog_not_found() -> None:
+    """A namespace of a catalog the server rejects by name raises CatalogNotFoundError."""
+
+    def factory(name: str) -> Catalog:
+        raise RESTError("RESTError: unknown warehouse")
+
+    with pytest.raises(CatalogNotFoundError):
+        ReadTableMetadataPyIcebergGateway(factory).namespace_exists("nope", "db")
 
 
 def test_catalog_open_server_errors_still_propagate() -> None:

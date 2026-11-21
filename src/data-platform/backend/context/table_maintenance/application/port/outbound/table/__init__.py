@@ -27,6 +27,9 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     TableMaintenancePolicyId,
     TableMaintenancePolicyName,
 )
+from context.table_maintenance.application.port.outbound.table.read_table_metadata.catalog_access_denied_error import (  # noqa: E501
+    CatalogAccessDeniedError,
+)
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.catalog_not_found_error import (
     CatalogNotFoundError,
 )
@@ -87,6 +90,7 @@ __all__ = [
     "AppliedPolicyRef",
     "AttentionMark",
     "ComputeSize",
+    "CatalogAccessDeniedError",
     "CatalogNotFoundError",
     "MaintenanceOperation",
     "MetricHistoryUnavailableError",

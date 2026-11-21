@@ -14,14 +14,8 @@ from context.table_maintenance.application.service.table_maintenance_policy_atta
 from context.table_maintenance.application.service.table_maintenance_policy_attachment.notify_policy_change import (  # noqa: E501
     notify_policy_change,
 )
-from context.table_maintenance.application.service.table_maintenance_policy_attachment.policy_target_from_request import (  # noqa: E501
-    policy_target_from_request,
-)
 from context.table_maintenance.application.service.table_maintenance_policy_attachment.resolve_applicable_table_maintenance_policy import (  # noqa: E501
     ResolveApplicableTableMaintenancePolicyService,
-)
-from context.table_maintenance.application.service.table_maintenance_policy_attachment.scope_target_in_listing import (  # noqa: E501
-    scope_target_in_listing,
 )
 
 __all__ = [
@@ -30,6 +24,4 @@ __all__ = [
     "ListTableMaintenancePolicyAttachmentsService",
     "ResolveApplicableTableMaintenancePolicyService",
     "notify_policy_change",
-    "policy_target_from_request",
-    "scope_target_in_listing",
 ]

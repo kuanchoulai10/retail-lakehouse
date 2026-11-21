@@ -4,11 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
-    PolicyTarget,
-    PolicyTargetType,
-)
-from context.table_maintenance.application.domain.service.table_maintenance_policy_attachment.enclosing_policy_targets import (  # noqa: E501
+from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
+from context.table_maintenance.application.domain.service.shared.enclosing_policy_targets import (
     enclosing_policy_targets,
 )
 

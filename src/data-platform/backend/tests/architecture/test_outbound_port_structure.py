@@ -48,6 +48,7 @@ GATEWAY_EXTRA_FILES = {
     "table_commit_page.py",
     "table_commit_selection.py",
     "catalog_not_found_error.py",
+    "catalog_access_denied_error.py",
     "job_container_exit.py",
     "metric_history_unavailable_error.py",
 }
