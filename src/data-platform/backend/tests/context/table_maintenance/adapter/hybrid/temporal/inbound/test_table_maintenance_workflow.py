@@ -211,6 +211,30 @@ def test_the_run_is_created_with_the_priority_of_the_plan():
     _run(scenario)
 
 
+def test_the_workflow_creates_the_run_with_the_plans_filters():
+    """The create-run activity gets the plan's compaction filters, keyed by operation."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
+        await h.run_maintenance(COMPACTION)
+        assert h.fakes.created[0]["filters"] == {COMPACTION: [{"spec_id": 0, "where": f"{COMPACTION} = 1"}]}
+
+    _run(scenario)
+
+
+def test_the_workflow_sends_no_filters_for_a_whole_table_plan():
+    """A plan whose operations hold no filters creates its run with none."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
+        plan = _plan(COMPACTION)
+        plan["operations"][0] = {**plan["operations"][0], "filters": []}
+        await h.run_maintenance(plan=plan)
+        assert h.fakes.created[0]["filters"] == {}
+
+    _run(scenario)
+
+
 def test_the_run_is_created_at_p3_when_the_plan_has_no_priority():
     """A plan without a priority creates its run at P3."""
 

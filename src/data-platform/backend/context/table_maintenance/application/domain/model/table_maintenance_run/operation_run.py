@@ -9,6 +9,7 @@ from pydantic import Field, model_validator
 from base import ValueObject
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
+    SpecFilter,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run.operation_attempt import (
     OperationAttempt,
@@ -24,6 +25,8 @@ class OperationRun(ValueObject):
     The flat fields describe the latest attempt; ``attempt_history`` keeps every attempt, oldest first.
     Its attempt numbers increase and its last one is ``attempts``; it may lack the earlier attempts
     of a run started before attempt history existed, or be empty for such a run.
+    ``filters`` holds the where clauses, one per partition spec, that every attempt of a compaction
+    passes to ``rewrite_data_files``; empty means the whole table.
     """
 
     operation: MaintenanceOperation
@@ -36,6 +39,7 @@ class OperationRun(ValueObject):
     error: str | None = None
     expected_files: int | None = None
     attempt_history: tuple[OperationAttempt, ...] = ()
+    filters: tuple[SpecFilter, ...] = ()
 
     @model_validator(mode="after")
     def _history_matches_the_attempts(self) -> OperationRun:

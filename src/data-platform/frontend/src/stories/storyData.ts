@@ -568,6 +568,7 @@ export const RUNS: TableMaintenanceRunApiResponse[] = [
         metrics: { rewritten_data_files_count: 14 },
         error: null,
         expected_files: null,
+        filters: [{ spec_id: 0, where: "(`region` = 'eu')" }],
         attempt_history: [
           {
             attempt: 1,
@@ -609,6 +610,7 @@ export const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
       metrics: { rewritten_data_files_count: 24, peak_driver_heap_bytes: 612368384, peak_executor_heap_bytes: 1140850688 },
       error: null,
       expected_files: null,
+      filters: [],
       attempt_history: [
         {
           attempt: 1,
@@ -636,6 +638,28 @@ export const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
           next_step: "done",
           next_size: null,
         },
+      ],
+    },
+  ],
+};
+
+export const PARTITION_SCOPE_RUN_ID = "mr-01m8c2v7e0k3b9x4d5n6q1w2yb";
+
+const TEN_PARTITIONS_WHERE = Array.from(
+  { length: 10 },
+  (_, day) => `(\`region\` = 'eu' AND \`order_day\` = DATE '2026-11-${String(day + 10).padStart(2, "0")}')`,
+).join(" OR ");
+
+// A scheduled compaction of the partitions over the target: one where clause per partition spec, the first of them long.
+export const PARTITION_SCOPE_RUN: TableMaintenanceRunApiResponse = {
+  ...RUNS[0]!,
+  run_id: PARTITION_SCOPE_RUN_ID,
+  operations: [
+    {
+      ...RUNS[0]!.operations[0]!,
+      filters: [
+        { spec_id: 0, where: TEN_PARTITIONS_WHERE },
+        { spec_id: 1, where: "(`order_hour` = TIMESTAMP '2026-11-19 03:00:00')" },
       ],
     },
   ],
@@ -673,6 +697,7 @@ function runOfAttempts(
         metrics: {},
         error: null,
         expected_files: null,
+        filters: [],
         attempt_history: attempts,
       },
     ],

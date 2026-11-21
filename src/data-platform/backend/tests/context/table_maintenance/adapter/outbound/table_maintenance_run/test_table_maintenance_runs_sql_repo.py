@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, cast
 
@@ -15,6 +16,7 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.sql import
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    SpecFilter,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import TableId
@@ -124,6 +126,42 @@ def test_a_row_without_a_priority_reads_as_p3(repo: TableMaintenanceRunsSqlRepo,
     loaded = repo.get(TableMaintenanceRunId(R1))
     assert loaded is not None
     assert loaded.priority is TablePriority.P3
+
+
+def test_sql_round_trip_keeps_the_filters(repo: TableMaintenanceRunsSqlRepo):
+    """The where clauses of a compaction are stored and read back."""
+    eu = SpecFilter(spec_id=0, where="(`region` = 'eu')")
+    run = TableMaintenanceRun.create(
+        TableMaintenanceRunId(R1),
+        TableId("u1"),
+        TriggerType.SCHEDULED,
+        [MaintenanceOperation.EXPIRE_SNAPSHOTS, MaintenanceOperation.REWRITE_DATA_FILES],
+        NOW,
+        execution_ref=f"wf-{R1}",
+        filters={MaintenanceOperation.REWRITE_DATA_FILES: [eu]},
+    )
+    repo.create(run)
+    loaded = repo.get(TableMaintenanceRunId(R1))
+    assert loaded is not None
+    assert loaded.operations[0].filters == (eu,)
+    assert loaded.operations[1].filters == ()
+
+
+def test_a_stored_operation_without_filters_reads_none(repo: TableMaintenanceRunsSqlRepo, engine: Engine):
+    """A run stored before filters existed (no key in its operations) reads as the whole table."""
+    repo.create(_run(R1))
+    with engine.begin() as connection:
+        stored = connection.execute(text("SELECT operations_json FROM table_maintenance_runs")).scalar_one()
+        operations = json.loads(stored) if isinstance(stored, str) else stored
+        for operation in operations:
+            del operation["filters"]
+        connection.execute(
+            text("UPDATE table_maintenance_runs SET operations_json = :operations"),
+            {"operations": json.dumps(operations)},
+        )
+    loaded = repo.get(TableMaintenanceRunId(R1))
+    assert loaded is not None
+    assert [op.filters for op in loaded.operations] == [(), ()]
 
 
 def test_get_missing_returns_none(repo: TableMaintenanceRunsSqlRepo):

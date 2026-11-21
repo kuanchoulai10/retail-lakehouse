@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
+from context.table_maintenance.application.domain.model.shared import MaintenanceOperation, SpecFilter
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
@@ -23,6 +23,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
 )
 from context.table_maintenance.application.service.table_maintenance_run import (
     GetTableMaintenanceRunService,
+    ListTableMaintenanceRunsService,
     ProcessTableMaintenanceCallbackService,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import (
@@ -56,6 +57,7 @@ FIELDS: dict[str, Any] = {
             "metrics": {},
             "error": None,
             "expected_files": None,
+            "filters": [],
             "attempt_history": [
                 {
                     "attempt": 1,
@@ -175,6 +177,59 @@ def test_a_fresh_attempt_is_queued_and_has_not_started_running() -> None:
     assert body["operations"][0]["status"] == "queued"
     assert body["operations"][0]["attempt_history"][0]["status"] == "queued"
     assert body["operations"][0]["attempt_history"][0]["started_running_at"] is None
+
+
+EU = SpecFilter(spec_id=0, where="(`region` = 'eu')")
+EU_BODY = {"spec_id": 0, "where": "(`region` = 'eu')"}
+
+
+def _stored_run(runs: InMemoryTableMaintenanceRunsRepo, *, with_filters: bool) -> None:
+    runs.create(
+        TableMaintenanceRun.create(
+            TableMaintenanceRunId(RUN_ID),
+            TableId("u-1"),
+            TriggerType.SCHEDULED,
+            [MaintenanceOperation.REWRITE_DATA_FILES, MaintenanceOperation.EXPIRE_SNAPSHOTS],
+            NOW,
+            execution_ref="wf-run-1",
+            filters={MaintenanceOperation.REWRITE_DATA_FILES: [EU]} if with_filters else None,
+        )
+    )
+
+
+def test_get_run_shows_the_filters() -> None:
+    """A run's compaction lists the where clauses it passes to rewrite_data_files."""
+    runs = InMemoryTableMaintenanceRunsRepo()
+    _stored_run(runs, with_filters=True)
+    client = build_client(get_table_maintenance_run=GetTableMaintenanceRunService(runs))
+
+    body = client.get(f"/v1/table-maintenance-runs/{RUN_ID}").json()
+
+    assert body["operations"][0]["filters"] == [EU_BODY]
+    assert body["operations"][1]["filters"] == []
+
+
+def test_get_run_shows_empty_filters_for_the_whole_table() -> None:
+    """A run stored without filters shows an empty list on every operation."""
+    runs = InMemoryTableMaintenanceRunsRepo()
+    _stored_run(runs, with_filters=False)
+    client = build_client(get_table_maintenance_run=GetTableMaintenanceRunService(runs))
+
+    body = client.get(f"/v1/table-maintenance-runs/{RUN_ID}").json()
+
+    assert [op["filters"] for op in body["operations"]] == [[], []]
+
+
+def test_list_runs_of_a_table_shows_the_filters() -> None:
+    """The runs of a table list the where clauses of their compaction."""
+    runs = InMemoryTableMaintenanceRunsRepo()
+    _stored_run(runs, with_filters=True)
+    client = build_client(list_table_maintenance_runs=ListTableMaintenanceRunsService(runs))
+
+    body = client.get("/v1/tables/u-1/table-maintenance-runs").json()
+
+    assert body[0]["operations"][0]["filters"] == [EU_BODY]
+    assert body[0]["operations"][1]["filters"] == []
 
 
 def test_run_schema_types_its_operations_and_attempts() -> None:

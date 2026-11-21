@@ -78,6 +78,7 @@ def _full_run() -> CreateTableMaintenanceRunUseCaseOutput:
                 "metrics": {"rewritten_data_files_count": 4},
                 "error": None,
                 "expected_files": 7,
+                "filters": [{"spec_id": 0, "where": "(`region` = 'eu')"}],
                 "attempt_history": [
                     {
                         "attempt": 1,
@@ -115,6 +116,7 @@ def _full_run() -> CreateTableMaintenanceRunUseCaseOutput:
                 "metrics": {},
                 "error": None,
                 "expected_files": None,
+                "filters": [],
                 "attempt_history": [],
             },
         ),
@@ -147,6 +149,7 @@ def test_create_run_payload_keeps_every_field_of_a_full_run():
                 "metrics": {"rewritten_data_files_count": 4},
                 "error": None,
                 "expected_files": 7,
+                "filters": [{"spec_id": 0, "where": "(`region` = 'eu')"}],
                 "attempt_history": [
                     {
                         "attempt": 1,
@@ -184,6 +187,7 @@ def test_create_run_payload_keeps_every_field_of_a_full_run():
                 "metrics": {},
                 "error": None,
                 "expected_files": None,
+                "filters": [],
                 "attempt_history": [],
             },
         ],
@@ -315,6 +319,17 @@ def test_create_run_input_is_built_from_the_payload_the_maintenance_workflow_sen
         operations=("rewrite_data_files", "expire_snapshots"),
         now=NOW_DT,
     )
+
+
+def test_create_run_input_reads_the_filters_the_maintenance_workflow_sends():
+    """The create run input reads the filters per operation; a payload without them reads as none."""
+    built = CreateTableMaintenanceRunUseCaseInput.from_primitives(
+        {**CREATE_REQUEST, "filters": {"rewrite_data_files": [{"spec_id": 0, "where": "x"}]}}
+    )
+    assert built.filters == {
+        "rewrite_data_files": (CreateTableMaintenanceRunUseCaseInput.Filter(spec_id=0, where="x"),)
+    }
+    assert CreateTableMaintenanceRunUseCaseInput.from_primitives(CREATE_REQUEST).filters == {}
 
 
 def test_create_run_activity_hands_the_use_case_the_input_built_from_the_payload():

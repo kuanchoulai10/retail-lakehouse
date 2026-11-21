@@ -9,6 +9,7 @@ from base import AggregateRoot
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    SpecFilter,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import TableId
@@ -41,7 +42,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.tr
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
     from context.table_maintenance.application.domain.model.table_maintenance_run.next_attempt import (
         NextAttempt,
@@ -81,12 +82,14 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         *,
         execution_ref: str,
         priority: TablePriority = TablePriority.P3,
+        filters: Mapping[MaintenanceOperation, Sequence[SpecFilter]] | None = None,
     ) -> TableMaintenanceRun:
         """Create a run with the given operations in canonical order, all pending.
 
         ``execution_ref`` names the execution that runs it, so a result
         that only carries the run id can still be routed to that execution.
-        ``priority`` is the priority the run was started with.
+        ``priority`` is the priority the run was started with. ``filters`` holds the where clauses
+        each operation is submitted with; only a ``rewrite_data_files`` of the run may hold any.
         """
         if not execution_ref:
             msg = "a maintenance run needs the execution reference that runs it"
@@ -95,11 +98,20 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         if not requested:
             msg = "a maintenance run needs at least one operation"
             raise InvalidRunTransition(msg)
+        held = {op: tuple(clauses) for op, clauses in (filters or {}).items() if clauses}
+        for op in held:
+            if op is not MaintenanceOperation.REWRITE_DATA_FILES or op not in requested:
+                msg = f"{op} of this run cannot hold filters: only a rewrite_data_files in the run can"
+                raise InvalidRunTransition(msg)
         return cls(
             id=id,
             table_uuid=table_uuid,
             trigger=trigger,
-            operations=tuple(OperationRun(operation=op) for op in MaintenanceOperation.ordered() if op in requested),
+            operations=tuple(
+                OperationRun(operation=op, filters=held.get(op, ()))
+                for op in MaintenanceOperation.ordered()
+                if op in requested
+            ),
             created_at=now,
             execution_ref=execution_ref,
             priority=priority,

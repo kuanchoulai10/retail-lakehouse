@@ -53,6 +53,7 @@ def table_maintenance_run_output_fields(run: TableMaintenanceRun) -> dict[str, A
                 "metrics": dict(op.metrics),
                 "error": op.error,
                 "expected_files": op.expected_files,
+                "filters": [{"spec_id": f.spec_id, "where": f.where} for f in op.filters],
                 "attempt_history": [_attempt_fields(a) for a in op.attempt_history],
             }
             for op in run.operations

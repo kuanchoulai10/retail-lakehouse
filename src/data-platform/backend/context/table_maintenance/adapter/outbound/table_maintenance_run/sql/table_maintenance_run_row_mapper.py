@@ -13,6 +13,7 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
     OperationAttempt,
     OperationRun,
     OperationRunStatus,
+    SpecFilter,
     TableId,
     TableMaintenanceRun,
     TableMaintenanceRunId,
@@ -84,6 +85,7 @@ def _encode_operation(op: OperationRun) -> dict[str, Any]:
         "error": op.error,
         "expected_files": op.expected_files,
         "attempt_history": [_encode_attempt(a) for a in op.attempt_history],
+        "filters": [{"spec_id": f.spec_id, "where": f.where} for f in op.filters],
     }
 
 
@@ -99,6 +101,7 @@ def _decode_operation(data: dict[str, Any]) -> OperationRun:
         error=data["error"],
         expected_files=data["expected_files"],
         attempt_history=tuple(_decode_attempt(a) for a in data.get("attempt_history", [])),
+        filters=tuple(SpecFilter(spec_id=f["spec_id"], where=f["where"]) for f in data.get("filters", [])),
     )
 
 

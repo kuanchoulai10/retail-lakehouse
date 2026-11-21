@@ -5,6 +5,7 @@ from __future__ import annotations
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    SpecFilter,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import TableId
@@ -95,6 +96,7 @@ __all__ = [
     "NextStep",
     "OperationAttempt",
     "MaintenanceOperation",
+    "SpecFilter",
     "OperationRun",
     "OperationRunStatus",
     "TriggerType",

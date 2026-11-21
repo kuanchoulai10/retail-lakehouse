@@ -4338,6 +4338,25 @@
         "title": "TableMaintenanceRunAttemptApiResponse",
         "type": "object"
       },
+      "TableMaintenanceRunFilterApiResponse": {
+        "description": "Describe one where clause a compaction passes to rewrite_data_files, for one partition spec.",
+        "properties": {
+          "spec_id": {
+            "title": "Spec Id",
+            "type": "integer"
+          },
+          "where": {
+            "title": "Where",
+            "type": "string"
+          }
+        },
+        "required": [
+          "spec_id",
+          "where"
+        ],
+        "title": "TableMaintenanceRunFilterApiResponse",
+        "type": "object"
+      },
       "TableMaintenanceRunOperationApiResponse": {
         "description": "Describe one operation of a maintenance run, its latest attempt and every attempt it made.",
         "properties": {
@@ -4373,6 +4392,14 @@
               }
             ],
             "title": "Expected Files"
+          },
+          "filters": {
+            "description": "The where clauses each job of this operation passes to rewrite_data_files, one per partition spec; empty: the whole table.",
+            "items": {
+              "$ref": "#/components/schemas/TableMaintenanceRunFilterApiResponse"
+            },
+            "title": "Filters",
+            "type": "array"
           },
           "finished_at": {
             "anyOf": [
@@ -4435,7 +4462,8 @@
           "metrics",
           "error",
           "expected_files",
-          "attempt_history"
+          "attempt_history",
+          "filters"
         ],
         "title": "TableMaintenanceRunOperationApiResponse",
         "type": "object"

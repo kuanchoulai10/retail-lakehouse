@@ -27,6 +27,15 @@ class TableMaintenanceRunAttemptApiResponse(BaseModel):
     next_size: str | None
 
 
+class TableMaintenanceRunFilterApiResponse(BaseModel):
+    """Describe one where clause a compaction passes to rewrite_data_files, for one partition spec."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    spec_id: int
+    where: str
+
+
 class TableMaintenanceRunOperationApiResponse(BaseModel):
     """Describe one operation of a maintenance run, its latest attempt and every attempt it made."""
 
@@ -42,6 +51,12 @@ class TableMaintenanceRunOperationApiResponse(BaseModel):
     error: str | None
     expected_files: int | None
     attempt_history: list[TableMaintenanceRunAttemptApiResponse]
+    filters: list[TableMaintenanceRunFilterApiResponse] = Field(
+        description=(
+            "The where clauses each job of this operation passes to rewrite_data_files, "
+            "one per partition spec; empty: the whole table."
+        )
+    )
 
 
 class TableMaintenanceRunApiResponse(BaseModel):

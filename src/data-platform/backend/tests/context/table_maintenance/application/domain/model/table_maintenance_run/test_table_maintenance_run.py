@@ -9,6 +9,7 @@ import pytest
 from base import InvariantViolation
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
+    SpecFilter,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.shared import (
@@ -51,6 +52,40 @@ def _run(ops: list[Op] | None = None) -> TableMaintenanceRun:
 
 def _op(run: TableMaintenanceRun, op: Op):
     return next(o for o in run.operations if o.operation == op)
+
+
+EU = SpecFilter(spec_id=0, where="(`region` = 'eu')")
+
+
+def _run_with_filters(ops: list[Op], filters: dict[Op, list[SpecFilter]]) -> TableMaintenanceRun:
+    return TableMaintenanceRun.create(
+        TableMaintenanceRunId(RUN_1),
+        TableId("t-1"),
+        TriggerType.SCHEDULED,
+        ops,
+        _now(),
+        execution_ref="wf",
+        filters=filters,
+    )
+
+
+def test_a_run_keeps_the_compaction_filters():
+    """The compaction of a run keeps the where clauses it was created with; the other operations hold none."""
+    run = _run_with_filters([Op.REWRITE_DATA_FILES, Op.EXPIRE_SNAPSHOTS], {Op.REWRITE_DATA_FILES: [EU]})
+    assert run.operations[0].filters == (EU,)
+    assert run.operations[1].filters == ()
+
+
+def test_filters_on_another_operation_are_refused():
+    """Only the compaction may hold filters."""
+    with pytest.raises(InvalidRunTransition):
+        _run_with_filters([Op.REWRITE_DATA_FILES, Op.EXPIRE_SNAPSHOTS], {Op.EXPIRE_SNAPSHOTS: [EU]})
+
+
+def test_filters_for_an_operation_not_in_the_run_are_refused():
+    """Filters for a compaction the run does not have are refused."""
+    with pytest.raises(InvalidRunTransition):
+        _run_with_filters([Op.EXPIRE_SNAPSHOTS], {Op.REWRITE_DATA_FILES: [EU]})
 
 
 def test_create_records_the_priority_it_is_given():

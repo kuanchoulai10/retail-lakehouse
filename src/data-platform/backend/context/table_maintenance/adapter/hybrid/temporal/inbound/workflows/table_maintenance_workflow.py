@@ -148,6 +148,7 @@ class TableMaintenanceWorkflow:
                     "trigger": input.trigger,
                     "operations": [op["operation"] for op in operations],
                     "priority": input.plan.get("priority", "P3"),
+                    "filters": {op["operation"]: op["filters"] for op in operations if op["filters"]},
                     "now": _now(),
                 },
             )

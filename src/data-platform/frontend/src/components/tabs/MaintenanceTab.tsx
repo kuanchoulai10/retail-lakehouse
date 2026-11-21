@@ -11,6 +11,7 @@ import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { RunStatusBadge } from "@/components/RunStatusBadge";
 import { errorMessage, formatDuration, formatTimestamp } from "@/format";
 import { anyRunInFlight } from "@/lib/anyRunInFlight";
+import { compactionScopeText } from "@/lib/compactionScopeText";
 import { eventLogText, failureClassText, nextStepText, queueWaitText, runTimeText } from "@/lib/attemptText";
 import { temporalWorkflowsUrl } from "@/lib/temporalWorkflowsUrl";
 
@@ -70,12 +71,14 @@ function attemptColumnsAt(now: Date) {
 
 // Each attempt of the operation: the size it ran at, how long it queued and ran, why it failed,
 // whether its Spark event log finished and what the platform did next. A run from before attempt
-// history keeps only the count.
+// history keeps only the count. A compaction also says its scope: the whole table, or the partitions
+// over the target, each spec's where clause listed.
 function OperationDetail({ operation, now }: { operation: TableMaintenanceRunOperationApiResponse; now: Date }) {
   const attemptColumns = useMemo(() => attemptColumnsAt(now), [now]);
   const attempts = operation.attempts;
   const metrics = Object.entries(operation.metrics);
   const error = operation.error;
+  const scope = compactionScopeText(operation);
   return (
     <li className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-2">
@@ -83,6 +86,18 @@ function OperationDetail({ operation, now }: { operation: TableMaintenanceRunOpe
         <RunStatusBadge status={operation.status} />
         <span className="type-body-small text-on-surface-variant">{`${attempts} ${attempts === 1 ? "attempt" : "attempts"}`}</span>
       </div>
+      {scope && (
+        <>
+          <p className="type-body-small">{`Scope: ${scope.summary}`}</p>
+          {scope.wheres.length > 0 && (
+            <ul className="type-code text-on-surface-variant">
+              {scope.wheres.map(({ specId, where }) => (
+                <li key={specId} className="break-all">{`spec ${specId}: ${where}`}</li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
       {operation.attempt_history.length > 0 && (
         <DataTable
           caption={`Attempts of ${operation.operation}`}

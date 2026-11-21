@@ -28,6 +28,7 @@ const RUN: TableMaintenanceRunApiResponse = {
       metrics: { rewritten_data_files_count: 12 },
       error: null,
       expected_files: null,
+      filters: [],
       attempt_history: [
         {
           attempt: 1,
@@ -54,6 +55,7 @@ const RUN: TableMaintenanceRunApiResponse = {
       metrics: {},
       error: "snapshot store unreachable",
       expected_files: null,
+      filters: [],
       attempt_history: [1, 2, 3].map((attempt) => ({
         attempt,
         size: "S",
@@ -88,6 +90,7 @@ const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
       metrics: { rewritten_data_files_count: 24 },
       error: null,
       expected_files: null,
+      filters: [],
       attempt_history: [
         {
           attempt: 1,
@@ -117,6 +120,22 @@ const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
         },
       ],
     },
+  ],
+};
+
+const SCOPED_RUN: TableMaintenanceRunApiResponse = {
+  ...ESCALATED_RUN,
+  run_id: "run-5",
+  trigger: "scheduled",
+  operations: [
+    {
+      ...ESCALATED_RUN.operations[0]!,
+      filters: [
+        { spec_id: 0, where: "(`region` = 'eu')" },
+        { spec_id: 1, where: "(`region` = 'us')" },
+      ],
+    },
+    { ...RUN.operations[1]!, status: "succeeded", attempts: 1, error: null, attempt_history: [] },
   ],
 };
 
@@ -194,6 +213,38 @@ describe("MaintenanceTab", () => {
     expect(screen.getByText("rewritten_data_files_count: 12")).toBeInTheDocument();
     expect(screen.getByText("3 attempts")).toBeInTheDocument();
     expect(screen.getByText("snapshot store unreachable")).toBeInTheDocument();
+  });
+
+  it("says which partitions a compaction passed to rewrite_data_files", async () => {
+    stubCatalogApi({
+      "GET /v1/tables/uuid-orders/table-maintenance-runs": () => jsonResponse([SCOPED_RUN]),
+    });
+    const user = userEvent.setup();
+    renderTab();
+    await user.click(await screen.findByText("scheduled"));
+    expect(screen.getByText("Scope: Partitions over the target")).toBeInTheDocument();
+    expect(screen.getByText("spec 0: (`region` = 'eu')")).toBeInTheDocument();
+    expect(screen.getByText("spec 1: (`region` = 'us')")).toBeInTheDocument();
+  });
+
+  it("says a manual compaction covers the whole table", async () => {
+    const user = userEvent.setup();
+    renderTab();
+    await user.click(await screen.findByText("manual"));
+    expect(screen.getByText("Scope: Whole table")).toBeInTheDocument();
+    expect(screen.queryByText(/^spec \d+:/)).not.toBeInTheDocument();
+  });
+
+  it("shows no scope for an operation other than a compaction", async () => {
+    stubCatalogApi({
+      "GET /v1/tables/uuid-orders/table-maintenance-runs": () =>
+        jsonResponse([{ ...RUN, operations: [RUN.operations[1]!] }]),
+    });
+    const user = userEvent.setup();
+    renderTab();
+    await user.click(await screen.findByText("manual"));
+    expect(screen.getByText("expire_snapshots")).toBeInTheDocument();
+    expect(screen.queryByText(/^Scope:/)).not.toBeInTheDocument();
   });
 
   it("lists every attempt with size, result, reason, event log and next step", async () => {

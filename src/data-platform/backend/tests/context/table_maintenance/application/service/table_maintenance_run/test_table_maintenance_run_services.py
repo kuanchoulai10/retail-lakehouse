@@ -10,6 +10,7 @@ import pytest
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    SpecFilter,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -130,6 +131,32 @@ def test_create_run_without_a_priority_records_p3(creator, runs_repo, table, now
     out = creator.execute(_create_input(now))
     assert out.priority == "P3"
     assert runs_repo.get(TableMaintenanceRunId(RUN_1)).priority is TablePriority.P3
+
+
+def test_create_run_service_saves_the_filters(creator, runs_repo, table, now):
+    """The where clauses of the compaction are stored on its operation and reported."""
+    out = creator.execute(
+        _create_input(
+            now,
+            filters={"rewrite_data_files": (CreateTableMaintenanceRunUseCaseInput.Filter(spec_id=0, where="x"),)},
+        )
+    )
+    stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
+    assert stored.operations[0].filters == (SpecFilter(spec_id=0, where="x"),)
+    assert stored.operations[1].filters == ()
+    assert out.operations[0]["filters"] == [{"spec_id": 0, "where": "x"}]
+
+
+def test_create_run_service_refuses_an_unknown_operation_key(creator, runs_repo, table, now):
+    """Filters keyed by an operation that does not exist raise a ValidationError and store nothing."""
+    with pytest.raises(ValidationError):
+        creator.execute(
+            _create_input(
+                now,
+                filters={"compact": (CreateTableMaintenanceRunUseCaseInput.Filter(spec_id=0, where="x"),)},
+            )
+        )
+    assert len(runs_repo.items) == 0
 
 
 def test_create_run_with_an_unknown_priority_is_refused(creator, runs_repo, table, now):

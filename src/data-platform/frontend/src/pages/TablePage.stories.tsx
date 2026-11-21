@@ -28,6 +28,8 @@ import {
   ORDERS_HOURLY_SPEC_VERSIONS,
   ordersManySchemaVersions,
   ordersSchemaComparison,
+  PARTITION_SCOPE_RUN,
+  PARTITION_SCOPE_RUN_ID,
   POLICIES,
   QUEUE_TIMEOUT_RUN,
   QUEUE_TIMEOUT_RUN_ID,
@@ -367,6 +369,37 @@ export const MaintenanceQueuedPhone: Story = {
   },
   play: async ({ canvasElement }) => {
     await openRun(canvasElement, IN_FLIGHT_RUN_ID);
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
+
+export const MaintenancePartitionScope: Story = {
+  args: { route: `${ORDERS}/maintenance` },
+  beforeEach({ msw }) {
+    msw.use(getListTableMaintenanceRunsMockHandler([PARTITION_SCOPE_RUN, ESCALATED_RUN]));
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole("button", { name: `Expand run ${PARTITION_SCOPE_RUN_ID}` }));
+    await expect(canvas.getByText("Scope: Partitions over the target")).toBeVisible();
+    await expect(canvas.getByText(/^spec 0: .*DATE '2026-11-19'\)$/)).toBeVisible();
+    await expect(canvas.getByText(/^spec 1: /)).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: `Collapse run ${PARTITION_SCOPE_RUN_ID}` }));
+    await userEvent.click(await canvas.findByRole("button", { name: `Expand run ${ESCALATED_RUN_ID}` }));
+    await expect(canvas.getByText("Scope: Whole table")).toBeVisible();
+  },
+};
+
+export const MaintenancePartitionScopePhone: Story = {
+  args: { route: `${ORDERS}/maintenance` },
+  globals: PHONE,
+  beforeEach({ msw }) {
+    msw.use(getListTableMaintenanceRunsMockHandler([PARTITION_SCOPE_RUN, ESCALATED_RUN]));
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole("button", { name: `Expand run ${PARTITION_SCOPE_RUN_ID}` }));
+    await expect(canvas.getByText("Scope: Partitions over the target")).toBeVisible();
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };

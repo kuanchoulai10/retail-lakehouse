@@ -133,6 +133,7 @@ export * from './tableMaintenancePolicyMappingsApiResponse';
 export * from './tableMaintenancePolicyVersionApiResponse';
 export * from './tableMaintenanceRunApiResponse';
 export * from './tableMaintenanceRunAttemptApiResponse';
+export * from './tableMaintenanceRunFilterApiResponse';
 export * from './tableMaintenanceRunOperationApiResponse';
 export * from './tableMaintenanceRunOperationApiResponseMetrics';
 export * from './tableMetricTrendPointApiResponse';

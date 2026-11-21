@@ -5,6 +5,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { TableMaintenanceRunAttemptApiResponse } from './tableMaintenanceRunAttemptApiResponse';
+import type { TableMaintenanceRunFilterApiResponse } from './tableMaintenanceRunFilterApiResponse';
 import type { TableMaintenanceRunOperationApiResponseMetrics } from './tableMaintenanceRunOperationApiResponseMetrics';
 
 /**
@@ -15,6 +16,8 @@ export interface TableMaintenanceRunOperationApiResponse {
   attempts: number;
   error: string | null;
   expected_files: number | null;
+  /** The where clauses each job of this operation passes to rewrite_data_files, one per partition spec; empty: the whole table. */
+  filters: TableMaintenanceRunFilterApiResponse[];
   finished_at: string | null;
   job_name: string | null;
   metrics: TableMaintenanceRunOperationApiResponseMetrics;

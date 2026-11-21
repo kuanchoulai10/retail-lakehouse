@@ -23,6 +23,7 @@ function run(status: string, attemptStatuses: string[] = []): TableMaintenanceRu
         metrics: {},
         error: null,
         expected_files: null,
+        filters: [],
         attempt_history: attemptStatuses.map((attemptStatus, index) => ({
           attempt: index + 1,
           size: "S",

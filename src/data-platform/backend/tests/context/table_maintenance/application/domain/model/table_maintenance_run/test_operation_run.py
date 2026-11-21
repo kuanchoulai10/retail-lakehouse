@@ -88,3 +88,8 @@ def test_a_queued_or_running_attempt_is_not_finished():
     assert not _attempt(1, OperationRunStatus.QUEUED).finished
     assert not _attempt(1, OperationRunStatus.RUNNING).finished
     assert _attempt(1, OperationRunStatus.FAILED).finished
+
+
+def test_an_operation_run_without_filters_is_the_whole_table():
+    """An operation run created without filters compacts the whole table."""
+    assert OperationRun(operation=MaintenanceOperation.REWRITE_DATA_FILES).filters == ()
