@@ -32,6 +32,11 @@ from context.table_maintenance.application.service.table_discovery_policy import
     ListTableDiscoveryPoliciesService,
     UpdateTableDiscoveryPolicyService,
 )
+from context.table_maintenance.application.service.table_discovery_policy_attachment import (
+    AttachTableDiscoveryPolicyService,
+    DetachTableDiscoveryPolicyService,
+    ListTableDiscoveryPolicyAttachmentsService,
+)
 from context.table_maintenance.application.service.table_discovery_rules import (
     GetTableDiscoveryRulesService,
     ListCoveredCatalogsService,
@@ -142,6 +147,13 @@ def build_use_cases(
         get_table_discovery_policy_version=GetTableDiscoveryPolicyVersionService(discovery_policies),
         update_table_discovery_policy=UpdateTableDiscoveryPolicyService(discovery_policies, clock=clock),
         delete_table_discovery_policy=DeleteTableDiscoveryPolicyService(discovery_policies, discovery_attachments),
+        attach_table_discovery_policy=AttachTableDiscoveryPolicyService(
+            discovery_policies, discovery_attachments, catalog, clock=clock
+        ),
+        detach_table_discovery_policy=DetachTableDiscoveryPolicyService(discovery_policies, discovery_attachments),
+        list_table_discovery_policy_attachments=ListTableDiscoveryPolicyAttachmentsService(
+            discovery_policies, discovery_attachments, catalog, tables
+        ),
         attach_table_maintenance_policy=AttachTableMaintenancePolicyService(
             policies, attachments, catalog, tables, table_changes, clock=clock
         ),

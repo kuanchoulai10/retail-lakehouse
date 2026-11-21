@@ -109,6 +109,20 @@
         "title": "AtMostApiRequest",
         "type": "object"
       },
+      "AttachTableDiscoveryPolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the target to attach the discovery policy to; it replaces whatever is attached there.",
+        "properties": {
+          "target": {
+            "$ref": "#/components/schemas/PolicyTargetApiRequest"
+          }
+        },
+        "required": [
+          "target"
+        ],
+        "title": "AttachTableDiscoveryPolicyApiRequest",
+        "type": "object"
+      },
       "AttachTableMaintenancePolicyApiRequest": {
         "additionalProperties": false,
         "description": "Carry the target to attach the policy to; it replaces whatever is attached there.",
@@ -1712,6 +1726,45 @@
           "attachment_count"
         ],
         "title": "ListedTableDiscoveryPolicyApiResponse",
+        "type": "object"
+      },
+      "ListedTableDiscoveryPolicyAttachmentApiResponse": {
+        "description": "Describe a listed attachment; ``orphaned`` when its target no longer exists in the catalog.",
+        "properties": {
+          "attached_at": {
+            "format": "date-time",
+            "title": "Attached At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "orphaned": {
+            "title": "Orphaned",
+            "type": "boolean"
+          },
+          "policy_id": {
+            "title": "Policy Id",
+            "type": "string"
+          },
+          "policy_name": {
+            "title": "Policy Name",
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/PolicyTargetApiResponse"
+          }
+        },
+        "required": [
+          "id",
+          "target",
+          "policy_id",
+          "policy_name",
+          "attached_at",
+          "orphaned"
+        ],
+        "title": "ListedTableDiscoveryPolicyAttachmentApiResponse",
         "type": "object"
       },
       "ListedTableMaintenancePolicyApiResponse": {
@@ -4053,6 +4106,57 @@
           "rules"
         ],
         "title": "TableDiscoveryPolicyApiResponse",
+        "type": "object"
+      },
+      "TableDiscoveryPolicyAttachmentApiResponse": {
+        "description": "Describe a discovery policy attached to a target, under the attachment's ``da-`` id.",
+        "properties": {
+          "attached_at": {
+            "format": "date-time",
+            "title": "Attached At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "policy_id": {
+            "title": "Policy Id",
+            "type": "string"
+          },
+          "policy_name": {
+            "title": "Policy Name",
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/PolicyTargetApiResponse"
+          }
+        },
+        "required": [
+          "id",
+          "target",
+          "policy_id",
+          "policy_name",
+          "attached_at"
+        ],
+        "title": "TableDiscoveryPolicyAttachmentApiResponse",
+        "type": "object"
+      },
+      "TableDiscoveryPolicyAttachmentsApiResponse": {
+        "description": "List a discovery policy's attachments.",
+        "properties": {
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/ListedTableDiscoveryPolicyAttachmentApiResponse"
+            },
+            "title": "Attachments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "attachments"
+        ],
+        "title": "TableDiscoveryPolicyAttachmentsApiResponse",
         "type": "object"
       },
       "TableDiscoveryPolicyVersionApiResponse": {
@@ -7562,6 +7666,145 @@
           }
         },
         "summary": "Update Table Discovery Policy",
+        "tags": [
+          "discovery-policies"
+        ]
+      }
+    },
+    "/v1/discovery-policies/{name}/attachments": {
+      "get": {
+        "description": "List the targets a discovery policy is attached to, marking those no longer in the catalog as orphaned.",
+        "operationId": "list_table_discovery_policy_attachments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableDiscoveryPolicyAttachmentsApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Table Discovery Policy Attachments",
+        "tags": [
+          "discovery-policies"
+        ]
+      },
+      "put": {
+        "description": "Attach a discovery policy to a target that exists in the catalog, replacing the target's attachment.\n\nThe target keeps its attachment's id. A catalog the platform's credential cannot read answers 403.",
+        "operationId": "attach_table_discovery_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachTableDiscoveryPolicyApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableDiscoveryPolicyAttachmentApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Attach Table Discovery Policy",
+        "tags": [
+          "discovery-policies"
+        ]
+      }
+    },
+    "/v1/discovery-policies/{name}/attachments/{attachment_id}": {
+      "delete": {
+        "description": "Detach one of a discovery policy's attachments by its ``da-`` id, whether or not its target still exists.\n\n404 when the policy has no such attachment.",
+        "operationId": "detach_table_discovery_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "required": true,
+            "schema": {
+              "title": "Attachment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Detach Table Discovery Policy",
         "tags": [
           "discovery-policies"
         ]

@@ -7,6 +7,7 @@
 
 export * from './applicableTableMaintenancePolicyApiResponse';
 export * from './atMostApiRequest';
+export * from './attachTableDiscoveryPolicyApiRequest';
 export * from './attachTableMaintenancePolicyApiRequest';
 export * from './authenticationParametersApiRequest';
 export * from './authenticationParametersApiRequestAuthenticationType';
@@ -67,6 +68,7 @@ export * from './healthz200';
 export * from './hTTPValidationError';
 export * from './listedTableDiscoveryPolicyApiResponse';
 export * from './listedTableDiscoveryPolicyApiResponseNoMatchOutcome';
+export * from './listedTableDiscoveryPolicyAttachmentApiResponse';
 export * from './listedTableMaintenancePolicyApiResponse';
 export * from './listedTableMaintenancePolicyMappingApiResponse';
 export * from './listNamespacesParams';
@@ -137,6 +139,8 @@ export * from './tableCurrentMetricsApiResponse';
 export * from './tableDiscoveryPoliciesApiResponse';
 export * from './tableDiscoveryPolicyApiResponse';
 export * from './tableDiscoveryPolicyApiResponseNoMatchOutcome';
+export * from './tableDiscoveryPolicyAttachmentApiResponse';
+export * from './tableDiscoveryPolicyAttachmentsApiResponse';
 export * from './tableDiscoveryPolicyVersionApiResponse';
 export * from './tableDiscoveryPolicyVersionApiResponseNoMatchOutcome';
 export * from './tableDiscoveryRuleApiRequest';

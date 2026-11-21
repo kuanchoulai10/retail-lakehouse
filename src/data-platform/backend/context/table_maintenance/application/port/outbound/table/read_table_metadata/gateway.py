@@ -37,7 +37,10 @@ class ReadTableMetadataGateway(Gateway):
 
     @abstractmethod
     def catalog_exists(self, catalog: str) -> bool:
-        """Return whether the catalog exists, holding tables or not."""
+        """Return whether the catalog exists, holding tables or not, as the catalog answers now.
+
+        A catalog the platform's credential cannot read raises CatalogAccessDeniedError.
+        """
 
     @abstractmethod
     def namespace_exists(self, catalog: str, namespace: str) -> bool:

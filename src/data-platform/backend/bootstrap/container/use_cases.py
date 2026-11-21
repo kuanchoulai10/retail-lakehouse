@@ -28,6 +28,11 @@ if TYPE_CHECKING:
         ListTableDiscoveryPoliciesUseCase,
         UpdateTableDiscoveryPolicyUseCase,
     )
+    from context.table_maintenance.application.port.inbound.table_discovery_policy_attachment import (
+        AttachTableDiscoveryPolicyUseCase,
+        DetachTableDiscoveryPolicyUseCase,
+        ListTableDiscoveryPolicyAttachmentsUseCase,
+    )
     from context.table_maintenance.application.port.inbound.table_discovery_rules import (
         GetTableDiscoveryRulesUseCase,
         ListCoveredCatalogsUseCase,
@@ -92,6 +97,9 @@ class UseCases:
     get_table_discovery_policy_version: GetTableDiscoveryPolicyVersionUseCase
     update_table_discovery_policy: UpdateTableDiscoveryPolicyUseCase
     delete_table_discovery_policy: DeleteTableDiscoveryPolicyUseCase
+    attach_table_discovery_policy: AttachTableDiscoveryPolicyUseCase
+    detach_table_discovery_policy: DetachTableDiscoveryPolicyUseCase
+    list_table_discovery_policy_attachments: ListTableDiscoveryPolicyAttachmentsUseCase
     list_table_maintenance_policies: ListTableMaintenancePoliciesUseCase
     update_table_maintenance_policy: UpdateTableMaintenancePolicyUseCase
     get_table: GetTableUseCase

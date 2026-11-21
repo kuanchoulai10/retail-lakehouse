@@ -19,9 +19,12 @@ import type {
 } from 'msw';
 
 import type {
+  AttachTableDiscoveryPolicyApiRequest,
   CreateTableDiscoveryPolicyApiRequest,
   TableDiscoveryPoliciesApiResponse,
   TableDiscoveryPolicyApiResponse,
+  TableDiscoveryPolicyAttachmentApiResponse,
+  TableDiscoveryPolicyAttachmentsApiResponse,
   TableDiscoveryPolicyVersionApiResponse,
   UpdateTableDiscoveryPolicyApiRequest
 } from '../model';
@@ -34,6 +37,10 @@ export const getCreateTableDiscoveryPolicyResponseMock = (overrideResponse: Part
 export const getGetTableDiscoveryPolicyResponseMock = (overrideResponse: Partial<Extract<TableDiscoveryPolicyApiResponse, object>> = {}): TableDiscoveryPolicyApiResponse => ({created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', description: faker.string.alpha({length: {min: 10, max: 20}}), id: faker.string.alpha({length: {min: 10, max: 20}}), is_default: faker.datatype.boolean(), name: faker.string.alpha({length: {min: 10, max: 20}}), no_match_outcome: faker.helpers.arrayElement(['manage','unmanage'] as const), rules: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({conditions: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({attribute: faker.helpers.arrayElement(['namespace','table_name'] as const), operator: "glob", values: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))})), id: faker.string.alpha({length: {min: 10, max: 20}}), outcome: faker.helpers.arrayElement(['manage','unmanage'] as const)})), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', version: faker.number.int(), ...overrideResponse})
 
 export const getUpdateTableDiscoveryPolicyResponseMock = (overrideResponse: Partial<Extract<TableDiscoveryPolicyApiResponse, object>> = {}): TableDiscoveryPolicyApiResponse => ({created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', description: faker.string.alpha({length: {min: 10, max: 20}}), id: faker.string.alpha({length: {min: 10, max: 20}}), is_default: faker.datatype.boolean(), name: faker.string.alpha({length: {min: 10, max: 20}}), no_match_outcome: faker.helpers.arrayElement(['manage','unmanage'] as const), rules: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({conditions: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({attribute: faker.helpers.arrayElement(['namespace','table_name'] as const), operator: "glob", values: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))})), id: faker.string.alpha({length: {min: 10, max: 20}}), outcome: faker.helpers.arrayElement(['manage','unmanage'] as const)})), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', version: faker.number.int(), ...overrideResponse})
+
+export const getListTableDiscoveryPolicyAttachmentsResponseMock = (overrideResponse: Partial<Extract<TableDiscoveryPolicyAttachmentsApiResponse, object>> = {}): TableDiscoveryPolicyAttachmentsApiResponse => ({attachments: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({attached_at: faker.date.past().toISOString().slice(0, 19) + 'Z', id: faker.string.alpha({length: {min: 10, max: 20}}), orphaned: faker.datatype.boolean(), policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), target: {path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), table_uuid: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), type: faker.string.alpha({length: {min: 10, max: 20}})}})), ...overrideResponse})
+
+export const getAttachTableDiscoveryPolicyResponseMock = (overrideResponse: Partial<Extract<TableDiscoveryPolicyAttachmentApiResponse, object>> = {}): TableDiscoveryPolicyAttachmentApiResponse => ({attached_at: faker.date.past().toISOString().slice(0, 19) + 'Z', id: faker.string.alpha({length: {min: 10, max: 20}}), policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), target: {path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), table_uuid: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), type: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse})
 
 export const getGetTableDiscoveryPolicyVersionResponseMock = (overrideResponse: Partial<Extract<TableDiscoveryPolicyVersionApiResponse, object>> = {}): TableDiscoveryPolicyVersionApiResponse => ({created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', description: faker.string.alpha({length: {min: 10, max: 20}}), id: faker.string.alpha({length: {min: 10, max: 20}}), is_default: faker.datatype.boolean(), name: faker.string.alpha({length: {min: 10, max: 20}}), no_match_outcome: faker.helpers.arrayElement(['manage','unmanage'] as const), rules: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({conditions: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({attribute: faker.helpers.arrayElement(['namespace','table_name'] as const), operator: "glob", values: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))})), id: faker.string.alpha({length: {min: 10, max: 20}}), outcome: faker.helpers.arrayElement(['manage','unmanage'] as const)})), version: faker.number.int(), ...overrideResponse})
 
@@ -96,6 +103,40 @@ export const getUpdateTableDiscoveryPolicyMockHandler = (overrideResponse?: Tabl
   }, options)
 }
 
+export const getListTableDiscoveryPolicyAttachmentsMockHandler = (overrideResponse?: TableDiscoveryPolicyAttachmentsApiResponse | ((info: Parameters<HttpResponseResolver<{ name: string }>>[0]) => Promise<TableDiscoveryPolicyAttachmentsApiResponse> | TableDiscoveryPolicyAttachmentsApiResponse), options?: RequestHandlerOptions) => {
+  return http.get<{ name: string }>('*/v1/discovery-policies/:name/attachments', async (info: Parameters<HttpResponseResolver<{ name: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListTableDiscoveryPolicyAttachmentsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAttachTableDiscoveryPolicyMockHandler = (overrideResponse?: TableDiscoveryPolicyAttachmentApiResponse | ((info: Parameters<HttpResponseResolver<{ name: string }, AttachTableDiscoveryPolicyApiRequest>>[0]) => Promise<TableDiscoveryPolicyAttachmentApiResponse> | TableDiscoveryPolicyAttachmentApiResponse), options?: RequestHandlerOptions) => {
+  return http.put<{ name: string }, AttachTableDiscoveryPolicyApiRequest>('*/v1/discovery-policies/:name/attachments', async (info: Parameters<HttpResponseResolver<{ name: string }, AttachTableDiscoveryPolicyApiRequest>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAttachTableDiscoveryPolicyResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getDetachTableDiscoveryPolicyMockHandler = (overrideResponse?: void | ((info: Parameters<HttpResponseResolver<{ name: string; attachmentId: string }>>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.delete<{ name: string; attachmentId: string }>('*/v1/discovery-policies/:name/attachments/:attachmentId', async (info: Parameters<HttpResponseResolver<{ name: string; attachmentId: string }>>[0]) => {
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+
+    return new HttpResponse(null,
+      { status: 204
+      })
+  }, options)
+}
+
 export const getGetTableDiscoveryPolicyVersionMockHandler = (overrideResponse?: TableDiscoveryPolicyVersionApiResponse | ((info: Parameters<HttpResponseResolver<{ name: string; version: string }>>[0]) => Promise<TableDiscoveryPolicyVersionApiResponse> | TableDiscoveryPolicyVersionApiResponse), options?: RequestHandlerOptions) => {
   return http.get<{ name: string; version: string }>('*/v1/discovery-policies/:name/versions/:version', async (info: Parameters<HttpResponseResolver<{ name: string; version: string }>>[0]) => {
 
@@ -113,5 +154,8 @@ export const getDiscoveryPoliciesMock = () => [
   getDeleteTableDiscoveryPolicyMockHandler(),
   getGetTableDiscoveryPolicyMockHandler(),
   getUpdateTableDiscoveryPolicyMockHandler(),
+  getListTableDiscoveryPolicyAttachmentsMockHandler(),
+  getAttachTableDiscoveryPolicyMockHandler(),
+  getDetachTableDiscoveryPolicyMockHandler(),
   getGetTableDiscoveryPolicyVersionMockHandler()
 ]

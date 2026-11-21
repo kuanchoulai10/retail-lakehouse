@@ -53,10 +53,20 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
         self._catalog_factory = catalog_factory
 
     def catalog_exists(self, catalog: str) -> bool:
-        """Return whether the catalog opens; one the server rejects by name does not exist."""
+        """Return whether the catalog opens and answers a live read; one the server rejects by name does not exist.
+
+        The live read lists the top-level namespaces, so an opened catalog the factory keeps cannot hide
+        that the catalog was deleted (404) or that the credential's grant on it was revoked (403 or 401,
+        CatalogAccessDeniedError).
+        """
         try:
-            self._open(catalog)
+            opened = self._open(catalog)
         except CatalogNotFoundError:
+            return False
+        try:
+            with _refusal_is_access_denied(catalog):
+                opened.list_namespaces()
+        except NoSuchNamespaceError:
             return False
         return True
 

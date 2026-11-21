@@ -24,10 +24,13 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AttachTableDiscoveryPolicyApiRequest,
   CreateTableDiscoveryPolicyApiRequest,
   HTTPValidationError,
   TableDiscoveryPoliciesApiResponse,
   TableDiscoveryPolicyApiResponse,
+  TableDiscoveryPolicyAttachmentApiResponse,
+  TableDiscoveryPolicyAttachmentsApiResponse,
   TableDiscoveryPolicyVersionApiResponse,
   UpdateTableDiscoveryPolicyApiRequest
 } from '../model';
@@ -506,6 +509,276 @@ export const useUpdateTableDiscoveryPolicy = <TError = HTTPValidationError,
         TContext
       > => {
       return useMutation(getUpdateTableDiscoveryPolicyMutationOptions(options), queryClient);
+    }
+    export const getListTableDiscoveryPolicyAttachmentsUrl = (name: string,) => {
+
+
+
+
+  return `/v1/discovery-policies/${encodeURIComponent(String(name))}/attachments`
+}
+
+/**
+ * List the targets a discovery policy is attached to, marking those no longer in the catalog as orphaned.
+ * @summary List Table Discovery Policy Attachments
+ */
+export const listTableDiscoveryPolicyAttachments = async (name: string, options?: Parameters<typeof apiFetch>[1]): Promise<TableDiscoveryPolicyAttachmentsApiResponse> => {
+
+  return apiFetch<TableDiscoveryPolicyAttachmentsApiResponse>(getListTableDiscoveryPolicyAttachmentsUrl(name),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTableDiscoveryPolicyAttachmentsQueryKey = (name: string,) => {
+    return [
+    `/v1/discovery-policies/${name}/attachments`
+    ] as const;
+    }
+
+
+export const getListTableDiscoveryPolicyAttachmentsQueryOptions = <TData = Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>, TError = HTTPValidationError>(name: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTableDiscoveryPolicyAttachmentsQueryKey(name);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>> = ({ signal }) => listTableDiscoveryPolicyAttachments(name, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: name !== null && name !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListTableDiscoveryPolicyAttachmentsQueryResult = NonNullable<Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>>
+export type ListTableDiscoveryPolicyAttachmentsQueryError = HTTPValidationError
+
+
+export function useListTableDiscoveryPolicyAttachments<TData = Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>, TError = HTTPValidationError>(
+ name: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>,
+          TError,
+          Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListTableDiscoveryPolicyAttachments<TData = Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>, TError = HTTPValidationError>(
+ name: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>,
+          TError,
+          Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListTableDiscoveryPolicyAttachments<TData = Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>, TError = HTTPValidationError>(
+ name: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Table Discovery Policy Attachments
+ */
+
+export function useListTableDiscoveryPolicyAttachments<TData = Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>, TError = HTTPValidationError>(
+ name: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTableDiscoveryPolicyAttachments>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListTableDiscoveryPolicyAttachmentsQueryOptions(name,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getAttachTableDiscoveryPolicyUrl = (name: string,) => {
+
+
+
+
+  return `/v1/discovery-policies/${encodeURIComponent(String(name))}/attachments`
+}
+
+/**
+ * Attach a discovery policy to a target that exists in the catalog, replacing the target's attachment.
+ *
+ * The target keeps its attachment's id. A catalog the platform's credential cannot read answers 403.
+ * @summary Attach Table Discovery Policy
+ */
+export const attachTableDiscoveryPolicy = async (name: string,
+    attachTableDiscoveryPolicyApiRequest: AttachTableDiscoveryPolicyApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<TableDiscoveryPolicyAttachmentApiResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<TableDiscoveryPolicyAttachmentApiResponse>(getAttachTableDiscoveryPolicyUrl(name),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(attachTableDiscoveryPolicyApiRequest)
+  }
+);}
+
+
+
+
+
+export const getAttachTableDiscoveryPolicyMutationKey = () => ['attachTableDiscoveryPolicy'] as const;
+
+export const getAttachTableDiscoveryPolicyMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof attachTableDiscoveryPolicy>>, TError,AttachTableDiscoveryPolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof attachTableDiscoveryPolicy>>, TError,AttachTableDiscoveryPolicyMutationVariables, TContext> => {
+
+const mutationKey = getAttachTableDiscoveryPolicyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof attachTableDiscoveryPolicy>>, AttachTableDiscoveryPolicyMutationVariables> = (props) => {
+          const {name,data} = props ?? {};
+
+          return  attachTableDiscoveryPolicy(name,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AttachTableDiscoveryPolicyMutationResult = NonNullable<Awaited<ReturnType<typeof attachTableDiscoveryPolicy>>>
+    export type AttachTableDiscoveryPolicyMutationBody = AttachTableDiscoveryPolicyApiRequest
+    export type AttachTableDiscoveryPolicyMutationError = HTTPValidationError
+    export type AttachTableDiscoveryPolicyMutationVariables = {name: string;data: AttachTableDiscoveryPolicyApiRequest}
+
+    /**
+ * @summary Attach Table Discovery Policy
+ */
+export const useAttachTableDiscoveryPolicy = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof attachTableDiscoveryPolicy>>, TError,AttachTableDiscoveryPolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof attachTableDiscoveryPolicy>>,
+        TError,
+        AttachTableDiscoveryPolicyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAttachTableDiscoveryPolicyMutationOptions(options), queryClient);
+    }
+    export const getDetachTableDiscoveryPolicyUrl = (name: string,
+    attachmentId: string,) => {
+
+
+
+
+  return `/v1/discovery-policies/${encodeURIComponent(String(name))}/attachments/${encodeURIComponent(String(attachmentId))}`
+}
+
+/**
+ * Detach one of a discovery policy's attachments by its ``da-`` id, whether or not its target still exists.
+ *
+ * 404 when the policy has no such attachment.
+ * @summary Detach Table Discovery Policy
+ */
+export const detachTableDiscoveryPolicy = async (name: string,
+    attachmentId: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDetachTableDiscoveryPolicyUrl(name,attachmentId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDetachTableDiscoveryPolicyMutationKey = () => ['detachTableDiscoveryPolicy'] as const;
+
+export const getDetachTableDiscoveryPolicyMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>, TError,DetachTableDiscoveryPolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>, TError,DetachTableDiscoveryPolicyMutationVariables, TContext> => {
+
+const mutationKey = getDetachTableDiscoveryPolicyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>, DetachTableDiscoveryPolicyMutationVariables> = (props) => {
+          const {name,attachmentId} = props ?? {};
+
+          return  detachTableDiscoveryPolicy(name,attachmentId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DetachTableDiscoveryPolicyMutationResult = NonNullable<Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>>
+
+    export type DetachTableDiscoveryPolicyMutationError = HTTPValidationError
+    export type DetachTableDiscoveryPolicyMutationVariables = {name: string;attachmentId: string}
+
+    /**
+ * @summary Detach Table Discovery Policy
+ */
+export const useDetachTableDiscoveryPolicy = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>, TError,DetachTableDiscoveryPolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>,
+        TError,
+        DetachTableDiscoveryPolicyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDetachTableDiscoveryPolicyMutationOptions(options), queryClient);
     }
     export const getGetTableDiscoveryPolicyVersionUrl = (name: string,
     version: number,) => {

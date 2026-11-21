@@ -12,7 +12,13 @@ import pyarrow as pa
 import pytest
 from pyiceberg.catalog import Catalog
 from pyiceberg.catalog.sql import SqlCatalog
-from pyiceberg.exceptions import ForbiddenError, RESTError, ServerError, UnauthorizedError
+from pyiceberg.exceptions import (
+    ForbiddenError,
+    NoSuchNamespaceError,
+    RESTError,
+    ServerError,
+    UnauthorizedError,
+)
 from pyiceberg.partitioning import PartitionField, PartitionSpec
 from pyiceberg.schema import Schema
 from pyiceberg.transforms import BucketTransform, DayTransform, IdentityTransform
@@ -629,6 +635,41 @@ def test_forbidden_on_listing_and_loading_is_access_denied(refusal: type[RESTErr
 def test_catalog_exists_opens_the_catalog(gateway: ReadTableMetadataPyIcebergGateway) -> None:
     """A catalog that opens exists, even when it holds nothing."""
     assert gateway.catalog_exists(CATALOG) is True
+
+
+def test_catalog_exists_reads_the_catalog_live_after_opening_it() -> None:
+    """An opened catalog is asked for its top-level namespaces, so a cached catalog cannot hide a deletion."""
+    stub = MagicMock(spec=Catalog)
+    stub.list_namespaces.return_value = []
+    gateway = ReadTableMetadataPyIcebergGateway(lambda name: stub)
+
+    assert gateway.catalog_exists(CATALOG) is True
+    stub.list_namespaces.assert_called_once_with()
+
+
+def test_catalog_exists_is_false_when_the_live_read_finds_no_catalog() -> None:
+    """A catalog that opens but answers 404 to its top-level listing was deleted since it was opened."""
+    stub = MagicMock(spec=Catalog)
+    stub.list_namespaces.side_effect = NoSuchNamespaceError("catalog gone")
+
+    assert ReadTableMetadataPyIcebergGateway(lambda name: stub).catalog_exists(CATALOG) is False
+
+
+@pytest.mark.parametrize("refusal", [ForbiddenError, UnauthorizedError])
+def test_catalog_exists_is_access_denied_when_the_live_read_is_refused(refusal: type[RESTError]) -> None:
+    """A catalog that opens but refuses the credential its top-level listing raises CatalogAccessDeniedError."""
+    gateway = ReadTableMetadataPyIcebergGateway(lambda name: _refusing_catalog(refusal))
+
+    with pytest.raises(CatalogAccessDeniedError, match=f"cannot read catalog {CATALOG}$"):
+        gateway.catalog_exists(CATALOG)
+
+
+def test_catalog_exists_propagates_a_server_error_on_the_live_read() -> None:
+    """A server error on the live read is not a missing catalog."""
+    gateway = ReadTableMetadataPyIcebergGateway(lambda name: _failing_catalog("list_namespaces"))
+
+    with pytest.raises(ServerError):
+        gateway.catalog_exists(CATALOG)
 
 
 def test_catalog_exists_is_false_for_an_unknown_catalog() -> None:
