@@ -195,3 +195,21 @@ def test_a_waiting_partition_past_no_wait_is_not_pulled_ahead_by_the_overdue_ord
     waiting = p(0, "waiting", written=NOW - timedelta(seconds=10))
     got = select_compaction_partitions([(waiting, 9)], [since(waiting, NOW - timedelta(minutes=30))], NOW, SETTINGS)
     assert (got.selected, got.waiting) == ((), (waiting,))
+
+
+def test_a_partition_over_target_for_exactly_the_max_wait_counts_as_past_it():
+    """A partition over the target for exactly the longest wait is overdue and goes before a more reducible one."""
+    exact, busy = p(0, "exact"), p(0, "busy")
+    tracked = [since(exact, NOW - SETTINGS.max_quiet_wait), since(busy, NOW - timedelta(minutes=10))]
+    got = select_compaction_partitions(
+        [(busy, 9), (exact, 1)], tracked, NOW, SETTINGS.with_changes(partitions_per_job=1)
+    )
+    assert got.selected == (exact,)
+
+
+def test_tracked_partitions_not_yet_past_the_max_wait_keep_the_reducible_order_whatever_their_since():
+    """Two tracked partitions short of the longest wait go by reducible files, not by since."""
+    older_few, newer_many = p(0, "older_few"), p(0, "newer_many")
+    tracked = [since(older_few, NOW - timedelta(minutes=40)), since(newer_many, NOW - timedelta(minutes=5))]
+    got = select_compaction_partitions([(older_few, 2), (newer_many, 8)], tracked, NOW, SETTINGS)
+    assert got.selected == (newer_many, older_few)
