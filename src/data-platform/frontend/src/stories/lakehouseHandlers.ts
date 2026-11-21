@@ -11,6 +11,7 @@ import {
   getListScannedCatalogsMockHandler,
   getListTableDiscoveryPoliciesMockHandler,
   getListTableDiscoveryPolicyAttachmentsMockHandler,
+  getUpdateTableDiscoveryPolicyMockHandler,
 } from "@/api/generated/discovery-policies/discovery-policies.msw";
 import {
   getGetTableDiscoveryRulesMockHandler,
@@ -62,6 +63,7 @@ import {
   COMMITS,
   DISCOVERY_POLICIES,
   DISCOVERY_POLICY_ATTACHMENTS,
+  DISCOVERY_POLICY_VERSIONS,
   ESCALATED_RUN,
   inFlightRun,
   MAINTAINED_ORDERS,
@@ -185,7 +187,33 @@ export function lakehouseHandlers() {
       if (found === undefined) {
         throw HttpResponse.json({ detail: `discovery policy ${params.name} not found` }, { status: 404 });
       }
-      return { ...found, version: Number(params.version) };
+      const version = Number(params.version);
+      if (version === found.version) return found;
+      const kept = DISCOVERY_POLICY_VERSIONS.find((v) => v.name === params.name && v.version === version);
+      if (kept === undefined) {
+        throw HttpResponse.json(
+          { detail: `version ${params.version} of discovery policy ${params.name} not found` },
+          { status: 404 },
+        );
+      }
+      return kept;
+    }),
+    // The saved policy moves one version on; a rule sent without an id gets one, as the server does.
+    getUpdateTableDiscoveryPolicyMockHandler(async ({ params, request }) => {
+      const found = DISCOVERY_POLICIES.find((p) => p.name === params.name) ?? DISCOVERY_POLICIES[1]!;
+      const body = await request.json();
+      return {
+        ...found,
+        description: body.description,
+        no_match_outcome: body.no_match_outcome,
+        rules: body.rules.map((rule, index) => ({
+          id: rule.id ?? `dr-01m7s6c3tqee0rhg00xz1dka${index}`,
+          outcome: rule.outcome,
+          conditions: rule.conditions,
+        })),
+        version: found.version + 1,
+        updated_at: "2026-11-09T09:00:00Z",
+      };
     }),
     getCreateTableDiscoveryPolicyMockHandler(async ({ request }) => ({
       ...DISCOVERY_POLICIES[0]!,

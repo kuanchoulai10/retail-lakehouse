@@ -53,6 +53,22 @@ describe("AppRoutes", () => {
     expect(calls.some((call) => call.path.startsWith("/v1/discovery-rules"))).toBe(false);
   });
 
+  it("renders a discovery policy's page at /discovery-policies/:name", async () => {
+    stubCatalogApi({
+      "GET /v1/discovery-policies/sales-tables": () => jsonResponse({ detail: "not found" }, 404),
+    });
+    renderAt("/discovery-policies/sales-tables");
+    expect(await screen.findByRole("heading", { name: "sales-tables", level: 1 })).toBeInTheDocument();
+  });
+
+  it("renders a kept discovery policy version at /discovery-policies/:name/versions/:version", async () => {
+    stubCatalogApi({
+      "GET /v1/discovery-policies/sales-tables/versions/2": () => jsonResponse({ detail: "not found" }, 404),
+    });
+    renderAt("/discovery-policies/sales-tables/versions/2");
+    expect(await screen.findByRole("heading", { name: "sales-tables v2", level: 1 })).toBeInTheDocument();
+  });
+
   it("renders the platform settings page at /platform-settings", async () => {
     stubCatalogApi({ "GET /v1/platform-settings": () => jsonResponse({ groups: [] }) });
     renderAt("/platform-settings");

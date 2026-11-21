@@ -23,6 +23,7 @@ import type {
   TableApiResponse,
   TableCommitsApiResponse,
   TableCurrentMetricsApiResponse,
+  TableDiscoveryPolicyVersionApiResponse,
   TableDiscoveryRuleApiResponse,
   TableIdentifierApiResponse,
   TableMaintenanceRunApiResponse,
@@ -900,6 +901,28 @@ export const DISCOVERY_POLICIES: ListedTableDiscoveryPolicyApiResponse[] = [
     attachment_count: 1,
     created_at: "2026-11-01T09:00:00Z",
     updated_at: "2026-11-05T09:00:00Z",
+  },
+];
+
+// The kept versions before each policy's current one. sales-tables v1 kept archive tables out
+// where v2 keeps temporary ones out: v2 added one rule and removed one.
+export const DISCOVERY_POLICY_VERSIONS: TableDiscoveryPolicyVersionApiResponse[] = [
+  {
+    id: SALES_TABLES_POLICY_ID,
+    name: "sales-tables",
+    is_default: false,
+    version: 1,
+    description: "Sales tables, without the temporary ones",
+    no_match_outcome: "unmanage",
+    rules: [
+      DISCOVERY_POLICIES[1]!.rules[0]!,
+      {
+        id: "dr-01m7s6c3tqee0rhg00xz1dk9ct",
+        outcome: "unmanage",
+        conditions: [{ attribute: "table_name", operator: "glob", values: ["archive_*"] }],
+      },
+    ],
+    created_at: "2026-11-01T09:00:00Z",
   },
 ];
 

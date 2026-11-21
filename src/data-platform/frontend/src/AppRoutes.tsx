@@ -4,6 +4,8 @@ import { discoveryPoliciesPath } from "./lib/discoveryPolicyPaths";
 import { CatalogPage } from "./pages/CatalogPage";
 import { CatalogsPage } from "./pages/CatalogsPage";
 import { DiscoveryPoliciesPage } from "./pages/DiscoveryPoliciesPage";
+import { DiscoveryPolicyPage } from "./pages/DiscoveryPolicyPage";
+import { DiscoveryPolicyVersionPage } from "./pages/DiscoveryPolicyVersionPage";
 import { GenericTablePage } from "./pages/GenericTablePage";
 import { NamespacePage } from "./pages/NamespacePage";
 import { PlatformSettingsPage } from "./pages/PlatformSettingsPage";
@@ -34,6 +36,8 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<TableListPage />} />
       <Route path={discoveryPoliciesPath()} element={<DiscoveryPoliciesPage />} />
+      <Route path={`${discoveryPoliciesPath()}/:name`} element={<DiscoveryPolicyPage />} />
+      <Route path={`${discoveryPoliciesPath()}/:name/versions/:version`} element={<DiscoveryPolicyVersionPage />} />
       {/* The rules page became the discovery policies; old bookmarks land on the list. */}
       <Route path="/discovery-rules" element={<Navigate to={discoveryPoliciesPath()} replace />} />
       <Route path="/policies" element={<PoliciesPage />} />
