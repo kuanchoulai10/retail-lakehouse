@@ -237,7 +237,7 @@ class Harness:
         async def probe() -> list[dict[str, Any]]:
             return list(self.plans.requests)
 
-        return await eventually(probe, lambda r: len(r) >= count)
+        return await eventually(probe, lambda r: len(r) >= count, timeout=REAL_TIMEOUT_SECONDS)
 
     async def records(self, count: int) -> list[dict[str, Any]]:
         """Wait until at least the given number of reconciliations were recorded and return them."""
@@ -245,7 +245,7 @@ class Harness:
         async def probe() -> list[dict[str, Any]]:
             return list(self.recorder.records)
 
-        return await eventually(probe, lambda r: len(r) >= count)
+        return await eventually(probe, lambda r: len(r) >= count, timeout=REAL_TIMEOUT_SECONDS)
 
     async def in_flight(self) -> str:
         """Return the run id of the in-flight maintenance run."""
