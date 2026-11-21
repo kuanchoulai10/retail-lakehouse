@@ -415,8 +415,7 @@ export const ReconciliationCappedRun: Story = {
   args: { route: `${ORDERS}/reconciliations` },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const rows = await canvas.findAllByRole("button", { name: /^Started Rewrite data files/ });
-    await userEvent.click(rows[1]!);
+    await userEvent.click(await canvas.findByRole("button", { name: /^Started Rewrite data files.*default v1/ }));
     const drawer = within(await within(canvasElement.ownerDocument.body).findByRole("dialog"));
     await expect(
       drawer.getByText(/This run compacts 10 of them; 3 are still being written\./),

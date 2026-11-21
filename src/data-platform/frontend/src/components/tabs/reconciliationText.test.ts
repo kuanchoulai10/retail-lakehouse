@@ -263,6 +263,12 @@ describe("reasonSentence", () => {
       "Because reducible files 1,240 across 2 partitions (needs ≥ 5 per partition). This run compacts 1 of them; 1 is still being written.");
   });
 
+  it("says a capped run compacts some partitions when none is being written", () => {
+    const measurements = [REDUCIBLE_MET, context("qualifying_partitions", 25), context("selected_partitions", 10), context("waiting_partitions", 0)];
+    expect(reasonSentence(op({ operation: "rewrite_data_files", result: "started", measurements }))).toBe(
+      "Because reducible files 1,240 across 25 partitions (needs ≥ 5 per partition). This run compacts 10 of them.");
+  });
+
   it("adds nothing when the run takes every partition over the target", () => {
     const measurements = [REDUCIBLE_MET, context("qualifying_partitions", 3), context("selected_partitions", 3), context("waiting_partitions", 0)];
     expect(reasonSentence(op({ operation: "rewrite_data_files", result: "started", measurements }))).toBe(
