@@ -96,6 +96,14 @@ def test_a_failure_before_the_last_scan_is_not_current():
     assert discovery.current_failure is None
 
 
+def test_a_failure_at_the_same_time_as_the_last_scan_is_not_current():
+    """A failure is current only while strictly newer than the last completed scan; the same time is not."""
+    discovery = CatalogDiscovery.first("iceberg", T0)
+    discovery.record_failure(_refused(T0))
+    assert discovery.last_failure == _refused(T0)
+    assert discovery.current_failure is None
+
+
 def test_a_scan_after_the_failure_makes_it_not_current_without_deleting_it():
     """A later completed scan clears the current failure; the failure itself is kept."""
     discovery = CatalogDiscovery.failed("iceberg", _refused(T0))

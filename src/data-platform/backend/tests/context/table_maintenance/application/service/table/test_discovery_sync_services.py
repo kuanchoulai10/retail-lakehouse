@@ -386,6 +386,33 @@ def test_a_scan_after_the_refused_table_is_readable_drops_again(sync, world, now
     assert world.tables.get(TableId("u-gone")).status == TableStatus.DROPPED
 
 
+def test_a_scan_with_an_unreadable_table_still_counts_as_a_scan(
+    world, discovery_policies, discovery_attachments, signals, now
+):
+    """A catalog readable again but for one table: the scan records its time, clears the failure and drops nothing."""
+    times = iter((now - timedelta(minutes=5), now))
+    sync = SyncDiscoveredTablesService(
+        world.tables,
+        discovery_policies,
+        discovery_attachments,
+        world.discoveries,
+        world.catalog,
+        signals,
+        clock=lambda: next(times),
+    )
+    _row(world.tables, now, "u-gone", _name("gone"))
+    world.catalog.add_table("iceberg", "sales", "secret", "u-refused")
+    world.catalog.deny("iceberg")
+    sync.execute(_catalog_wide())
+    world.catalog.allow("iceberg")
+    world.catalog.deny_table("iceberg", "sales", "secret")
+    out = sync.execute(_catalog_wide())
+    discovery = world.discoveries.get(CatalogDiscoveryId("iceberg"))
+    assert out.dropped == 0
+    assert discovery.current_failure is None
+    assert discovery.last_discovered_at == now
+
+
 def test_any_other_catalog_error_still_fails_the_scan(sync, world, monkeypatch):
     """An error that is neither a refusal nor a missing catalog fails the run, to be retried, and records nothing."""
 
