@@ -8,10 +8,13 @@ from base import UseCaseInput
 
 
 class CreateTableMaintenanceRunUseCaseInput(UseCaseInput):
-    """Carry the request to create a maintenance run."""
+    """Carry the request to create a maintenance run.
+
+    ``filters`` holds the where clauses of a compaction by operation name; an empty ``filters`` means the whole table.
+    """
 
     class Filter(UseCaseInput):
-        """One where clause of a compaction, per partition spec; empty means all."""
+        """One where clause of a compaction, for one partition spec."""
 
         spec_id: int
         where: str

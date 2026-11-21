@@ -28,6 +28,13 @@ describe("compactionScopeText", () => {
     expect(compactionScopeText(operation({ filters: [] }))).toEqual({ summary: "Whole table", wheres: [] });
   });
 
+  it("names the partitions over the target for a compaction with exactly one filter", () => {
+    expect(compactionScopeText(operation({ filters: [{ spec_id: 0, where: "(`region` = 'eu')" }] }))).toEqual({
+      summary: "Partitions over the target",
+      wheres: [{ specId: 0, where: "(`region` = 'eu')" }],
+    });
+  });
+
   it("lists the where clause of each partition spec in the API's order", () => {
     const scope = compactionScopeText(
       operation({

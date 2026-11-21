@@ -159,6 +159,18 @@ def test_create_run_service_refuses_an_unknown_operation_key(creator, runs_repo,
     assert len(runs_repo.items) == 0
 
 
+def test_create_run_service_refuses_filters_on_another_operation(creator, runs_repo, table, now):
+    """Filters on an operation other than rewrite_data_files raise a ConflictError and store nothing."""
+    with pytest.raises(ConflictError):
+        creator.execute(
+            _create_input(
+                now,
+                filters={"expire_snapshots": (CreateTableMaintenanceRunUseCaseInput.Filter(spec_id=0, where="x"),)},
+            )
+        )
+    assert len(runs_repo.items) == 0
+
+
 def test_create_run_with_an_unknown_priority_is_refused(creator, runs_repo, table, now):
     """A priority outside P0 to P3 raises a ValidationError and stores nothing."""
     with pytest.raises(ValidationError):
