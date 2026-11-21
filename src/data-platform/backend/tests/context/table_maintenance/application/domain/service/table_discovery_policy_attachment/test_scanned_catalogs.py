@@ -2,70 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
-from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
-from context.table_maintenance.application.domain.model.table_discovery_policy import (
-    DiscoveryPolicyContent,
-    TableDiscoveryPolicy,
-    TableDiscoveryPolicyName,
-    TableDiscoveryRuleId,
-)
-from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
-    TableDiscoveryPolicyAttachment,
-)
+from context.table_maintenance.application.domain.model.table import TableName
 from context.table_maintenance.application.domain.service.table_discovery_policy_attachment import (
     scanned_catalogs,
 )
-
-NOW = datetime(2026, 11, 1, tzinfo=UTC)
-MANAGE_RULE = TableDiscoveryRuleId("dr-00000000000000000000000001")
-MANAGE_ALL = TableDiscoveryPolicy.create(
-    TableDiscoveryPolicyName(value="manage-all"),
-    DiscoveryPolicyContent.from_primitives(
-        {
-            "no_match_outcome": "unmanage",
-            "rules": [
-                {
-                    "id": MANAGE_RULE.value,
-                    "outcome": "manage",
-                    "conditions": [{"attribute": "table_name", "operator": "glob", "values": ["*"]}],
-                }
-            ],
-        }
-    ),
-    NOW,
-    new_rule_ids=[MANAGE_RULE],
+from tests.context.table_maintenance.application.domain.service.table_discovery_policy_attachment.discovery_policy_samples import (  # noqa: E501
+    DEFAULT,
+    MANAGE_ALL,
+    MANAGE_BY_DEFAULT,
+    POLICIES,
+    attached,
+    catalog_target,
+    namespace_target,
+    table_target,
 )
-MANAGE_BY_DEFAULT = TableDiscoveryPolicy.create(
-    TableDiscoveryPolicyName(value="manage-by-default"),
-    DiscoveryPolicyContent.from_primitives({"no_match_outcome": "manage", "rules": []}),
-    NOW,
-)
-DEFAULT = TableDiscoveryPolicy.create_default(NOW)
-POLICIES = {policy.id: policy for policy in (MANAGE_ALL, MANAGE_BY_DEFAULT, DEFAULT)}
-
-
-def catalog_target(catalog: str) -> PolicyTarget:
-    """Return a catalog target."""
-    return PolicyTarget(type=PolicyTargetType.CATALOG, path=(catalog,))
-
-
-def namespace_target(catalog: str, namespace: str) -> PolicyTarget:
-    """Return a namespace target from a dot-joined namespace."""
-    return PolicyTarget(type=PolicyTargetType.NAMESPACE, path=(catalog, *namespace.split(".")))
-
-
-def table_target(catalog: str, namespace: str, table: str, table_uuid: str) -> PolicyTarget:
-    """Return a table target at the given path, identified by its uuid."""
-    return PolicyTarget(
-        type=PolicyTargetType.TABLE, path=(catalog, *namespace.split("."), table), table_uuid=table_uuid
-    )
-
-
-def attached(target: PolicyTarget, policy: TableDiscoveryPolicy) -> TableDiscoveryPolicyAttachment:
-    """Return a new attachment of the policy to the target."""
-    return TableDiscoveryPolicyAttachment.attach(target, policy.id, NOW)
 
 
 def test_a_catalog_is_scanned_when_a_policy_in_it_can_manage():
@@ -83,21 +33,29 @@ def test_a_no_match_outcome_of_manage_scans_the_catalog():
 
 def test_a_table_attachment_scans_its_catalog():
     """A table attachment's catalog is the first element of its path."""
-    attachment = attached(table_target("iceberg", "sales", "orders", "u1"), MANAGE_ALL)
+    attachment = attached(
+        table_target(TableName(catalog="iceberg", namespace="sales", table="orders"), "u1"), MANAGE_ALL
+    )
 
     assert scanned_catalogs([attachment], POLICIES) == ("iceberg",)
 
 
 def test_scanned_catalogs_are_sorted_and_unique():
-    """Each catalog is listed once, by name, however many managing attachments it holds."""
+    """Each catalog is listed once, by name, however many managing attachments it holds and in whatever order."""
     attachments = [
         attached(catalog_target("zeta"), MANAGE_ALL),
+        attached(namespace_target("theta", "sales"), MANAGE_BY_DEFAULT),
+        attached(catalog_target("mid"), DEFAULT),
+        attached(catalog_target("kappa"), MANAGE_ALL),
+        attached(namespace_target("zeta", "hr"), MANAGE_BY_DEFAULT),
+        attached(catalog_target("gamma"), MANAGE_ALL),
+        attached(namespace_target("delta", "sales.eu"), MANAGE_ALL),
+        attached(catalog_target("beta"), MANAGE_BY_DEFAULT),
         attached(namespace_target("alpha", "sales"), MANAGE_ALL),
         attached(catalog_target("alpha"), MANAGE_BY_DEFAULT),
-        attached(catalog_target("mid"), DEFAULT),
     ]
 
-    assert scanned_catalogs(attachments, POLICIES) == ("alpha", "zeta")
+    assert scanned_catalogs(attachments, POLICIES) == ("alpha", "beta", "delta", "gamma", "kappa", "theta", "zeta")
 
 
 def test_an_attachment_without_its_policy_scans_nothing():

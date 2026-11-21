@@ -36,6 +36,8 @@ def decide_table_discovery(
     catalog, and the first attachment replaces its parents whole. An attachment whose policy is not
     in ``policies`` is skipped, which only a race with that policy's delete can cause. With no
     attachment on the walk, the platform default decides with its fixed content at version 1.
+    It relies on target keys being unique among ``attachments`` (one attachment per target, as the
+    repo guarantees); with two on one key, the later one would win.
     """
     attached = {
         attachment.target.key(): policies[attachment.policy_id]

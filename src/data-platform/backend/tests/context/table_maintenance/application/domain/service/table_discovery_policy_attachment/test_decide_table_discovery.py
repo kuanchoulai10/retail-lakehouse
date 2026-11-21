@@ -2,78 +2,29 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
-from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
 from context.table_maintenance.application.domain.model.table import TableName
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
     DEFAULT_DISCOVERY_POLICY_ID,
     DiscoveryDecision,
     DiscoveryMatch,
     DiscoveryOutcome,
-    DiscoveryPolicyContent,
-    TableDiscoveryPolicy,
-    TableDiscoveryPolicyName,
-    TableDiscoveryRuleId,
-)
-from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
-    TableDiscoveryPolicyAttachment,
 )
 from context.table_maintenance.application.domain.service.table_discovery_policy_attachment import (
     decide_table_discovery,
 )
+from tests.context.table_maintenance.application.domain.service.table_discovery_policy_attachment.discovery_policy_samples import (  # noqa: E501
+    DEFAULT,
+    MANAGE_ALL,
+    MANAGE_RULE,
+    POLICIES,
+    UNMANAGE_ALL,
+    attached,
+    catalog_target,
+    namespace_target,
+    table_target,
+)
 
-NOW = datetime(2026, 11, 1, tzinfo=UTC)
 ORDERS = TableName(catalog="iceberg", namespace="sales.eu", table="orders")
-MANAGE_RULE = TableDiscoveryRuleId("dr-00000000000000000000000001")
-MANAGE_ALL = TableDiscoveryPolicy.create(
-    TableDiscoveryPolicyName(value="manage-all"),
-    DiscoveryPolicyContent.from_primitives(
-        {
-            "no_match_outcome": "unmanage",
-            "rules": [
-                {
-                    "id": MANAGE_RULE.value,
-                    "outcome": "manage",
-                    "conditions": [{"attribute": "table_name", "operator": "glob", "values": ["*"]}],
-                }
-            ],
-        }
-    ),
-    NOW,
-    new_rule_ids=[MANAGE_RULE],
-)
-UNMANAGE_ALL = TableDiscoveryPolicy.create(
-    TableDiscoveryPolicyName(value="unmanage-all"),
-    DiscoveryPolicyContent.from_primitives({"no_match_outcome": "unmanage", "rules": []}),
-    NOW,
-)
-DEFAULT = TableDiscoveryPolicy.create_default(NOW)
-POLICIES = {policy.id: policy for policy in (MANAGE_ALL, UNMANAGE_ALL, DEFAULT)}
-
-
-def catalog_target(catalog: str) -> PolicyTarget:
-    """Return a catalog target."""
-    return PolicyTarget(type=PolicyTargetType.CATALOG, path=(catalog,))
-
-
-def namespace_target(catalog: str, namespace: str) -> PolicyTarget:
-    """Return a namespace target from a dot-joined namespace."""
-    return PolicyTarget(type=PolicyTargetType.NAMESPACE, path=(catalog, *namespace.split(".")))
-
-
-def table_target(name: TableName, table_uuid: str) -> PolicyTarget:
-    """Return a table target at the given path, identified by its uuid."""
-    return PolicyTarget(
-        type=PolicyTargetType.TABLE,
-        path=(name.catalog, *name.namespace.split("."), name.table),
-        table_uuid=table_uuid,
-    )
-
-
-def attached(target: PolicyTarget, policy: TableDiscoveryPolicy) -> TableDiscoveryPolicyAttachment:
-    """Return a new attachment of the policy to the target."""
-    return TableDiscoveryPolicyAttachment.attach(target, policy.id, NOW)
 
 
 def test_the_table_attachment_beats_a_managing_catalog():
