@@ -16,6 +16,7 @@ export const RESULT_ORDER = [
   "would_start",
   "start_failed",
   "needs_attention",
+  "waiting_for_writes",
   "not_needed",
   "cooling_down",
   "off",
@@ -27,6 +28,7 @@ const RESULT_LABELS: Record<string, string> = {
   would_start: "Would start",
   start_failed: "Could not start",
   needs_attention: "Needs attention",
+  waiting_for_writes: "Waiting for writes",
   not_needed: "Not needed",
   cooling_down: "Cooling down",
   off: "Off",
@@ -55,6 +57,8 @@ const MEASUREMENT_LABELS: Record<string, string> = {
   reducible_files: "Reducible files",
   target_file_size: "Target file size",
   qualifying_partitions: "Qualifying partitions",
+  selected_partitions: "Selected partitions",
+  waiting_partitions: "Partitions being written",
   small_manifests: "Small manifests",
   expirable_snapshots: "Expirable snapshots",
 };
@@ -225,6 +229,21 @@ function nextAllowed(op: ReconciliationOperationApiResponse): string {
   return op.next_eligible_at === null ? "" : `next allowed ${NEXT_ALLOWED_FORMAT.format(new Date(op.next_eligible_at))}`;
 }
 
+// " This run compacts 10 of them; 3 are still being written": what a capped or waiting-out run
+// leaves for a later check. Empty when the run takes every partition over the target.
+function partitionSelectionNote(op: ReconciliationOperationApiResponse): string {
+  const observed = (key: string) => op.measurements.find((m) => m.key === key)?.observed;
+  const qualifying = observed("qualifying_partitions");
+  const selected = observed("selected_partitions");
+  const waiting = observed("waiting_partitions") ?? 0;
+  const compacts =
+    selected !== undefined && qualifying !== undefined && selected < qualifying
+      ? ` This run compacts ${formatCount(selected)} of them`
+      : "";
+  const writing = waiting > 0 ? `; ${formatCount(waiting)} ${waiting === 1 ? "is" : "are"} still being written` : "";
+  return compacts === "" ? "" : `${compacts}${writing}.`;
+}
+
 // One sentence saying why, citing only the measurements that decide; context measurements are
 // left out. A manual run assesses nothing, so the caller says when the record is one.
 export function reasonSentence(op: ReconciliationOperationApiResponse, { manualRun = false } = {}): string {
@@ -233,7 +252,8 @@ export function reasonSentence(op: ReconciliationOperationApiResponse, { manualR
     case "started":
     case "would_start":
       if (manualRun) return "Asked for in a manual run.";
-      return met.length > 0 ? `Because ${citeAll(met, op)}.` : "Due on the platform's interval.";
+      if (met.length === 0) return "Due on the platform's interval.";
+      return `Because ${citeAll(met, op)}.${partitionSelectionNote(op)}`;
     case "start_failed":
       return met.length > 0
         ? `Due: ${citeAll(met, op)}, but the run could not be started.`
@@ -248,6 +268,10 @@ export function reasonSentence(op: ReconciliationOperationApiResponse, { manualR
       if (held.length > 0) return `Not yet: ${citeAll(held, op)}${when ? `; ${when}` : ""}.`;
       if (met.length > 0) return `Due: ${citeAll(met, op)}, but it ran recently${when ? `; ${when}` : ""}.`;
       return when ? `Ran recently; ${when}.` : "Ran recently.";
+    }
+    case "waiting_for_writes": {
+      const when = nextAllowed(op);
+      return `Due: ${citeAll(met, op)}, but every partition over the target is still being written${when ? `; ${when}` : ""}.`;
     }
     case "needs_attention":
       return "Not started: it ran out of memory at the largest size and waits for a manual run or a policy change.";

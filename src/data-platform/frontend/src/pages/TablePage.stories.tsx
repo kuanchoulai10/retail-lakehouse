@@ -36,6 +36,7 @@ import {
 } from "@/stories/storyData";
 
 const ORDERS = "/catalogs/iceberg/namespaces/retail/tables/orders";
+const SCHEDULED_ROW = /^Started Rewrite data files.*retail-nightly v4/;
 const METRIC_CARDS = ["Data files", "Data size", "Total rows", "Reducible files", "Snapshots", "Manifests"];
 const METRIC_SECTIONS = ["Files", "Size", "Rows", "Reducible files", "Manifests", "Snapshots"];
 
@@ -374,7 +375,7 @@ export const Reconciliations: Story = {
   args: { route: `${ORDERS}/reconciliations` },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole("button", { name: /^Started Rewrite data files/ })).toBeVisible();
+    await expect(await canvas.findByRole("button", { name: SCHEDULED_ROW })).toBeVisible();
     await expect(canvas.getByRole("button", { name: /^4 reconciliations found nothing to do/ })).toBeVisible();
     await expect(canvas.getByRole("button", { name: /^Would start Rewrite data files/ })).toHaveTextContent("Dry run");
     await expect(canvas.getByRole("button", { name: /^Skipped: table not found/ })).toBeVisible();
@@ -395,7 +396,7 @@ export const ReconciliationDrawer: Story = {
   args: { route: `${ORDERS}/reconciliations` },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole("button", { name: /^Started Rewrite data files/ }));
+    await userEvent.click(await canvas.findByRole("button", { name: SCHEDULED_ROW }));
     const drawer = within(await within(canvasElement.ownerDocument.body).findByRole("dialog"));
     await expect(drawer.getByRole("heading", { level: 2, name: "Started Rewrite data files" })).toBeVisible();
     await expect(drawer.getByText(/Catalog commit × 3/)).toBeVisible();
@@ -407,6 +408,32 @@ export const ReconciliationDrawer: Story = {
     await userEvent.click(measurements);
     await expect(measurements).toHaveAttribute("aria-expanded", "true");
     await expect(drawer.getByRole("list", { name: "All measurements of Rewrite data files" })).toBeVisible();
+  },
+};
+
+export const ReconciliationCappedRun: Story = {
+  args: { route: `${ORDERS}/reconciliations` },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const rows = await canvas.findAllByRole("button", { name: /^Started Rewrite data files/ });
+    await userEvent.click(rows[1]!);
+    const drawer = within(await within(canvasElement.ownerDocument.body).findByRole("dialog"));
+    await expect(
+      drawer.getByText(/This run compacts 10 of them; 3 are still being written\./),
+    ).toBeVisible();
+  },
+};
+
+export const ReconciliationWaitingForWrites: Story = {
+  args: { route: `${ORDERS}/reconciliations` },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole("button", { name: /^Nothing to do/ }));
+    const drawer = within(await within(canvasElement.ownerDocument.body).findByRole("dialog"));
+    await expect(drawer.getByText("Waiting for writes")).toBeVisible();
+    await expect(
+      drawer.getByText(/but every partition over the target is still being written; next allowed Nov 10, \d\d:47\./),
+    ).toBeVisible();
   },
 };
 
@@ -436,7 +463,7 @@ export const ReconciliationsPhone: Story = {
   args: { route: `${ORDERS}/reconciliations` },
   globals: PHONE,
   play: async ({ canvasElement }) => {
-    await within(canvasElement).findByRole("button", { name: /^Started Rewrite data files/ });
+    await within(canvasElement).findByRole("button", { name: SCHEDULED_ROW });
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };
@@ -445,7 +472,7 @@ export const ReconciliationPolicyLink: Story = {
   args: { route: `${ORDERS}/reconciliations` },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const row = await canvas.findByRole("button", { name: /^Started Rewrite data files/ });
+    const row = await canvas.findByRole("button", { name: SCHEDULED_ROW });
     await expect(row).toHaveTextContent("retail-nightly v4");
     await userEvent.click(row);
     const drawer = within(await within(canvasElement.ownerDocument.body).findByRole("dialog"));

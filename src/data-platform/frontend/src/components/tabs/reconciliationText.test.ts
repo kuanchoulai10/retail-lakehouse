@@ -9,6 +9,7 @@ import {
   foldKey,
   foldText,
   headline,
+  measurementLabel,
   policyLabel,
   policyOrigin,
   reasonSentence,
@@ -241,6 +242,38 @@ describe("reasonSentence", () => {
     const sentence = reasonSentence(op({ result: "start_failed", operation: "rewrite_data_files", measurements }));
     expect(sentence).toBe("Due: reducible files 1,240 across 3 partitions (needs ≥ 5 per partition), but the run could not be started.");
     expect(sentence).not.toMatch(/\([^)]*\(/);
+  });
+
+  it("says a compaction waits for writes", () => {
+    const at = new Date(2026, 10, 20, 12, 5).toISOString();
+    const measurements = [REDUCIBLE_MET, context("qualifying_partitions", 2)];
+    expect(reasonSentence(op({ operation: "rewrite_data_files", result: "waiting_for_writes", measurements, next_eligible_at: at })))
+      .toBe("Due: reducible files 1,240 across 2 partitions (needs ≥ 5 per partition), but every partition over the target is still being written; next allowed Nov 20, 12:05.");
+  });
+
+  it("says how many partitions a capped run compacts", () => {
+    const measurements = [REDUCIBLE_MET, context("qualifying_partitions", 25), context("selected_partitions", 10), context("waiting_partitions", 3)];
+    expect(reasonSentence(op({ operation: "rewrite_data_files", result: "started", measurements }))).toBe(
+      "Because reducible files 1,240 across 25 partitions (needs ≥ 5 per partition). This run compacts 10 of them; 3 are still being written.");
+  });
+
+  it("says one partition is still being written", () => {
+    const measurements = [REDUCIBLE_MET, context("qualifying_partitions", 2), context("selected_partitions", 1), context("waiting_partitions", 1)];
+    expect(reasonSentence(op({ operation: "rewrite_data_files", result: "would_start", measurements }))).toBe(
+      "Because reducible files 1,240 across 2 partitions (needs ≥ 5 per partition). This run compacts 1 of them; 1 is still being written.");
+  });
+
+  it("adds nothing when the run takes every partition over the target", () => {
+    const measurements = [REDUCIBLE_MET, context("qualifying_partitions", 3), context("selected_partitions", 3), context("waiting_partitions", 0)];
+    expect(reasonSentence(op({ operation: "rewrite_data_files", result: "started", measurements }))).toBe(
+      "Because reducible files 1,240 across 3 partitions (needs ≥ 5 per partition).");
+  });
+
+  it("labels the new result and counts", () => {
+    expect(resultLabel("waiting_for_writes")).toBe("Waiting for writes");
+    expect(resultOrder("waiting_for_writes")).toBe(resultOrder("needs_attention") + 1);
+    expect(measurementLabel("selected_partitions")).toBe("Selected partitions");
+    expect(measurementLabel("waiting_partitions")).toBe("Partitions being written");
   });
 
   it("off says the operation is not in the policy", () => {

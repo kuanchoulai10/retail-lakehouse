@@ -834,7 +834,8 @@ function reconciliation(
 }
 
 // Newest first, as the API returns them: a run started by catalog commits, four quiet hourly
-// passes that fold into one line, a dry run that would have compacted, and a paused skip.
+// passes that fold into one line, a dry run that would have compacted, a paused skip, a run capped
+// to 10 of 25 partitions and a compaction waiting for writes.
 export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
   reconciliation("rc-01m72gst60f5grrcwpsxv0365q", "2026-11-10T10:42:00Z", {
     wake_reasons: { catalog_commit: 3 },
@@ -894,6 +895,40 @@ export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
     outcome: "skipped",
     skip_reason: "not_found",
     operations: [],
+  }),
+  reconciliation("rc-01m71tq3k0eq5n6a4mzv2r8b1c", "2026-11-10T03:42:00Z", {
+    operations: [
+      {
+        operation: "rewrite_data_files",
+        result: "started",
+        measurements: [
+          { key: "reducible_files", observed: 1240, unit: "count", threshold: 5, comparison: ">=", met: true },
+          { key: "target_file_size", observed: 134217728, unit: "bytes", threshold: null, comparison: null, met: null },
+          { key: "qualifying_partitions", observed: 25, unit: "count", threshold: null, comparison: null, met: null },
+          { key: "selected_partitions", observed: 10, unit: "count", threshold: null, comparison: null, met: null },
+          { key: "waiting_partitions", observed: 3, unit: "count", threshold: null, comparison: null, met: null },
+        ],
+        next_eligible_at: null,
+      },
+      ...QUIET_OPERATIONS.slice(1),
+    ],
+  }),
+  reconciliation("rc-01m71qa8d0e9w2xh7fs5tj4n6y", "2026-11-10T02:42:00Z", {
+    operations: [
+      {
+        operation: "rewrite_data_files",
+        result: "waiting_for_writes",
+        measurements: [
+          { key: "reducible_files", observed: 620, unit: "count", threshold: 5, comparison: ">=", met: true },
+          { key: "target_file_size", observed: 134217728, unit: "bytes", threshold: null, comparison: null, met: null },
+          { key: "qualifying_partitions", observed: 2, unit: "count", threshold: null, comparison: null, met: null },
+          { key: "selected_partitions", observed: 0, unit: "count", threshold: null, comparison: null, met: null },
+          { key: "waiting_partitions", observed: 2, unit: "count", threshold: null, comparison: null, met: null },
+        ],
+        next_eligible_at: "2026-11-10T02:47:00Z",
+      },
+      ...QUIET_OPERATIONS.slice(1),
+    ],
   }),
 ];
 
