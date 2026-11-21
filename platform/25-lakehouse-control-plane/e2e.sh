@@ -652,7 +652,7 @@ wait_for_reconcile_now_record() {
 
 compaction_filters() {
   api GET "/v1/table-maintenance-runs/$1" \
-    | jq -c 'select(.operation == "rewrite_data_files") | .filters'
+    | jq -ce 'if .operation == "rewrite_data_files" then .filters else error("run is not a rewrite_data_files run") end'
 }
 
 assert_whole_table_compaction() {
@@ -660,7 +660,7 @@ assert_whole_table_compaction() {
   (($# > 0)) || { echo "no run to check for whole-table compaction" >&2; return 1; }
   for run_id in "$@"; do
     filters="$(compaction_filters "${run_id}")" \
-      || { echo "run ${run_id} does not have exactly one rewrite_data_files operation" >&2; return 1; }
+      || { echo "run ${run_id} could not be read, or is not a rewrite_data_files run" >&2; return 1; }
     [[ "${filters}" == "[]" ]] || { echo "run ${run_id} compacted with where filters: ${filters}" >&2; return 1; }
     progress "run ${run_id} compacts the whole table (no filters)"
   done
@@ -671,7 +671,7 @@ assert_partition_compaction() {
   (($# > 0)) || { echo "no run to check for partition compaction" >&2; return 1; }
   for run_id in "$@"; do
     filters="$(compaction_filters "${run_id}")" \
-      || { echo "run ${run_id} does not have exactly one rewrite_data_files operation" >&2; return 1; }
+      || { echo "run ${run_id} could not be read, or is not a rewrite_data_files run" >&2; return 1; }
     check 'length > 0 and all(.[]; (.where // "") != "")' "${filters}" \
       "run ${run_id} did not compact selected partitions: its filters are empty or hold an empty where"
     progress "regions filters of run ${run_id}: ${filters}"
@@ -856,8 +856,8 @@ ORDERS_RUNS="$(wait_for_new_run "${ORDERS_UUID}" "${ORDERS_BEFORE_RUNS}" '.trigg
 report_runs "${ORDERS}" "${ORDERS_RUNS}"
 assert_runs_succeeded "${ORDERS}" "${ORDERS_RUNS}"
 assert_attempts_timed "${ORDERS}" "${ORDERS_RUNS}"
-jq -e '[.[] | select(.trigger == "manual") | .operation] | sort
-    == ["expire_snapshots", "remove_orphan_files", "rewrite_data_files", "rewrite_manifests"]
+jq -e '([.[] | select(.trigger == "manual") | .operation] | sort
+    == ["expire_snapshots", "remove_orphan_files", "rewrite_data_files", "rewrite_manifests"])
   and ([.[] | select(.trigger == "manual") | .execution_ref] | unique | length == 1)
   and ([.[] | select(.trigger == "manual") | .created_at] | unique | length == 1)' \
   <<<"${ORDERS_RUNS}" >/dev/null \
