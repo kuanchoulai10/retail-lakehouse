@@ -127,6 +127,12 @@ class TablesSqlRepo(TablesRepo):
             rows = conn.execute(stmt).all()
         return [TableRowMapper.to_aggregate(r._mapping) for r in rows]
 
+    def list_catalogs_with_managed_tables(self) -> list[str]:
+        """Return each catalog that holds a managed table, once and sorted."""
+        stmt = select(t.c.catalog).where(t.c.status == TableStatus.MANAGED.value).distinct().order_by(t.c.catalog)
+        with self._engine.connect() as conn:
+            return list(conn.execute(stmt).scalars())
+
 
 def _commit_moves(at: datetime) -> ColumnElement[bool]:
     """Say, in SQL, whether ``at`` is newer than the stored last commit (CASE-friendly on SQLite and Postgres)."""

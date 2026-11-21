@@ -55,11 +55,13 @@ def test_policy_change_requests_start_one_workflow_per_change(harness):
     gateway.send(SendDiscoveryRequestGatewayInput("lake", None))
     gateway.send(SendDiscoveryRequestGatewayInput("lake", None, change_id="c1"))
     gateway.send(SendDiscoveryRequestGatewayInput("lake", None, change_id="c2"))
+    gateway.send(SendDiscoveryRequestGatewayInput("lake", None, change_id="s1", retires_schedule=True))
     query = "WorkflowId STARTS_WITH 'table-discovery:catalog=lake'"
     expected = [
         "table-discovery:catalog=lake:trigger=adhoc",
         "table-discovery:catalog=lake:trigger=policy-changed:change=c1",
         "table-discovery:catalog=lake:trigger=policy-changed:change=c2",
+        "table-discovery:catalog=lake:trigger=schedule-retired:change=s1",
     ]
     ids = sorted(_ids(harness, query))
     deadline = time.time() + 10

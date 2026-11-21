@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import time
 from datetime import timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from temporalio.api.common.v1 import Payload
@@ -27,6 +27,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery
     TableDiscoveryWorkflowInput,
     table_discovery_schedule_id,
 )
+from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
+    AsyncLoopBridge,
+)
 from context.table_maintenance.adapter.hybrid.temporal.outbound.table_discovery_policy_attachment import (
     SyncDiscoverySchedulesTemporalGateway,
     table_discovery_schedule,
@@ -38,7 +41,7 @@ from context.table_maintenance.application.port.outbound.table_discovery_policy_
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from temporalio.client import ScheduleDescription
+    from temporalio.client import Client, ScheduleDescription
 
     from tests.context.table_maintenance.adapter.hybrid.temporal.outbound.shared.temporal_harness import (
         TemporalHarness,
@@ -191,3 +194,27 @@ def test_list_names_the_catalogs_of_the_discovery_schedules(h: _Schedules) -> No
     assert list(listed) == sorted(listed)
     assert UNRELATED_SCHEDULE_ID not in listed
     assert not any(c.startswith("table-discovery:") for c in listed)
+
+
+class _RefusingHandle:
+    async def delete(self) -> None:
+        msg = "not allowed"
+        raise RPCError(msg, RPCStatusCode.PERMISSION_DENIED, b"")
+
+
+class _RefusingClient:
+    def get_schedule_handle(self, _schedule_id: str) -> _RefusingHandle:
+        return _RefusingHandle()
+
+
+def test_a_delete_refused_for_any_reason_but_not_found_fails_the_sync() -> None:
+    """Only a schedule already gone is ignored; any other refusal of a delete propagates."""
+    bridge = AsyncLoopBridge()
+    try:
+        gateway = SyncDiscoverySchedulesTemporalGateway(
+            cast("Client", _RefusingClient()), bridge, interval=timedelta(minutes=10)
+        )
+        with pytest.raises(RPCError, match="not allowed"):
+            gateway.sync(SyncDiscoverySchedulesGatewayInput(catalogs=(), removed=("sync-refused",)))
+    finally:
+        bridge.close()

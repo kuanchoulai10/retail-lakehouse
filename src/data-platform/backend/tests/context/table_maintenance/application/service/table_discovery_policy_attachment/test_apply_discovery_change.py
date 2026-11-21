@@ -33,6 +33,7 @@ from context.table_maintenance.application.service.table_discovery_policy import
 from context.table_maintenance.application.service.table_discovery_policy_attachment import (
     AttachTableDiscoveryPolicyService,
     DetachTableDiscoveryPolicyService,
+    apply_discovery_change,
 )
 from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import FakeReadTableMetadataGateway
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_repo import (
@@ -307,3 +308,67 @@ def test_each_change_has_its_own_change_id(world: _World) -> None:
     world.attach("default", "namespace", ("iceberg", "sales"))
 
     assert world.requests.calls == [_scan("iceberg", "c1"), _scan("iceberg", "c2")]
+
+
+def _apply(world: _World, change: Any, affected: Any) -> str:  # noqa: ANN401
+    return apply_discovery_change(
+        world.policies,
+        world.attachments,
+        world.requests,
+        world.schedules,
+        change,
+        affected_catalogs=affected,
+        change_id="c9",
+    )
+
+
+def test_a_failed_read_after_the_change_is_logged_and_the_change_answers(
+    world: _World, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """When the scanned catalogs cannot be read back, nothing is scanned or synced and the change still answers."""
+
+    def change() -> str:
+        def broken() -> list[Any]:
+            msg = "database is gone"
+            raise RuntimeError(msg)
+
+        monkeypatch.setattr(world.attachments, "list_all", broken)
+        return "done"
+
+    with caplog.at_level(logging.ERROR):
+        assert _apply(world, change, lambda: {"iceberg"}) == "done"
+
+    assert (world.requests.calls, world.schedules.synced) == ([], [])
+    assert "could not work out what discovery policy change c9 affects" in caplog.text
+
+
+def test_failed_affected_catalogs_are_logged_and_the_change_answers(
+    world: _World, caplog: pytest.LogCaptureFixture
+) -> None:
+    """When the affected catalogs cannot be worked out, nothing is scanned or synced and the change still answers."""
+
+    def affected() -> set[str]:
+        msg = "database is gone"
+        raise RuntimeError(msg)
+
+    with caplog.at_level(logging.ERROR):
+        assert _apply(world, lambda: "done", affected) == "done"
+
+    assert (world.requests.calls, world.schedules.synced) == ([], [])
+    assert "could not work out what discovery policy change c9 affects" in caplog.text
+
+
+def test_a_catalog_that_left_but_was_not_affected_is_neither_scanned_nor_warned_about(
+    world: _World, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Only an affected catalog whose final scan failed is warned about; one the change did not affect is not."""
+    attached = world.attach("manage-all", "catalog", ("iceberg",))
+    world.forget()
+
+    with caplog.at_level(logging.WARNING):
+        _apply(world, lambda: world.attachments.delete(world.attachments.list_all()[0].id), set)
+
+    assert attached.id not in [a.id.value for a in world.attachments.list_all()]
+    assert world.requests.calls == []
+    assert world.schedules.synced == [_synced(())]
+    assert "keeping the discovery schedule" not in caplog.text

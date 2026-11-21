@@ -345,6 +345,7 @@ def test_a_later_good_scan_makes_the_failure_not_current(
 
 def test_a_missing_catalog_is_recorded_not_found(sync, world, signals, now):
     """A catalog that no longer exists records ``not_found`` and drops nothing; it never reads as every table gone."""
+    world.attach_to_catalog(MANAGE_ALL)
     _row(world.tables, now, "u-1", _name("kept"))
     world.catalog.drop_catalog("iceberg")
     out = sync.execute(_catalog_wide())
@@ -354,6 +355,84 @@ def test_a_missing_catalog_is_recorded_not_found(sync, world, signals, now):
     assert failure == CatalogScanFailure(
         reason=CatalogScanFailureReason.NOT_FOUND, detail="catalog iceberg not found", failed_at=now
     )
+    assert world.tables.get(TableId("u-1")).status == TableStatus.MANAGED
+    assert signals.calls == []
+
+
+def test_a_refused_catalog_no_policy_can_manage_unmanages_its_managed_tables(sync, world, signals, now):
+    """Unread, a catalog whose attachments all unmanage still unmanages its stored managed tables, each sent stopped."""
+    world.attach_to_catalog(UNMANAGE_ALL)
+    _row(world.tables, now, "u-1", _name("orders"))
+    _row(world.tables, now, "u-2", _name("items", namespace="hr"))
+    elsewhere = TableName(catalog="lake", namespace="sales", table="orders")
+    _row(world.tables, now, "u-lake", elsewhere)
+    world.catalog.deny("iceberg")
+
+    out = sync.execute(_catalog_wide())
+
+    assert out.failure == "cannot_access"
+    assert out.unmanaged == 2
+    for uuid in ("u-1", "u-2"):
+        table = world.tables.get(TableId(uuid))
+        assert table.status == TableStatus.UNMANAGED
+        assert table.discovered_by == DiscoveryMatch(policy_id=UNMANAGE_ALL.id, policy_version=1, rule_id=None)
+    assert world.tables.get(TableId("u-lake")).status == TableStatus.MANAGED
+    assert sorted(_calls(signals)) == [("u-1", "stopped", False), ("u-2", "stopped", False)]
+
+
+def test_a_missing_catalog_with_nothing_attached_unmanages_its_managed_tables(sync, world, signals, now):
+    """A catalog that is gone and has nothing attached decides by the default: its managed tables are unmanaged."""
+    _row(world.tables, now, "u-1", _name("orders"))
+    world.catalog.drop_catalog("iceberg")
+
+    out = sync.execute(_catalog_wide())
+
+    assert (out.failure, out.unmanaged, out.dropped) == ("not_found", 1, 0)
+    table = world.tables.get(TableId("u-1"))
+    assert table.status == TableStatus.UNMANAGED
+    assert table.discovered_by == DiscoveryMatch.platform_default()
+    assert _calls(signals) == [("u-1", "stopped", False)]
+
+
+def test_a_managing_namespace_keeps_its_unread_catalog_scanned(sync, world, signals, now):
+    """A managing policy attached under the catalog keeps it scanned, so an unread scan changes no table."""
+    world.attach_to_catalog(UNMANAGE_ALL)
+    world.attach(namespace_target("iceberg", "hr"), MANAGE_ALL)
+    _row(world.tables, now, "u-1", _name("orders"))
+    world.catalog.deny("iceberg")
+
+    out = sync.execute(_catalog_wide())
+
+    assert (out.failure, out.unmanaged) == ("cannot_access", 0)
+    assert world.tables.get(TableId("u-1")).status == TableStatus.MANAGED
+    assert signals.calls == []
+
+
+def test_a_catalog_no_policy_can_manage_unmanages_a_managed_table_it_cannot_load(sync, world, signals, now):
+    """A managed table the scan cannot load is unmanaged from its stored row, as the tables it lists are."""
+    world.attach_to_catalog(UNMANAGE_ALL)
+    _row(world.tables, now, "u-listed", _name("orders"))
+    world.catalog.add_table("iceberg", "sales", "orders", "u-listed")
+    world.catalog.add_table("iceberg", "sales", "secret", "u-refused")
+    world.catalog.deny_table("iceberg", "sales", "secret")
+    _row(world.tables, now, "u-refused", _name("secret"))
+
+    out = sync.execute(_catalog_wide())
+
+    assert out.unmanaged == 2
+    assert world.tables.get(TableId("u-refused")).status == TableStatus.UNMANAGED
+    assert sorted(_calls(signals)) == [("u-listed", "stopped", False), ("u-refused", "stopped", False)]
+
+
+def test_a_namespace_scan_of_a_catalog_no_policy_can_manage_decides_only_what_it_lists(sync, world, signals, now):
+    """Only a catalog-wide scan unmanages from the stored rows; a namespace scan still decides only what it lists."""
+    world.attach_to_catalog(UNMANAGE_ALL)
+    _row(world.tables, now, "u-1", _name("orders"))
+    world.catalog.deny("iceberg")
+
+    out = sync.execute(_namespace())
+
+    assert (out.failure, out.unmanaged) == ("cannot_access", 0)
     assert world.tables.get(TableId("u-1")).status == TableStatus.MANAGED
     assert signals.calls == []
 

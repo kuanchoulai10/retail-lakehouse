@@ -164,7 +164,7 @@ def build_use_cases(
             discovery_policies, discovery_attachments, catalog, tables
         ),
         sync_discovery_schedules=SyncDiscoverySchedulesService(
-            discovery_policies, discovery_attachments, discovery_requests, discovery_schedules
+            discovery_policies, discovery_attachments, tables, discovery_requests, discovery_schedules
         ),
         list_scanned_catalogs=ListScannedCatalogsService(discovery_attachments, discovery_policies, discoveries),
         attach_table_maintenance_policy=AttachTableMaintenancePolicyService(

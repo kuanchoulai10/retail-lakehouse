@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 import pytest
 
 from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
+from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
     DEFAULT_DISCOVERY_POLICY_ID,
     TableDiscoveryPolicyName,
@@ -33,12 +34,16 @@ from context.table_maintenance.application.service.table_discovery_policy import
 from context.table_maintenance.application.service.table_discovery_policy_attachment import (
     SyncDiscoverySchedulesService,
 )
+from tests.context.table_maintenance.application.domain.service.table_discovery_policy_attachment.discovery_policy_samples import (  # noqa: E501
+    MANAGE_ALL as MANAGE_ALL_SAMPLE,
+)
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_repo import (
     InMemoryTableDiscoveryPoliciesRepo,
 )
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_policy_attachments_repo import (
     InMemoryTableDiscoveryPolicyAttachmentsRepo,
 )
+from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.context.table_maintenance.fakes.recording_send_discovery_request_gateway import (
     RecordingSendDiscoveryRequestGateway,
 )
@@ -58,6 +63,7 @@ class _World:
     def __init__(self, scheduled: tuple[str, ...]) -> None:
         self.attachments = InMemoryTableDiscoveryPolicyAttachmentsRepo()
         self.policies = InMemoryTableDiscoveryPoliciesRepo()
+        self.tables = InMemoryTablesRepo()
         self.requests = RecordingSendDiscoveryRequestGateway()
         self.schedules = RecordingSyncDiscoverySchedulesGateway(scheduled)
         EnsureDefaultTableDiscoveryPolicyService(self.policies, clock=lambda: NOW).execute(
@@ -74,9 +80,19 @@ class _World:
             target = PolicyTarget(type=PolicyTargetType.CATALOG, path=(catalog,))
             self.attachments.create(TableDiscoveryPolicyAttachment.attach(target, policy_id, NOW))
 
+    def manage(self, uuid: str, catalog: str) -> None:
+        """Store a table of ``catalog`` as managed."""
+        name = TableName(catalog=catalog, namespace="sales", table=uuid)
+        self.tables.create(Table.register(TableId(uuid), name, MANAGE_ALL_SAMPLE.decide(name), NOW))
+
     def sync(self) -> SyncDiscoverySchedulesUseCaseOutput:
         return SyncDiscoverySchedulesService(
-            self.policies, self.attachments, self.requests, self.schedules, new_change_id=lambda: "start"
+            self.policies,
+            self.attachments,
+            self.tables,
+            self.requests,
+            self.schedules,
+            new_change_id=lambda: "start",
         ).execute(SyncDiscoverySchedulesUseCaseInput())
 
 
@@ -98,8 +114,8 @@ def test_sync_gives_each_catalog_that_left_its_final_scan_then_deletes_its_sched
     world.sync()
 
     assert world.requests.calls == [
-        SendDiscoveryRequestGatewayInput("gone", None, change_id="start"),
-        SendDiscoveryRequestGatewayInput("lake", None, change_id="start"),
+        SendDiscoveryRequestGatewayInput("gone", None, change_id="start", retires_schedule=True),
+        SendDiscoveryRequestGatewayInput("lake", None, change_id="start", retires_schedule=True),
     ]
     assert world.schedules.synced == [
         SyncDiscoverySchedulesGatewayInput(catalogs=("iceberg",), removed=("gone", "lake"))
@@ -126,3 +142,18 @@ def test_a_failed_schedule_sync_propagates() -> None:
 
     with pytest.raises(RuntimeError, match="temporal is down"):
         world.sync()
+
+
+def test_a_catalog_holding_managed_tables_but_not_scanned_gets_its_final_scan() -> None:
+    """A catalog with managed tables and no managing policy gets a final scan even without a schedule."""
+    world = _World(scheduled=("iceberg",))
+    world.manage("u-1", "orphaned")
+    world.manage("u-2", "orphaned")
+    world.manage("u-3", "iceberg")
+
+    world.sync()
+
+    assert world.requests.calls == [
+        SendDiscoveryRequestGatewayInput("orphaned", None, change_id="start", retires_schedule=True)
+    ]
+    assert world.schedules.synced == [SyncDiscoverySchedulesGatewayInput(catalogs=("iceberg",), removed=("orphaned",))]

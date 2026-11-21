@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.application.domain.service.shared import candidate_policy_targets
 from context.table_maintenance.application.domain.service.table_discovery_policy_attachment import (
     decide_table_discovery,
+    scanned_catalogs,
 )
 
 if TYPE_CHECKING:
@@ -82,3 +83,11 @@ class DiscoveryDecider:
     def decide(self, name: TableName, table_uuid: str) -> DiscoveryDecision:
         """Decide the table by its current name and its uuid."""
         return decide_table_discovery(name, table_uuid, self._attachments, self._policies)
+
+    def can_manage_any(self) -> bool:
+        """Return whether an attachment read points at a policy that could manage some table.
+
+        Read ``for_catalog``, this says whether the catalog is scanned. When it is not, every table in
+        the catalog decides ``unmanage``, so a scan needs no catalog read to decide them.
+        """
+        return bool(scanned_catalogs(self._attachments, self._policies))

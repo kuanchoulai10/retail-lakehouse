@@ -57,3 +57,7 @@ class TablesRepo(Repository[Table]):
     @abstractmethod
     def list_by_statuses(self, statuses: Sequence[TableStatus]) -> list[Table]:
         """Return the tables whose status is one of ``statuses``."""
+
+    @abstractmethod
+    def list_catalogs_with_managed_tables(self) -> list[str]:
+        """Return each catalog that holds a managed table, once and sorted."""

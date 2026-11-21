@@ -59,3 +59,11 @@ def test_change_id_names_the_adhoc_workflow():
     assert table_discovery_adhoc_workflow_id("c", None, change_id="ab12") != table_discovery_adhoc_workflow_id(
         "c", None, change_id="cd34"
     )
+
+
+def test_a_retired_schedules_final_scan_has_its_own_trigger():
+    """The final scan the worker start gives a catalog it retires is named apart from a policy change's scan."""
+    assert (
+        table_discovery_adhoc_workflow_id("iceberg", None, change_id="ab12", retires_schedule=True)
+        == "table-discovery:catalog=iceberg:trigger=schedule-retired:change=ab12"
+    )

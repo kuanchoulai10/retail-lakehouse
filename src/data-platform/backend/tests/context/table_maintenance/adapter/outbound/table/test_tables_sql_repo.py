@@ -439,6 +439,20 @@ def either_repo(request: pytest.FixtureRequest, engine: Engine) -> TablesRepo:
     return InMemoryTablesRepo()
 
 
+def test_list_catalogs_with_managed_tables(either_repo: TablesRepo):
+    """Each catalog holding a managed table is listed once, sorted; unmanaged and dropped tables do not count."""
+    for uuid, catalog, status in (
+        ("a", "lake", TableStatus.MANAGED),
+        ("b", "iceberg", TableStatus.MANAGED),
+        ("c", "iceberg", TableStatus.MANAGED),
+        ("d", "quiet", TableStatus.UNMANAGED),
+        ("e", "gone", TableStatus.DROPPED),
+    ):
+        either_repo.create(_table(uuid, TableName(catalog=catalog, namespace="n", table=uuid), status))
+
+    assert either_repo.list_catalogs_with_managed_tables() == ["iceberg", "lake"]
+
+
 def test_recording_a_newer_commit_moves_only_forward(either_repo: TablesRepo):
     """The narrow write sets a first commit, moves to a newer one and refuses an older or equal one."""
     either_repo.create(_table())

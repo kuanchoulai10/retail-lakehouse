@@ -121,29 +121,44 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
 
         A scan whose catalog refuses the credential (CatalogAccessDeniedError) or no
         longer exists (CatalogNotFoundError) records a ``CatalogScanFailure`` on the
-        catalog's discovery at the time it started, changes no table and returns with
-        ``failure`` set: retrying a refusal changes nothing. Any other error still fails
+        catalog's discovery at the time it started, changes no table it would have to read and
+        returns with ``failure`` set: retrying a refusal changes nothing. Any other error still fails
         the scan. A single table the credential cannot load is counted in ``skipped``,
         and that scan drops no table, since a table that cannot be read must never read
         as dropped.
+
+        A catalog-wide scan of a catalog that is no longer scanned (no attachment in it can manage)
+        also unmanages, from its stored row, each managed table it could not read: all of them when the
+        catalog cannot be read, the ones it could not load otherwise (the drop pass handles the rest).
+        Each is sent ``stopped``. Every table there decides ``unmanage``, so no catalog read is needed,
+        and no table is left managed under no policy that could manage it.
         """
         now = self._clock()
         decider = DiscoveryDecider.for_catalog(
             request.catalog, self._discovery_attachments_repo, self._discovery_policies_repo
         )
         seen_change = TableChange.SEEN if request.namespace is None else None
+        retires = request.namespace is None and not decider.can_manage_any()
         try:
             refs = self._catalog_gateway.list_tables(
                 ReadTableMetadataGatewayListInput(request.catalog, request.namespace)
             )
         except (CatalogAccessDeniedError, CatalogNotFoundError) as exc:
+            retired_unmanaged, retired_skipped = (
+                self._unmanage_stored(request.catalog, decider, now, seen=set()) if retires else (0, 0)
+            )
             reason = self._record_failure(request.catalog, exc, now)
             return SyncDiscoveredTablesUseCaseOutput(
-                registered=0, renamed=0, dropped=0, skipped=0, failure=reason.value
+                registered=0,
+                renamed=0,
+                dropped=0,
+                skipped=retired_skipped,
+                unmanaged=retired_unmanaged,
+                failure=reason.value,
             )
         seen: set[str] = set()
         known: list[KnownTableOutcome] = []
-        registered = skipped = 0
+        registered = skipped = retired_unmanaged = 0
         read_every_table = True
         for ref in refs:
             try:
@@ -167,6 +182,9 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
                 known.append(outcome)
         dropped = 0
         if request.namespace is None:
+            if retires and not read_every_table:
+                retired_unmanaged, retired_skipped = self._unmanage_stored(request.catalog, decider, now, seen=seen)
+                skipped += retired_skipped
             with translate_domain_errors():
                 if read_every_table:
                     dropped = self._drop_missing(request, seen, now)
@@ -178,7 +196,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
             skipped=skipped,
             ensured=sum(o.signalled for o in known),
             managed=sum(o.change == TableManagementChange.MANAGED for o in known),
-            unmanaged=sum(o.change == TableManagementChange.UNMANAGED for o in known),
+            unmanaged=retired_unmanaged + sum(o.change == TableManagementChange.UNMANAGED for o in known),
         )
 
     def _sync_table(
@@ -206,6 +224,36 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
             now,
             last_committed_at=last_commit_of(found),
         )
+
+    def _unmanage_stored(
+        self, catalog: str, decider: DiscoveryDecider, now: datetime, *, seen: set[str]
+    ) -> tuple[int, int]:
+        """Unmanage the catalog's stored managed tables not in ``seen``, by stored name; return (unmanaged, skipped).
+
+        Only for a catalog no attachment can manage, where every table decides ``unmanage``: no catalog
+        read is needed, so even a catalog the credential cannot read, or that is gone, has its managed
+        tables unmanaged and each sent ``stopped``. A table the scan read was decided already.
+        """
+        unmanaged = skipped = 0
+        for table in self._tables_repo.list_by_statuses((TableStatus.MANAGED,)):
+            if table.name.catalog != catalog or table.id.value in seen:
+                continue
+            try:
+                with translate_domain_errors():
+                    outcome = apply_discovery_to_known_table(
+                        table,
+                        table.name,
+                        decider.decide(table.name, table.id.value),
+                        self._tables_repo,
+                        self._table_change_gateway,
+                        None,
+                        now,
+                    )
+            except ConflictError, ValidationError, NotFoundError:
+                skipped += 1
+                continue
+            unmanaged += outcome.change == TableManagementChange.UNMANAGED
+        return unmanaged, skipped
 
     def _record_failure(
         self, catalog: str, error: CatalogAccessDeniedError | CatalogNotFoundError, now: datetime

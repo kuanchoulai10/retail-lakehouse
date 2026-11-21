@@ -78,3 +78,7 @@ class InMemoryTablesRepo(TablesRepo):
     def list_by_statuses(self, statuses: Sequence[TableStatus]) -> list[Table]:
         """Return tables whose status is in ``statuses``."""
         return [t for t in self.list_all() if t.status in statuses]
+
+    def list_catalogs_with_managed_tables(self) -> list[str]:
+        """Return each catalog that holds a managed table, once and sorted."""
+        return sorted({t.name.catalog for t in self.list_all() if t.status == TableStatus.MANAGED})

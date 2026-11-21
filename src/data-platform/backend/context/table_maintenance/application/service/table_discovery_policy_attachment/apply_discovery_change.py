@@ -48,17 +48,23 @@ def apply_discovery_change[T](  # noqa: PLR0913
     same, and the worker start retires it). No other schedule is deleted, so a stale view of another
     change's catalogs cannot drop their schedules.
 
-    Both steps are best effort: a scan or a sync that fails is logged and never fails the change.
+    Everything after the change is best effort: reading back the scanned catalogs or the affected ones,
+    a scan or a sync that fails is logged and never fails the change.
     """
     before = read_scanned_catalogs(policies_repo, attachments_repo)
     result = change()
-    after = read_scanned_catalogs(policies_repo, attachments_repo)
-    started = _rescan(
-        discovery_requests, sorted(set(affected_catalogs()) & (set(before) | set(after))), change_id=change_id
-    )
+    try:
+        after = read_scanned_catalogs(policies_repo, attachments_repo)
+        affected = set(affected_catalogs())
+    except Exception:
+        logger.exception(
+            "could not work out what discovery policy change %s affects; nothing rescanned or synced", change_id
+        )
+        return result
+    started = _rescan(discovery_requests, sorted(affected & (set(before) | set(after))), change_id=change_id)
     left = sorted(set(before) - set(after))
     for catalog in left:
-        if catalog not in started:
+        if catalog in affected and catalog not in started:
             logger.warning(
                 "keeping the discovery schedule of catalog %s, which is no longer scanned, until its final scan starts",
                 catalog,
