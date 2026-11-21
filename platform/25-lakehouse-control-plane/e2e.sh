@@ -651,37 +651,34 @@ wait_for_reconcile_now_record() {
   return 1
 }
 
-maintenance_workflow_input() {
-  local run_id="$1" execution_ref runs run
-  local deadline=$((SECONDS + 60))
-  execution_ref="$(api GET "/v1/table-maintenance-runs/${run_id}" | jq -r '.execution_ref')" || return 1
-  while ((SECONDS < deadline)); do
-    runs="$(temporal_cli workflow list --namespace default \
-      --query "WorkflowId = \"${execution_ref}\"" --output json | jq -r '.[].execution.runId')" || return 1
-    for run in ${runs}; do
-      temporal_cli workflow show --workflow-id "${execution_ref}" --run-id "${run}" --output json \
-        | jq -c --arg run "${run_id}" '.events[0].workflowExecutionStartedEventAttributes.input.payloads[0].data
-          | @base64d | fromjson | select(.run_id == $run)' \
-        | grep . && return 0
-    done
-    sleep 5
-  done
-  echo "no execution of ${execution_ref} was started for run ${run_id}" >&2
-  return 1
+compaction_filters() {
+  api GET "/v1/table-maintenance-runs/$1" | jq -c '[.operations[] | select(.operation == "rewrite_data_files")]
+    | if length == 1 then .[0].filters else error("run does not have exactly one rewrite_data_files operation") end'
 }
 
 assert_whole_table_compaction() {
-  local run_id input wheres
+  local run_id filters
   (($# > 0)) || { echo "no run to check for whole-table compaction" >&2; return 1; }
   for run_id in "$@"; do
-    input="$(maintenance_workflow_input "${run_id}")" || return 1
-    check '[.plan.operations[] | select(.operation == "rewrite_data_files")] | length == 1' "${input}" \
-      "run ${run_id} does not plan one rewrite_data_files"
-    wheres="$(jq -c '[.plan.operations[] | select(.operation == "rewrite_data_files") | .filters[]?.where
-      | select(. != null and . != "")]' <<<"${input}")"
-    [[ "${wheres}" == "[]" ]] || { echo "run ${run_id} compacted with a where filter: ${wheres}" >&2; return 1; }
-    progress "run ${run_id} compacts the whole table (no where filter)"
+    filters="$(compaction_filters "${run_id}")" \
+      || { echo "run ${run_id} does not have exactly one rewrite_data_files operation" >&2; return 1; }
+    [[ "${filters}" == "[]" ]] || { echo "run ${run_id} compacted with where filters: ${filters}" >&2; return 1; }
+    progress "run ${run_id} compacts the whole table (no filters)"
   done
+}
+
+assert_partition_compaction() {
+  local run_id filters escaped=""
+  (($# > 0)) || { echo "no run to check for partition compaction" >&2; return 1; }
+  for run_id in "$@"; do
+    filters="$(compaction_filters "${run_id}")" \
+      || { echo "run ${run_id} does not have exactly one rewrite_data_files operation" >&2; return 1; }
+    check 'length > 0 and all(.[]; (.where // "") != "")' "${filters}" \
+      "run ${run_id} did not compact selected partitions: its filters are empty or hold an empty where"
+    progress "regions filters of run ${run_id}: ${filters}"
+    jq -r '.[].where' <<<"${filters}" | grep -qF "'o\\'neil'" && escaped=1
+  done
+  [[ -n "${escaped}" ]] || { echo "no regions where filter holds the escaped quote of o'neil" >&2; return 1; }
 }
 
 assert_attempts_timed() {
@@ -739,7 +736,7 @@ ensure_policy tm-e2e-orders "e2e: manual runs only, lowered target values" "$(ca
 | .remove_orphan_files.target.older_than_seconds = 86400
 JQ
 )"
-ensure_policy tm-e2e-regions "e2e: scheduled whole-table compaction" "$(cat <<JQ
+ensure_policy tm-e2e-regions "e2e: scheduled per-partition compaction" "$(cat <<JQ
 .on = {schedule: {every_seconds: ${REGIONS_SCHEDULE_SECONDS}}, catalog_commit: {debounce_seconds: 60}}
 | .rewrite_data_files.target.reducible_files.at_most = 1
 | del(.rewrite_manifests, .expire_snapshots, .remove_orphan_files)
@@ -799,6 +796,9 @@ if [[ "${REGIONS_BEFORE_RUNS}" != "[]" ]]; then
   progress "rerun: ${REGIONS} was compacted before, so its compaction waits out the ${REWRITE_COOLDOWN_SECONDS}s rewrite cooldown; waiting up to ${REGIONS_EXTRA_WAIT_SECONDS}s longer"
 fi
 
+COMPACTION_QUIET_SECONDS="$(api GET /v1/platform-settings | jq -er '[.groups[].items[]
+  | select(.key == "maintenance_compaction_quiet_seconds") | .value][0]')"
+progress "${REGIONS} may wait up to the quiet period (${COMPACTION_QUIET_SECONDS}s) after its last write before compacting, then compacts at its next ${REGIONS_SCHEDULE_SECONDS}s check"
 progress "waiting for the ${REGIONS} scheduled compaction run to finish before any ${ORDERS} run, so one Spark job runs at a time"
 wait_for_new_run "${REGIONS_UUID}" "${REGIONS_BEFORE_RUNS}" \
   '.trigger == "scheduled" and any(.operations[]; .operation == "rewrite_data_files")' \
@@ -811,8 +811,11 @@ report_runs "${REGIONS}" "${REGIONS_RUNS}"
 assert_runs_succeeded "${REGIONS}" "${REGIONS_RUNS}"
 assert_attempts_timed "${REGIONS}" "${REGIONS_RUNS}"
 # shellcheck disable=SC2046
-assert_whole_table_compaction $(jq -r '.[] | select(any(.operations[]; .operation == "rewrite_data_files"))
+assert_partition_compaction $(jq -r '.[] | select(any(.operations[]; .operation == "rewrite_data_files"))
   | .run_id' <<<"${REGIONS_RUNS}")
+progress "${REGIONS} rewrite_data_files results in its reconciliations, oldest first (timing decides them; waiting_for_writes is expected before the quiet period passes): $(
+  api GET "/v1/tables/${REGIONS_UUID}/reconciliations" | jq -c 'sort_by(.reconciled_at)
+    | [.[] | {at: .reconciled_at, result: (.operations[] | select(.operation == "rewrite_data_files") | .result)}]')"
 
 WAIT_SECONDS=$(( LAST_WRITE_AT + EXPIRE_AGE_SECONDS + 5 - $(date +%s) ))
 if (( WAIT_SECONDS > 0 )); then
