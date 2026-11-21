@@ -81,7 +81,7 @@ async def run_worker(  # noqa: PLR0913
             k8s_core_api_factory=lambda: k8s_core_api,
         )
         client = await connect(settings.temporal)
-        await startup(client, settings)
+        await startup(client, use_cases)
         activities = build_activities(use_cases, client, settings)
         with ThreadPoolExecutor(max_workers=ACTIVITY_THREADS, thread_name_prefix="activity") as executor:
             worker = worker_builder(

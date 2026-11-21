@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import pytest
 
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
@@ -144,6 +146,23 @@ def test_delete_attachment_of_a_dropped_catalog_is_204(client: DiscoveryPolicyWe
     client.catalog.drop_catalog("iceberg")
 
     assert client.detach("sales", attached["id"]).status_code == 204
+
+
+def test_delete_attachment_answers_204_when_temporal_fails(
+    client: DiscoveryPolicyWebWorld, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A detach whose final scan and schedule sync both fail is still stored, answers 204 and logs."""
+    attached = client.attach("sales", "catalog", ["iceberg"]).json()
+    client.requests.failing.add("iceberg")
+    client.schedules.failing = True
+
+    with caplog.at_level(logging.WARNING):
+        response = client.detach("sales", attached["id"])
+
+    assert response.status_code == 204
+    assert client.attachments.list_all() == []
+    assert "could not start discovery in catalog iceberg" in caplog.text
+    assert "could not sync the discovery schedules" in caplog.text
 
 
 @pytest.mark.parametrize("attachment_id", ["x", TableMaintenancePolicyAttachmentId.new().value])

@@ -1,112 +1,113 @@
-"""Test the worker startup step that ensures the Temporal schedules."""
+"""Test the worker startup step that checks the search attributes and syncs the discovery schedules."""
 
 from __future__ import annotations
 
 import asyncio
 import inspect
-from datetime import timedelta
+import threading
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from bootstrap.configs import CatalogSettings
 from bootstrap.container import apply_worker_startup
 from context.table_maintenance.adapter.hybrid.temporal.inbound import (
     MissingTableSearchAttributes,
-    ensure_table_discovery_schedule,
     require_table_search_attributes,
 )
-from tests.bootstrap.container.container_support import sqlite_settings
+from context.table_maintenance.application.port.inbound.table_discovery_policy_attachment import (
+    SyncDiscoverySchedulesUseCase,
+    SyncDiscoverySchedulesUseCaseInput,
+    SyncDiscoverySchedulesUseCaseOutput,
+)
 
 if TYPE_CHECKING:
     from temporalio.client import Client
 
-
-class Recorder:
-    """Callable that records every call made to it."""
-
-    def __init__(self) -> None:
-        """Start with no recorded calls."""
-        self.calls: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
-
-    async def __call__(self, *args: Any, **kwargs: Any) -> None:  # noqa: ANN401
-        """Record the positional and keyword arguments of the call."""
-        self.calls.append((args, kwargs))
+    from bootstrap.container import UseCases
 
 
-def _run(require: Recorder | None = None) -> tuple[Recorder, object]:
-    schedule, client = Recorder(), object()
-    settings = sqlite_settings(
-        catalog=CatalogSettings(names=["a", "b"]),
-        discovery_interval_seconds=120,
-        maintenance_attempt_deadline_seconds=600,
-    )
-    asyncio.run(
-        apply_worker_startup(
-            cast("Client", client),
-            settings,
-            ensure_schedule=schedule,
-            require_attributes=Recorder() if require is None else require,
+class _RecordingSync(SyncDiscoverySchedulesUseCase):
+    """Record each sync and the thread it ran on, appending to a shared log of startup steps."""
+
+    def __init__(self, steps: list[str], *, error: Exception | None = None) -> None:
+        self.steps = steps
+        self.error = error
+        self.requests: list[SyncDiscoverySchedulesUseCaseInput] = []
+        self.threads: list[int] = []
+
+    def execute(self, request: SyncDiscoverySchedulesUseCaseInput) -> SyncDiscoverySchedulesUseCaseOutput:
+        self.steps.append("sync")
+        self.requests.append(request)
+        self.threads.append(threading.get_ident())
+        if self.error is not None:
+            raise self.error
+        return SyncDiscoverySchedulesUseCaseOutput(catalogs=("iceberg",))
+
+
+class _UseCases:
+    def __init__(self, sync: _RecordingSync) -> None:
+        self.sync_discovery_schedules = sync
+
+
+def _start(sync: _RecordingSync, require: Any = None) -> int:  # noqa: ANN401
+    """Run the startup and return the id of the thread its event loop ran on."""
+    steps = sync.steps
+
+    async def check(_client: object) -> None:
+        steps.append("check")
+
+    async def run() -> int:
+        await apply_worker_startup(
+            cast("Client", object()),
+            cast("UseCases", _UseCases(sync)),
+            require_attributes=check if require is None else require,
         )
-    )
-    return schedule, client
+        return threading.get_ident()
+
+    return asyncio.run(run())
 
 
-def test_worker_startup_never_pauses_schedule():
-    """The discovery schedules are ensured for every covered catalog with no paused flag: they always run."""
-    schedule, client = _run()
+def test_worker_startup_syncs_the_discovery_schedules():
+    """After the search-attribute check, the schedules are synced once, off the event loop's thread."""
+    sync = _RecordingSync([])
 
-    assert schedule.calls == [((client, ["a", "b"]), {"interval": timedelta(seconds=120)})]
-    assert "paused" not in inspect.signature(ensure_table_discovery_schedule).parameters
+    loop_thread = _start(sync)
 
-
-def test_no_admission_workflow_is_ensured():
-    """The worker ensures no admission workflow: its startup takes no admission step."""
-    assert "ensure_admission" not in inspect.signature(apply_worker_startup).parameters
+    assert sync.steps == ["check", "sync"]
+    assert sync.requests == [SyncDiscoverySchedulesUseCaseInput()]
+    assert sync.threads != [loop_thread]
 
 
-def test_only_the_discovery_schedules_are_ensured():
-    """The worker ensures the discovery schedules and no other: there is no round schedule any more."""
-    parameters = inspect.signature(apply_worker_startup).parameters
+def test_worker_startup_fails_when_the_sync_fails():
+    """A sync that fails stops the start, loudly."""
+    sync = _RecordingSync([], error=RuntimeError("temporal is down"))
 
-    assert [name for name in parameters if name.startswith("ensure_")] == ["ensure_schedule"]
-
-
-def test_defaults_are_the_real_functions_and_the_kwargs_bind_to_them():
-    """The default ensure functions are the real ones and the keyword arguments bind to their signatures."""
-    parameters = inspect.signature(apply_worker_startup).parameters
-    assert parameters["ensure_schedule"].default is ensure_table_discovery_schedule
-    assert parameters["require_attributes"].default is require_table_search_attributes
-
-    schedule, _ = _run()
-
-    ((args, kwargs),) = schedule.calls
-    inspect.signature(ensure_table_discovery_schedule).bind(*args, **kwargs)
+    with pytest.raises(RuntimeError, match="temporal is down"):
+        _start(sync)
 
 
-def test_the_search_attributes_are_checked_first():
-    """The worker checks the namespace's search attributes before it ensures any schedule."""
-    require = Recorder()
-    _, client = _run(require)
-
-    assert require.calls == [((client,), {})]
-    inspect.signature(require_table_search_attributes).bind(client)
-
-
-def test_missing_search_attributes_stop_the_start_before_any_schedule():
-    """A namespace without the attributes fails the start, and no schedule is created."""
-    schedule = Recorder()
+def test_missing_search_attributes_stop_the_start_before_any_sync():
+    """A namespace without the attributes fails the start, and no schedule is synced."""
+    sync = _RecordingSync([])
 
     async def missing(_client: object) -> None:
         raise MissingTableSearchAttributes("run platform/21-temporal/bootstrap.sh")
 
     with pytest.raises(MissingTableSearchAttributes):
-        asyncio.run(
-            apply_worker_startup(
-                cast("Client", object()),
-                sqlite_settings(),
-                ensure_schedule=schedule,
-                require_attributes=missing,
-            )
-        )
-    assert schedule.calls == []
+        _start(sync, require=missing)
+    assert sync.requests == []
+
+
+def test_the_default_check_is_the_real_one():
+    """The default search-attribute check is the real one and takes the client."""
+    parameters = inspect.signature(apply_worker_startup).parameters
+
+    assert parameters["require_attributes"].default is require_table_search_attributes
+    inspect.signature(require_table_search_attributes).bind(object())
+
+
+def test_no_admission_workflow_or_other_schedule_is_ensured():
+    """The worker ensures no admission workflow and no round schedule: its startup takes no ensure step."""
+    parameters = inspect.signature(apply_worker_startup).parameters
+
+    assert [name for name in parameters if name.startswith("ensure_")] == []

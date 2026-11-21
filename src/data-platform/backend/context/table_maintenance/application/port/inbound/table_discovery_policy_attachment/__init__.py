@@ -17,6 +17,11 @@ from context.table_maintenance.application.port.inbound.table_discovery_policy_a
     ListTableDiscoveryPolicyAttachmentsUseCaseInput,
     ListTableDiscoveryPolicyAttachmentsUseCaseOutput,
 )
+from context.table_maintenance.application.port.inbound.table_discovery_policy_attachment.sync_discovery_schedules import (  # noqa: E501
+    SyncDiscoverySchedulesUseCase,
+    SyncDiscoverySchedulesUseCaseInput,
+    SyncDiscoverySchedulesUseCaseOutput,
+)
 
 __all__ = [
     "AttachTableDiscoveryPolicyUseCase",
@@ -28,4 +33,7 @@ __all__ = [
     "ListTableDiscoveryPolicyAttachmentsUseCase",
     "ListTableDiscoveryPolicyAttachmentsUseCaseInput",
     "ListTableDiscoveryPolicyAttachmentsUseCaseOutput",
+    "SyncDiscoverySchedulesUseCase",
+    "SyncDiscoverySchedulesUseCaseInput",
+    "SyncDiscoverySchedulesUseCaseOutput",
 ]

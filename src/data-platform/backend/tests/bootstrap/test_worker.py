@@ -66,6 +66,7 @@ class Harness:
         self.k8s_built = 0
         self.k8s_core_built = 0
         self.startups: list[Any] = []
+        self.use_cases: Any = None
         self.worker = FakeWorker(on_enter or self._stop)
         self.worker_kwargs: dict[str, Any] = {}
 
@@ -92,12 +93,13 @@ class Harness:
         assert bridge is self.bridge
         kwargs["k8s_api_factory"]()
         kwargs["k8s_core_api_factory"]()
-        return build_use_cases(
+        self.use_cases = build_use_cases(
             build_repositories(sqlite_engine()),
             fake_gateways(),
             platform_settings=platform_settings(),
             clock=lambda: NOW,
         )
+        return self.use_cases
 
     async def connect(self, _: Any) -> MagicMock:  # noqa: ANN401
         """Return a mock Temporal client without connecting."""
@@ -137,7 +139,9 @@ def test_stop_request_shuts_the_worker_down_and_closes_the_bridge():
 
     assert harness.k8s_built == 1
     assert harness.k8s_core_built == 1
-    assert len(harness.startups) == 1
+    ((client, use_cases),) = harness.startups
+    assert client is not None
+    assert use_cases is harness.use_cases
     assert harness.worker.entered is True
     assert harness.worker.shut_down is True
     assert harness.bridge.closed is True

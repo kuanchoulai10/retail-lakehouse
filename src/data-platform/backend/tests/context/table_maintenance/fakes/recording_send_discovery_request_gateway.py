@@ -15,12 +15,19 @@ if TYPE_CHECKING:
 
 
 class RecordingSendDiscoveryRequestGateway(SendDiscoveryRequestGateway):
-    """Record every discovery request instead of sending it."""
+    """Record every discovery request instead of sending it.
+
+    A request for a catalog in ``failing`` raises and is not recorded.
+    """
 
     def __init__(self) -> None:
-        """Start with no calls."""
+        """Start with no calls and no failing catalog."""
         self.calls: list[SendDiscoveryRequestGatewayInput] = []
+        self.failing: set[str] = set()
 
     def send(self, input: SendDiscoveryRequestGatewayInput) -> None:  # noqa: A002
-        """Record the call."""
+        """Record the call, or raise for a failing catalog."""
+        if input.catalog in self.failing:
+            msg = f"cannot start discovery in {input.catalog}"
+            raise RuntimeError(msg)
         self.calls.append(input)

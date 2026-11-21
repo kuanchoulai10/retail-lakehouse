@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+import asyncio
+import logging
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.adapter.hybrid.temporal.inbound import (
-    ensure_table_discovery_schedule,
     require_table_search_attributes,
+)
+from context.table_maintenance.application.port.inbound.table_discovery_policy_attachment import (
+    SyncDiscoverySchedulesUseCaseInput,
 )
 
 if TYPE_CHECKING:
@@ -15,28 +18,25 @@ if TYPE_CHECKING:
 
     from temporalio.client import Client
 
-    from bootstrap.configs import AppSettings
+    from bootstrap.container.use_cases import UseCases
+
+logger = logging.getLogger(__name__)
 
 
 async def apply_worker_startup(
     client: Client,
-    settings: AppSettings,
+    use_cases: UseCases,
     *,
-    ensure_schedule: Callable[..., Awaitable[None]] = ensure_table_discovery_schedule,
     require_attributes: Callable[..., Awaitable[None]] = require_table_search_attributes,
 ) -> None:
-    """Ensure the per-catalog discovery schedules.
+    """Check the search attributes, then bring the discovery schedules in line with the scanned catalogs.
 
-    It first checks that the namespace has every search attribute the
-    workflows set, and fails the start otherwise (``MissingTableSearchAttributes``
-    names them and says to run ``platform/21-temporal/bootstrap.sh``): without
-    them every workflow that tags itself would fail its workflow task. The
-    discovery schedules always run: the discovery rules alone decide which
-    tables are managed, so there is no switch to pause them.
+    The check fails the start when the namespace lacks a search attribute the workflows set
+    (``MissingTableSearchAttributes`` names them and says to run ``platform/21-temporal/bootstrap.sh``):
+    without them every workflow that tags itself would fail its workflow task. The schedule sync is a
+    full reconcile, and any failure of it fails the start, loudly. It runs in a thread, so its gateways,
+    which block until the bridge loop answers, do not stall this event loop.
     """
     await require_attributes(client)
-    await ensure_schedule(
-        client,
-        list(settings.catalog.names),
-        interval=timedelta(seconds=settings.discovery_interval_seconds),
-    )
+    out = await asyncio.to_thread(use_cases.sync_discovery_schedules.execute, SyncDiscoverySchedulesUseCaseInput())
+    logger.info("discovery schedules synced for the scanned catalogs %s", list(out.catalogs))

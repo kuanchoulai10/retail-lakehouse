@@ -32,6 +32,8 @@ UTILITY_FILES = {
     "table_maintenance_policy_output_fields.py",
     "table_discovery_policy_output_fields.py",
     "content_with_issued_rule_ids.py",
+    "apply_discovery_change.py",
+    "read_scanned_catalogs.py",
     "policy_target_from_request.py",
     "notify_policy_change.py",
     "target_in_catalog.py",

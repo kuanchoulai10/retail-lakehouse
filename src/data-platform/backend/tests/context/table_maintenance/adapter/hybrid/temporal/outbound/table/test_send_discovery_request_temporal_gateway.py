@@ -49,17 +49,17 @@ def test_discovery_request_starts_one_adhoc_workflow(harness):
     }
 
 
-def test_rules_saved_requests_start_one_workflow_per_saved_version(harness):
-    """Each rules save starts its own run, even while the run of an earlier save or an event is still going."""
+def test_policy_change_requests_start_one_workflow_per_change(harness):
+    """Each policy change starts its own run, even while the run of an earlier change or an event is still going."""
     gateway = SendDiscoveryRequestTemporalGateway(harness.client, harness.bridge)
     gateway.send(SendDiscoveryRequestGatewayInput("lake", None))
-    gateway.send(SendDiscoveryRequestGatewayInput("lake", None, rules_version=1))
-    gateway.send(SendDiscoveryRequestGatewayInput("lake", None, rules_version=2))
+    gateway.send(SendDiscoveryRequestGatewayInput("lake", None, change_id="c1"))
+    gateway.send(SendDiscoveryRequestGatewayInput("lake", None, change_id="c2"))
     query = "WorkflowId STARTS_WITH 'table-discovery:catalog=lake'"
     expected = [
         "table-discovery:catalog=lake:trigger=adhoc",
-        "table-discovery:catalog=lake:trigger=rules-saved:version=1",
-        "table-discovery:catalog=lake:trigger=rules-saved:version=2",
+        "table-discovery:catalog=lake:trigger=policy-changed:change=c1",
+        "table-discovery:catalog=lake:trigger=policy-changed:change=c2",
     ]
     ids = sorted(_ids(harness, query))
     deadline = time.time() + 10

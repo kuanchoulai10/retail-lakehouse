@@ -29,6 +29,9 @@ from tests.context.table_maintenance.fakes.recording_send_table_change_gateway i
 from tests.context.table_maintenance.fakes.recording_submit_maintenance_job_gateway import (
     RecordingSubmitMaintenanceJobGateway,
 )
+from tests.context.table_maintenance.fakes.recording_sync_discovery_schedules_gateway import (
+    RecordingSyncDiscoverySchedulesGateway,
+)
 from tests.context.table_maintenance.fakes.scripted_read_maintenance_event_log_gateway import (
     ScriptedReadMaintenanceEventLogGateway,
 )
@@ -73,6 +76,7 @@ def fake_gateways() -> Gateways:
         read_table_metadata=FakeReadTableMetadataGateway(),
         send_table_change=RecordingSendTableChangeGateway(),
         send_discovery_request=RecordingSendDiscoveryRequestGateway(),
+        sync_discovery_schedules=RecordingSyncDiscoverySchedulesGateway(),
         send_maintenance_result=RecordingSendMaintenanceResultGateway(),
         submit_maintenance_job=RecordingSubmitMaintenanceJobGateway(),
         read_maintenance_job=FakeReadMaintenanceJobGateway(),

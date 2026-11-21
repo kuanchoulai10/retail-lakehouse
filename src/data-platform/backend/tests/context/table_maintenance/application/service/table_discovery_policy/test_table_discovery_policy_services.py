@@ -47,6 +47,12 @@ from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_re
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_policy_attachments_repo import (
     InMemoryTableDiscoveryPolicyAttachmentsRepo,
 )
+from tests.context.table_maintenance.fakes.recording_send_discovery_request_gateway import (
+    RecordingSendDiscoveryRequestGateway,
+)
+from tests.context.table_maintenance.fakes.recording_sync_discovery_schedules_gateway import (
+    RecordingSyncDiscoverySchedulesGateway,
+)
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
 LATER = datetime(2026, 11, 2, tzinfo=UTC)
@@ -87,6 +93,8 @@ class ServiceWorld:
         """
         self.attachments = InMemoryTableDiscoveryPolicyAttachmentsRepo()
         self.policies = InMemoryTableDiscoveryPoliciesRepo()
+        self.requests = RecordingSendDiscoveryRequestGateway()
+        self.schedules = RecordingSyncDiscoverySchedulesGateway()
         self.now = NOW
         EnsureDefaultTableDiscoveryPolicyService(self.policies, clock=lambda: NOW).execute(
             EnsureDefaultTableDiscoveryPolicyUseCaseInput()
@@ -103,9 +111,9 @@ class ServiceWorld:
 
     def update(self, name: str, *, version: int, content: dict[str, Any]) -> UpdateTableDiscoveryPolicyUseCaseOutput:
         """Replace a policy's content from ``version``."""
-        return UpdateTableDiscoveryPolicyService(self.policies, clock=self._clock).execute(
-            UpdateTableDiscoveryPolicyUseCaseInput(name=name, content=content, version=version)
-        )
+        return UpdateTableDiscoveryPolicyService(
+            self.policies, self.attachments, self.requests, self.schedules, clock=self._clock
+        ).execute(UpdateTableDiscoveryPolicyUseCaseInput(name=name, content=content, version=version))
 
     def get(self, name: str) -> GetTableDiscoveryPolicyUseCaseOutput:
         """Get a policy at its current version."""

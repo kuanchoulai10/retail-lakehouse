@@ -42,6 +42,12 @@ from tests.context.table_maintenance.fakes.in_memory_table_discovery_policy_atta
     InMemoryTableDiscoveryPolicyAttachmentsRepo,
 )
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
+from tests.context.table_maintenance.fakes.recording_send_discovery_request_gateway import (
+    RecordingSendDiscoveryRequestGateway,
+)
+from tests.context.table_maintenance.fakes.recording_sync_discovery_schedules_gateway import (
+    RecordingSyncDiscoverySchedulesGateway,
+)
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
 LATER = datetime(2026, 11, 2, tzinfo=UTC)
@@ -67,6 +73,8 @@ class _World:
         self.policies = InMemoryTableDiscoveryPoliciesRepo()
         self.catalog = FakeReadTableMetadataGateway()
         self.tables = InMemoryTablesRepo()
+        self.requests = RecordingSendDiscoveryRequestGateway()
+        self.schedules = RecordingSyncDiscoverySchedulesGateway()
         self.now = NOW
         self.catalog.add_table("iceberg", "sales.eu", "orders", "u-1")
         EnsureDefaultTableDiscoveryPolicyService(self.policies, clock=lambda: NOW).execute(
@@ -79,13 +87,13 @@ class _World:
 
     def attach(self, policy: str, type_: str, path: tuple[str, ...]) -> AttachTableDiscoveryPolicyUseCaseOutput:
         return AttachTableDiscoveryPolicyService(
-            self.policies, self.attachments, self.catalog, clock=lambda: self.now
+            self.policies, self.attachments, self.catalog, self.requests, self.schedules, clock=lambda: self.now
         ).execute(AttachTableDiscoveryPolicyUseCaseInput(policy_name=policy, target_type=type_, path=path))
 
     def detach(self, policy: str, attachment_id: str) -> DetachTableDiscoveryPolicyUseCaseOutput:
-        return DetachTableDiscoveryPolicyService(self.policies, self.attachments).execute(
-            DetachTableDiscoveryPolicyUseCaseInput(policy_name=policy, attachment_id=attachment_id)
-        )
+        return DetachTableDiscoveryPolicyService(
+            self.policies, self.attachments, self.requests, self.schedules
+        ).execute(DetachTableDiscoveryPolicyUseCaseInput(policy_name=policy, attachment_id=attachment_id))
 
     def list(self, policy: str) -> ListTableDiscoveryPolicyAttachmentsUseCaseOutput:
         return ListTableDiscoveryPolicyAttachmentsService(

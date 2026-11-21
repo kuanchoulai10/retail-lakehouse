@@ -91,7 +91,7 @@ class ReplaceTableDiscoveryRulesService(ReplaceTableDiscoveryRulesUseCase):
         for catalog in self._catalog_names:
             try:
                 self._discovery_request_gateway.send(
-                    SendDiscoveryRequestGatewayInput(catalog, None, rules_version=version)
+                    SendDiscoveryRequestGatewayInput(catalog, None, change_id=f"rules-v{version}")
                 )
             except Exception:
                 logger.exception(

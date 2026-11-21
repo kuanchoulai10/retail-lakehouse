@@ -33,6 +33,12 @@ from tests.context.table_maintenance.fakes.in_memory_table_discovery_policy_atta
     InMemoryTableDiscoveryPolicyAttachmentsRepo,
 )
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
+from tests.context.table_maintenance.fakes.recording_send_discovery_request_gateway import (
+    RecordingSendDiscoveryRequestGateway,
+)
+from tests.context.table_maintenance.fakes.recording_sync_discovery_schedules_gateway import (
+    RecordingSyncDiscoverySchedulesGateway,
+)
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -67,21 +73,25 @@ class DiscoveryPolicyWebWorld:
         self.catalog = FakeReadTableMetadataGateway()
         self.tables = InMemoryTablesRepo()
         self.discoveries = InMemoryCatalogDiscoveriesRepo()
+        self.requests = RecordingSendDiscoveryRequestGateway()
+        self.schedules = RecordingSyncDiscoverySchedulesGateway()
         EnsureDefaultTableDiscoveryPolicyService(self.policies, clock=lambda: NOW).execute(
             EnsureDefaultTableDiscoveryPolicyUseCaseInput()
         )
-        policies, attachments = self.policies, self.attachments
+        policies, attachments, requests, schedules = self.policies, self.attachments, self.requests, self.schedules
         self.client: TestClient = build_client(
             list_table_discovery_policies=ListTableDiscoveryPoliciesService(policies, attachments),
             create_table_discovery_policy=CreateTableDiscoveryPolicyService(policies, clock=lambda: NOW),
             get_table_discovery_policy=GetTableDiscoveryPolicyService(policies),
             get_table_discovery_policy_version=GetTableDiscoveryPolicyVersionService(policies),
-            update_table_discovery_policy=UpdateTableDiscoveryPolicyService(policies, clock=lambda: NOW),
+            update_table_discovery_policy=UpdateTableDiscoveryPolicyService(
+                policies, attachments, requests, schedules, clock=lambda: NOW
+            ),
             delete_table_discovery_policy=DeleteTableDiscoveryPolicyService(policies, attachments),
             attach_table_discovery_policy=AttachTableDiscoveryPolicyService(
-                policies, attachments, self.catalog, clock=lambda: NOW
+                policies, attachments, self.catalog, requests, schedules, clock=lambda: NOW
             ),
-            detach_table_discovery_policy=DetachTableDiscoveryPolicyService(policies, attachments),
+            detach_table_discovery_policy=DetachTableDiscoveryPolicyService(policies, attachments, requests, schedules),
             list_table_discovery_policy_attachments=ListTableDiscoveryPolicyAttachmentsService(
                 policies, attachments, self.catalog, self.tables
             ),

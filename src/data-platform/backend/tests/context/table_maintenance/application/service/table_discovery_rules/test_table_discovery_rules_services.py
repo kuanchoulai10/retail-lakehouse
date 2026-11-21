@@ -114,11 +114,11 @@ def test_each_save_starts_its_own_discovery_runs(replace, discovery_requests):
     """Two saves in a row each start discovery with their own saved version, so a later save is not lost."""
     replace.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=0, rules=(_item(),)))
     replace.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=1, rules=()))
-    assert [(c.catalog, c.rules_version) for c in discovery_requests.calls] == [
-        ("iceberg", 1),
-        ("lake", 1),
-        ("iceberg", 2),
-        ("lake", 2),
+    assert [(c.catalog, c.change_id) for c in discovery_requests.calls] == [
+        ("iceberg", "rules-v1"),
+        ("lake", "rules-v1"),
+        ("iceberg", "rules-v2"),
+        ("lake", "rules-v2"),
     ]
 
 

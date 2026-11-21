@@ -12,6 +12,9 @@ if TYPE_CHECKING:
         SendDiscoveryRequestGateway,
         SendTableChangeGateway,
     )
+    from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
+        SyncDiscoverySchedulesGateway,
+    )
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         DeleteMaintenanceJobGateway,
         ReadMaintenanceEventLogGateway,
@@ -30,6 +33,7 @@ class Gateways:
     read_table_metadata: ReadTableMetadataGateway
     send_table_change: SendTableChangeGateway
     send_discovery_request: SendDiscoveryRequestGateway
+    sync_discovery_schedules: SyncDiscoverySchedulesGateway
     send_maintenance_result: SendMaintenanceResultGateway
     submit_maintenance_job: SubmitMaintenanceJobGateway
     read_maintenance_job: ReadMaintenanceJobGateway

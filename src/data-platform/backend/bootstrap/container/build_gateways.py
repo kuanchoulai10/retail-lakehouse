@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 import httpx
@@ -13,6 +14,9 @@ from bootstrap.container.gateways import Gateways
 from context.table_maintenance.adapter.hybrid.temporal.outbound.table import (
     SendDiscoveryRequestTemporalGateway,
     SendTableChangeTemporalGateway,
+)
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table_discovery_policy_attachment import (
+    SyncDiscoverySchedulesTemporalGateway,
 )
 from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
     SendMaintenanceResultTemporalGateway,
@@ -67,6 +71,9 @@ def build_gateways(
         read_table_metadata=ReadTableMetadataPyIcebergGateway(catalog_factory),
         send_table_change=SendTableChangeTemporalGateway(client, bridge),
         send_discovery_request=SendDiscoveryRequestTemporalGateway(client, bridge),
+        sync_discovery_schedules=SyncDiscoverySchedulesTemporalGateway(
+            client, bridge, interval=timedelta(seconds=settings.discovery_interval_seconds)
+        ),
         send_maintenance_result=SendMaintenanceResultTemporalGateway(client, bridge),
         submit_maintenance_job=SubmitMaintenanceJobK8sGateway(k8s_api, spark_config),
         read_maintenance_job=ReadMaintenanceJobK8sGateway(k8s_api, spark_config),
