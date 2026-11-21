@@ -1,8 +1,9 @@
 import { TextLink } from "@retail-lakehouse/design-system";
-import { Link, Route, Routes } from "react-router";
+import { Link, Navigate, Route, Routes } from "react-router";
+import { discoveryPoliciesPath } from "./lib/discoveryPolicyPaths";
 import { CatalogPage } from "./pages/CatalogPage";
 import { CatalogsPage } from "./pages/CatalogsPage";
-import { DiscoveryRulesPage } from "./pages/DiscoveryRulesPage";
+import { DiscoveryPoliciesPage } from "./pages/DiscoveryPoliciesPage";
 import { GenericTablePage } from "./pages/GenericTablePage";
 import { NamespacePage } from "./pages/NamespacePage";
 import { PlatformSettingsPage } from "./pages/PlatformSettingsPage";
@@ -32,7 +33,9 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<TableListPage />} />
-      <Route path="/discovery-rules" element={<DiscoveryRulesPage />} />
+      <Route path={discoveryPoliciesPath()} element={<DiscoveryPoliciesPage />} />
+      {/* The rules page became the discovery policies; old bookmarks land on the list. */}
+      <Route path="/discovery-rules" element={<Navigate to={discoveryPoliciesPath()} replace />} />
       <Route path="/policies" element={<PoliciesPage />} />
       <Route path="/policies/:name/versions/:version" element={<PolicyVersionPage />} />
       <Route path="/platform-settings" element={<PlatformSettingsPage />} />

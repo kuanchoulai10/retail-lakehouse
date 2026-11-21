@@ -7,6 +7,8 @@ import type {
   CatalogTablePropertiesApiResponse,
   CatalogTableSchemaComparisonApiResponse,
   CatalogTableSchemaVersionsApiResponse,
+  ListedTableDiscoveryPolicyApiResponse,
+  ListedTableDiscoveryPolicyAttachmentApiResponse,
   ListedTableMaintenancePolicyApiResponse,
   ListedTableMaintenancePolicyMappingApiResponse,
   NamespaceApiResponse,
@@ -16,6 +18,7 @@ import type {
   PlatformSettingsApiResponse,
   PlatformSettingsGroupApiResponse,
   ReconciliationOperationApiResponse,
+  ScannedCatalogsApiResponse,
   SchemaFieldComparisonApiResponse,
   TableApiResponse,
   TableCommitsApiResponse,
@@ -852,6 +855,69 @@ export const RULES: TableDiscoveryRuleApiResponse[] = [
     updated_at: "2026-11-01T09:00:00Z",
   },
 ];
+
+export const DEFAULT_DISCOVERY_POLICY_ID = "dp-00000000000000000000000000";
+// MAINTAINED_ORDERS names this policy at version 2 and its first rule.
+export const SALES_TABLES_POLICY_ID = "dp-01m7s6c3tqee0rhg00xry2zqqv";
+
+// The platform default, which manages nothing; and sales-tables, which manages the sales
+// namespaces except their temporary tables, attached to namespace iceberg.sales.
+export const DISCOVERY_POLICIES: ListedTableDiscoveryPolicyApiResponse[] = [
+  {
+    id: DEFAULT_DISCOVERY_POLICY_ID,
+    name: "default",
+    is_default: true,
+    version: 1,
+    description: "Manages nothing. Attach another discovery policy to a catalog, namespace or table to manage its tables.",
+    no_match_outcome: "unmanage",
+    rules: [],
+    attachment_count: 0,
+    created_at: "2026-11-01T09:00:00Z",
+    updated_at: "2026-11-01T09:00:00Z",
+  },
+  {
+    id: SALES_TABLES_POLICY_ID,
+    name: "sales-tables",
+    is_default: false,
+    version: 2,
+    description: "Sales tables, without the temporary ones",
+    no_match_outcome: "unmanage",
+    rules: [
+      {
+        id: "dr-01m7s6c3tqee0rhg00xry2zqqt",
+        outcome: "manage",
+        conditions: [
+          { attribute: "namespace", operator: "glob", values: ["sales", "sales.*"] },
+          { attribute: "table_name", operator: "glob", values: ["orders*", "returns*"] },
+        ],
+      },
+      {
+        id: "dr-01m7s6c3tqee0rhg00xz1dk9cs",
+        outcome: "unmanage",
+        conditions: [{ attribute: "table_name", operator: "glob", values: ["tmp_*", "staging_*"] }],
+      },
+    ],
+    attachment_count: 1,
+    created_at: "2026-11-01T09:00:00Z",
+    updated_at: "2026-11-05T09:00:00Z",
+  },
+];
+
+export const DISCOVERY_POLICY_ATTACHMENTS: ListedTableDiscoveryPolicyAttachmentApiResponse[] = [
+  {
+    id: "da-01m7s6c3tqee0rhg00xry2zqqx",
+    policy_id: SALES_TABLES_POLICY_ID,
+    policy_name: "sales-tables",
+    target: { type: "namespace", path: ["iceberg", "sales"], table_uuid: null },
+    orphaned: false,
+    attached_at: "2026-11-05T09:00:00Z",
+  },
+];
+
+// Discovery scans iceberg, where sales-tables is attached, and reads it.
+export const SCANNED_CATALOGS: ScannedCatalogsApiResponse = {
+  catalogs: [{ catalog: "iceberg", last_discovered_at: "2026-11-09T08:10:00Z", failure: null }],
+};
 
 const QUIET_OPERATIONS: ReconciliationOperationApiResponse[] = [
   {

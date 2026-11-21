@@ -14,6 +14,8 @@ interface Props<Row extends RowData> extends Omit<ResourceSectionProps<Row>, "ti
   listTitle?: string;
   // The Actions menu of the object the page shows; on phones it joins the title bar's overflow menu.
   menuItems?: ActionItem[];
+  // Content between the header and the list, such as banners about what the list governs.
+  notices?: ReactNode;
   // Content below the list, such as further lists or the object's properties.
   children?: ReactNode;
 }
@@ -25,6 +27,7 @@ export function ResourceListPage<Row extends RowData>({
   breadcrumbs,
   listTitle,
   menuItems,
+  notices,
   children,
   ...section
 }: Props<Row>) {
@@ -32,6 +35,7 @@ export function ResourceListPage<Row extends RowData>({
     <section>
       <PageHeader title={title} breadcrumbs={breadcrumbs} menuItems={menuItems} />
       <div className="flex flex-col gap-6">
+        {notices}
         <ResourceSection title={listTitle ?? title} hideTitle={listTitle === undefined} {...section} />
         {children}
       </div>

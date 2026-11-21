@@ -44,7 +44,7 @@ describe("AppShell", () => {
     expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual([
       "Tables",
       "Catalog",
-      "Discovery rules",
+      "Discovery policies",
       "Maintenance policies",
       "Platform settings",
     ]);
@@ -58,13 +58,12 @@ describe("AppShell", () => {
     expect(link).toHaveAttribute("aria-current", "page");
   });
 
-  it("links the discovery rules page", () => {
-    renderShell();
+  it("links the discovery policies page and marks it current on a policy's page", () => {
+    renderShell("/discovery-policies/sales-tables");
     const nav = screen.getByRole("navigation", { name: "Main" });
-    expect(within(nav).getByRole("link", { name: "Discovery rules" })).toHaveAttribute(
-      "href",
-      "/discovery-rules",
-    );
+    const link = within(nav).getByRole("link", { name: "Discovery policies" });
+    expect(link).toHaveAttribute("href", "/discovery-policies");
+    expect(link).toHaveAttribute("aria-current", "page");
   });
 
   it("links the catalog and marks it current under /catalogs/*", () => {
@@ -77,9 +76,9 @@ describe("AppShell", () => {
   });
 
   it("marks only the current section as the current page", () => {
-    renderShell("/discovery-rules");
+    renderShell("/discovery-policies");
     const nav = screen.getByRole("navigation", { name: "Main" });
-    expect(within(nav).getByRole("link", { name: "Discovery rules" })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("link", { name: "Discovery policies" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).getByRole("link", { name: "Tables" })).not.toHaveAttribute("aria-current");
   });
 

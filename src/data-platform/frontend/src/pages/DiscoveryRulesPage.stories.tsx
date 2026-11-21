@@ -1,20 +1,48 @@
+import { ThemeProvider, TooltipProvider } from "@retail-lakehouse/design-system";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
+import { MemoryRouter } from "react-router";
 import { expect, userEvent, within } from "storybook/test";
 import { getGetTableDiscoveryRulesMockHandler } from "@/api/generated/discovery-rules/discovery-rules.msw";
 import { apiError } from "@/stories/apiError";
-import { ConsolePage } from "@/stories/ConsolePage";
+import { AppShell } from "@/components/AppShell";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
 import { PHONE } from "@/stories/phone";
+import { DiscoveryRulesPage } from "./DiscoveryRulesPage";
+
+// /discovery-rules now redirects to the discovery policies, so until this page is deleted its
+// stories mount it directly, inside the console shell as ConsolePage would.
+function OldRulesPage() {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: { queries: { retry: false, staleTime: Infinity, refetchOnWindowFocus: false } },
+      }),
+  );
+  return (
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <MemoryRouter>
+            <AppShell>
+              <DiscoveryRulesPage />
+            </AppShell>
+          </MemoryRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
+  );
+}
 
 const meta = {
   title: "Pages/Discovery rules",
-  component: ConsolePage,
-  args: { route: "/discovery-rules" },
+  component: OldRulesPage,
   beforeEach({ msw }) {
     msw.use(...lakehouseHandlers());
   },
-} satisfies Meta<typeof ConsolePage>;
+} satisfies Meta<typeof OldRulesPage>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

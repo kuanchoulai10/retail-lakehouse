@@ -78,4 +78,29 @@ describe("ResourceListPage", () => {
     await user.click(screen.getByRole("button", { name: "Delete b" }));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
+
+  it("puts its notices between the header and the list", () => {
+    render(
+      <MemoryRouter>
+        <ResourceListPage
+          title="Catalogs"
+          notices={<p>Catalog legacy no longer exists</p>}
+          columns={[{ header: "Name", cell: (row: Row) => row.name }]}
+          rows={[{ name: "iceberg" }]}
+          rowKey={(row) => row.name}
+          newLabel="New catalog"
+          renderForm={() => null}
+          objectKind="catalog"
+          objectName={(row) => row.name}
+          fullPath={(row) => row.name}
+          onDelete={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+    const notice = screen.getByText("Catalog legacy no longer exists");
+    const title = screen.getByRole("heading", { name: "Catalogs", level: 1 });
+    const list = screen.getByRole("table");
+    expect(title.compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(notice.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

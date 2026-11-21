@@ -4,6 +4,15 @@ import { getGetPlatformSettingsMockHandler } from "@/api/generated/platform-sett
 import { getListGenericTablesMockHandler } from "@/api/generated/generic-tables/generic-tables.msw";
 import { getGetNamespaceMockHandler, getListNamespacesMockHandler } from "@/api/generated/namespaces/namespaces.msw";
 import {
+  getCreateTableDiscoveryPolicyMockHandler,
+  getDeleteTableDiscoveryPolicyMockHandler,
+  getGetTableDiscoveryPolicyMockHandler,
+  getGetTableDiscoveryPolicyVersionMockHandler,
+  getListScannedCatalogsMockHandler,
+  getListTableDiscoveryPoliciesMockHandler,
+  getListTableDiscoveryPolicyAttachmentsMockHandler,
+} from "@/api/generated/discovery-policies/discovery-policies.msw";
+import {
   getGetTableDiscoveryRulesMockHandler,
   getListCoveredCatalogsMockHandler,
   getReplaceTableDiscoveryRulesMockHandler,
@@ -51,6 +60,8 @@ import {
   applicablePolicy,
   CATALOGS,
   COMMITS,
+  DISCOVERY_POLICIES,
+  DISCOVERY_POLICY_ATTACHMENTS,
   ESCALATED_RUN,
   inFlightRun,
   MAINTAINED_ORDERS,
@@ -76,6 +87,7 @@ import {
   RETAIL_TABLES,
   RULES,
   RUNS,
+  SCANNED_CATALOGS,
 } from "./storyData";
 
 // Every read the console makes, answered from storyData through the generated MSW handlers.
@@ -160,6 +172,34 @@ export function lakehouseHandlers() {
         (r) => before === null || Date.parse(r.reconciled_at) < Date.parse(before),
       ).slice(0, limit);
     }),
+    getListTableDiscoveryPoliciesMockHandler({ policies: DISCOVERY_POLICIES }),
+    getGetTableDiscoveryPolicyMockHandler(({ params }) => {
+      const found = DISCOVERY_POLICIES.find((p) => p.name === params.name);
+      if (found === undefined) {
+        throw HttpResponse.json({ detail: `discovery policy ${params.name} not found` }, { status: 404 });
+      }
+      return found;
+    }),
+    getGetTableDiscoveryPolicyVersionMockHandler(({ params }) => {
+      const found = DISCOVERY_POLICIES.find((p) => p.name === params.name);
+      if (found === undefined) {
+        throw HttpResponse.json({ detail: `discovery policy ${params.name} not found` }, { status: 404 });
+      }
+      return { ...found, version: Number(params.version) };
+    }),
+    getCreateTableDiscoveryPolicyMockHandler(async ({ request }) => ({
+      ...DISCOVERY_POLICIES[0]!,
+      id: "dp-01m7s6c3tqee0rhg00xry2zqqw",
+      is_default: false,
+      description: "",
+      ...((await request.json()) as object),
+      version: 1,
+    })),
+    getDeleteTableDiscoveryPolicyMockHandler(),
+    getListTableDiscoveryPolicyAttachmentsMockHandler(({ params }) => ({
+      attachments: DISCOVERY_POLICY_ATTACHMENTS.filter((attachment) => attachment.policy_name === params.name),
+    })),
+    getListScannedCatalogsMockHandler(SCANNED_CATALOGS),
     getGetTableDiscoveryRulesMockHandler({ version: 1, rules: RULES }),
     getReplaceTableDiscoveryRulesMockHandler({ version: 2, rules: RULES }),
     getListTableMaintenancePoliciesMockHandler({ policies: POLICIES }),

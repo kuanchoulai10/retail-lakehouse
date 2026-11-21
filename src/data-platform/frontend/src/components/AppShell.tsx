@@ -12,6 +12,7 @@ import {
 import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 import { catalogsPath } from "@/lib/catalogPaths";
+import { discoveryPoliciesPath } from "@/lib/discoveryPolicyPaths";
 
 const PRODUCT_NAME = "Lakehouse";
 
@@ -36,10 +37,10 @@ const NAV_ENTRIES: NavEntry[] = [
     matches: (pathname) => pathname.startsWith(catalogsPath()),
   },
   {
-    href: "/discovery-rules",
-    label: "Discovery rules",
+    href: discoveryPoliciesPath(),
+    label: "Discovery policies",
     icon: IconRadar,
-    matches: (pathname) => pathname.startsWith("/discovery-rules"),
+    matches: (pathname) => pathname.startsWith(discoveryPoliciesPath()),
   },
   {
     href: "/policies",
