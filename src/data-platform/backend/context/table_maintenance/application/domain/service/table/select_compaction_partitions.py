@@ -55,7 +55,7 @@ def _wait_end(
     settings: PartitionSelectionSettings,
 ) -> datetime | None:
     """Return when a partition stops waiting, or None when it does not wait now."""
-    if last_written_at is None or settings.quiet_period == timedelta(0) or settings.max_quiet_wait == timedelta(0):
+    if last_written_at is None or settings.quiet_period == timedelta(0):
         return None
     ends = min(last_written_at + settings.quiet_period, since + settings.max_quiet_wait)
     return ends if now < ends else None

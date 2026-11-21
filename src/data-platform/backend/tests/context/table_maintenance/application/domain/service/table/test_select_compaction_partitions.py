@@ -113,17 +113,21 @@ def test_a_future_last_write_waits_out_the_quiet_period_after_it():
 
 
 def test_zero_quiet_period_never_waits():
-    """A quiet period of zero lets every partition run."""
+    """A quiet period of zero lets every partition run, even one dated in the future."""
+    quiet_off = SETTINGS.with_changes(quiet_period=timedelta(0))
     hot = p(0, "hot", written=NOW)
-    got = select_compaction_partitions([(hot, 5)], [], NOW, SETTINGS.with_changes(quiet_period=timedelta(0)))
-    assert got.selected == (hot,)
+    skewed = p(0, "skewed", written=NOW + timedelta(minutes=5))
+    got = select_compaction_partitions([(hot, 5), (skewed, 5)], [], NOW, quiet_off)
+    assert (got.selected, got.waiting) == ((hot, skewed), ())
 
 
 def test_zero_max_wait_never_waits():
-    """A longest wait of zero lets every partition run."""
+    """A longest wait of zero lets every partition run, even one dated in the future."""
+    wait_off = SETTINGS.with_changes(max_quiet_wait=timedelta(0))
     hot = p(0, "hot", written=NOW)
-    got = select_compaction_partitions([(hot, 5)], [], NOW, SETTINGS.with_changes(max_quiet_wait=timedelta(0)))
-    assert got.selected == (hot,)
+    skewed = p(0, "skewed", written=NOW + timedelta(minutes=5))
+    got = select_compaction_partitions([(hot, 5), (skewed, 5)], [], NOW, wait_off)
+    assert (got.selected, got.waiting) == ((hot, skewed), ())
 
 
 def test_waiting_partitions_do_not_count_toward_the_cap():
