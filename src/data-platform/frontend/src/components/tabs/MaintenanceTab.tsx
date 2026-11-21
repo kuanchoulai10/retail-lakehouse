@@ -73,7 +73,15 @@ function attemptColumnsAt(now: Date) {
 // whether its Spark event log finished and what the platform did next. A run from before attempt
 // history keeps only the count. A compaction also says its scope: the whole table, or the partitions
 // over the target, each spec's where clause listed.
-function OperationDetail({ operation, now }: { operation: TableMaintenanceRunOperationApiResponse; now: Date }) {
+function OperationDetail({
+  run,
+  operation,
+  now,
+}: {
+  run: TableMaintenanceRunApiResponse;
+  operation: TableMaintenanceRunOperationApiResponse;
+  now: Date;
+}) {
   const attemptColumns = useMemo(() => attemptColumnsAt(now), [now]);
   const attempts = operation.attempts;
   const metrics = Object.entries(operation.metrics);
@@ -100,7 +108,7 @@ function OperationDetail({ operation, now }: { operation: TableMaintenanceRunOpe
       )}
       {operation.attempt_history.length > 0 && (
         <DataTable
-          caption={`Attempts of ${operation.operation}`}
+          caption={`Attempts of ${operation.operation} in run ${run.run_id}`}
           columns={attemptColumns}
           data={operation.attempt_history}
           getRowId={(attempt) => String(attempt.attempt)}
@@ -126,7 +134,7 @@ function RunDetail({ run, now }: { run: TableMaintenanceRunApiResponse; now: Dat
       </p>
       <ul className="flex flex-col gap-3">
         {run.operations.map((op) => (
-          <OperationDetail key={op.operation} operation={op} now={now} />
+          <OperationDetail key={op.operation} run={run} operation={op} now={now} />
         ))}
       </ul>
     </>

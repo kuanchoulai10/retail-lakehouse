@@ -291,7 +291,7 @@ export const Maintenance: Story = {
 async function openEscalatedRun(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
   await userEvent.click(await canvas.findByRole("button", { name: `Expand run ${ESCALATED_RUN_ID}` }));
-  return within(canvas.getByRole("table", { name: "Attempts of rewrite_data_files" }));
+  return within(canvas.getByRole("table", { name: `Attempts of rewrite_data_files in run ${ESCALATED_RUN_ID}` }));
 }
 
 export const MaintenanceAttemptsEscalated: Story = {
@@ -323,7 +323,7 @@ export const MaintenanceAttemptsEscalatedPhone: Story = {
 async function openRun(canvasElement: HTMLElement, runId: string) {
   const canvas = within(canvasElement);
   await userEvent.click(await canvas.findByRole("button", { name: `Expand run ${runId}` }));
-  return within(canvas.getByRole("table", { name: "Attempts of rewrite_data_files" }));
+  return within(canvas.getByRole("table", { name: `Attempts of rewrite_data_files in run ${runId}` }));
 }
 
 export const MaintenanceAttemptRunning: Story = {
@@ -384,9 +384,9 @@ export const MaintenancePartitionScope: Story = {
     await expect(canvas.getByText("Scope: Partitions over the target")).toBeVisible();
     await expect(canvas.getByText(/^spec 0: .*DATE '2026-11-19'\)$/)).toBeVisible();
     await expect(canvas.getByText(/^spec 1: /)).toBeVisible();
-    await userEvent.click(canvas.getByRole("button", { name: `Collapse run ${PARTITION_SCOPE_RUN_ID}` }));
     await userEvent.click(await canvas.findByRole("button", { name: `Expand run ${ESCALATED_RUN_ID}` }));
     await expect(canvas.getByText("Scope: Whole table")).toBeVisible();
+    await expect(canvas.getByText("Scope: Partitions over the target")).toBeVisible();
   },
 };
 

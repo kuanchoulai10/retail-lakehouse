@@ -247,6 +247,21 @@ describe("MaintenanceTab", () => {
     expect(screen.queryByText(/^Scope:/)).not.toBeInTheDocument();
   });
 
+  it("names each run's attempts table by its run, so two open runs stay apart", async () => {
+    stubCatalogApi({
+      "GET /v1/tables/uuid-orders/table-maintenance-runs": () => jsonResponse([RUN, ESCALATED_RUN]),
+    });
+    const user = userEvent.setup();
+    renderTab();
+    await user.click(await screen.findByRole("button", { name: "Expand run run-1" }));
+    await user.click(screen.getByRole("button", { name: "Expand run run-3" }));
+    const regions = screen.getAllByRole("region", { name: /^Attempts of rewrite_data_files/ });
+    expect(new Set(regions.map((region) => region.getAttribute("aria-label"))).size).toBe(regions.length);
+    expect(regions).toHaveLength(2);
+    expect(screen.getByRole("table", { name: "Attempts of rewrite_data_files in run run-1" })).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Attempts of rewrite_data_files in run run-3" })).toBeInTheDocument();
+  });
+
   it("lists every attempt with size, result, reason, event log and next step", async () => {
     stubCatalogApi({
       "GET /v1/tables/uuid-orders/table-maintenance-runs": () => jsonResponse([ESCALATED_RUN]),
@@ -254,7 +269,7 @@ describe("MaintenanceTab", () => {
     const user = userEvent.setup();
     renderTab();
     await user.click(await screen.findByText("scheduled"));
-    const attempts = screen.getByRole("table", { name: "Attempts of rewrite_data_files" });
+    const attempts = screen.getByRole("table", { name: "Attempts of rewrite_data_files in run run-3" });
     const rows = within(attempts).getAllByRole("row").slice(1);
     expect(rows.map((row) => within(row).getAllByRole("cell").map((cell) => cell.textContent))).toEqual([
       ["1", "S", "Failed", "20s", "1m 40s", "Out of memory", "Did not finish", "Retrying at size M"],
@@ -332,7 +347,7 @@ describe("MaintenanceTab", () => {
       const user = userEvent.setup();
       renderTab();
       await user.click(await screen.findByText("scheduled"));
-      const attempts = screen.getByRole("table", { name: "Attempts of rewrite_data_files" });
+      const attempts = screen.getByRole("table", { name: "Attempts of rewrite_data_files in run run-3" });
       const rows = within(attempts)
         .getAllByRole("row")
         .slice(1)
@@ -386,7 +401,7 @@ describe("MaintenanceTab", () => {
         await vi.advanceTimersByTimeAsync(15_500);
         await vi.waitFor(() => expect(runReads()).toBeGreaterThanOrEqual(2));
         expect(screen.getByRole("button", { name: "Collapse run run-3" })).toHaveAttribute("aria-expanded", "true");
-        expect(screen.getByRole("table", { name: "Attempts of rewrite_data_files" })).toBeInTheDocument();
+        expect(screen.getByRole("table", { name: "Attempts of rewrite_data_files in run run-3" })).toBeInTheDocument();
         expect(screen.queryByText(REFRESH_FAILED)).not.toBeInTheDocument();
       });
 
@@ -398,7 +413,7 @@ describe("MaintenanceTab", () => {
         expect(await screen.findByText(REFRESH_FAILED)).toBeInTheDocument();
         expect(screen.queryByText(/^Could not load maintenance runs/)).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Collapse run run-3" })).toHaveAttribute("aria-expanded", "true");
-        expect(screen.getByRole("table", { name: "Attempts of rewrite_data_files" })).toBeInTheDocument();
+        expect(screen.getByRole("table", { name: "Attempts of rewrite_data_files in run run-3" })).toBeInTheDocument();
         await vi.advanceTimersByTimeAsync(15_500);
         await vi.waitFor(() => expect(screen.queryByText(REFRESH_FAILED)).not.toBeInTheDocument());
         expect(screen.getByRole("button", { name: "Collapse run run-3" })).toHaveAttribute("aria-expanded", "true");
