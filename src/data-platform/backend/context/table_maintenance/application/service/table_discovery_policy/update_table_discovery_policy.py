@@ -19,8 +19,8 @@ from context.table_maintenance.application.port.inbound.table_discovery_policy i
 from context.table_maintenance.application.service.shared import (
     translate_domain_errors,
 )
-from context.table_maintenance.application.service.table_discovery_policy.content_with_minted_rule_ids import (
-    content_with_minted_rule_ids,
+from context.table_maintenance.application.service.table_discovery_policy.content_with_issued_rule_ids import (
+    content_with_issued_rule_ids,
 )
 from context.table_maintenance.application.service.table_discovery_policy.table_discovery_policy_output_fields import (  # noqa: E501
     table_discovery_policy_output_fields,
@@ -59,7 +59,7 @@ class UpdateTableDiscoveryPolicyService(UpdateTableDiscoveryPolicyUseCase):
         """
         with translate_domain_errors():
             name = TableDiscoveryPolicyName(value=request.name)
-            primitives, new_ids = content_with_minted_rule_ids(request.content, self._new_id)
+            primitives, new_ids = content_with_issued_rule_ids(request.content, self._new_id)
             content = DiscoveryPolicyContent.from_primitives(primitives)
         policy = self._policies_repo.get_by_name(name)
         if policy is None:

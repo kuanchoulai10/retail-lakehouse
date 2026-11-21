@@ -80,6 +80,15 @@ def test_post_refuses_an_unknown_field_or_outcome(world: DiscoveryPolicyWebWorld
     assert world.client.get("/v1/discovery-policies/x").status_code == 404
 
 
+def test_post_with_a_rule_id_is_422(world: DiscoveryPolicyWebWorld) -> None:
+    """A create may name no rule id, however well-formed: the server issues every one, and nothing is stored."""
+    body = {"name": "mine", **discovery_policy_body(discovery_rule(id="dr-00000000000000000000000001"))}
+    response = world.client.post("/v1/discovery-policies", json=body)
+    assert response.status_code == 422
+    assert response.json() == {"detail": "unknown discovery rule id dr-00000000000000000000000001"}
+    assert world.client.get("/v1/discovery-policies/mine").status_code == 404
+
+
 def test_post_with_a_taken_name_is_409(world: DiscoveryPolicyWebWorld) -> None:
     """Names are unique among discovery policies."""
     world.create("mine")

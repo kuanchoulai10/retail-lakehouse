@@ -1,4 +1,4 @@
-"""Define the content_with_minted_rule_ids function."""
+"""Define the content_with_issued_rule_ids function."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-def content_with_minted_rule_ids(
+def content_with_issued_rule_ids(
     content: dict[str, Any], new_id: Callable[[], str]
 ) -> tuple[dict[str, Any], frozenset[str]]:
     """Return a copy of the content where each rule sent without an id holds a new one, and the ids it issued.
@@ -19,7 +19,7 @@ def content_with_minted_rule_ids(
     """
     rules = content.get("rules")
     if not isinstance(rules, list):
-        return content, frozenset()
+        return dict(content), frozenset()
     issued: list[str] = []
     filled: list[Any] = []
     for rule in rules:

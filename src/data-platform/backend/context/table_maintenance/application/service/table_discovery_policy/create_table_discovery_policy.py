@@ -20,8 +20,8 @@ from context.table_maintenance.application.port.inbound.table_discovery_policy i
 from context.table_maintenance.application.service.shared import (
     translate_domain_errors,
 )
-from context.table_maintenance.application.service.table_discovery_policy.content_with_minted_rule_ids import (
-    content_with_minted_rule_ids,
+from context.table_maintenance.application.service.table_discovery_policy.content_with_issued_rule_ids import (
+    content_with_issued_rule_ids,
 )
 from context.table_maintenance.application.service.table_discovery_policy.table_discovery_policy_output_fields import (  # noqa: E501
     table_discovery_policy_output_fields,
@@ -54,7 +54,7 @@ class CreateTableDiscoveryPolicyService(CreateTableDiscoveryPolicyUseCase):
         """Create the policy at version 1, rejecting a bad name, bad content, any rule id sent or a taken name."""
         with translate_domain_errors():
             name = TableDiscoveryPolicyName(value=request.name)
-            primitives, new_ids = content_with_minted_rule_ids(request.content, self._new_id)
+            primitives, new_ids = content_with_issued_rule_ids(request.content, self._new_id)
             content = DiscoveryPolicyContent.from_primitives(primitives)
             policy = TableDiscoveryPolicy.create(
                 name, content, self._clock(), new_rule_ids={TableDiscoveryRuleId(i) for i in new_ids}

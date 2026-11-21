@@ -147,7 +147,7 @@ def _rule_ids(content: dict[str, Any]) -> list[str]:
     return [rule["id"] for rule in content["rules"]]
 
 
-def test_create_mints_rule_ids_and_starts_at_version_1(world: ServiceWorld) -> None:
+def test_create_issues_rule_ids_and_starts_at_version_1(world: ServiceWorld) -> None:
     """Every rule sent without an id (absent or null) gets a fresh ``dr-`` id; the policy starts at version 1."""
     created = world.create("mine", _content(_rule("a_*"), _rule("b_*", id=None)))
 
@@ -161,7 +161,7 @@ def test_create_mints_rule_ids_and_starts_at_version_1(world: ServiceWorld) -> N
     assert _rule_ids(world.get("mine").content) == ids
 
 
-def test_create_refuses_any_rule_id_it_did_not_mint(world: ServiceWorld) -> None:
+def test_create_refuses_any_rule_id_it_did_not_issue(world: ServiceWorld) -> None:
     """A create may name no rule id, however well-formed, and stores nothing."""
     with pytest.raises(ValidationError, match="unknown discovery rule id dr-00000000000000000000000001"):
         world.create("mine", content_with_rule_id("dr-00000000000000000000000001"))
@@ -199,10 +199,10 @@ def test_update_keeps_the_ids_it_was_sent_and_bumps_the_version(world: ServiceWo
 
     assert updated.version == 2
     assert (updated.created_at, updated.updated_at) == (NOW, LATER)
-    minted, second = _rule_ids(updated.content)
+    issued, second = _rule_ids(updated.content)
     assert second == kept
-    assert DR_ID.fullmatch(minted)
-    assert minted != kept
+    assert DR_ID.fullmatch(issued)
+    assert issued != kept
     assert world.get("mine").content == updated.content
 
 

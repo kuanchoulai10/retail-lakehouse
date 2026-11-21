@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.application.service.table_discovery_policy.content_with_minted_rule_ids import (
-    content_with_minted_rule_ids,
+from context.table_maintenance.application.service.table_discovery_policy.content_with_issued_rule_ids import (
+    content_with_issued_rule_ids,
 )
 from context.table_maintenance.application.service.table_discovery_policy.create_table_discovery_policy import (
     CreateTableDiscoveryPolicyService,
@@ -38,6 +38,6 @@ __all__ = [
     "GetTableDiscoveryPolicyVersionService",
     "ListTableDiscoveryPoliciesService",
     "UpdateTableDiscoveryPolicyService",
-    "content_with_minted_rule_ids",
+    "content_with_issued_rule_ids",
     "table_discovery_policy_output_fields",
 ]
