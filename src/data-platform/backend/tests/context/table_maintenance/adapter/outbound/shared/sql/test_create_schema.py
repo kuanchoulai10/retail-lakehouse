@@ -47,11 +47,13 @@ def test_create_schema_includes_the_reconciliations_package():
     assert "context.table_maintenance.adapter.outbound.table_reconciliation.sql" in AGGREGATE_SQL_PACKAGES
 
 
-def test_create_schema_creates_the_tables_of_the_seven_aggregates():
-    """Compaction rounds and candidates are gone, so the schema holds the tables of the seven aggregates left."""
+def test_create_schema_creates_the_tables_of_the_nine_aggregates():
+    """The schema holds the tables of the nine aggregates, the discovery policies and their attachments included."""
     assert {package.split(".")[-2] for package in AGGREGATE_SQL_PACKAGES} == {
         "catalog_discovery",
         "table",
+        "table_discovery_policy",
+        "table_discovery_policy_attachment",
         "table_discovery_rules",
         "table_maintenance_policy",
         "table_maintenance_policy_attachment",

@@ -9,6 +9,12 @@ from context.table_maintenance.adapter.outbound.catalog_discovery.sql import (
     CatalogDiscoveriesSqlRepo,
 )
 from context.table_maintenance.adapter.outbound.table.sql import TableMetricsSqlStore, TablesSqlRepo
+from context.table_maintenance.adapter.outbound.table_discovery_policy.sql import (
+    TableDiscoveryPoliciesSqlRepo,
+)
+from context.table_maintenance.adapter.outbound.table_discovery_policy_attachment.sql import (
+    TableDiscoveryPolicyAttachmentsSqlRepo,
+)
 from context.table_maintenance.adapter.outbound.table_discovery_rules.sql import (
     TableDiscoveryRulesSqlRepo,
 )
@@ -32,6 +38,8 @@ if TYPE_CHECKING:
 def build_repositories(engine: Engine) -> Repositories:
     """Build the SQL repositories on one engine."""
     return Repositories(
+        table_discovery_policies=TableDiscoveryPoliciesSqlRepo(engine),
+        table_discovery_policy_attachments=TableDiscoveryPolicyAttachmentsSqlRepo(engine),
         table_discovery_rules=TableDiscoveryRulesSqlRepo(engine),
         table_maintenance_runs=TableMaintenanceRunsSqlRepo(engine),
         tables=TablesSqlRepo(engine),

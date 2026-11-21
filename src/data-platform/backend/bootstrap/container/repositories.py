@@ -10,6 +10,12 @@ if TYPE_CHECKING:
         CatalogDiscoveriesRepo,
     )
     from context.table_maintenance.application.port.outbound.table import TableMetricsStore, TablesRepo
+    from context.table_maintenance.application.port.outbound.table_discovery_policy import (
+        TableDiscoveryPoliciesRepo,
+    )
+    from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
+        TableDiscoveryPolicyAttachmentsRepo,
+    )
     from context.table_maintenance.application.port.outbound.table_discovery_rules import (
         TableDiscoveryRulesRepo,
     )
@@ -31,6 +37,8 @@ if TYPE_CHECKING:
 class Repositories:
     """Hold one repository per aggregate, and the table metrics store."""
 
+    table_discovery_policies: TableDiscoveryPoliciesRepo
+    table_discovery_policy_attachments: TableDiscoveryPolicyAttachmentsRepo
     table_discovery_rules: TableDiscoveryRulesRepo
     table_maintenance_runs: TableMaintenanceRunsRepo
     tables: TablesRepo
