@@ -2796,3 +2796,27 @@ def test_a_child_that_did_not_start_links_no_run():
         assert (await h.settle())["in_flight_run_ids"] is None
 
     _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE))
+
+
+def test_a_stop_during_the_create_skips_the_created_runs_and_starts_no_child():
+    """A stop that arrives while the plan's runs are created starts no child, skips those runs and records nothing."""
+
+    async def scenario(h: Harness) -> None:
+        async def creates() -> int:
+            return len(h.runs.created)
+
+        h.runs.create_gate = asyncio.Event()
+        await h.start()
+        await eventually(creates, lambda n: n == 1)
+        await h.signal(TableReconciliationSignal.STOP)
+        await eventually(h.state, lambda s: s["stopping"])
+        h.runs.create_gate.set()
+        await h.ended()
+        run_ids = [run["run_id"] for run in h.runs.created[0]["runs"]]
+        assert [(skip["run_ids"], skip["reason"]) for skip in h.runs.skips] == [
+            (run_ids, "the reconciliation stopped before the table's maintenance workflow started")
+        ]
+        assert await h.started_children() == {}
+        assert h.recorder.records == []
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))

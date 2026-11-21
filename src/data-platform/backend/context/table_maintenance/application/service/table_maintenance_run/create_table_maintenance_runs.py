@@ -48,8 +48,10 @@ class CreateTableMaintenanceRunsService(CreateTableMaintenanceRunsUseCase):
         by the domain or by the store, leaves none of them stored. ``run_ids`` and ``now`` come from the
         caller, so a workflow can supply deterministic values: a retry whose first try stored the runs finds
         every id stored, for the same table and operation, and returns their ids without storing anything.
-        Some ids stored and others not, or a stored run of another table or operation, is a ``ConflictError``,
-        since no try of this request leaves that behind.
+        A retry that read no run but whose insert meets runs stored meanwhile (a slow first try racing it)
+        reads them back and returns them when every one is stored as planned. Some ids stored and others not,
+        or a stored run of another table or operation, is a ``ConflictError``, since no try of this request
+        leaves that behind.
         """
         with translate_domain_errors():
             trigger = TriggerType(request.trigger)
@@ -77,7 +79,14 @@ class CreateTableMaintenanceRunsService(CreateTableMaintenanceRunsUseCase):
                     )
                     for run_id, run in planned
                 ]
-                self._runs_repo.create_all(runs)
+                try:
+                    self._runs_repo.create_all(runs)
+                except ConflictError:
+                    # The insert met runs stored since the reads: they are taken only when they are this plan's.
+                    self._require_stored_as_planned(
+                        request, [(run, self._runs_repo.get(run_id)) for run_id, run in planned]
+                    )
+                    return CreateTableMaintenanceRunsUseCaseOutput(run_ids=tuple(run_id.value for run_id, _ in planned))
                 if trigger is TriggerType.MANUAL:
                     self._clear_needs_attention(table, [run.operation for run in runs], request.now)
         return CreateTableMaintenanceRunsUseCaseOutput(run_ids=tuple(run_id.value for run_id, _ in planned))

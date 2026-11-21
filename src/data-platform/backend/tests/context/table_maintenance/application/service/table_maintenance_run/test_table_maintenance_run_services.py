@@ -268,6 +268,38 @@ def test_a_create_retried_after_its_first_try_stored_the_plan_returns_the_stored
     assert sorted(runs_repo.items) == [RUN_1, RUN_2]
 
 
+def _first_try_lands_during_the_insert(runs_repo, first_try) -> None:
+    """Make another try's insert land between this try's reads and its insert, as a slow first try racing its retry."""
+    insert = runs_repo.create_all
+
+    def raced(runs):
+        runs_repo.create_all = insert
+        first_try()
+        return insert(runs)
+
+    runs_repo.create_all = raced
+
+
+def test_a_retry_whose_insert_meets_the_first_tries_runs_returns_them(creator, runs_repo, tables_repo, table, now):
+    """A retry that read no run but whose insert hits the runs its first try stored meanwhile returns those runs."""
+    first = CreateTableMaintenanceRunsService(runs_repo, tables_repo)
+    _first_try_lands_during_the_insert(runs_repo, lambda: first.execute(_create_input(now, runs=_two_run_plan())))
+    out = creator.execute(_create_input(now, runs=_two_run_plan()))
+    assert out.run_ids == (RUN_1, RUN_2)
+    assert sorted(runs_repo.items) == [RUN_1, RUN_2]
+
+
+def test_an_insert_that_meets_runs_not_stored_as_planned_is_a_conflict(creator, runs_repo, tables_repo, table, now):
+    """An insert that hits a run id stored meanwhile for another operation is the real conflict."""
+    other = CreateTableMaintenanceRunsService(runs_repo, tables_repo)
+    _first_try_lands_during_the_insert(
+        runs_repo, lambda: other.execute(_create_input(now, operation="expire_snapshots"))
+    )
+    with pytest.raises(ConflictError):
+        creator.execute(_create_input(now, runs=_two_run_plan()))
+    assert runs_repo.get(TableMaintenanceRunId(RUN_2)) is None
+
+
 def test_a_create_whose_plan_is_only_partly_stored_is_a_conflict(creator, runs_repo, table, now):
     """A plan with some of its run ids stored and others not is refused, and the missing runs are not stored."""
     creator.execute(_create_input(now))

@@ -267,6 +267,42 @@ def test_a_create_of_a_plan_retried_after_it_was_stored_succeeds_on_the_sql_repo
     assert sorted(r.id.value for r in repo.list_all()) == sorted([R1, OTHER])
 
 
+def test_a_retry_whose_insert_hits_the_primary_key_of_its_first_try_succeeds_on_the_sql_repo(
+    repo: TableMaintenanceRunsSqlRepo, monkeypatch: pytest.MonkeyPatch
+):
+    """A retry that read no run, and whose insert then hits the runs its first try committed meanwhile, returns them.
+
+    The primary key refuses the retry's insert; the use case reads the runs back and finds them stored as planned.
+    """
+    tables = InMemoryTablesRepo()
+    tables.create(
+        Table.register(
+            TableId("u1"), TableName(catalog="iceberg", namespace="s", table="t"), TableDiscoveryRuleId.new(), NOW
+        )
+    )
+    request = CreateTableMaintenanceRunsUseCaseInput(
+        table_uuid="u1",
+        execution_ref="wf",
+        trigger="scheduled",
+        now=NOW,
+        runs=(
+            CreateTableMaintenanceRunsUseCaseInput.Run(run_id=R1, operation="rewrite_data_files"),
+            CreateTableMaintenanceRunsUseCaseInput.Run(run_id=OTHER, operation="expire_snapshots"),
+        ),
+    )
+    insert = repo.create_all
+
+    def first_try_lands_first(runs):
+        monkeypatch.setattr(repo, "create_all", insert)
+        CreateTableMaintenanceRunsService(repo, tables).execute(request)
+        return insert(runs)
+
+    monkeypatch.setattr(repo, "create_all", first_try_lands_first)
+    again = CreateTableMaintenanceRunsService(repo, tables).execute(request)
+    assert again.run_ids == (R1, OTHER)
+    assert sorted(r.id.value for r in repo.list_all()) == sorted([R1, OTHER])
+
+
 def test_attempts_round_trip(repo: TableMaintenanceRunsSqlRepo):
     """Every attempt, with its job, size, class, event log state and next step, loads back."""
     run = _run(R1, operation=Op.REWRITE_DATA_FILES)

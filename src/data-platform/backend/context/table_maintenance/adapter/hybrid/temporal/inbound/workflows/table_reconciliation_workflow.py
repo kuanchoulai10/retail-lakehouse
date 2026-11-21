@@ -67,6 +67,7 @@ _CLOSING_POLL = timedelta(seconds=5)
 _RUN_ID_PREFIX = "mr"
 _RECONCILIATION_ID_PREFIX = "rc"
 _START_FAILED = "the table's maintenance workflow could not be started"
+_STOPPED_BEFORE_START = "the reconciliation stopped before the table's maintenance workflow started"
 
 
 @workflow.defn(name=TABLE_RECONCILIATION_WORKFLOW)
@@ -717,11 +718,26 @@ class TableReconciliationWorkflow:
         if self._stopping:
             self._drop_unstarted_plan(manual, reconciliation_id)
             return False
+        await self._create_and_start(plan, manual, reconciliation_id, record)
+        return False
+
+    async def _create_and_start(
+        self, plan: dict[str, Any], manual: list[str] | None, reconciliation_id: str, record: dict[str, Any]
+    ) -> None:
+        """Create the plan's runs, start the child that runs them, and record the reconciliation.
+
+        Runs are linked only when the create succeeded and the child started. A stop that arrived
+        during the create skips the runs and drops the plan unrecorded, as a stop before it does.
+        """
         run_ids = self._mint_run_ids(plan)
         created = await self._create_runs(plan, manual is not None, run_ids)
+        if created and self._stopping:
+            await self._skip_runs(run_ids, _STOPPED_BEFORE_START)
+            self._drop_unstarted_plan(manual, reconciliation_id)
+            return
         started = created and await self._start_run(plan, manual is not None, run_ids)
         if created and not started:
-            await self._skip_runs(run_ids)
+            await self._skip_runs(run_ids, _START_FAILED)
         if started:
             self._consume_manual(manual, None)
         elif manual is not None:
@@ -729,7 +745,6 @@ class TableReconciliationWorkflow:
         operations = [op["operation"] for op in plan["operations"]]
         links = dict(zip(operations, run_ids, strict=True)) if started else {}
         await self._record(record, plan, run_ids=links, run_start_failed=not started)
-        return False
 
     def _follow_plan_triggers(self, plan: dict[str, Any]) -> None:
         """Take the schedule interval and the commit debounce from the plan.
@@ -793,12 +808,12 @@ class TableReconciliationWorkflow:
             return False
         return True
 
-    async def _skip_runs(self, run_ids: list[str]) -> None:
-        """Skip the runs created for a child that could not be started, saying why; a failure is logged."""
+    async def _skip_runs(self, run_ids: list[str], reason: str) -> None:
+        """Skip the runs created for a child that is not started, saying why; a failure is logged."""
         try:
             await workflow.execute_activity(
                 TableReconciliationActivity.SKIP_MAINTENANCE_RUNS,
-                {"run_ids": run_ids, "reason": _START_FAILED, "now": workflow.now().isoformat()},
+                {"run_ids": run_ids, "reason": reason, "now": workflow.now().isoformat()},
                 start_to_close_timeout=_ACTIVITY_TIMEOUT,
                 retry_policy=_ACTIVITY_RETRY,
             )
