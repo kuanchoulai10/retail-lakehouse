@@ -539,25 +539,24 @@ wait_for_new_run() {
 
 assert_runs_succeeded() {
   local label="$1" runs="$2" failed rewritten
-  failed="$(jq -c '[.[] | .operations[] | select(.status != "succeeded")
-    | {operation, status, error}]' <<<"${runs}")"
+  failed="$(jq -c '[.[] | select(.status != "succeeded") | {operation, status, error}]' <<<"${runs}")"
   if [[ "${failed}" != "[]" ]]; then
-    echo "${label}: operations did not succeed: ${failed}" >&2
+    echo "${label}: runs did not succeed: ${failed}" >&2
     return 1
   fi
-  failed="$(jq -c '[.[] | .operations[]
-    | select((.attempt_history | length) == 0
-      or any(.attempt_history[]; .size == null)
+  failed="$(jq -c '[.[]
+    | select((.attempts | length) == 0
+      or any(.attempts[]; .size == null)
       or ((.metrics.completed_without_callback // false | not)
-        and any(.attempt_history[]; .status == "succeeded" and .event_log_finished != true)))
-    | {operation, attempt_history}]' <<<"${runs}")"
+        and any(.attempts[]; .status == "succeeded" and .event_log_finished != true)))
+    | {operation, attempts}]' <<<"${runs}")"
   if [[ "${failed}" != "[]" ]]; then
     echo "${label}: attempts lack a size or a finished event log: ${failed}" >&2
     return 1
   fi
-  rewritten="$(jq '[.[] | .operations[] | select(.operation == "rewrite_data_files")
+  rewritten="$(jq '[.[] | select(.operation == "rewrite_data_files")
     | .metrics.rewritten_data_files_count // 0] | add // 0' <<<"${runs}")"
-  if (( rewritten <= 0 )) && jq -e '[.[] | .operations[]
+  if (( rewritten <= 0 )) && jq -e '[.[]
       | select(.operation == "rewrite_data_files") | .metrics.completed_without_callback]
       | any' <<<"${runs}" >/dev/null; then
     progress "${label}: the compaction callback was lost; relying on the \$files count check"
@@ -571,8 +570,8 @@ report_runs() {
   local label="$1" runs="$2" line
   while IFS= read -r line; do
     progress "${label} ${line}"
-  done < <(jq -r '.[] | . as $run | .operations[] |
-    "run \($run.run_id) \($run.trigger) \(.operation) \(.status) attempts=\(.attempts) \(.metrics | tojson)"' \
+  done < <(jq -r '.[] |
+    "run \(.run_id) \(.trigger) \(.operation) \(.status) attempts=\(.attempts | length) \(.metrics | tojson)"' \
     <<<"${runs}")
 }
 
@@ -608,16 +607,16 @@ assert_workflows_found_by_table() {
 }
 
 assert_manual_run_recorded() {
-  local uuid="$1" run_id="$2" records
+  local uuid="$1" run_ids="$2" records
   records="$(api GET "/v1/tables/${uuid}/reconciliations")"
-  jq -e --arg run "${run_id}" '[.[] | select((.wake_reasons.manual_run // 0) >= 1
-      and .run_id == $run
-      and any(.operations[]; .result == "started"))] | length >= 1' <<<"${records}" >/dev/null || {
-    echo "no reconciliation of ${uuid} records the manual run ${run_id}: $(jq -c '[.[]
-      | {wake_reasons, outcome, run_id}]' <<<"${records}")" >&2
+  jq -e --argjson runs "${run_ids}" '[.[] | select((.wake_reasons.manual_run // 0) >= 1
+      and ([.operations[] | select(.result == "started") | {operation, run_id}] | sort_by(.operation))
+        == ($runs | sort_by(.operation)))] | length >= 1' <<<"${records}" >/dev/null || {
+    echo "no reconciliation of ${uuid} links the manual runs ${run_ids}: $(jq -c '[.[]
+      | {wake_reasons, operations: [.operations[] | {operation, result, run_id}]}]' <<<"${records}")" >&2
     return 1
   }
-  progress "reconciliation of ${uuid} records the manual run ${run_id}"
+  progress "reconciliation of ${uuid} links the manual runs, each on its own operation: ${run_ids}"
 }
 
 assert_prefixed_ids() {
@@ -652,8 +651,8 @@ wait_for_reconcile_now_record() {
 }
 
 compaction_filters() {
-  api GET "/v1/table-maintenance-runs/$1" | jq -c '[.operations[] | select(.operation == "rewrite_data_files")]
-    | if length == 1 then .[0].filters else error("run does not have exactly one rewrite_data_files operation") end'
+  api GET "/v1/table-maintenance-runs/$1" \
+    | jq -c 'select(.operation == "rewrite_data_files") | .filters'
 }
 
 assert_whole_table_compaction() {
@@ -681,11 +680,25 @@ assert_partition_compaction() {
   [[ -n "${escaped}" ]] || { echo "no regions where filter holds the escaped quote of o'neil" >&2; return 1; }
 }
 
+assert_runs_in_plan_order() {
+  local label="$1" runs="$2"
+  # shellcheck disable=SC2016
+  check 'def seconds: sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | fromdateiso8601;
+    def position: .operation as $operation
+      | ["rewrite_data_files", "rewrite_manifests", "expire_snapshots", "remove_orphan_files"]
+      | index($operation);
+    [.[] | select(.trigger == "manual")] | sort_by(position) as $plan
+    | ($plan | length) > 1
+      and all(range(1; $plan | length); ($plan[.].started_at | seconds) >= ($plan[. - 1].finished_at | seconds))' \
+    "${runs}" "${label}: a manual run started before the previous run of the plan finished"
+  progress "${label}: the manual runs ran in plan order, one after the other"
+}
+
 assert_attempts_timed() {
   local label="$1" runs="$2"
   # shellcheck disable=SC2016
   check 'def seconds: sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | fromdateiso8601;
-    [.[] | .operations[] | .attempt_history[] | select(.status == "succeeded")] as $done
+    [.[] | .attempts[] | select(.status == "succeeded")] as $done
     | ($done | length) > 0
       and all($done[]; .started_running_at != null and .finished_at != null
         and (.started_at | seconds) <= (.started_running_at | seconds)
@@ -801,17 +814,17 @@ COMPACTION_QUIET_SECONDS="$(api GET /v1/platform-settings | jq -er '[.groups[].i
 progress "${REGIONS} may wait up to the quiet period (${COMPACTION_QUIET_SECONDS}s) after its last write before compacting, then compacts at its next ${REGIONS_SCHEDULE_SECONDS}s check"
 progress "waiting for the ${REGIONS} scheduled compaction run to finish before any ${ORDERS} run, so one Spark job runs at a time"
 wait_for_new_run "${REGIONS_UUID}" "${REGIONS_BEFORE_RUNS}" \
-  '.trigger == "scheduled" and any(.operations[]; .operation == "rewrite_data_files")' \
+  '.trigger == "scheduled" and .operation == "rewrite_data_files"' \
   "${REGIONS_EXTRA_WAIT_SECONDS}" >/dev/null
 wait_for_quiet_table "${REGIONS_UUID}"
 REGIONS_RUNS="$(wait_for_new_run "${REGIONS_UUID}" "${REGIONS_BEFORE_RUNS}" \
-  '.trigger == "scheduled" and any(.operations[]; .operation == "rewrite_data_files")' \
+  '.trigger == "scheduled" and .operation == "rewrite_data_files"' \
   "${REGIONS_EXTRA_WAIT_SECONDS}")"
 report_runs "${REGIONS}" "${REGIONS_RUNS}"
 assert_runs_succeeded "${REGIONS}" "${REGIONS_RUNS}"
 assert_attempts_timed "${REGIONS}" "${REGIONS_RUNS}"
 # shellcheck disable=SC2046
-assert_partition_compaction $(jq -r '.[] | select(any(.operations[]; .operation == "rewrite_data_files"))
+assert_partition_compaction $(jq -r '.[] | select(.operation == "rewrite_data_files")
   | .run_id' <<<"${REGIONS_RUNS}")
 progress "${REGIONS} rewrite_data_files results in its reconciliations, oldest first (timing decides them; waiting_for_writes is expected before the quiet period passes): $(
   api GET "/v1/tables/${REGIONS_UUID}/reconciliations" | jq -c 'reverse
@@ -843,12 +856,20 @@ ORDERS_RUNS="$(wait_for_new_run "${ORDERS_UUID}" "${ORDERS_BEFORE_RUNS}" '.trigg
 report_runs "${ORDERS}" "${ORDERS_RUNS}"
 assert_runs_succeeded "${ORDERS}" "${ORDERS_RUNS}"
 assert_attempts_timed "${ORDERS}" "${ORDERS_RUNS}"
-jq -e '[.[] | select(.trigger == "manual") | .operations[].operation] | unique | length == 4' \
-  <<<"${ORDERS_RUNS}" >/dev/null || { echo "manual run lacks an operation" >&2; exit 1; }
+jq -e '[.[] | select(.trigger == "manual") | .operation] | sort
+    == ["expire_snapshots", "remove_orphan_files", "rewrite_data_files", "rewrite_manifests"]
+  and ([.[] | select(.trigger == "manual") | .execution_ref] | unique | length == 1)
+  and ([.[] | select(.trigger == "manual") | .created_at] | unique | length == 1)' \
+  <<<"${ORDERS_RUNS}" >/dev/null \
+  || { echo "the manual runs are not one run per operation of one plan: $(jq -c '[.[]
+    | select(.trigger == "manual") | {operation, execution_ref, created_at}]' <<<"${ORDERS_RUNS}")" >&2; exit 1; }
+assert_runs_in_plan_order "${ORDERS}" "${ORDERS_RUNS}"
 
-ORDERS_MANUAL_RUN_ID="$(jq -r '[.[] | select(.trigger == "manual")] | .[0].run_id' <<<"${ORDERS_RUNS}")"
+ORDERS_MANUAL_RUN_ID="$(jq -r '[.[] | select(.trigger == "manual" and .operation == "rewrite_data_files")]
+  | .[0].run_id' <<<"${ORDERS_RUNS}")"
+ORDERS_MANUAL_RUNS="$(jq -c '[.[] | select(.trigger == "manual") | {operation, run_id}]' <<<"${ORDERS_RUNS}")"
 assert_whole_table_compaction "${ORDERS_MANUAL_RUN_ID}"
-assert_manual_run_recorded "${ORDERS_UUID}" "${ORDERS_MANUAL_RUN_ID}"
+assert_manual_run_recorded "${ORDERS_UUID}" "${ORDERS_MANUAL_RUNS}"
 
 wait_for_quiet_table "${ORDERS_UUID}"
 ORDERS_RECONCILIATIONS_BEFORE="$(reconciliation_ids "${ORDERS_UUID}")"
@@ -899,13 +920,13 @@ jq -e '.metrics.data_files != null' <<<"${REGIONS_METRICS}" >/dev/null \
   || { echo "${ORDERS} file count did not decrease" >&2; exit 1; }
 (( ORDERS_SNAPSHOTS_AFTER < ORDERS_SNAPSHOTS_BEFORE )) \
   || { echo "${ORDERS} snapshot count did not decrease" >&2; exit 1; }
-if jq -e '[.[] | .operations[] | .metrics.completed_without_callback] | any' \
+if jq -e '[.[] | .metrics.completed_without_callback] | any' \
     <<<"${ORDERS_RUNS}" >/dev/null; then
   progress "${ORDERS}: a callback was lost; skipping the RustFS object accounting"
 else
-  ADDED="$(jq '[.[] | .operations[] | select(.operation == "rewrite_data_files")
+  ADDED="$(jq '[.[] | select(.operation == "rewrite_data_files")
     | .metrics.added_data_files_count // 0] | add // 0' <<<"${ORDERS_RUNS}")"
-  DELETED="$(jq '[.[] | .operations[] | select(.operation == "expire_snapshots") | .metrics
+  DELETED="$(jq '[.[] | select(.operation == "expire_snapshots") | .metrics
     | (.deleted_data_files_count // 0) + (.deleted_position_delete_files_count // 0)
       + (.deleted_equality_delete_files_count // 0)] | add // 0' <<<"${ORDERS_RUNS}")"
   EXPECTED=$(( ORDERS_OBJECTS_BEFORE + ADDED - DELETED ))
