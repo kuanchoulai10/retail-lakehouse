@@ -46,7 +46,7 @@ class TablesSqlRepo(TablesRepo):
         self._engine = engine
 
     def create(self, entity: Table) -> Table:
-        """Insert a new table."""
+        """Insert a new table, always with an empty over-target record, whatever the entity holds."""
         try:
             with self._engine.begin() as conn:
                 conn.execute(insert(t).values(**TableRowMapper.to_values(entity), over_target_partitions_json=[]))

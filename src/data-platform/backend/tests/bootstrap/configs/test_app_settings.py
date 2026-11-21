@@ -309,6 +309,18 @@ def test_app_settings_read_the_partition_selection_env(monkeypatch: pytest.Monke
     ) == (4, 0, 600)
 
 
+def test_the_partition_selection_bounds_are_accepted(monkeypatch: pytest.MonkeyPatch):
+    """The cap accepts 1 and 1000, and the longest wait accepts 0 (nothing waits)."""
+    monkeypatch.setenv("GLAC_MAINTENANCE_COMPACTION_MAX_QUIET_WAIT_SECONDS", "0")
+    for value in (1, 1000):
+        monkeypatch.setenv("GLAC_MAINTENANCE_COMPACTION_PARTITIONS_PER_JOB", str(value))
+        settings = AppSettings()
+        assert (
+            settings.maintenance_compaction_partitions_per_job,
+            settings.maintenance_compaction_max_quiet_wait_seconds,
+        ) == (value, 0)
+
+
 @pytest.mark.parametrize("value", ["0", "1001"])
 def test_partitions_per_job_out_of_range_is_refused(monkeypatch: pytest.MonkeyPatch, value: str):
     """One job compacts at least one partition and at most a thousand, which bounds the size of its where."""

@@ -745,16 +745,16 @@ JQ
 attach_policy tm-e2e-orders "${ORDERS}"
 attach_policy tm-e2e-regions "${REGIONS}"
 
-progress "inserting 20 single-row orders, 8 single-row regions, and deleting one order"
+progress "inserting 20 single-row orders, 4 two-row region commits, and deleting one order"
 STATEMENTS=""
 for id in $(seq 1 20); do
   day=$(( id % 2 + 1 ))
   STATEMENTS+="INSERT INTO ${CATALOG}.${SCHEMA}.${ORDERS} VALUES
     (${id}, 'customer-${id}', ${id}.5, TIMESTAMP '2026-10-0${day} 10:00:00.000000 UTC');"
 done
-for id in $(seq 1 8); do
-  if (( id % 2 == 0 )); then region="'o''neil'"; else region="'north'"; fi
-  STATEMENTS+="INSERT INTO ${CATALOG}.${SCHEMA}.${REGIONS} VALUES (${id}, ${region}, 'note-${id}');"
+for id in 1 3 5 7; do
+  STATEMENTS+="INSERT INTO ${CATALOG}.${SCHEMA}.${REGIONS} VALUES
+    (${id}, 'north', 'note-${id}'), ($(( id + 1 )), 'o''neil', 'note-$(( id + 1 ))');"
 done
 STATEMENTS+="DELETE FROM ${CATALOG}.${SCHEMA}.${ORDERS} WHERE id = 3"
 REGIONS_BEFORE_RUNS='[]'
@@ -814,7 +814,7 @@ assert_attempts_timed "${REGIONS}" "${REGIONS_RUNS}"
 assert_partition_compaction $(jq -r '.[] | select(any(.operations[]; .operation == "rewrite_data_files"))
   | .run_id' <<<"${REGIONS_RUNS}")
 progress "${REGIONS} rewrite_data_files results in its reconciliations, oldest first (timing decides them; waiting_for_writes is expected before the quiet period passes): $(
-  api GET "/v1/tables/${REGIONS_UUID}/reconciliations" | jq -c 'sort_by(.reconciled_at)
+  api GET "/v1/tables/${REGIONS_UUID}/reconciliations" | jq -c 'reverse
     | [.[] | {at: .reconciled_at, result: (.operations[] | select(.operation == "rewrite_data_files") | .result)}]')"
 
 WAIT_SECONDS=$(( LAST_WRITE_AT + EXPIRE_AGE_SECONDS + 5 - $(date +%s) ))

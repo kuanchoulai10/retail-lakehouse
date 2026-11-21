@@ -576,7 +576,7 @@ def test_over_target_partitions_of_a_dropped_or_unknown_table_are_not_written(ei
     assert loaded.over_target_partitions == ()
 
 
-def test_a_null_over_target_column_reads_as_none(repo: TablesSqlRepo, engine: Engine):
+def test_a_null_over_target_column_reads_as_empty(repo: TablesSqlRepo, engine: Engine):
     """A row stored before the column existed (NULL) reads as holding no over-target partitions."""
     repo.create(_table())
     with engine.begin() as connection:
