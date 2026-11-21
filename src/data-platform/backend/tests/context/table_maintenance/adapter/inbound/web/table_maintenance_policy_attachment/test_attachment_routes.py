@@ -222,8 +222,8 @@ def test_delete_of_another_policys_attachment_is_404(world: PolicyWebWorld) -> N
     ("method", "body"),
     [
         ("GET", None),
-        ("PUT", {"target": {"type": "catalog", "path": ["prod"]}}),
-        ("DELETE", {"target": {"type": "catalog", "path": ["prod"]}}),
+        ("PUT", {"target": {"type": "namespace", "path": ["prod", "sales"]}}),
+        ("DELETE", {"target": {"type": "namespace", "path": ["prod", "sales"]}}),
     ],
 )
 def test_mappings_routes_are_gone(world: PolicyWebWorld, method: str, body: dict[str, object] | None) -> None:
@@ -232,5 +232,5 @@ def test_mappings_routes_are_gone(world: PolicyWebWorld, method: str, body: dict
 
     response = world.client.request(method, "/v1/maintenance-policies/gold/mappings", json=body)
 
-    assert response.status_code in {404, 405}
+    assert response.status_code == 404
     assert len(world.attachments.list_all()) == 1

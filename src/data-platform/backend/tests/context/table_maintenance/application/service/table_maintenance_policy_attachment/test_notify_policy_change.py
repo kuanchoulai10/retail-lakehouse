@@ -192,13 +192,12 @@ def test_a_failed_wake_does_not_undo_the_change_or_stop_other_wakes(world: _Worl
     """Waking is best effort: a failed send is logged, the change stands and other tables are still woken."""
     world.attach("catalog", ("prod",), "gold")
     failing = _FailingFirstSend()
-    result = notify_policy_change(
-        world.tables,
-        world.policies,
-        world.attachments,
-        failing,
-        lambda: world.attach("catalog", ("prod",), DEFAULT_POLICY_NAME) and "done",
-    )
+
+    def change() -> str:
+        world.attach("catalog", ("prod",), DEFAULT_POLICY_NAME)
+        return "done"
+
+    result = notify_policy_change(world.tables, world.policies, world.attachments, failing, change)
     assert result == "done"
     assert failing.attempts == 2
     assert len(failing.sent) == 1

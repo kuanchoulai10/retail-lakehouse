@@ -1,1 +1,1 @@
-"""Tests for the policy mapping and applicable policy routes."""
+"""Tests for the maintenance policy attachment routes, and that the old mapping routes are gone."""
