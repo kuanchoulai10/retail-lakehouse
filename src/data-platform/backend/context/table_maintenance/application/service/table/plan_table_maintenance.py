@@ -10,10 +10,12 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     MaintenancePlan,
     OperationVerdict,
+    PlannedOperation,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
     DEFAULT_OPERATION_COOLDOWNS,
+    DEFAULT_PARTITION_SELECTION_SETTINGS,
     TableId,
     TableStatus,
 )
@@ -22,6 +24,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 )
 from context.table_maintenance.application.domain.service.table import (
     assess_maintenance,
+    build_partition_filters,
     measure_table,
     plan_manual_maintenance,
 )
@@ -50,7 +53,11 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from context.table_maintenance.application.domain.model.shared import TableObservation
-    from context.table_maintenance.application.domain.model.table import OperationCooldowns, Table
+    from context.table_maintenance.application.domain.model.table import (
+        OperationCooldowns,
+        PartitionSelectionSettings,
+        Table,
+    )
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
         TableMetricsStore,
@@ -76,17 +83,20 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         *,
         metrics_store: TableMetricsStore,
         cooldowns: OperationCooldowns = DEFAULT_OPERATION_COOLDOWNS,
+        partition_selection: PartitionSelectionSettings = DEFAULT_PARTITION_SELECTION_SETTINGS,
     ) -> None:
         """Bind the tables repo, the catalog gateway, the applicable policy resolution and the metrics store.
 
         ``cooldowns`` are the platform's cooldown of each operation and the cap where the doubling
-        of a failing operation's cooldown stops.
+        of a failing operation's cooldown stops. ``partition_selection`` is how many partitions a
+        compaction job takes and how long a partition waits after a write.
         """
         self._tables_repo = tables_repo
         self._catalog_gateway = catalog_gateway
         self._resolve_applicable_policy = resolve_applicable_policy
         self._metrics_store = metrics_store
         self._cooldowns = cooldowns
+        self._partition_selection = partition_selection
 
     def execute(self, request: PlanTableMaintenanceUseCaseInput) -> PlanTableMaintenanceUseCaseOutput:
         """Plan the due operations, or the requested ones for a manual trigger.
@@ -101,10 +111,12 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         observes the table saves its newest commit when that moves its last commit.
         A plan that observes the table saves its metrics, a skip forgets them.
 
-        Every planned operation targets the whole table (no filters) and starts at
-        the size the table remembers for it; a due compaction rewrites the whole
-        table with the policy's rewrite options, however many partitions qualify; an operation
-        the policy leaves out is never due, and a manual run of it runs with the platform's defaults.
+        Every planned operation starts at the size the table remembers for it, and a due
+        compaction rewrites with the policy's rewrite options. A scheduled plan with ``per: partition``
+        compacts the selected partitions with their ``where`` clauses, else the whole table; a manual
+        run compacts the whole table. A scheduled plan saves the partitions over the target, a dry
+        run included. An operation the policy leaves out is never due, and a manual run of it runs
+        with the platform's defaults.
         """
         manual = self._parse_manual(request.manual_operations)
         manual_priority = self._parse_manual_priority(request.manual_priority)
@@ -132,7 +144,15 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                 plan = plan_manual_maintenance(manual)
                 checks = _manual_checks(manual)
             else:
-                assessment = assess_maintenance(table, policy, observation, request.now, cooldowns=self._cooldowns)
+                assessment = assess_maintenance(
+                    table,
+                    policy,
+                    observation,
+                    request.now,
+                    cooldowns=self._cooldowns,
+                    partition_selection=self._partition_selection,
+                )
+                self._record_over_target_partitions(table, assessment)
                 plan, checks = assessment.plan(), _scheduled_checks(assessment)
                 if policy.dry_run:
                     plan = MaintenancePlan()
@@ -163,6 +183,15 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         """
         if at is not None and table.record_last_commit(at):
             self._tables_repo.record_last_commit(table.id, at)
+
+    def _record_over_target_partitions(self, table: Table, assessment: MaintenanceAssessment) -> None:
+        """Write the partitions over the target the assessment found, when they differ from the table read.
+
+        Only that column is written, and the store skips a dropped table, so a rename, unmanage
+        or recorded result landed during the catalog read is never put back.
+        """
+        if table.record_over_target_partitions(assessment.over_target_partitions):
+            self._tables_repo.record_over_target_partitions(table.id, assessment.over_target_partitions)
 
     def _save_metrics(self, table: Table, observation: TableObservation, at: datetime) -> None:
         """Save the metrics ``observation`` shows; a failure to measure or save them is logged and nothing more.
@@ -209,7 +238,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         operations = tuple(
             PlanTableMaintenanceUseCaseOutput.Operation(
                 operation=planned.operation.value,
-                filters=(),
+                filters=_filters_of(table, planned, observation),
                 procedure_args=maintenance_procedure_args(planned.operation, policy, properties, request.now),
                 start_size=table.operation_state(planned.operation).start_size().value,
             )
@@ -268,8 +297,34 @@ def _debounce(policy: MaintenancePolicyContent) -> int | None:
     return None if commit is None else int(commit.debounce.total_seconds())
 
 
+def _filters_of(
+    table: Table, planned: PlannedOperation, observation: TableObservation
+) -> tuple[PlanTableMaintenanceUseCaseOutput.Filter, ...]:
+    """Return the where clauses of ``planned``, or ``()`` for the whole table.
+
+    A selection the builder cannot render, or one with an empty ``where``, compacts the whole table
+    so the clauses a run records are exactly what its jobs ran with.
+    """
+    if not planned.partitions:
+        return ()
+    try:
+        filters = build_partition_filters(table.name.catalog, observation.specs, planned.partitions)
+    except ValueError as exc:
+        logger.warning(
+            "cannot scope %s of %s to partitions (%s); compacting the whole table",
+            planned.operation.value,
+            table.name.fully_qualified(),
+            exc,
+        )
+        return ()
+    if any(not f.where for f in filters):
+        return ()
+    return tuple(PlanTableMaintenanceUseCaseOutput.Filter(spec_id=f.spec_id, where=f.where) for f in filters)
+
+
 _VERDICTS = {
     OperationVerdict.DUE: "due",
+    OperationVerdict.WAITING_FOR_WRITES: "waiting_for_writes",
     OperationVerdict.NOT_DUE: "not_needed",
     OperationVerdict.COOLDOWN: "cooling_down",
     OperationVerdict.DISABLED: "off",

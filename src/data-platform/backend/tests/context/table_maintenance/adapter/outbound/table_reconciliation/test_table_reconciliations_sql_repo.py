@@ -153,6 +153,37 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
     assert loaded.operations[1].next_eligible_at == NOW + timedelta(hours=1)
 
 
+def test_a_waiting_for_writes_result_round_trips(repo: TableReconciliationsRepo):
+    """A waiting for writes result loads back with the time the compaction may run."""
+    rec = TableReconciliation.record(
+        id=TableReconciliationId(_rc(2)),
+        table_uuid=TableId("u1"),
+        reconciled_at=NOW,
+        wake_reasons={WakeReason.SCHEDULE: 1},
+        dry_run=False,
+        outcome=ReconciliationOutcome.PLANNED,
+        skip_reason=None,
+        operations=(
+            OperationOutcome(
+                operation=Op.REWRITE_DATA_FILES,
+                result=OperationResult.WAITING_FOR_WRITES,
+                measurements=(),
+                next_eligible_at=NOW + timedelta(minutes=2),
+            ),
+        ),
+        run_id=None,
+        policy_id=DEFAULT_POLICY_ID,
+        policy_name=DEFAULT_NAME,
+        policy_version=1,
+        policy_target=None,
+    )
+    repo.create(rec)
+    loaded = repo.get(TableReconciliationId(_rc(2)))
+    assert loaded is not None
+    assert loaded.operations == rec.operations
+    assert loaded.operations[0].result is OperationResult.WAITING_FOR_WRITES
+
+
 def test_skipped_round_trip(repo: TableReconciliationsRepo):
     """A skipped reconciliation keeps its skip reason."""
     rec = TableReconciliation.record(

@@ -11,12 +11,14 @@ import pytest
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    OverTargetPartition,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
     AttentionMark,
     OperationCooldowns,
+    PartitionSelectionSettings,
     Table,
     TableId,
     TableMetrics,
@@ -31,6 +33,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     DEFAULT_POLICY_NAME,
     AtMost,
     CatalogCommitTrigger,
+    CompactionUnit,
     MaintenancePolicyContent,
     RewriteDataFilesSpec,
     RewriteDataFilesTarget,
@@ -103,8 +106,8 @@ def _table(repo, now, uuid="u-1", name=NAME):
     return table
 
 
-def _partition(spec_id, values, files=10, size=10 * 1024):
-    return {
+def _partition(spec_id, values, files=10, size=10 * 1024, written=None):
+    partition = {
         "spec_id": spec_id,
         "values": values,
         "data_file_count": files,
@@ -112,6 +115,9 @@ def _partition(spec_id, values, files=10, size=10 * 1024):
         "equality_delete_file_count": 0,
         "total_data_file_size_bytes": size,
     }
+    if written is not None:
+        partition["last_written_at"] = written.isoformat()
+    return partition
 
 
 def _field(name):
@@ -272,15 +278,19 @@ def _three_regions(catalog, now, size=10 * 1024):
     )
 
 
-def test_due_compaction_targets_the_whole_table(planner, tables_repo, catalog, now):
-    """A due compaction rewrites the whole table, however many partitions qualify, with the policy's options."""
+def test_due_compaction_targets_the_partitions_over_target(planner, tables_repo, catalog, now):
+    """A due compaction rewrites the partitions over the target with their where clause and the policy's options."""
     _table(tables_repo, now)
-    _three_regions(catalog, now)
-    plan = _plan(planner, now)
-    assert (plan.status, plan.reason) == ("planned", None)
-    compaction = plan.operations[0]
-    assert compaction.operation == "rewrite_data_files"
-    assert compaction.filters == ()
+    _observe(
+        catalog,
+        now,
+        specs=[{"spec_id": 0, "fields": [_field("region")]}],
+        partitions=[_partition(0, ["eu"]), _partition(0, ["us"], files=1), _partition(0, ["o'neil"])],
+    )
+    compaction = _plan(planner, now).operations[0]
+    assert compaction.filters == (
+        PlanTableMaintenanceUseCaseOutput.Filter(spec_id=0, where="(`region` = 'eu') OR (`region` = 'o\\'neil')"),
+    )
     assert compaction.procedure_args == {
         "options": {
             "target-file-size-bytes": 536870912,
@@ -288,6 +298,172 @@ def test_due_compaction_targets_the_whole_table(planner, tables_repo, catalog, n
             "partial-progress.enabled": True,
         }
     }
+
+
+def test_two_specs_give_two_filters(planner, tables_repo, catalog, now):
+    """A selection across two partition specs gives one filter per spec."""
+    _table(tables_repo, now)
+    _observe(catalog, now)
+    assert [f.spec_id for f in _plan(planner, now).operations[0].filters] == [0, 1]
+
+
+def test_the_plan_takes_at_most_the_cap(tables_repo, catalog, resolve_applicable_policy, now):
+    """A capped job takes the partitions with the most reducible files."""
+    planner = plan_service_on_fakes(
+        tables_repo,
+        catalog,
+        resolve_applicable_policy,
+        partition_selection=PartitionSelectionSettings.platform_default().with_changes(partitions_per_job=2),
+    )
+    _table(tables_repo, now)
+    _observe(
+        catalog,
+        now,
+        specs=[{"spec_id": 0, "fields": [_field("region")]}],
+        partitions=[_partition(0, [f"r{i}"], files=6 + i) for i in range(5)],
+    )
+    assert _plan(planner, now).operations[0].filters[0].where == "(`region` = 'r3') OR (`region` = 'r4')"
+
+
+def test_an_unrenderable_partition_compacts_the_whole_table(planner, tables_repo, catalog, caplog, now):
+    """A selected partition the builder cannot render compacts the whole table, with a warning."""
+    _table(tables_repo, now)
+    day_ns = {"field_id": 1000, "name": "d", "source_column": "ts", "source_type": "timestamp_ns", "transform": "day"}
+    _observe(catalog, now, specs=[{"spec_id": 0, "fields": [day_ns]}], partitions=[_partition(0, [19700])])
+    compaction = _plan(planner, now).operations[0]
+    assert (compaction.operation, compaction.filters) == ("rewrite_data_files", ())
+    assert "compacting the whole table" in caplog.text
+
+
+def test_per_table_has_no_filters(planner, tables_repo, catalog, policies, now):
+    """A compaction per table rewrites the whole table, with no where."""
+    _use_policy(
+        policies,
+        now,
+        policy_with_operation(
+            DEFAULT,
+            OPS.REWRITE_DATA_FILES,
+            RewriteDataFilesSpec(
+                target=RewriteDataFilesTarget(reducible_files=AtMost(at_most=5), per=CompactionUnit.TABLE)
+            ),
+        ),
+    )
+    _table(tables_repo, now)
+    _three_regions(catalog, now)
+    assert _plan(planner, now).operations[0].filters == ()
+
+
+def test_a_manual_compaction_has_no_filters(planner, tables_repo, catalog, now):
+    """A manual compaction rewrites the whole table."""
+    _table(tables_repo, now)
+    _three_regions(catalog, now)
+    assert _plan(planner, now, ["rewrite_data_files"]).operations[0].filters == ()
+
+
+def test_every_partition_written_now_plans_no_compaction(planner, tables_repo, catalog, now):
+    """When every partition over the target was written within the quiet period, no compaction is planned."""
+    _table(tables_repo, now)
+    _observe(
+        catalog,
+        now,
+        specs=[{"spec_id": 0, "fields": [_field("region")]}],
+        partitions=[_partition(0, ["eu"], written=now - timedelta(seconds=10))],
+    )
+    plan = _plan(planner, now)
+    assert "rewrite_data_files" not in [o.operation for o in plan.operations]
+    check = _checks(plan)["rewrite_data_files"]
+    assert (check.verdict, check.next_eligible_at) == ("waiting_for_writes", now + timedelta(seconds=110))
+
+
+def test_the_plan_records_the_partitions_over_target(planner, tables_repo, catalog, now):
+    """A scheduled plan saves the partitions over the target, sorted by repr of values, with when it saw them."""
+    _table(tables_repo, now)
+    _observe(
+        catalog,
+        now,
+        specs=[{"spec_id": 0, "fields": [_field("region")]}],
+        partitions=[_partition(0, ["eu"]), _partition(0, ["o'neil"])],
+    )
+    _plan(planner, now)
+    assert tables_repo.get(TableId("u-1")).over_target_partitions == (
+        OverTargetPartition(spec_id=0, values=("o'neil",), since=now),
+        OverTargetPartition(spec_id=0, values=("eu",), since=now),
+    )
+
+
+def test_a_second_plan_keeps_since(planner, tables_repo, catalog, now):
+    """A partition still over the target keeps the time it was first seen."""
+    _table(tables_repo, now)
+    _three_regions(catalog, now)
+    _plan(planner, now)
+    _plan(planner, now + timedelta(minutes=10))
+    assert {e.since for e in tables_repo.get(TableId("u-1")).over_target_partitions} == {now}
+
+
+def test_a_dry_run_still_records_them(planner, tables_repo, catalog, policies, now):
+    """A dry run plans nothing, yet the partitions over the target are saved."""
+    _use_policy(policies, now, DEFAULT.with_changes(dry_run=True))
+    _table(tables_repo, now)
+    _three_regions(catalog, now)
+    _plan(planner, now)
+    assert len(tables_repo.get(TableId("u-1")).over_target_partitions) == 3
+
+
+def test_a_manual_plan_leaves_them(planner, tables_repo, catalog, now):
+    """A manual plan assesses nothing and saves no partitions."""
+    _table(tables_repo, now)
+    _three_regions(catalog, now)
+    _plan(planner, now, ["rewrite_data_files"])
+    assert tables_repo.get(TableId("u-1")).over_target_partitions == ()
+
+
+def test_a_metrics_failure_still_records_them(planner, tables_repo, catalog, metrics_store, monkeypatch, now):
+    """A metrics store that fails does not stop the partitions over the target from being saved."""
+    monkeypatch.setattr(metrics_store, "save", _database_down)
+    _table(tables_repo, now)
+    _three_regions(catalog, now)
+    _plan(planner, now)
+    assert len(tables_repo.get(TableId("u-1")).over_target_partitions) == 3
+
+
+def test_a_stale_copy_does_not_overwrite_a_rename(planner, tables_repo, catalog, now):
+    """A rename that lands while the plan reads the catalog survives the save of the partitions over the target."""
+    _table(tables_repo, now)
+    _three_regions(catalog, now)
+    stored_get = tables_repo.get
+    tables_repo.get = lambda table_id: copy.deepcopy(stored_get(table_id))
+    renamed = TableName(catalog="iceberg", namespace="sales", table="orders_v2")
+    observe = catalog.observe_table
+
+    def observe_while_the_table_is_renamed(ref):
+        concurrent = tables_repo.get(TableId("u-1"))
+        concurrent.rename(renamed, now)
+        tables_repo.update(concurrent)
+        return observe(ref)
+
+    catalog.observe_table = observe_while_the_table_is_renamed
+    _plan(planner, now)
+    stored = stored_get(TableId("u-1"))
+    assert stored.name == renamed
+    assert len(stored.over_target_partitions) == 3
+
+
+def test_the_plan_uses_the_injected_selection(tables_repo, catalog, resolve_applicable_policy, now):
+    """The plan assesses with the partition selection it was given."""
+    free = plan_service_on_fakes(
+        tables_repo,
+        catalog,
+        resolve_applicable_policy,
+        partition_selection=PartitionSelectionSettings.platform_default().with_changes(quiet_period=timedelta(0)),
+    )
+    _table(tables_repo, now)
+    _observe(
+        catalog,
+        now,
+        specs=[{"spec_id": 0, "fields": [_field("region")]}],
+        partitions=[_partition(0, ["eu"], written=now)],
+    )
+    assert "rewrite_data_files" in [o.operation for o in _plan(free, now).operations]
 
 
 def test_compaction_starts_at_the_remembered_size(planner, tables_repo, catalog, now):
@@ -827,6 +1003,21 @@ def test_manual_plan_checks_can_be_recorded(planner, tables_repo, catalog, now):
     results = {op.operation.value: op.result.value for op in record.operations}
     assert results["rewrite_data_files"] == "would_start"
     assert results["expire_snapshots"] == "not_checked"
+
+
+def test_a_waiting_check_can_be_recorded(planner, tables_repo, catalog, now):
+    """The waiting for writes check of a plan is accepted by the record service."""
+    _table(tables_repo, now)
+    _observe(
+        catalog,
+        now,
+        specs=[{"spec_id": 0, "fields": [_field("region")]}],
+        partitions=[_partition(0, ["eu"], written=now - timedelta(seconds=10))],
+    )
+    plan = _plan(planner, now)
+    record = _record(plan, now)
+    results = {op.operation.value: op.result.value for op in record.operations}
+    assert results["rewrite_data_files"] == "waiting_for_writes"
 
 
 # --- needs attention and start size ---

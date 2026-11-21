@@ -51,6 +51,7 @@ _RESULT_BY_VERDICT = {
     "off": OperationResult.OFF,
     "not_checked": OperationResult.NOT_CHECKED,
     "needs_attention": OperationResult.NEEDS_ATTENTION,
+    "waiting_for_writes": OperationResult.WAITING_FOR_WRITES,
 }
 
 

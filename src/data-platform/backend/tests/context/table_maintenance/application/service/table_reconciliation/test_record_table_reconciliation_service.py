@@ -143,6 +143,25 @@ def test_other_verdicts_map_by_name_and_next_eligible_is_parsed(
     assert by_op["rewrite_data_files"].result is OperationResult.NOT_CHECKED
 
 
+def test_waiting_for_writes_is_recorded(
+    service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
+) -> None:
+    """A waiting for writes check is recorded without a run, with the time it may run again."""
+    waiting = {
+        "operation": "rewrite_data_files",
+        "verdict": "waiting_for_writes",
+        "measurements": [],
+        "next_eligible_at": "2026-11-10T12:02:00+00:00",
+    }
+    service.execute(_input(checks=(waiting,), run_id=None))
+
+    saved = repo.get(TableReconciliationId(REC_1))
+    assert saved is not None
+    assert saved.run_id is None
+    assert saved.operations[0].result is OperationResult.WAITING_FOR_WRITES
+    assert saved.operations[0].next_eligible_at == datetime(2026, 11, 10, 12, 2, tzinfo=UTC)
+
+
 def test_skip_is_recorded_with_reason(
     service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
 ) -> None:

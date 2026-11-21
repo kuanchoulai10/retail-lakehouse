@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.application.domain.model.table import DEFAULT_PARTITION_SELECTION_SETTINGS
 from context.table_maintenance.application.service.table import PlanTableMaintenanceService
 from tests.context.table_maintenance.fakes.in_memory_table_metrics_store import InMemoryTableMetricsStore
 
 if TYPE_CHECKING:
+    from context.table_maintenance.application.domain.model.table import PartitionSelectionSettings
     from context.table_maintenance.application.port.inbound.table import PlanTableMaintenanceUseCase
     from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
         ResolveApplicableTableMaintenancePolicyUseCase,
@@ -24,11 +26,18 @@ def plan_service_on_fakes(
     catalog: ReadTableMetadataGateway,
     resolve_applicable_policy: ResolveApplicableTableMaintenancePolicyUseCase,
     metrics_store: TableMetricsStore | None = None,
+    *,
+    partition_selection: PartitionSelectionSettings | None = None,
 ) -> PlanTableMaintenanceUseCase:
-    """Return the plan service on the given fakes, with an empty in-memory metrics store when none is given."""
+    """Return the plan service on the given fakes, with an empty in-memory metrics store when none is given.
+
+    The service keeps its own partition selection unless one is given.
+    """
+    selection = DEFAULT_PARTITION_SELECTION_SETTINGS if partition_selection is None else partition_selection
     return PlanTableMaintenanceService(
         tables_repo,
         catalog,
         resolve_applicable_policy,
         metrics_store=InMemoryTableMetricsStore() if metrics_store is None else metrics_store,
+        partition_selection=selection,
     )

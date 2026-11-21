@@ -16,3 +16,4 @@ class OperationResult(StrEnum):
     OFF = "off"
     NOT_CHECKED = "not_checked"
     NEEDS_ATTENTION = "needs_attention"
+    WAITING_FOR_WRITES = "waiting_for_writes"
