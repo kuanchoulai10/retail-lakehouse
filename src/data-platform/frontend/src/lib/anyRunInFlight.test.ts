@@ -8,43 +8,45 @@ function run(status: string, attemptStatuses: string[] = []): TableMaintenanceRu
     table_uuid: "uuid-orders",
     execution_ref: "table-maintenance:table-uuid=uuid-orders",
     trigger: "manual",
+    operation: "rewrite_data_files",
     priority: "P3",
     status,
     created_at: "2026-11-20T10:00:00Z",
+    started_at: attemptStatuses.length === 0 ? null : "2026-11-20T10:00:00Z",
     finished_at: null,
-    operations: [
-      {
-        operation: "rewrite_data_files",
-        status,
-        attempts: attemptStatuses.length,
-        started_at: "2026-11-20T10:00:00Z",
-        finished_at: null,
-        job_name: null,
-        metrics: {},
-        error: null,
-        expected_files: null,
-        filters: [],
-        attempt_history: attemptStatuses.map((attemptStatus, index) => ({
-          attempt: index + 1,
-          size: "S",
-          status: attemptStatus,
-          started_at: "2026-11-20T10:00:00Z",
-          started_running_at: null,
-          finished_at: null,
-          failure_class: null,
-          error: null,
-          event_log_finished: null,
-          next_step: null,
-          next_size: null,
-        })),
-      },
-    ],
+    filters: [],
+    procedure_args: {},
+    metrics: {},
+    error: null,
+    skip_reason: null,
+    attempts: attemptStatuses.map((attemptStatus, index) => ({
+      attempt: index + 1,
+      size: "S",
+      status: attemptStatus,
+      started_at: "2026-11-20T10:00:00Z",
+      started_running_at: null,
+      finished_at: null,
+      failure_class: null,
+      error: null,
+      event_log_finished: null,
+      next_step: null,
+      next_size: null,
+      job_name: `job-${index + 1}`,
+    })),
   };
 }
 
 describe("anyRunInFlight", () => {
   it.each(["pending", "queued", "running"])("is true for a %s run", (status) => {
     expect(anyRunInFlight([run("succeeded"), run(status)])).toBe(true);
+  });
+
+  it("is true for a pending run that has no attempt yet", () => {
+    expect(anyRunInFlight([run("succeeded", ["succeeded"]), run("pending")])).toBe(true);
+  });
+
+  it("is false for a skipped run", () => {
+    expect(anyRunInFlight([run("skipped")])).toBe(false);
   });
 
   it.each(["pending", "queued", "running"])("is true for a finished run with a %s attempt", (status) => {

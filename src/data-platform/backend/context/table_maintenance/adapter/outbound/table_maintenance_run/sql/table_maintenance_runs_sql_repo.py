@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import case, insert, select, update
 from sqlalchemy.exc import IntegrityError
 
 from context.table_maintenance.adapter.outbound.table_maintenance_run.sql.table_maintenance_run_row_mapper import (
@@ -15,6 +15,7 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.sql.table_
 )
 from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
+    MaintenanceOperation,
     TableMaintenanceRunsRepo,
 )
 
@@ -27,11 +28,18 @@ if TYPE_CHECKING:
         TableMaintenanceRun,
     )
 
+_PLAN_POSITION = case(
+    {op.value: position for position, op in enumerate(MaintenanceOperation.ordered())},
+    value=t.c.operation,
+)
+_NEWEST_FIRST = (t.c.created_at.desc(), _PLAN_POSITION.desc(), t.c.id.desc())
+
 
 class TableMaintenanceRunsSqlRepo(TableMaintenanceRunsRepo):
     """Store TableMaintenanceRun aggregates in a SQL database.
 
-    The operations of a run are stored as JSON on the run row.
+    The columns a run is read or sorted by are real columns; its filters, procedure arguments, metrics and
+    attempts are stored as JSON on the run row.
     """
 
     def __init__(self, engine: Engine) -> None:
@@ -54,9 +62,9 @@ class TableMaintenanceRunsSqlRepo(TableMaintenanceRunsRepo):
         return None if row is None else TableMaintenanceRunRowMapper.to_aggregate(row._mapping)
 
     def list_all(self) -> list[TableMaintenanceRun]:
-        """Return all runs, newest first."""
+        """Return all runs, newest first, in the order ``list_by_table`` lists a table's runs."""
         with self._engine.connect() as conn:
-            rows = conn.execute(select(t).order_by(t.c.created_at.desc(), t.c.id.desc())).all()
+            rows = conn.execute(select(t).order_by(*_NEWEST_FIRST)).all()
         return [TableMaintenanceRunRowMapper.to_aggregate(r._mapping) for r in rows]
 
     def update(self, run: TableMaintenanceRun) -> TableMaintenanceRun:
@@ -69,13 +77,12 @@ class TableMaintenanceRunsSqlRepo(TableMaintenanceRunsRepo):
         return run
 
     def list_by_table(self, table_uuid: TableId, limit: int = 50) -> list[TableMaintenanceRun]:
-        """Return up to ``limit`` runs of the table, newest first."""
-        stmt = (
-            select(t)
-            .where(t.c.table_uuid == table_uuid.value)
-            .order_by(t.c.created_at.desc(), t.c.id.desc())
-            .limit(limit)
-        )
+        """Return up to ``limit`` runs of the table, newest first.
+
+        The runs one plan created share a creation time; among them the plan's last operation lists first,
+        and runs of one time and one operation list by id, the larger first.
+        """
+        stmt = select(t).where(t.c.table_uuid == table_uuid.value).order_by(*_NEWEST_FIRST).limit(limit)
         with self._engine.connect() as conn:
             rows = conn.execute(stmt).all()
         return [TableMaintenanceRunRowMapper.to_aggregate(r._mapping) for r in rows]

@@ -5,10 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
+    MaintenanceOperation,
     TableMaintenanceRunsRepo,
 )
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from base import EntityId
     from context.table_maintenance.application.domain.model.table import TableId
     from context.table_maintenance.application.domain.model.table_maintenance_run import (
@@ -33,8 +36,8 @@ class InMemoryTableMaintenanceRunsRepo(TableMaintenanceRunsRepo):
         return self.items.get(entity_id.value)
 
     def list_all(self) -> list[TableMaintenanceRun]:
-        """Return all runs."""
-        return list(self.items.values())
+        """Return all runs, newest first, in the SQL repo's order."""
+        return sorted(self.items.values(), key=_listing_key, reverse=True)
 
     def update(self, run: TableMaintenanceRun) -> TableMaintenanceRun:
         """Replace a stored run."""
@@ -44,7 +47,14 @@ class InMemoryTableMaintenanceRunsRepo(TableMaintenanceRunsRepo):
         return run
 
     def list_by_table(self, table_uuid: TableId, limit: int = 50) -> list[TableMaintenanceRun]:
-        """Return up to ``limit`` runs of the table, newest first."""
+        """Return up to ``limit`` runs of the table, newest first, in the SQL repo's order.
+
+        Among runs of one creation time the plan's last operation lists first, then the larger id.
+        """
         runs = [r for r in self.items.values() if r.table_uuid == table_uuid]
-        runs.sort(key=lambda r: r.created_at, reverse=True)
+        runs.sort(key=_listing_key, reverse=True)
         return runs[:limit]
+
+
+def _listing_key(run: TableMaintenanceRun) -> tuple[datetime, int, str]:
+    return run.created_at, MaintenanceOperation.ordered().index(run.operation), run.id.value

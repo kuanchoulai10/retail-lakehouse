@@ -16,7 +16,7 @@ class TableReconciliationWorkflowInput:
     """Identify the table a reconciliation workflow manages and carry its loop state.
 
     A fresh workflow passes only ``table_uuid``; continue-as-new carries the rest.
-    ``in_flight_run_id`` is the maintenance run still awaiting its
+    ``in_flight_run_ids`` are the maintenance runs, one per planned operation, whose workflow has not sent its
     ``maintenance_finished`` signal, run by the workflow ``in_flight_workflow_id``
     and started at ``in_flight_started_at`` (ISO-8601) with
     ``in_flight_operation_count`` planned operations, each attempt allowed to wait
@@ -46,7 +46,7 @@ class TableReconciliationWorkflowInput:
     """
 
     table_uuid: str
-    in_flight_run_id: str | None = None
+    in_flight_run_ids: list[str] | None = None
     in_flight_workflow_id: str | None = None
     in_flight_started_at: str | None = None
     in_flight_operation_count: int = 0

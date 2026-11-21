@@ -18,7 +18,14 @@ function at(day: number, hour: number, minute = 42): string {
 }
 
 function op(overrides: Partial<ReconciliationOperationApiResponse>): ReconciliationOperationApiResponse {
-  return { operation: "rewrite_manifests", result: "not_needed", measurements: [], next_eligible_at: null, ...overrides };
+  return {
+    operation: "rewrite_manifests",
+    result: "not_needed",
+    measurements: [],
+    next_eligible_at: null,
+    run_id: null,
+    ...overrides,
+  };
 }
 
 const QUIET_OPERATIONS = [
@@ -47,7 +54,6 @@ function quiet(id: string, reconciledAt: string): TableReconciliationApiResponse
     outcome: "planned",
     skip_reason: null,
     operations: QUIET_OPERATIONS,
-    run_id: null,
     policy_id: DEFAULT_POLICY_ID,
     policy_name: "default",
     policy_deleted: false,
@@ -61,7 +67,6 @@ const RUN_ID = "mr-01kaa4zc9qf3v8d2m6xk0w7b1n";
 const STARTED: TableReconciliationApiResponse = {
   ...quiet("rec-started", at(10, 10)),
   wake_reasons: { catalog_commit: 3, schedule: 1 },
-  run_id: RUN_ID,
   operations: [
     op({
       operation: "remove_orphan_files",
@@ -75,6 +80,7 @@ const STARTED: TableReconciliationApiResponse = {
     op({
       operation: "rewrite_data_files",
       result: "started",
+      run_id: RUN_ID,
       measurements: [
         { key: "reducible_files", observed: 1240, unit: "count", threshold: 5, comparison: ">=", met: true },
         { key: "target_file_size", observed: 134217728, unit: "bytes", threshold: null, comparison: null, met: null },
@@ -269,6 +275,35 @@ describe("ReconciliationsTab", () => {
     const drawerLink = within(dialog).getByRole("link", { name: `Open maintenance run ${RUN_ID}` });
     expect(drawerLink).toHaveAttribute("href", `/tables/orders/maintenance?run=${RUN_ID}`);
     expect(drawerLink).toHaveTextContent(new RegExp(`^Open maintenance run ${RUN_ID}$`));
+  });
+
+  it("links each operation that started a run to its own run, and leaves the line without a run link", async () => {
+    const EXPIRE_RUN_ID = "mr-01kaa4zc9qf3v8d2m6xk0w7b1p";
+    const TWO_RUNS: TableReconciliationApiResponse = {
+      ...STARTED,
+      reconciliation_id: "rec-two-runs",
+      operations: [
+        ...STARTED.operations.filter((o) => o.operation !== "expire_snapshots"),
+        op({ operation: "expire_snapshots", result: "started", run_id: EXPIRE_RUN_ID }),
+      ],
+    };
+    stubList([TWO_RUNS]);
+    const user = userEvent.setup();
+    renderTab();
+    const row = (await screen.findByRole("button", { name: /^Started Rewrite data files, Expire snapshots/ })).closest(
+      "li",
+    ) as HTMLElement;
+    expect(within(row).queryByRole("link", { name: /^Open maintenance run/ })).not.toBeInTheDocument();
+    const dialog = await openDrawer(user, /^Started Rewrite data files, Expire snapshots/);
+    const links = within(dialog).getAllByRole("link", { name: /^Open maintenance run/ });
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      `/tables/orders/maintenance?run=${RUN_ID}`,
+      `/tables/orders/maintenance?run=${EXPIRE_RUN_ID}`,
+    ]);
+    const compaction = within(dialog).getByRole("region", { name: "Rewrite data files" });
+    expect(within(compaction).getByRole("link", { name: `Open maintenance run ${RUN_ID}` })).toBeInTheDocument();
+    const expiry = within(dialog).getByRole("region", { name: "Expire snapshots" });
+    expect(within(expiry).getByRole("link", { name: `Open maintenance run ${EXPIRE_RUN_ID}` })).toBeInTheDocument();
   });
 
   it("draws an open timeline: a filled marker for what started, outlined for others, dashed for a fold", async () => {

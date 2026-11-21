@@ -50,17 +50,27 @@ _CANCELLED = "cancelled"
 _DECISION_PATCH = "classify-attempt-failure"
 _STARTED_STATES = frozenset({"RUNNING", "COMPLETED"})
 _PLANNED_POLICY_KEYS = ("policy_id", "policy_name", "policy_version", "policy_target")
+_NOT_REACHED = "the table's maintenance stopped before this run started"
 
 
 @workflow.defn(name=TABLE_MAINTENANCE_WORKFLOW)
 class TableMaintenanceWorkflow:
-    """Run the planned operations of one maintenance run, in order, on Spark.
+    """Run the planned operations of one plan on Spark, each as its own maintenance run, one at a time.
 
     A table runs one of these at a time, under the table's workflow id (see
-    ``table_maintenance_workflow_id``). Each operation gets up to ``max_attempts`` attempts (input, 3 by
-    default). An attempt is submitted straight to Spark, whose scheduler queues it, and ends with the job's
-    ``operation_result`` callback for that exact run and attempt (a late result of an earlier run of the
-    table, sent to the same workflow id, is ignored), with what polling the
+    ``table_maintenance_workflow_id``). The parent names one run id per planned operation
+    (``run_ids``, in plan order). The workflow first creates every run, pending, in plan order and
+    at one time, so every run the reconciliation links exists before anything is submitted; a
+    create that fails ends the workflow before any submit. It then runs the runs in plan order: a
+    run's first submit comes only after the previous run's last attempt was recorded and its Spark
+    jobs deleted, which frees the executors kept for evidence before the next job queues.
+
+    Each run gets up to ``max_attempts`` attempts (input, 3 by default). An attempt is submitted
+    straight to Spark, whose scheduler queues it, and ends with the job's ``operation_result``
+    callback for that exact run and attempt (a result naming any other run, such as a late result
+    of an earlier execution sent to the same workflow id, or one naming another run of this plan,
+    is ignored, and so is one for an attempt not submitted yet or whose run already ended), with
+    what polling the
     job's state reveals, or with a timeout. An attempt is queued from its submit until a status
     poll reports when its Spark driver started; that start, clamped between the submit and the
     poll, is recorded (``record_maintenance_attempt_running``; a failed record is logged) and
@@ -75,7 +85,7 @@ class TableMaintenanceWorkflow:
     fenced before the next one is submitted: its Spark job is deleted and its pods are
     polled until none is live (see
     ``TableMaintenanceFencingPolicy``); pods still live after the confirm bound fail
-    the operation without a further attempt, and the next operation waits until they are
+    the run without a further attempt, and the next run waits until they are
     gone. An attempt whose job went missing is fenced the same way, since its
     pods can outlive the SparkApplication. Histories from before fencing replay
     unfenced (patches ``fence-timed-out-attempt`` and ``fence-missing-job``). A
@@ -85,40 +95,50 @@ class TableMaintenanceWorkflow:
     ``fence-cancelled-attempt``). The first attempt runs at the plan's start size (S when the plan
     names none). Recording a failed attempt names how it ended and returns what follows it: an
     out-of-memory failure is retried at the next size, other failures at the same size, and a
-    failure that needs a person, is not retried or may still be running ends the operation at once
+    failure that needs a person, is not retried or may still be running ends the run at once
     (patch ``classify-attempt-failure``; a record reply without a decision, as before failure
     classes, retries at the same size). Every record names the policy the run was planned under,
     by its id and its name then, from the plan, so a needs-attention mark is set under it and keeps
     the name for display; this changes only the record
     activity's input, not the workflow's commands, so it needs no patch. A plan from before policies
     had ids carries no ``policy_id``; its records then leave the policy to the recorder, which marks
-    under the policy applying when it records. Every attempt submits the operation's ``filters``, also
-    after running out of memory. A failed operation
-    never fails the run: the next operation still runs. At the end, also after a
-    cancellation, the Spark job of every started attempt is deleted and the parent
-    reconciliation workflow is told the run finished and how many results could not be
-    recorded.
+    under the policy applying when it records. Every attempt runs with the ``filters`` and procedure
+    arguments its run was created with, also after running out of memory; the submit reads them from
+    the run. A failed run, a failed submit included, never stops the workflow: the next run still
+    runs. At the end, also after a cancellation or a failed create, the Spark job of every attempt
+    not yet deleted is deleted, every created run none of whose submits returned is skipped
+    (``skip_maintenance_run``, which leaves a run no longer pending as it is), and the parent
+    reconciliation workflow is told the runs finished and how many results could not be recorded.
 
-    A ``raise_priority`` signal (a manual run asked for while this one runs) raises the run's
-    priority, only upward, through ``raise_maintenance_run_priority``; a failed raise is logged and
-    dropped. Raises are applied before every submit, so a later operation is submitted at the new
-    priority, and as soon as they arrive while an attempt is awaited. An attempt that is running keeps
+    A ``raise_priority`` signal (a manual run asked for while this one runs) raises the priority of
+    the current run and then of every run after it, only upward, through
+    ``raise_maintenance_run_priority``; a failed raise is logged and dropped. Raises are applied before
+    every submit, so a retry and a later run are submitted at the new priority, and as soon as they
+    arrive while an attempt is awaited. Only the current run's reply decides whether its queued
+    attempt is replaced. An attempt that is running keeps
     going; one still queued is polled at once, and only a job that reads ``PENDING`` without a driver
     start is replaced: its job is deleted, polled every 30 s until it reads ``NOT_FOUND`` and has no
     live pods, and submitted again under the same attempt number, keeping its submit time and queue
     deadline (a status that cannot be read leaves the replacement to the next poll); a result the
     deleted job sent meanwhile is dropped. A job not gone within the fencing confirm bound fails the
-    attempt like an unconfirmed fence (ended ``missing``, possibly still running), and the operation
-    waits until it is gone. The parent is told, with the run's end, whether a raise was left
-    unapplied (``unapplied_raise``: it arrived after the last attempt ended, or its record failed)
-    and how many raises the run had received when it built that report (``raises_received``), so
+    attempt like an unconfirmed fence (ended ``missing``, possibly still running), and the run
+    waits until it is gone. The parent is told, with the runs' end (``run_ids``), whether a raise was
+    left unapplied (``unapplied_raise``: it arrived after the last attempt ended, or a record of it
+    failed) and how many raises the workflow had received when it built that report
+    (``raises_received``), so
     the parent can tell a raise that arrived later and still plan the manual run behind it.
     """
 
     @workflow.init
     def __init__(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
-        """Prepare the result mailbox and the attempt log."""
-        self._run_id = input.run_id
+        """Pair each planned operation with its run, and prepare the result mailbox and the attempt log."""
+        self._operations: list[str] = [op["operation"] for op in input.plan["operations"]]
+        self._run_ids = list(input.run_ids)
+        self._run_of: dict[str, str] = dict(zip(self._operations, self._run_ids, strict=True))
+        self._created: list[str] = []
+        self._create_interrupted: str | None = None
+        self._submitted: set[str] = set()
+        self._current: str | None = None
         self._policy = TableMaintenanceAttemptPolicy(
             max_attempts=input.max_attempts,
             attempt_deadline=timedelta(seconds=input.attempt_deadline_seconds),
@@ -136,32 +156,68 @@ class TableMaintenanceWorkflow:
 
     @workflow.run
     async def run(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
-        """Create the run, run each operation, then clean up and notify the parent."""
+        """Create every run, run them in order, deleting each one's jobs when it ends, then clean up and report."""
         operations: list[dict[str, Any]] = list(input.plan["operations"])
         try:
-            await self._activity(
-                TableMaintenanceActivity.CREATE_MAINTENANCE_RUN,
-                {
-                    "run_id": input.run_id,
-                    "table_uuid": input.table_uuid,
-                    "execution_ref": workflow.info().workflow_id,
-                    "trigger": input.trigger,
-                    "operations": [op["operation"] for op in operations],
-                    "priority": input.plan.get("priority", "P3"),
-                    "filters": {op["operation"]: op["filters"] for op in operations if op["filters"]},
-                    "now": _now(),
-                },
-            )
+            await self._create_runs(input, operations)
             for operation in operations:
                 await self._run_operation(operation)
+                await self._delete_jobs_of(operation["operation"])
         finally:
             await self._finish(input.parent_workflow_id)
 
+    async def _create_runs(self, input: TableMaintenanceWorkflowInput, operations: list[dict[str, Any]]) -> None:  # noqa: A002
+        """Create the pending run of each operation, in plan order and at one time, before anything is submitted.
+
+        A create that fails ends the workflow before any submit; ``_finish`` then skips the runs already
+        created. A run whose create failed does not exist, so nothing skips it. A create a cancel
+        interrupts may still have stored its run, so ``_finish`` tries to skip that run too.
+        """
+        now = _now()
+        for operation in operations:
+            name = operation["operation"]
+            try:
+                await self._activity(
+                    TableMaintenanceActivity.CREATE_MAINTENANCE_RUN,
+                    {
+                        "run_id": self._run_of[name],
+                        "table_uuid": input.table_uuid,
+                        "execution_ref": workflow.info().workflow_id,
+                        "trigger": input.trigger,
+                        "operation": name,
+                        "priority": input.plan.get("priority", "P3"),
+                        "filters": operation["filters"],
+                        "procedure_args": operation["procedure_args"],
+                        "now": now,
+                    },
+                )
+            except asyncio.CancelledError:
+                self._create_interrupted = name
+                raise
+            except ActivityError as error:
+                if is_cancelled_exception(error):
+                    self._create_interrupted = name
+                raise
+            self._created.append(name)
+
     @workflow.signal(name=TableMaintenanceSignal.OPERATION_RESULT)
     def operation_result(self, result: OperationResultSignal) -> None:
-        """Store a Spark job result under its operation and attempt."""
-        if result.run_id != self._run_id:
-            workflow.logger.warning("ignoring result for other run %s", result.run_id)
+        """Store a Spark job result under its operation and attempt; drop one naming another run or no live attempt.
+
+        A result is kept only for an attempt submitted and not yet cleaned up with its run. The attempt is
+        logged before its submit, so a callback faster than the submit's reply is kept; an early result for
+        a later run, whose attempt has not started, is dropped instead of ending that attempt once it starts.
+        """
+        if self._run_of.get(result.operation) != result.run_id:
+            workflow.logger.warning("ignoring result of %s for run %s, not its run", result.operation, result.run_id)
+            return
+        if (result.operation, result.attempt) not in self._started_attempts:
+            workflow.logger.warning(
+                "ignoring result of %s attempt %s for run %s, no such attempt in flight",
+                result.operation,
+                result.attempt,
+                result.run_id,
+            )
             return
         self._results.setdefault((result.operation, result.attempt), result)
 
@@ -172,6 +228,7 @@ class TableMaintenanceWorkflow:
         self._raise_requests.append(request)
 
     async def _run_operation(self, operation: dict[str, Any]) -> None:
+        self._current = operation["operation"]
         size: str = operation.get("start_size") or DEFAULT_START_SIZE
         for attempt in range(1, self._policy.max_attempts + 1):
             outcome = await self._run_attempt(operation, attempt, size)
@@ -221,18 +278,12 @@ class TableMaintenanceWorkflow:
     async def _submit(self, operation: dict[str, Any], attempt: int, size: str) -> str:
         """Apply the raises that arrived, then submit the attempt's job and return its name."""
         await self._apply_raises()
+        name = operation["operation"]
         submitted = await self._activity(
             TableMaintenanceActivity.SUBMIT_MAINTENANCE_OPERATION,
-            {
-                "run_id": self._run_id,
-                "operation": operation["operation"],
-                "attempt": attempt,
-                "filters": operation["filters"],
-                "procedure_args": operation["procedure_args"],
-                "size": size,
-                "now": _now(),
-            },
+            {"run_id": self._run_of[name], "operation": name, "attempt": attempt, "size": size, "now": _now()},
         )
+        self._submitted.add(name)
         return submitted["job_name"]
 
     async def _await_outcome(
@@ -336,7 +387,7 @@ class TableMaintenanceWorkflow:
             return None
         workflow.logger.warning("%s completed without callback; recording success", job_name)
         return OperationResultSignal(
-            run_id=self._run_id,
+            run_id=self._run_of[name],
             operation=name,
             attempt=attempt,
             succeeded=True,
@@ -345,37 +396,53 @@ class TableMaintenanceWorkflow:
         )
 
     async def _apply_raises(self) -> bool:
-        """Apply the raises that arrived, in order, and tell whether any raised the run.
+        """Apply the raises that arrived, in order, to every unfinished run; tell whether any raised the current one.
 
-        Each raise is recorded on the run, which keeps the higher priority; a raise that fails to
-        record is logged and dropped, and the run then reports a raise unapplied. A raise leaves
-        ``_raise_requests`` only once its record ended, so one a cancel interrupts is unapplied too.
+        Each raise is recorded on the current run first, then on each run after it, none of which has
+        started, so a later run is submitted at the new priority too; each run keeps the higher
+        priority. Only the current run's reply decides whether its queued attempt is replaced. A raise
+        that fails to record on any run is logged and dropped, and the workflow then reports a raise
+        unapplied. A raise leaves ``_raise_requests`` only once its records ended, so one a cancel
+        interrupts is unapplied too.
         """
         raised = False
         while self._raise_requests:
             request = self._raise_requests[0]
-            try:
-                reply = await self._activity(
-                    TableMaintenanceActivity.RAISE_MAINTENANCE_RUN_PRIORITY,
-                    {"run_id": self._run_id, "priority": request.priority, "now": _now()},
-                )
-            except ActivityError as error:
-                _raise_if_cancelled(error)
-                workflow.logger.warning("raising the priority of run %s failed: %s", self._run_id, error)
-                self._raise_requests.pop(0)
-                self._dropped_raise = True
-                continue
+            for name in self._unfinished_runs():
+                reply = await self._raise_run(name, request)
+                if name == self._current and reply is not None:
+                    self._priority = reply["priority"]
+                    raised = raised or bool(reply["raised"])
             self._raise_requests.pop(0)
-            self._priority = reply["priority"]
-            raised = raised or bool(reply["raised"])
-            workflow.logger.info(
-                "raise to %s %s run %s, now at %s",
-                request.priority or "the table's priority",
-                "raised" if reply["raised"] else "left",
-                self._run_id,
-                self._priority,
-            )
         return raised
+
+    def _unfinished_runs(self) -> list[str]:
+        """Return the operation of the current run and of every run after it, in plan order."""
+        if self._current is None:
+            return list(self._operations)
+        return self._operations[self._operations.index(self._current) :]
+
+    async def _raise_run(self, name: str, request: RaisePrioritySignal) -> dict[str, Any] | None:
+        """Record a raise on the run of ``name`` and return its reply; a failed record is logged, marked and None."""
+        run_id = self._run_of[name]
+        try:
+            reply = await self._activity(
+                TableMaintenanceActivity.RAISE_MAINTENANCE_RUN_PRIORITY,
+                {"run_id": run_id, "priority": request.priority, "now": _now()},
+            )
+        except ActivityError as error:
+            _raise_if_cancelled(error)
+            workflow.logger.warning("raising the priority of run %s failed: %s", run_id, error)
+            self._dropped_raise = True
+            return None
+        workflow.logger.info(
+            "raise to %s %s run %s, now at %s",
+            request.priority or "the table's priority",
+            "raised" if reply["raised"] else "left",
+            run_id,
+            reply["priority"],
+        )
+        return reply
 
     async def _requeue_if_pending(
         self, operation: dict[str, Any], attempt: int, size: str, status: dict[str, Any], *, queued: bool
@@ -440,7 +507,7 @@ class TableMaintenanceWorkflow:
             await self._activity(
                 TableMaintenanceActivity.RECORD_MAINTENANCE_ATTEMPT_RUNNING,
                 {
-                    "run_id": self._run_id,
+                    "run_id": self._run_of[name],
                     "operation": name,
                     "attempt": attempt,
                     "started_running_at": running_since.isoformat(),
@@ -566,7 +633,7 @@ class TableMaintenanceWorkflow:
         try:
             await self._activity(
                 TableMaintenanceActivity.DELETE_MAINTENANCE_JOB,
-                {"run_id": self._run_id, "operation": name, "attempt": attempt},
+                {"run_id": self._run_of[name], "operation": name, "attempt": attempt},
             )
         except ActivityError as error:
             _raise_if_cancelled(error)
@@ -578,7 +645,7 @@ class TableMaintenanceWorkflow:
         try:
             pods = await self._activity(
                 TableMaintenanceActivity.GET_MAINTENANCE_JOB_PODS,
-                {"run_id": self._run_id, "operation": name, "attempt": attempt},
+                {"run_id": self._run_of[name], "operation": name, "attempt": attempt},
             )
         except ActivityError as error:
             _raise_if_cancelled(error)
@@ -590,7 +657,7 @@ class TableMaintenanceWorkflow:
         try:
             return await self._activity(
                 TableMaintenanceActivity.GET_MAINTENANCE_JOB_STATUS,
-                {"run_id": self._run_id, "operation": name, "attempt": attempt},
+                {"run_id": self._run_of[name], "operation": name, "attempt": attempt},
             )
         except ActivityError as error:
             _raise_if_cancelled(error)
@@ -627,15 +694,38 @@ class TableMaintenanceWorkflow:
             )
             return None
 
+    async def _delete_jobs_of(self, name: str) -> None:
+        """Delete the Spark job of every attempt of the run of ``name``, once that run ended.
+
+        This frees the executors kept for evidence before the next run's job queues. A delete that
+        fails is logged and left for ``_finish`` to try again.
+        """
+        for attempt in [a for n, a in self._started_attempts if n == name]:
+            if await self._delete_job(name, attempt):
+                self._started_attempts.remove((name, attempt))
+
     async def _finish(self, parent_workflow_id: str) -> None:
+        """Delete the started jobs still left, skip every created run not started, then report to the parent.
+
+        A run has started once one of its submits returned. A created run the workflow never reached is
+        skipped, and so is one none of whose submits returned (a submit a cancel interrupted may never
+        have left the run pending); a skip leaves a run that did leave pending as it is. The run whose
+        create a cancel interrupted is skipped too, since that create may have stored it. A failed skip,
+        a run not found included, is logged.
+        """
         for name, attempt in self._started_attempts:
             try:
                 await self._activity(
                     TableMaintenanceActivity.DELETE_MAINTENANCE_JOB,
-                    {"run_id": self._run_id, "operation": name, "attempt": attempt},
+                    {"run_id": self._run_of[name], "operation": name, "attempt": attempt},
                 )
             except ActivityError as error:
                 workflow.logger.warning("deleting the job of %s attempt %s failed: %s", name, attempt, error)
+        for name in self._created:
+            if name not in self._submitted:
+                await self._skip(name)
+        if self._create_interrupted is not None:
+            await self._skip(self._create_interrupted)
         try:
             await self._activity(
                 TableMaintenanceActivity.SIGNAL_PARENT,
@@ -643,7 +733,7 @@ class TableMaintenanceWorkflow:
                     "workflow_id": parent_workflow_id,
                     "signal": TableReconciliationSignal.MAINTENANCE_FINISHED,
                     "arg": {
-                        "run_id": self._run_id,
+                        "run_ids": self._run_ids,
                         "record_failures": self._record_failures,
                         "unapplied_raise": self._dropped_raise or bool(self._raise_requests),
                         "raises_received": self._raises_received,
@@ -653,6 +743,16 @@ class TableMaintenanceWorkflow:
         except ActivityError as error:
             workflow.logger.warning("signalling the parent failed: %s", error)
         await workflow.wait_condition(workflow.all_handlers_finished)
+
+    async def _skip(self, name: str) -> None:
+        run_id = self._run_of[name]
+        try:
+            await self._activity(
+                TableMaintenanceActivity.SKIP_MAINTENANCE_RUN,
+                {"run_id": run_id, "reason": _NOT_REACHED, "now": _now()},
+            )
+        except ActivityError as error:
+            workflow.logger.warning("skipping run %s failed: %s", run_id, error)
 
     def _submit_failed(self, name: str, attempt: int, error: ActivityError) -> OperationResultSignal:
         return self._failure(name, attempt, f"submit failed: {_message(error)}", MaintenanceAttemptEnding.SUBMIT_FAILED)
@@ -667,7 +767,7 @@ class TableMaintenanceWorkflow:
         still_running: bool = False,
     ) -> OperationResultSignal:
         return OperationResultSignal(
-            run_id=self._run_id,
+            run_id=self._run_of[name],
             operation=name,
             attempt=attempt,
             succeeded=False,

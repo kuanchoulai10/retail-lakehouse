@@ -61,7 +61,7 @@ def _submitted_callback_url() -> str:
             TableMaintenanceRunId(RUN_1),
             TableId("u-1"),
             TriggerType.SCHEDULED,
-            [MaintenanceOperation.EXPIRE_SNAPSHOTS],
+            MaintenanceOperation.EXPIRE_SNAPSHOTS,
             NOW,
             execution_ref="wf-run-1",
         )
@@ -72,8 +72,6 @@ def _submitted_callback_url() -> str:
             run_id=RUN_1,
             operation="expire_snapshots",
             attempt=1,
-            filters=(),
-            procedure_args={},
             callback_base_url="http://api.example:8000/",
             now=NOW,
         )
@@ -83,7 +81,10 @@ def _submitted_callback_url() -> str:
 
 
 def test_callback_url_is_served_by_the_result_route():
-    """Posting to the configured callback URL reaches the result route and is accepted."""
+    """Posting to the configured callback URL reaches the result route and is accepted.
+
+    The path names no operation and neither does the body, so the service is asked with none and uses the run's.
+    """
     url = urlsplit(_submitted_callback_url())
     callback = StubUseCase(ProcessTableMaintenanceCallbackUseCaseOutput(accepted=True))
     client = build_client(process_table_maintenance_callback=callback)
@@ -93,4 +94,4 @@ def test_callback_url_is_served_by_the_result_route():
     assert response.status_code not in (404, 405)
     assert response.status_code == 202
     (request,) = callback.requests
-    assert (request.run_id, request.operation) == (RUN_1, "expire_snapshots")
+    assert (request.run_id, request.operation) == (RUN_1, None)

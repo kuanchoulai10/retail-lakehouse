@@ -2253,13 +2253,26 @@
           "result": {
             "title": "Result",
             "type": "string"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The mr- id of the maintenance run this operation started; set only when result is started.",
+            "title": "Run Id"
           }
         },
         "required": [
           "operation",
           "result",
           "measurements",
-          "next_eligible_at"
+          "next_eligible_at",
+          "run_id"
         ],
         "title": "ReconciliationOperationApiResponse",
         "type": "object"
@@ -4148,16 +4161,43 @@
         "type": "object"
       },
       "TableMaintenanceRunApiResponse": {
-        "description": "Describe a maintenance run.",
+        "description": "Describe a maintenance run: one operation on one table, and the attempts that make up its timeline.",
         "properties": {
+          "attempts": {
+            "description": "Every attempt, oldest first.",
+            "items": {
+              "$ref": "#/components/schemas/TableMaintenanceRunAttemptApiResponse"
+            },
+            "title": "Attempts",
+            "type": "array"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
             "type": "string"
           },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
           "execution_ref": {
             "title": "Execution Ref",
             "type": "string"
+          },
+          "filters": {
+            "description": "The where clauses each job of this run passes to rewrite_data_files, one per partition spec; empty: the whole table.",
+            "items": {
+              "$ref": "#/components/schemas/TableMaintenanceRunFilterApiResponse"
+            },
+            "title": "Filters",
+            "type": "array"
           },
           "finished_at": {
             "anyOf": [
@@ -4171,21 +4211,58 @@
             ],
             "title": "Finished At"
           },
-          "operations": {
-            "items": {
-              "$ref": "#/components/schemas/TableMaintenanceRunOperationApiResponse"
+          "metrics": {
+            "additionalProperties": {
+              "type": "integer"
             },
-            "title": "Operations",
-            "type": "array"
+            "description": "The numbers the procedure returned.",
+            "title": "Metrics",
+            "type": "object"
+          },
+          "operation": {
+            "description": "The one operation this run does.",
+            "title": "Operation",
+            "type": "string"
           },
           "priority": {
             "description": "The priority this run was started with, `P0` to `P3`.",
             "title": "Priority",
             "type": "string"
           },
+          "procedure_args": {
+            "additionalProperties": true,
+            "description": "The arguments this run passes to the Iceberg procedure, besides the where clauses.",
+            "title": "Procedure Args",
+            "type": "object"
+          },
           "run_id": {
             "title": "Run Id",
             "type": "string"
+          },
+          "skip_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why the run was skipped; set only when status is skipped.",
+            "title": "Skip Reason"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the first attempt was submitted; null while pending.",
+            "title": "Started At"
           },
           "status": {
             "title": "Status",
@@ -4206,16 +4283,23 @@
           "execution_ref",
           "trigger",
           "priority",
+          "operation",
           "status",
-          "operations",
+          "filters",
+          "procedure_args",
+          "metrics",
+          "error",
+          "skip_reason",
           "created_at",
-          "finished_at"
+          "started_at",
+          "finished_at",
+          "attempts"
         ],
         "title": "TableMaintenanceRunApiResponse",
         "type": "object"
       },
       "TableMaintenanceRunAttemptApiResponse": {
-        "description": "Describe one attempt of a maintenance operation: its size, how it ended and what followed it.",
+        "description": "Describe one attempt of a maintenance run: its job, size, how it ended and what followed it.",
         "properties": {
           "attempt": {
             "title": "Attempt",
@@ -4265,6 +4349,17 @@
               }
             ],
             "title": "Finished At"
+          },
+          "job_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Name"
           },
           "next_size": {
             "anyOf": [
@@ -4326,6 +4421,7 @@
           "attempt",
           "size",
           "status",
+          "job_name",
           "started_at",
           "started_running_at",
           "finished_at",
@@ -4355,117 +4451,6 @@
           "where"
         ],
         "title": "TableMaintenanceRunFilterApiResponse",
-        "type": "object"
-      },
-      "TableMaintenanceRunOperationApiResponse": {
-        "description": "Describe one operation of a maintenance run, its latest attempt and every attempt it made.",
-        "properties": {
-          "attempt_history": {
-            "items": {
-              "$ref": "#/components/schemas/TableMaintenanceRunAttemptApiResponse"
-            },
-            "title": "Attempt History",
-            "type": "array"
-          },
-          "attempts": {
-            "title": "Attempts",
-            "type": "integer"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          },
-          "expected_files": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expected Files"
-          },
-          "filters": {
-            "description": "The where clauses each job of this operation passes to rewrite_data_files, one per partition spec; empty: the whole table.",
-            "items": {
-              "$ref": "#/components/schemas/TableMaintenanceRunFilterApiResponse"
-            },
-            "title": "Filters",
-            "type": "array"
-          },
-          "finished_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Finished At"
-          },
-          "job_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Job Name"
-          },
-          "metrics": {
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "title": "Metrics",
-            "type": "object"
-          },
-          "operation": {
-            "title": "Operation",
-            "type": "string"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "operation",
-          "status",
-          "attempts",
-          "started_at",
-          "finished_at",
-          "job_name",
-          "metrics",
-          "error",
-          "expected_files",
-          "attempt_history",
-          "filters"
-        ],
-        "title": "TableMaintenanceRunOperationApiResponse",
         "type": "object"
       },
       "TableMetricTrendPointApiResponse": {
@@ -4675,17 +4660,6 @@
             "title": "Reconciliation Id",
             "type": "string"
           },
-          "run_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Run Id"
-          },
           "skip_reason": {
             "anyOf": [
               {
@@ -4718,7 +4692,6 @@
           "outcome",
           "skip_reason",
           "operations",
-          "run_id",
           "policy_id",
           "policy_name",
           "policy_deleted",
@@ -7509,9 +7482,9 @@
         ]
       }
     },
-    "/v1/table-maintenance-runs/{run_id}/operations/{operation}/result": {
+    "/v1/table-maintenance-runs/{run_id}/result": {
       "post": {
-        "description": "Accept the result a Spark job reports for one operation attempt.",
+        "description": "Accept the result a Spark job reports for one attempt of the run.\n\nThe run names its operation. A body that names another one is refused with 422.",
         "operationId": "process_table_maintenance_callback",
         "parameters": [
           {
@@ -7522,15 +7495,6 @@
             "schema": {
               "description": "An `mr-` id (prefix, dash, 26 lowercase Crockford base32 characters; ADR 0011).",
               "title": "Run Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "operation",
-            "required": true,
-            "schema": {
-              "title": "Operation",
               "type": "string"
             }
           }

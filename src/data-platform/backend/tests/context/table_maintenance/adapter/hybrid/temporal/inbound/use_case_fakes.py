@@ -31,6 +31,9 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     RecordTableMaintenanceOperationResultUseCase,
     RecordTableMaintenanceOperationResultUseCaseInput,
     RecordTableMaintenanceOperationResultUseCaseOutput,
+    SkipTableMaintenanceRunUseCase,
+    SkipTableMaintenanceRunUseCaseInput,
+    SkipTableMaintenanceRunUseCaseOutput,
     SubmitMaintenanceOperationUseCase,
     SubmitMaintenanceOperationUseCaseInput,
     SubmitMaintenanceOperationUseCaseOutput,
@@ -128,12 +131,12 @@ class FakeCreateRun(CreateTableMaintenanceRunUseCase):
     """Create run use case fake that records its requests."""
 
     def __init__(self, output: CreateTableMaintenanceRunUseCaseOutput | None = None) -> None:
-        """Hold the run to return, a running one built from the request by default, and start with no requests."""
+        """Hold the run to return, a pending one built from the request by default, and start with no requests."""
         self.requests: list[CreateTableMaintenanceRunUseCaseInput] = []
         self._output = output
 
     def execute(self, request: CreateTableMaintenanceRunUseCaseInput) -> CreateTableMaintenanceRunUseCaseOutput:
-        """Record the request and return the run it holds, or a running one."""
+        """Record the request and return the run it holds, or a pending one."""
         self.requests.append(request)
         if self._output is not None:
             return self._output
@@ -143,10 +146,17 @@ class FakeCreateRun(CreateTableMaintenanceRunUseCase):
             execution_ref=request.execution_ref,
             trigger=request.trigger,
             priority=request.priority,
-            status="running",
-            operations=tuple({"operation": op} for op in request.operations),
+            operation=request.operation,
+            status="pending",
+            filters=tuple({"spec_id": f.spec_id, "where": f.where} for f in request.filters),
+            procedure_args=dict(request.procedure_args),
+            metrics={},
+            error=None,
+            skip_reason=None,
             created_at=CREATED_AT,
+            started_at=None,
             finished_at=None,
+            attempts=(),
         )
 
 
@@ -224,3 +234,24 @@ class FakeRaisePriority(RaiseTableMaintenanceRunPriorityUseCase):
         """Record the request and return the run as raised to the priority it was given, P0 when none."""
         self.requests.append(request)
         return RaiseTableMaintenanceRunPriorityUseCaseOutput(priority=request.priority or "P0", raised=True)
+
+
+class FakeSkip(SkipTableMaintenanceRunUseCase):
+    """Skip run use case fake that records its requests."""
+
+    def __init__(
+        self, output: SkipTableMaintenanceRunUseCaseOutput | None = None, *, error: Exception | None = None
+    ) -> None:
+        """Hold the reply to return (the run skipped by default) or the error to raise, with no recorded requests."""
+        self.requests: list[SkipTableMaintenanceRunUseCaseInput] = []
+        self._output = output
+        self._error = error
+
+    def execute(self, request: SkipTableMaintenanceRunUseCaseInput) -> SkipTableMaintenanceRunUseCaseOutput:
+        """Record the request and raise the error it holds, or return its reply, or the run as skipped."""
+        self.requests.append(request)
+        if self._error is not None:
+            raise self._error
+        if self._output is not None:
+            return self._output
+        return SkipTableMaintenanceRunUseCaseOutput(run_id=request.run_id, status="skipped", skipped=True)

@@ -5,12 +5,11 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
 from temporalio import activity
-from temporalio.client import WorkflowExecutionStatus, WorkflowHistory
+from temporalio.client import WorkflowExecutionStatus
 from temporalio.common import SearchAttributeKey
 from temporalio.converter import DataConverter
 from temporalio.exceptions import WorkflowAlreadyStartedError
@@ -76,6 +75,7 @@ WORKFLOW_ID = table_reconciliation_workflow_id(UUID)
 CHILD_ID = table_maintenance_workflow_id(UUID)
 COMPACTION = "rewrite_data_files"
 EXPIRE = "expire_snapshots"
+ORPHANS = "remove_orphan_files"
 REAL_TIMEOUT_SECONDS = 20
 TABLE_UUID_KEY = SearchAttributeKey.for_keyword("TableUuid")
 TABLE_NAME_KEY = SearchAttributeKey.for_keyword("TableName")
@@ -195,7 +195,7 @@ class Harness:
         """Start the workflow carrying a run in flight whose child workflow does not exist, so no signal reaches it."""
         return await self.start(
             start_signal=None,
-            in_flight_run_id=GHOST_RUN_ID,
+            in_flight_run_ids=[GHOST_RUN_ID],
             in_flight_workflow_id=GONE_CHILD_ID,
             in_flight_operation_count=1,
             **fields,
@@ -203,7 +203,9 @@ class Harness:
 
     async def start_with_an_unsignalled_run(self, **fields: Any) -> WorkflowHandle:
         """Start the workflow carrying a run in flight with no recorded workflow, so it cannot be signalled."""
-        return await self.start(start_signal=None, in_flight_run_id=GHOST_RUN_ID, in_flight_operation_count=1, **fields)
+        return await self.start(
+            start_signal=None, in_flight_run_ids=[GHOST_RUN_ID], in_flight_operation_count=1, **fields
+        )
 
     async def run_input(self) -> dict[str, Any]:
         """Return the input the reconciliation's current execution started with."""
@@ -215,7 +217,7 @@ class Harness:
         """Report the carried run in flight finished, as its child would have."""
         await self.signal(
             TableReconciliationSignal.MAINTENANCE_FINISHED,
-            {"run_id": GHOST_RUN_ID, "record_failures": 0, "unapplied_raise": unapplied_raise},
+            {"run_ids": [GHOST_RUN_ID], "record_failures": 0, "unapplied_raise": unapplied_raise},
         )
 
     async def signal(self, name: str, payload: dict | None = None) -> None:
@@ -247,47 +249,47 @@ class Harness:
 
         return await eventually(probe, lambda r: len(r) >= count)
 
-    async def in_flight(self) -> str:
-        """Return the run id of the in-flight maintenance run."""
-        state = await eventually(self.state, lambda s: s["in_flight_run_id"])
-        return state["in_flight_run_id"]
+    async def in_flight(self) -> list[str]:
+        """Return the run ids of the in-flight maintenance workflow, one per planned operation."""
+        state = await eventually(self.state, lambda s: s["in_flight_run_ids"])
+        return state["in_flight_run_ids"]
 
     async def idle_after(self, before: dict[str, Any]) -> dict[str, Any]:
         """Wait until the carried in-flight run of ``before`` is no longer tracked."""
         return await eventually(
             self.state,
-            lambda s: s["in_flight_run_id"] != before["in_flight_run_id"] and not s["planning"],
+            lambda s: s["in_flight_run_ids"] != before["in_flight_run_ids"] and not s["planning"],
         )
 
-    async def child_handle(self, run_id: str) -> WorkflowHandle:
-        """Return the handle of the child execution of a run.
+    async def child_handle(self, run_ids: list[str]) -> WorkflowHandle:
+        """Return the handle of the child execution that runs ``run_ids``.
 
         Every run of the table runs under the table's one workflow id, so the
         execution of a run is found in the reconciliation's history (all its
         runs, across continue-as-new) and the handle pins its Temporal run id.
         """
 
-        async def started() -> dict[str, str]:
+        async def started() -> dict[tuple[str, ...], str]:
             return await self.started_children()
 
-        children = await eventually(started, lambda found: run_id in found)
-        return self.client.get_workflow_handle(CHILD_ID, run_id=children[run_id])
+        children = await eventually(started, lambda found: tuple(run_ids) in found)
+        return self.client.get_workflow_handle(CHILD_ID, run_id=children[tuple(run_ids)])
 
-    async def started_children(self) -> dict[str, str]:
-        """Map each maintenance run id the reconciliation started to its child's Temporal run id."""
+    async def started_children(self) -> dict[tuple[str, ...], str]:
+        """Map the run ids of each child the reconciliation started to that child's Temporal run id."""
         converter = DataConverter.default.payload_converter
-        found: dict[str, str] = {}
+        found: dict[tuple[str, ...], str] = {}
         temporal_run: str | None = (await self.client.get_workflow_handle(WORKFLOW_ID).describe()).run_id
         while temporal_run:
             history = await self.client.get_workflow_handle(WORKFLOW_ID, run_id=temporal_run).fetch_history()
             temporal_run = None
-            initiated: dict[int, str] = {}
+            initiated: dict[int, tuple[str, ...]] = {}
             for event in history.events:
                 if event.HasField("workflow_execution_started_event_attributes"):
                     temporal_run = event.workflow_execution_started_event_attributes.continued_execution_run_id
                 elif event.HasField("start_child_workflow_execution_initiated_event_attributes"):
                     payloads = event.start_child_workflow_execution_initiated_event_attributes.input.payloads
-                    initiated[event.event_id] = converter.from_payloads(payloads)[0]["run_id"]
+                    initiated[event.event_id] = tuple(converter.from_payloads(payloads)[0]["run_ids"])
                 elif event.HasField("child_workflow_execution_started_event_attributes"):
                     child = event.child_workflow_execution_started_event_attributes
                     found[initiated[child.initiated_event_id]] = child.workflow_execution.run_id
@@ -302,29 +304,29 @@ class Harness:
             if e.HasField("activity_task_scheduled_event_attributes")
         ]
 
-    async def child(self, run_id: str) -> dict[str, Any]:
+    async def child(self, run_ids: list[str]) -> dict[str, Any]:
         """Query the stub child of a run for the input it started with."""
-        return await (await self.child_handle(run_id)).query("started_with")
+        return await (await self.child_handle(run_ids)).query("started_with")
 
-    async def child_summary(self, run_id: str) -> str | None:
+    async def child_summary(self, run_ids: list[str]) -> str | None:
         """Return the static summary of the child workflow of a run."""
-        return await (await (await self.child_handle(run_id)).describe()).static_summary()
+        return await (await (await self.child_handle(run_ids)).describe()).static_summary()
 
-    async def child_search_attributes(self, run_id: str) -> TypedSearchAttributes:
+    async def child_search_attributes(self, run_ids: list[str]) -> TypedSearchAttributes:
         """Return the search attributes the child workflow of a run started with."""
-        return (await (await self.child_handle(run_id)).describe()).typed_search_attributes
+        return (await (await self.child_handle(run_ids)).describe()).typed_search_attributes
 
     async def search_attributes(self) -> TypedSearchAttributes:
         """Return the search attributes of the reconciliation workflow."""
         return (await self.client.get_workflow_handle(WORKFLOW_ID).describe()).typed_search_attributes
 
-    async def child_status(self, run_id: str) -> WorkflowExecutionStatus | None:
+    async def child_status(self, run_ids: list[str]) -> WorkflowExecutionStatus | None:
         """Return the execution status of the child workflow of a run."""
-        return (await (await self.child_handle(run_id)).describe()).status
+        return (await (await self.child_handle(run_ids)).describe()).status
 
-    async def complete_child(self, run_id: str) -> None:
+    async def complete_child(self, run_ids: list[str]) -> None:
         """Signal the stub child of a run to finish."""
-        await (await self.child_handle(run_id)).signal("complete")
+        await (await self.child_handle(run_ids)).signal("complete")
         self.sent += 1
 
     async def ended(self) -> None:
@@ -413,8 +415,8 @@ def test_signal_with_start_plans_and_starts_child_with_abandon_semantics():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
-        child = await h.child(run_id)
+        run_ids = await h.in_flight()
+        child = await h.child(run_ids)
         assert child["table_uuid"] == UUID
         assert child["parent_workflow_id"] == WORKFLOW_ID
         assert child["trigger"] == "scheduled"
@@ -430,9 +432,9 @@ def test_child_runs_under_the_table_workflow_id():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
+        run_ids = await h.in_flight()
         assert (await h.state())["in_flight_workflow_id"] == f"table-maintenance:table-uuid={UUID}"
-        assert (await (await h.child_handle(run_id)).describe()).id == f"table-maintenance:table-uuid={UUID}"
+        assert (await (await h.child_handle(run_ids)).describe()).id == f"table-maintenance:table-uuid={UUID}"
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -444,7 +446,7 @@ def test_second_run_for_the_table_is_refused_while_one_runs():
         await h.client.start_workflow(
             TABLE_MAINTENANCE_WORKFLOW,
             TableMaintenanceWorkflowInput(
-                run_id=OTHER_RUN_ID,
+                run_ids=[OTHER_RUN_ID],
                 table_uuid=UUID,
                 parent_workflow_id="elsewhere",
                 trigger="manual",
@@ -455,11 +457,11 @@ def test_second_run_for_the_table_is_refused_while_one_runs():
         )
         await h.start()
         record = (await h.records(1))[0]
-        assert (await h.settle())["in_flight_run_id"] is None
-        assert record["run_id"] is None
+        assert (await h.settle())["in_flight_run_ids"] is None
+        assert record["run_ids"] == {}
         assert record["run_start_failed"] is True
         started_with = await h.client.get_workflow_handle(CHILD_ID).query("started_with")
-        assert started_with["run_id"] == OTHER_RUN_ID
+        assert started_with["run_ids"] == [OTHER_RUN_ID]
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -471,11 +473,11 @@ def test_next_run_reuses_the_id_after_the_first_closed():
         await h.start()
         first = await h.in_flight()
         await h.complete_child(first)
-        second = (await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first)))["in_flight_run_id"]
+        second = (await eventually(h.state, lambda s: s["in_flight_run_ids"] not in (None, first)))["in_flight_run_ids"]
         assert (await h.state())["in_flight_workflow_id"] == CHILD_ID
         assert await h.child_status(first) == WorkflowExecutionStatus.COMPLETED
         assert await h.child_status(second) == WorkflowExecutionStatus.RUNNING
-        assert (await h.child(second))["run_id"] == second
+        assert (await h.child(second))["run_ids"] == second
         records = await h.records(2)
         assert [r["run_start_failed"] for r in records[:2]] == [False, False]
 
@@ -487,8 +489,8 @@ def test_child_summary_names_the_table_and_the_planned_operations():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
-        assert await h.child_summary(run_id) == (f"{TABLE} · {COMPACTION}, {EXPIRE}")
+        run_ids = await h.in_flight()
+        assert await h.child_summary(run_ids) == (f"{TABLE} · {COMPACTION}, {EXPIRE}")
 
     _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE))
 
@@ -505,8 +507,8 @@ def test_maintenance_run_carries_table_search_attributes(start_signal: str, trig
 
     async def scenario(h: Harness) -> None:
         await h.start(start_signal=start_signal)
-        run_id = await h.in_flight()
-        attributes = await h.child_search_attributes(run_id)
+        run_ids = await h.in_flight()
+        attributes = await h.child_search_attributes(run_ids)
         assert attributes.get(TABLE_UUID_KEY) == UUID
         assert attributes.get(TABLE_NAME_KEY) == TABLE
         assert list(attributes.get(OPERATIONS_KEY) or []) == [COMPACTION, EXPIRE]
@@ -547,7 +549,7 @@ def test_reconciliation_follows_a_renamed_table():
 
 def _settled_on_a_new_run(state: dict[str, Any]) -> bool:
     """Tell whether a run other than the carried one is in flight and its plan is done."""
-    return state["in_flight_run_id"] not in (None, GHOST_RUN_ID) and not state["planning"]
+    return state["in_flight_run_ids"] not in (None, [GHOST_RUN_ID]) and not state["planning"]
 
 
 def test_trigger_now_while_in_flight_runs_after_finish():
@@ -565,7 +567,7 @@ def test_trigger_now_while_in_flight_runs_after_finish():
         assert plan["manual_operations"] == [EXPIRE]
         run = await eventually(h.state, _settled_on_a_new_run)
         assert run["pending_manual"] is None
-        child = await h.child(run["in_flight_run_id"])
+        child = await h.child(run["in_flight_run_ids"])
         assert child["trigger"] == "manual"
 
     _run(scenario, script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])))
@@ -583,7 +585,7 @@ def test_trigger_now_priority_reaches_the_manual_plan_only():
         assert (await h.plan_count(1))[0]["manual_priority"] == "P0"
         run = await eventually(h.state, _settled_on_a_new_run)
         assert run["pending_manual_priority"] is None
-        await h.complete_child(run["in_flight_run_id"])
+        await h.complete_child(run["in_flight_run_ids"])
         assert (await h.plan_count(2))[1]["manual_priority"] is None
 
     _run(scenario, script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])))
@@ -632,9 +634,9 @@ def test_manual_trigger_in_flight_signals_the_child():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
+        run_ids = await h.in_flight()
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P0"})
-        child = await h.child_handle(run_id)
+        child = await h.child_handle(run_ids)
 
         async def raises() -> list[str | None]:
             return await child.query("raises")
@@ -643,7 +645,7 @@ def test_manual_trigger_in_flight_signals_the_child():
         state = await eventually(h.state, lambda s: s["pending_manual"] is None)
         assert state["pending_manual_priority"] is None
         assert "manual_run" not in state["wake_reasons"]
-        await h.complete_child(run_id)
+        await h.complete_child(run_ids)
         plan = (await h.plan_count(2))[1]
         assert (plan["manual_operations"], plan["manual_priority"]) == (None, None)
         assert (await h.records(2))[1]["wake_reasons"] == {"previous_run_finished": 1}
@@ -656,9 +658,9 @@ def test_manual_trigger_without_priority_raises_to_the_table_priority():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
+        run_ids = await h.in_flight()
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE]})
-        child = await h.child_handle(run_id)
+        child = await h.child_handle(run_ids)
 
         async def raises() -> list[str | None]:
             return await child.query("raises")
@@ -683,7 +685,7 @@ def test_manual_trigger_to_a_gone_child_clears_the_run_and_is_planned_at_once():
         assert (await h.records(1))[0]["wake_reasons"] == {"manual_run": 1, "previous_run_finished": 1}
         run = await eventually(h.state, _settled_on_a_new_run)
         assert run["pending_manual"] is None
-        assert (await h.child(run["in_flight_run_id"]))["trigger"] == "manual"
+        assert (await h.child(run["in_flight_run_ids"]))["trigger"] == "manual"
 
     _run(scenario, script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])))
 
@@ -711,12 +713,12 @@ def test_trigger_now_without_operations_plans_all_due_as_manual():
 
     async def scenario(h: Harness) -> None:
         await h.start(start_signal=TableReconciliationSignal.TRIGGER_NOW)
-        run_id = await h.in_flight()
+        run_ids = await h.in_flight()
         assert h.plans.requests[0]["manual_operations"] is None
-        assert (await h.child(run_id))["trigger"] == "manual"
+        assert (await h.child(run_ids))["trigger"] == "manual"
         record = (await h.records(1))[0]
         assert record["wake_reasons"] == {"manual_run": 1}
-        assert record["run_id"] == run_id
+        assert record["run_ids"] == {COMPACTION: run_ids[0]}
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -727,7 +729,7 @@ def test_child_result_received_after_continue_as_new():
     async def scenario(h: Harness) -> None:
         handle = await h.start(continue_as_new_after=2)
         first_run = handle.result_run_id
-        run_id = await h.in_flight()
+        run_ids = await h.in_flight()
         for _ in range(4):
             await h.signal(TableReconciliationSignal.POLICY_CHANGED)
 
@@ -736,10 +738,10 @@ def test_child_result_received_after_continue_as_new():
 
         await eventually(run_id_now, lambda r: r != first_run)
         state = await h.state()
-        assert state["in_flight_run_id"] == run_id
+        assert state["in_flight_run_ids"] == run_ids
         assert state["in_flight_workflow_id"] == CHILD_ID
         assert len(h.plans.requests) == 1
-        await h.complete_child(run_id)
+        await h.complete_child(run_ids)
         await h.plan_count(2)
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
@@ -750,13 +752,13 @@ def test_stale_maintenance_finished_is_ignored():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
+        run_ids = await h.in_flight()
         await h.signal(
             TableReconciliationSignal.MAINTENANCE_FINISHED,
-            {"run_id": OTHER_RUN_ID, "record_failures": 0},
+            {"run_ids": [OTHER_RUN_ID], "record_failures": 0},
         )
         await h.settle()
-        assert (await h.state())["in_flight_run_id"] == run_id
+        assert (await h.state())["in_flight_run_ids"] == run_ids
         assert len(h.plans.requests) == 1
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
@@ -767,13 +769,13 @@ def test_dropped_signal_ends_workflow_after_in_flight_run():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
+        run_ids = await h.in_flight()
         await h.signal(TableReconciliationSignal.STOP)
         state = await h.settle()
         assert state["stopping"] is True
-        assert state["in_flight_run_id"] == run_id
+        assert state["in_flight_run_ids"] == run_ids
         assert await h.status() == WorkflowExecutionStatus.RUNNING
-        await h.complete_child(run_id)
+        await h.complete_child(run_ids)
         await h.ended()
         assert len(h.plans.requests) == 1
 
@@ -826,14 +828,14 @@ def test_unmanaged_reason_ends_workflow_after_in_flight_run():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
+        run_ids = await h.in_flight()
         unmanaged["value"] = True
         await h.signal(TableReconciliationSignal.TABLE_UPDATED)
         state = await h.settle()
-        assert state["in_flight_run_id"] == run_id
+        assert state["in_flight_run_ids"] == run_ids
         assert len(h.plans.requests) == 1
         assert await h.status() == WorkflowExecutionStatus.RUNNING
-        await h.complete_child(run_id)
+        await h.complete_child(run_ids)
         await h.ended()
         assert len(h.plans.requests) == 2
         assert h.recorder.records[-1]["skip_reason"] == "unmanaged"
@@ -858,8 +860,8 @@ def test_manual_trigger_on_a_table_missing_from_the_catalog_is_dropped():
         await h.signal(TableReconciliationSignal.TABLE_UPDATED)
         await h.env.sleep(timedelta(seconds=300))
         assert (await h.plan_count(2))[1]["manual_operations"] is None
-        run_id = await h.in_flight()
-        assert (await h.child(run_id))["trigger"] == "scheduled"
+        run_ids = await h.in_flight()
+        assert (await h.child(run_ids))["trigger"] == "scheduled"
 
     _run(scenario, script=script)
 
@@ -872,7 +874,7 @@ def test_plan_failure_does_not_fail_workflow():
         await h.start()
         failed = (await h.plan_count(1))[0]
         state = await h.settle()
-        assert state["in_flight_run_id"] is None
+        assert state["in_flight_run_ids"] is None
         due = datetime.fromisoformat(state["next_plan_at"])
         assert _within_a_second(due - datetime.fromisoformat(failed["now"]), 3600)
         assert await h.status() == WorkflowExecutionStatus.RUNNING
@@ -893,7 +895,7 @@ def test_planned_empty_starts_no_child():
         await h.start()
         await h.plan_count(1)
         state = await h.settle()
-        assert state["in_flight_run_id"] is None
+        assert state["in_flight_run_ids"] is None
         assert len(h.plans.requests) == 1
 
     _run(scenario, script=lambda _: _planned())
@@ -913,13 +915,13 @@ def test_in_flight_run_is_given_up_only_after_the_child_worst_case():
         started_at = (await h.state())["in_flight_started_at"]
         await h.env.sleep(2 * OPERATION_BUDGET - timedelta(minutes=1))
         state = await h.settle()
-        assert state["in_flight_run_id"] == first
+        assert state["in_flight_run_ids"] == first
         assert state["in_flight_started_at"] == started_at
         assert len(h.plans.requests) == 1
         assert await h.child_status(first) == WorkflowExecutionStatus.RUNNING
         await h.env.sleep(timedelta(minutes=2))
         await h.plan_count(2)
-        await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first) and not s["planning"])
+        await eventually(h.state, lambda s: s["in_flight_run_ids"] not in (None, first) and not s["planning"])
         # The cancelled child reports back, so the next plan wakes on its finish, not on schedule.
         assert [r["wake_reasons"] for r in h.recorder.records] == [{"table_managed": 1}, {"previous_run_finished": 1}]
 
@@ -934,7 +936,7 @@ def test_give_up_cancels_the_stale_child_before_starting_a_new_run():
         first = await h.in_flight()
         await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
         await h.plan_count(2)
-        second = (await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first)))["in_flight_run_id"]
+        second = (await eventually(h.state, lambda s: s["in_flight_run_ids"] not in (None, first)))["in_flight_run_ids"]
         assert await h.child_status(first) == WorkflowExecutionStatus.CANCELED
         assert await h.child_status(second) == WorkflowExecutionStatus.RUNNING
 
@@ -950,12 +952,12 @@ def test_give_up_waits_for_a_cancelled_child_that_is_still_running():
         first = await h.in_flight()
         await h.env.sleep(OPERATION_BUDGET + timedelta(hours=3))
         state = await h.settle()
-        assert state["in_flight_run_id"] == first
+        assert state["in_flight_run_ids"] == first
         assert len(h.plans.requests) == 1
         assert await h.child_status(first) == WorkflowExecutionStatus.RUNNING
         await h.complete_child(first)
         await h.plan_count(2)
-        await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first) and not s["planning"])
+        await eventually(h.state, lambda s: s["in_flight_run_ids"] not in (None, first) and not s["planning"])
         assert [r["wake_reasons"] for r in h.recorder.records] == [{"table_managed": 1}, {"previous_run_finished": 1}]
 
     _run(scenario, script=lambda _: plan)
@@ -969,24 +971,13 @@ def test_give_up_forgets_a_cancelled_child_that_closed_without_reporting():
         await h.start()
         first = await h.in_flight()
         await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=5))
-        assert (await h.settle())["in_flight_run_id"] == first
+        assert (await h.settle())["in_flight_run_ids"] == first
         await (await h.child_handle(first)).terminate()
         await h.env.sleep(timedelta(minutes=12))
         await h.plan_count(2)
-        await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first) and not s["planning"])
+        await eventually(h.state, lambda s: s["in_flight_run_ids"] not in (None, first) and not s["planning"])
 
     _run(scenario, script=lambda _: plan)
-
-
-def test_history_that_gave_a_run_up_before_this_milestone_replays():
-    """A reconciliation that gave a run up under the bound and grace from before fencing replays on the new code."""
-
-    async def go() -> None:
-        fixture = Path(__file__).parent / "fixtures" / "reconciliation_give_up_before_fencing.json"
-        history = WorkflowHistory.from_json(WORKFLOW_ID, fixture.read_text())
-        await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
-
-    asyncio.run(go())
 
 
 def test_managed_again_while_in_flight_keeps_workflow():
@@ -1000,7 +991,7 @@ def test_managed_again_while_in_flight_keeps_workflow():
         assert (await h.settle())["stopping"] is False
         await h.complete_child(first)
         await h.plan_count(2)
-        await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
+        await eventually(h.state, lambda s: s["in_flight_run_ids"] not in (None, first))
         assert await h.status() == WorkflowExecutionStatus.RUNNING
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
@@ -1064,13 +1055,13 @@ def test_carried_in_flight_run_without_start_time_gets_a_fixed_deadline():
     async def scenario(h: Harness) -> None:
         await h.start(
             start_signal=None,
-            in_flight_run_id=GHOST_RUN_ID,
+            in_flight_run_ids=[GHOST_RUN_ID],
             in_flight_workflow_id=CHILD_ID,
             in_flight_operation_count=1,
         )
         state = await eventually(h.state, lambda s: s["in_flight_started_at"])
         await h.env.sleep(OPERATION_BUDGET - timedelta(minutes=1))
-        assert (await h.settle())["in_flight_run_id"] == GHOST_RUN_ID
+        assert (await h.settle())["in_flight_run_ids"] == [GHOST_RUN_ID]
         assert h.plans.requests == []
         # The time-skipping test server never resolves a cancel of a missing
         # workflow, so the give-up falls back to the 15 min grace here.
@@ -1085,7 +1076,7 @@ def test_carried_in_flight_run_without_workflow_id_is_given_up_without_grace():
     """A carried in-flight run without a workflow id is given up without a grace period."""
 
     async def scenario(h: Harness) -> None:
-        await h.start(start_signal=None, in_flight_run_id=GHOST_RUN_ID, in_flight_operation_count=1)
+        await h.start(start_signal=None, in_flight_run_ids=[GHOST_RUN_ID], in_flight_operation_count=1)
         state = await eventually(h.state, lambda s: s["in_flight_started_at"])
         assert state["in_flight_workflow_id"] is None
         await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
@@ -1116,13 +1107,13 @@ def test_child_start_failure_keeps_workflow_alive(monkeypatch: pytest.MonkeyPatc
         await h.start()
         await h.plan_count(1)
         state = await h.settle()
-        assert state["in_flight_run_id"] is None
+        assert state["in_flight_run_ids"] is None
         assert state["in_flight_started_at"] is None
         assert await h.status() == WorkflowExecutionStatus.RUNNING
         await h.signal(TableReconciliationSignal.POLICY_CHANGED)
         await h.plan_count(2)
-        run_id = await h.in_flight()
-        assert (await h.child(run_id))["plan"] == _planned(EXPIRE)
+        run_ids = await h.in_flight()
+        assert (await h.child(run_ids))["plan"] == _planned(EXPIRE)
 
     _run(
         scenario,
@@ -1150,7 +1141,7 @@ def test_timer_wake_records_schedule():
         assert record["status"] == "planned"
         assert record["skip_reason"] is None
         assert record["checks"] == [_check(COMPACTION, "not_needed")]
-        assert record["run_id"] is None
+        assert record["run_ids"] == {}
         assert record["run_start_failed"] is False
         assert record["policy_id"] == NIGHTLY_POLICY_ID
         assert record["policy_name"] == "nightly"
@@ -1180,17 +1171,17 @@ def test_three_catalog_commits_during_a_run_are_recorded_after_it_finishes():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
+        run_ids = await h.in_flight()
         first = (await h.records(1))[0]
         assert first["wake_reasons"] == {"table_managed": 1}
-        assert first["run_id"] == run_id
-        assert (await h.child(run_id))["run_id"] == run_id
+        assert first["run_ids"] == {COMPACTION: run_ids[0]}
+        assert (await h.child(run_ids))["run_ids"] == run_ids
         for _ in range(3):
             await h.signal(TableReconciliationSignal.TABLE_UPDATED)
         state = await h.settle()
         assert (state["pending_commits"], state["wake_reasons"]) == (3, {})
         assert len(h.recorder.records) == 1
-        await h.complete_child(run_id)
+        await h.complete_child(run_ids)
         second = (await h.records(2))[1]
         assert second["wake_reasons"] == {"catalog_commit": 3, "previous_run_finished": 1}
         assert second["reconciliation_id"] != first["reconciliation_id"]
@@ -1206,11 +1197,11 @@ def test_reconcile_now_records_reconcile_now():
         await h.start(start_signal=None)
         await h.signal(TableReconciliationSignal.RECONCILE_NOW)
         assert (await h.plan_count(1))[0]["manual_operations"] is None
-        run_id = await h.in_flight()
-        assert (await h.child(run_id))["trigger"] == "scheduled"
+        run_ids = await h.in_flight()
+        assert (await h.child(run_ids))["trigger"] == "scheduled"
         record = (await h.records(1))[0]
         assert record["wake_reasons"] == {"reconcile_now": 1}
-        assert record["run_id"] == run_id
+        assert record["run_ids"] == {COMPACTION: run_ids[0]}
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -1222,10 +1213,10 @@ def test_dry_run_plan_starts_nothing_and_records():
         await h.start()
         record = (await h.records(1))[0]
         state = await h.settle()
-        assert state["in_flight_run_id"] is None
+        assert state["in_flight_run_ids"] is None
         assert record["dry_run"] is True
         assert record["checks"] == [_check(COMPACTION)]
-        assert record["run_id"] is None
+        assert record["run_ids"] == {}
         assert record["run_start_failed"] is False
 
     _run(scenario, script=lambda _: _dry_run(COMPACTION))
@@ -1243,8 +1234,8 @@ def test_failed_child_start_records_start_failed(monkeypatch: pytest.MonkeyPatch
     async def scenario(h: Harness) -> None:
         await h.start()
         record = (await h.records(1))[0]
-        assert (await h.settle())["in_flight_run_id"] is None
-        assert record["run_id"] is None
+        assert (await h.settle())["in_flight_run_ids"] is None
+        assert record["run_ids"] == {}
         assert record["run_start_failed"] is True
         assert record["checks"] == [_check(COMPACTION)]
 
@@ -1270,7 +1261,7 @@ def test_wake_reasons_survive_continue_as_new():
     async def scenario(h: Harness) -> None:
         handle = await h.start(continue_as_new_after=2)
         first_run = handle.result_run_id
-        run_id = await h.in_flight()
+        run_ids = await h.in_flight()
         for _ in range(3):
             await h.signal(TableReconciliationSignal.POLICY_CHANGED)
 
@@ -1279,7 +1270,7 @@ def test_wake_reasons_survive_continue_as_new():
 
         await eventually(run_id_now, lambda r: r != first_run)
         assert (await h.state())["wake_reasons"] == {"policy_changed": 3}
-        await h.complete_child(run_id)
+        await h.complete_child(run_ids)
         second = (await h.records(2))[1]
         assert second["wake_reasons"] == {"policy_changed": 3, "previous_run_finished": 1}
 
@@ -1293,11 +1284,11 @@ def test_failed_record_does_not_stop_the_loop():
     async def scenario(h: Harness) -> None:
         h.recorder.failures = 1
         await h.start()
-        run_id = await h.in_flight()
+        run_ids = await h.in_flight()
         await h.settle()
         assert h.recorder.records == []
         assert await h.status() == WorkflowExecutionStatus.RUNNING
-        await h.complete_child(run_id)
+        await h.complete_child(run_ids)
         record = (await h.records(1))[0]
         assert record["wake_reasons"] == {"previous_run_finished": 1}
 
@@ -1333,7 +1324,7 @@ def test_given_up_run_before_the_plan_timer_is_not_recorded_as_schedule():
         await h.signal(TableReconciliationSignal.TABLE_UPDATED)
         await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
         await h.plan_count(2)
-        await eventually(h.state, lambda s: s["in_flight_run_id"] != first and not s["planning"])
+        await eventually(h.state, lambda s: s["in_flight_run_ids"] != first and not s["planning"])
         records = await h.records(2)
         assert [r["wake_reasons"] for r in records] == [
             {"table_managed": 1},
@@ -1353,10 +1344,10 @@ def test_plan_timer_due_during_a_run_is_counted_once_it_finishes():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
+        run_ids = await h.in_flight()
         await h.env.sleep(timedelta(seconds=1900))
         await h.settle()
-        await h.complete_child(run_id)
+        await h.complete_child(run_ids)
         second = (await h.records(2))[1]
         assert second["wake_reasons"] == {"previous_run_finished": 1, "schedule": 1}
 
@@ -1369,18 +1360,18 @@ def test_give_up_before_the_plan_timer_plans_once_as_previous_run_finished():
     async def scenario(h: Harness) -> None:
         await h.start(
             start_signal=None,
-            in_flight_run_id=GHOST_RUN_ID,
+            in_flight_run_ids=[GHOST_RUN_ID],
             in_flight_operation_count=1,
             schedule_interval_seconds=10**6,
         )
         await eventually(h.state, lambda s: s["in_flight_started_at"])
         await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
-        run_id = (await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, GHOST_RUN_ID)))[
-            "in_flight_run_id"
+        run_ids = (await eventually(h.state, lambda s: s["in_flight_run_ids"] not in (None, [GHOST_RUN_ID])))[
+            "in_flight_run_ids"
         ]
         [record] = await h.records(1)
         assert record["wake_reasons"] == {"previous_run_finished": 1}
-        assert record["run_id"] == run_id
+        assert record["run_ids"] == {COMPACTION: run_ids[0]}
         await h.settle()
         assert len(h.plans.requests) == 1
 
@@ -1468,8 +1459,8 @@ def test_reconciliation_passes_the_plan_deadline_to_the_run():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
-        assert (await h.child(run_id))["attempt_deadline_seconds"] == 120
+        run_ids = await h.in_flight()
+        assert (await h.child(run_ids))["attempt_deadline_seconds"] == 120
 
     _run(scenario, script=lambda _: {**_planned(COMPACTION), "attempt_deadline_seconds": 120})
 
@@ -1479,8 +1470,8 @@ def test_reconciliation_defaults_the_deadline_for_old_plans():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
-        assert (await h.child(run_id))["attempt_deadline_seconds"] == 21600
+        run_ids = await h.in_flight()
+        assert (await h.child(run_ids))["attempt_deadline_seconds"] == 21600
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -1497,7 +1488,7 @@ def test_in_flight_bound_follows_the_plan_deadline():
         await h.start()
         first = await h.in_flight()
         await h.env.sleep(SHORT_DEADLINE_BUDGET - timedelta(minutes=1))
-        assert (await h.settle())["in_flight_run_id"] == first
+        assert (await h.settle())["in_flight_run_ids"] == first
         await h.env.sleep(timedelta(minutes=2))
         await h.plan_count(2)
         assert await h.child_status(first) == WorkflowExecutionStatus.CANCELED
@@ -1510,8 +1501,8 @@ def test_reconciliation_passes_the_plan_max_attempts_to_the_run():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
-        assert (await h.child(run_id))["max_attempts"] == 5
+        run_ids = await h.in_flight()
+        assert (await h.child(run_ids))["max_attempts"] == 5
 
     _run(scenario, script=lambda _: {**_planned(COMPACTION), "max_attempts": 5})
 
@@ -1521,8 +1512,8 @@ def test_reconciliation_defaults_the_max_attempts_for_old_plans():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
-        assert (await h.child(run_id))["max_attempts"] == 3
+        run_ids = await h.in_flight()
+        assert (await h.child(run_ids))["max_attempts"] == 3
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -1539,7 +1530,7 @@ def test_in_flight_bound_follows_the_plan_max_attempts():
         await h.start()
         first = await h.in_flight()
         await h.env.sleep(LONG_RETRY_BUDGET - timedelta(minutes=1))
-        assert (await h.settle())["in_flight_run_id"] == first
+        assert (await h.settle())["in_flight_run_ids"] == first
         await h.env.sleep(timedelta(minutes=2))
         await h.plan_count(2)
         assert await h.child_status(first) == WorkflowExecutionStatus.CANCELED
@@ -1560,13 +1551,13 @@ def test_carried_in_flight_run_keeps_its_attempt_deadline():
     async def scenario(h: Harness) -> None:
         await h.start(
             start_signal=None,
-            in_flight_run_id=GHOST_RUN_ID,
+            in_flight_run_ids=[GHOST_RUN_ID],
             in_flight_operation_count=1,
             in_flight_attempt_deadline_seconds=120,
         )
         state = await eventually(h.state, lambda s: s["in_flight_started_at"])
         await h.env.sleep(SHORT_DEADLINE_BUDGET - timedelta(minutes=1))
-        assert (await h.settle())["in_flight_run_id"] == GHOST_RUN_ID
+        assert (await h.settle())["in_flight_run_ids"] == [GHOST_RUN_ID]
         await h.env.sleep(timedelta(minutes=2))
         await h.plan_count(1)
         await h.idle_after(state)
@@ -1582,7 +1573,7 @@ def test_in_flight_bound_includes_the_fencing_bound():
         first = await h.in_flight()
         without_fencing = 3 * (timedelta(hours=24) + timedelta(hours=6)) + timedelta(minutes=3) + timedelta(hours=1)
         await h.env.sleep(without_fencing + timedelta(minutes=30))
-        assert (await h.settle())["in_flight_run_id"] == first
+        assert (await h.settle())["in_flight_run_ids"] == first
         assert len(h.plans.requests) == 1
         assert OPERATION_BUDGET == without_fencing + 3 * timedelta(minutes=15)
 
@@ -1594,8 +1585,8 @@ def test_reconciliation_passes_the_plan_queue_wait_limit_to_the_run():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
-        assert (await h.child(run_id))["queue_wait_limit_seconds"] == 600
+        run_ids = await h.in_flight()
+        assert (await h.child(run_ids))["queue_wait_limit_seconds"] == 600
 
     _run(scenario, script=lambda _: {**_planned(COMPACTION), "queue_wait_limit_seconds": 600})
 
@@ -1605,8 +1596,8 @@ def test_reconciliation_defaults_the_queue_wait_limit_for_old_plans():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
-        assert (await h.child(run_id))["queue_wait_limit_seconds"] == 86400
+        run_ids = await h.in_flight()
+        assert (await h.child(run_ids))["queue_wait_limit_seconds"] == 86400
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -1624,7 +1615,7 @@ def test_give_up_waits_for_queue_wait_plus_deadline():
         first = await h.in_flight()
         assert SHORT_QUEUE_BUDGET == 3 * timedelta(seconds=600 + 120 + 900) + timedelta(minutes=3, hours=1)
         await h.env.sleep(SHORT_QUEUE_BUDGET - timedelta(minutes=1))
-        assert (await h.settle())["in_flight_run_id"] == first
+        assert (await h.settle())["in_flight_run_ids"] == first
         await h.env.sleep(timedelta(minutes=2))
         await h.plan_count(2)
         assert await h.child_status(first) == WorkflowExecutionStatus.CANCELED
@@ -1645,14 +1636,14 @@ def test_carried_in_flight_run_keeps_its_queue_wait_limit():
     async def scenario(h: Harness) -> None:
         await h.start(
             start_signal=None,
-            in_flight_run_id=GHOST_RUN_ID,
+            in_flight_run_ids=[GHOST_RUN_ID],
             in_flight_operation_count=1,
             in_flight_attempt_deadline_seconds=120,
             in_flight_queue_wait_limit_seconds=600,
         )
         state = await eventually(h.state, lambda s: s["in_flight_started_at"])
         await h.env.sleep(SHORT_QUEUE_BUDGET - timedelta(minutes=1))
-        assert (await h.settle())["in_flight_run_id"] == GHOST_RUN_ID
+        assert (await h.settle())["in_flight_run_ids"] == [GHOST_RUN_ID]
         await h.env.sleep(timedelta(minutes=2))
         await h.plan_count(1)
         await h.idle_after(state)
@@ -1666,7 +1657,7 @@ def test_continue_as_new_carries_the_in_flight_queue_wait_limit():
     async def scenario(h: Harness) -> None:
         handle = await h.start(
             start_signal=None,
-            in_flight_run_id=GHOST_RUN_ID,
+            in_flight_run_ids=[GHOST_RUN_ID],
             in_flight_operation_count=1,
             in_flight_attempt_deadline_seconds=120,
             in_flight_queue_wait_limit_seconds=600,
@@ -1682,29 +1673,14 @@ def test_continue_as_new_carries_the_in_flight_queue_wait_limit():
 
         await eventually(run_id_now, lambda r: r != first_run)
         h.sent = 0
-        assert (await h.settle())["in_flight_run_id"] == GHOST_RUN_ID
+        assert (await h.settle())["in_flight_run_ids"] == [GHOST_RUN_ID]
         await h.env.sleep(SHORT_QUEUE_BUDGET - timedelta(minutes=1))
-        assert (await h.settle())["in_flight_run_id"] == GHOST_RUN_ID
+        assert (await h.settle())["in_flight_run_ids"] == [GHOST_RUN_ID]
         await h.env.sleep(timedelta(minutes=2))
         await h.plan_count(1)
         await h.idle_after(state)
 
     _run(scenario, script=lambda _: _planned())
-
-
-FIXTURES = Path(__file__).parent / "fixtures"
-
-
-def test_history_from_before_this_milestone_replays():
-    """A reconciliation that started and finished a run under the code before this milestone replays unchanged."""
-
-    async def go() -> None:
-        history = WorkflowHistory.from_json(
-            WORKFLOW_ID, (FIXTURES / "reconciliation_before_search_attributes.json").read_text()
-        )
-        await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
-
-    asyncio.run(go())
 
 
 def test_run_and_reconciliation_ids_survive_replay():
@@ -1719,18 +1695,19 @@ def test_run_and_reconciliation_ids_survive_replay():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
+        run_ids = await h.in_flight()
         record = (await h.records(1))[0]
-        assert RUN_ID_SHAPE.fullmatch(run_id)
+        assert [bool(RUN_ID_SHAPE.fullmatch(r)) for r in run_ids] == [True, True]
+        assert len(set(run_ids)) == 2
         assert RECONCILIATION_ID_SHAPE.fullmatch(record["reconciliation_id"])
-        assert record["run_id"] == run_id
-        assert (await h.child(run_id))["run_id"] == run_id
+        assert record["run_ids"] == dict(zip((COMPACTION, EXPIRE), run_ids, strict=True))
+        assert (await h.child(run_ids))["run_ids"] == run_ids
         history = await h.client.get_workflow_handle(WORKFLOW_ID).fetch_history()
         markers = [e.SerializeToString() for e in history.events if e.HasField("marker_recorded_event_attributes")]
         assert any(b"prefixed-run-and-reconciliation-ids" in m for m in markers)
         await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
 
-    _run(scenario, script=lambda _: _planned(COMPACTION), max_cached_workflows=0)
+    _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE), max_cached_workflows=0)
 
 
 # --- whole-table compaction, without compaction candidates ---
@@ -1804,31 +1781,14 @@ def test_a_long_run_in_flight_still_blocks_planning():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
+        run_ids = await h.in_flight()
         await h.env.sleep(timedelta(hours=21))
         await h.signal(TableReconciliationSignal.TABLE_UPDATED)
         state = await h.settle()
-        assert state["in_flight_run_id"] == run_id
+        assert state["in_flight_run_ids"] == run_ids
         assert len(h.plans.requests) == 1
 
     _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE))
-
-
-def test_history_from_before_whole_table_compaction_replays():
-    """A history whose plans already carried candidates and a next check, under the code before, replays unchanged.
-
-    Its first plan held every candidate until a next check, its second started a
-    run that took a candidate, and its third was not started because the
-    workflow was stopping: the new code neither looks again early nor releases.
-    """
-
-    async def go() -> None:
-        history = WorkflowHistory.from_json(
-            WORKFLOW_ID, (FIXTURES / "reconciliation_before_whole_table_compaction.json").read_text()
-        )
-        await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
-
-    asyncio.run(go())
 
 
 def _first_plan_with(flag: str, **stub: Any) -> Callable[[dict[str, Any]], dict[str, Any]]:
@@ -1860,7 +1820,7 @@ def test_manual_trigger_raised_on_a_run_that_reports_meanwhile_is_planned_after_
             await self._handle.signal(name, arg)
             if name == TableMaintenanceSignal.RAISE_PRIORITY:
                 reconciliation = temporalio.workflow.instance()
-                await temporalio.workflow.wait_condition(lambda: reconciliation.state()["in_flight_run_id"] is None)
+                await temporalio.workflow.wait_condition(lambda: reconciliation.state()["in_flight_run_ids"] is None)
 
         async def cancel(self) -> None:
             await self._handle.cancel()
@@ -1910,9 +1870,9 @@ def test_manual_trigger_whose_raise_the_run_left_unapplied_is_planned_after_it()
         second = (await h.records(2))[1]
         assert second["wake_reasons"] == {"manual_run": 1, "previous_run_finished": 1}
         assert second["run_start_failed"] is False
-        run = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
+        run = await eventually(h.state, lambda s: s["in_flight_run_ids"] not in (None, first))
         assert run["raised_manual"] is None
-        assert (await h.child(run["in_flight_run_id"]))["trigger"] == "manual"
+        assert (await h.child(run["in_flight_run_ids"]))["trigger"] == "manual"
 
     _run(scenario, script=_first_plan_with("stub_leaves_raises_unapplied", stub_lingers_seconds=1))
 
@@ -1970,10 +1930,10 @@ def test_next_run_waits_for_the_reporting_run_to_close():
         state = await h.state()
         assert (state["closing_workflow_id"], len(h.recorder.records)) == (CHILD_ID, 1)
         await h.env.sleep(LINGERS + timedelta(seconds=30))
-        second = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
+        second = await eventually(h.state, lambda s: s["in_flight_run_ids"] not in (None, first))
         records = await h.records(2)
         assert [r["run_start_failed"] for r in records[:2]] == [False, False]
-        assert (await h.child(second["in_flight_run_id"]))["run_id"] == second["in_flight_run_id"]
+        assert (await h.child(second["in_flight_run_ids"]))["run_ids"] == second["in_flight_run_ids"]
         assert second["closing_workflow_id"] is None
 
     _run(scenario, script=lambda _: {**_planned(COMPACTION), "stub_lingers_seconds": int(LINGERS.total_seconds())})
@@ -1993,7 +1953,7 @@ def test_stop_while_the_last_run_closes_starts_nothing():
         await h.env.sleep(LINGERS + timedelta(seconds=30))
         await h.ended()
         assert len(h.recorder.records) == 1
-        assert first in await h.started_children()
+        assert tuple(first) in await h.started_children()
         assert len(await h.started_children()) == 1
 
     _run(scenario, script=lambda _: {**_planned(COMPACTION), "stub_lingers_seconds": int(LINGERS.total_seconds())})
@@ -2006,7 +1966,11 @@ def test_refused_start_keeps_the_manual_trigger_pending():
         await h.client.start_workflow(
             TABLE_MAINTENANCE_WORKFLOW,
             TableMaintenanceWorkflowInput(
-                run_id=OTHER_RUN_ID, table_uuid=UUID, parent_workflow_id="elsewhere", trigger="manual", plan=_planned()
+                run_ids=[OTHER_RUN_ID],
+                table_uuid=UUID,
+                parent_workflow_id="elsewhere",
+                trigger="manual",
+                plan=_planned(),
             ),
             id=CHILD_ID,
             task_queue=TASK_QUEUE,
@@ -2043,7 +2007,11 @@ def test_carried_closing_run_is_waited_for_before_the_next_start():
         await h.client.start_workflow(
             TABLE_MAINTENANCE_WORKFLOW,
             TableMaintenanceWorkflowInput(
-                run_id=OTHER_RUN_ID, table_uuid=UUID, parent_workflow_id="elsewhere", trigger="manual", plan=_planned()
+                run_ids=[OTHER_RUN_ID],
+                table_uuid=UUID,
+                parent_workflow_id="elsewhere",
+                trigger="manual",
+                plan=_planned(),
             ),
             id=CHILD_ID,
             task_queue=TASK_QUEUE,
@@ -2079,8 +2047,8 @@ def test_a_run_whose_child_closes_without_reporting_is_treated_as_finished():
         gap = datetime.fromisoformat(second["now"]) - datetime.fromisoformat(first_plan["now"])
         assert gap < timedelta(hours=1)
         assert (await h.records(2))[1]["wake_reasons"] == {"manual_run": 1, "previous_run_finished": 1}
-        run = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
-        assert (await h.child(run["in_flight_run_id"]))["trigger"] == "manual"
+        run = await eventually(h.state, lambda s: s["in_flight_run_ids"] not in (None, first))
+        assert (await h.child(run["in_flight_run_ids"]))["trigger"] == "manual"
 
     _run(scenario, script=_first_plan_with("stub_skips_report"))
 
@@ -2127,7 +2095,11 @@ def test_carried_closing_run_still_open_past_the_bound_is_started_anyway():
         await h.client.start_workflow(
             TABLE_MAINTENANCE_WORKFLOW,
             TableMaintenanceWorkflowInput(
-                run_id=OTHER_RUN_ID, table_uuid=UUID, parent_workflow_id="elsewhere", trigger="manual", plan=_planned()
+                run_ids=[OTHER_RUN_ID],
+                table_uuid=UUID,
+                parent_workflow_id="elsewhere",
+                trigger="manual",
+                plan=_planned(),
             ),
             id=CHILD_ID,
             task_queue=TASK_QUEUE,
@@ -2139,13 +2111,13 @@ def test_carried_closing_run_still_open_past_the_bound_is_started_anyway():
         record = (await h.records(1))[0]
         assert record["run_start_failed"] is True
         assert (await h.settle())["closing_workflow_id"] is None
-        assert (await h.client.get_workflow_handle(CHILD_ID).query("started_with"))["run_id"] == OTHER_RUN_ID
+        assert (await h.client.get_workflow_handle(CHILD_ID).query("started_with"))["run_ids"] == [OTHER_RUN_ID]
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
 
-async def _raise_on_the_first_run(h: Harness) -> str:
-    """Start the first run, raise it with a manual P0 trigger and return its run id once the raise is consumed."""
+async def _raise_on_the_first_run(h: Harness) -> list[str]:
+    """Start the first child, raise it with a manual P0 trigger and return its run ids once the raise is consumed."""
     await h.start()
     first = await h.in_flight()
     await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P0"})
@@ -2175,7 +2147,7 @@ def test_a_given_up_run_that_never_reports_gives_its_raised_trigger_back():
     async def scenario(h: Harness) -> None:
         first = await _raise_on_the_first_run(h)
         await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=5))
-        assert (await h.settle())["in_flight_run_id"] == first
+        assert (await h.settle())["in_flight_run_ids"] == first
         await (await h.child_handle(first)).terminate()
         await h.env.sleep(timedelta(minutes=12))
         second = (await h.plan_count(2))[1]
@@ -2191,15 +2163,15 @@ def test_a_run_closing_unreported_just_before_a_continue_as_new_is_ended_not_car
     the reconciliation's history shows the close, so the closed child is there when the loop reaches its
     continue-as-new check.
     """
-    closed: list[str] = []
+    closed: list[list[str]] = []
 
     async def scenario(h: Harness) -> None:
         async def close_the_first_run(request: dict[str, Any]) -> None:
-            run_id = request.get("run_id")
-            if run_id is None or closed:
+            run_ids = request.get("run_ids")
+            if not run_ids or closed:
                 return
-            closed.append(run_id)
-            await (await h.child_handle(run_id)).signal("complete")
+            closed.append(list(run_ids.values()))
+            await (await h.child_handle(closed[0])).signal("complete")
 
             async def closed_in_history() -> bool:
                 history = await h.client.get_workflow_handle(WORKFLOW_ID).fetch_history()
@@ -2216,7 +2188,7 @@ def test_a_run_closing_unreported_just_before_a_continue_as_new_is_ended_not_car
         await eventually(run_id_now, lambda r: r != handle.result_run_id)
         carried = await h.run_input()
         assert closed
-        assert carried["in_flight_run_id"] != closed[0]
+        assert carried["in_flight_run_ids"] != closed[0]
 
     _run(scenario, script=_first_plan_with("stub_skips_report"))
 
@@ -2249,7 +2221,7 @@ def test_manual_trigger_to_a_carried_run_still_running_stays_pending():
         assert await eventually(looked_up, bool) == [GONE_CHILD_ID]
         state = await h.settle()
         assert (state["pending_manual"], state["pending_manual_priority"]) == ([EXPIRE], "P1")
-        assert state["in_flight_run_id"] == GHOST_RUN_ID
+        assert state["in_flight_run_ids"] == [GHOST_RUN_ID]
         assert state["raised_manual"] is None
         assert h.plans.requests == []
         await h.report_gone_child()
@@ -2408,14 +2380,14 @@ def test_a_window_closing_during_a_run_is_checked_after_it():
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        run_id = await h.in_flight()
+        run_ids = await h.in_flight()
         await h.signal(TableReconciliationSignal.TABLE_UPDATED)
         await h.settle()
         await h.env.sleep(timedelta(seconds=400))
         state = await h.settle()
-        assert state["in_flight_run_id"] == run_id
+        assert state["in_flight_run_ids"] == run_ids
         assert len(h.plans.requests) == 1
-        await h.complete_child(run_id)
+        await h.complete_child(run_ids)
         second = (await h.records(2))[1]
         assert second["wake_reasons"] == {"catalog_commit": 1, "previous_run_finished": 1}
 
@@ -2562,3 +2534,86 @@ def test_a_plan_without_catalog_commit_drops_the_window_a_commit_opened_during_i
         assert len(h.plans.requests) == 1
 
     _run(scenario, script=lambda _: answers[0])
+
+
+def test_a_plan_of_three_operations_starts_one_child_with_three_runs():
+    """A plan of three operations starts one child with a distinct run id per operation, and records each link."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_ids = await h.in_flight()
+        assert len(run_ids) == 3
+        assert len(set(run_ids)) == 3
+        assert all(RUN_ID_SHAPE.fullmatch(r) for r in run_ids)
+        assert (await h.child(run_ids))["run_ids"] == run_ids
+        [record] = await h.records(1)
+        assert record["run_ids"] == dict(zip((COMPACTION, EXPIRE, ORPHANS), run_ids, strict=True))
+        assert record["run_start_failed"] is False
+
+    _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE, ORPHANS))
+
+
+def test_a_report_naming_other_runs_is_ignored():
+    """A report whose run ids are not exactly the runs in flight, even only some of them, leaves them in flight."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_ids = await h.in_flight()
+        await h.signal(
+            TableReconciliationSignal.MAINTENANCE_FINISHED, {"run_ids": [OTHER_RUN_ID], "record_failures": 0}
+        )
+        await h.signal(TableReconciliationSignal.MAINTENANCE_FINISHED, {"run_ids": run_ids[:1], "record_failures": 0})
+        await h.signal(TableReconciliationSignal.MAINTENANCE_FINISHED, {"record_failures": 0})
+        state = await h.settle()
+        assert state["in_flight_run_ids"] == run_ids
+        assert len(h.plans.requests) == 1
+        await h.signal(TableReconciliationSignal.MAINTENANCE_FINISHED, {"run_ids": run_ids, "record_failures": 0})
+        await h.plan_count(2)
+
+    _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE))
+
+
+def test_the_runs_in_flight_survive_continue_as_new():
+    """The runs in flight are carried, all of them in order, into the input of the next execution."""
+
+    async def scenario(h: Harness) -> None:
+        handle = await h.start(continue_as_new_after=2)
+        first_run = handle.result_run_id
+        before = await eventually(h.state, lambda s: s["in_flight_run_ids"])
+        for _ in range(4):
+            await h.signal(TableReconciliationSignal.POLICY_CHANGED)
+
+        async def run_id_now() -> str | None:
+            return (await h.client.get_workflow_handle(WORKFLOW_ID).describe()).run_id
+
+        await eventually(run_id_now, lambda r: r != first_run)
+        carried = await h.run_input()
+        assert len(before["in_flight_run_ids"]) == 2
+        assert carried["in_flight_run_ids"] == before["in_flight_run_ids"]
+        assert (await h.state())["in_flight_run_ids"] == before["in_flight_run_ids"]
+
+    _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE))
+
+
+def test_a_child_that_did_not_start_links_no_run():
+    """A child whose start is refused links no run: the record names no run ids and says the start failed."""
+
+    async def scenario(h: Harness) -> None:
+        await h.client.start_workflow(
+            TABLE_MAINTENANCE_WORKFLOW,
+            TableMaintenanceWorkflowInput(
+                run_ids=[OTHER_RUN_ID],
+                table_uuid=UUID,
+                parent_workflow_id="elsewhere",
+                trigger="manual",
+                plan=_planned(COMPACTION),
+            ),
+            id=CHILD_ID,
+            task_queue=TASK_QUEUE,
+        )
+        await h.start()
+        [record] = await h.records(1)
+        assert (record["run_ids"], record["run_start_failed"]) == ({}, True)
+        assert (await h.settle())["in_flight_run_ids"] is None
+
+    _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE))

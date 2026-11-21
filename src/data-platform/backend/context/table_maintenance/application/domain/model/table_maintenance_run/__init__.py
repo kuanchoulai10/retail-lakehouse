@@ -26,12 +26,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.ne
 from context.table_maintenance.application.domain.model.table_maintenance_run.operation_attempt import (
     OperationAttempt,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_run.operation_run import (
-    OperationRun,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_run.operation_run_status import (
-    OperationRunStatus,
-)
 from context.table_maintenance.application.domain.model.table_maintenance_run.run_status import (
     RunStatus,
 )
@@ -54,8 +48,6 @@ __all__ = [
     "NextAttempt",
     "NextStep",
     "OperationAttempt",
-    "OperationRun",
-    "OperationRunStatus",
     "RunStatus",
     "TableMaintenanceRun",
     "TableMaintenanceRunId",

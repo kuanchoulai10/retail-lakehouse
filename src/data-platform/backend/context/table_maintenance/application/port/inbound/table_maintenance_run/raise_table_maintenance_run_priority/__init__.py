@@ -1,4 +1,4 @@
-"""Raise the priority of a maintenance run in flight."""
+"""Raise the priority of a maintenance run that has not ended."""
 
 from context.table_maintenance.application.port.inbound.table_maintenance_run.raise_table_maintenance_run_priority.input import (  # noqa: E501
     RaiseTableMaintenanceRunPriorityUseCaseInput,

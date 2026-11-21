@@ -63,7 +63,6 @@ def _item(
         outcome=reconciliation.outcome.value,
         skip_reason=reconciliation.skip_reason,
         operations=tuple(_operation(op) for op in reconciliation.operations),
-        run_id=reconciliation.run_id.value if reconciliation.run_id else None,
         policy_id=reconciliation.policy_id.value,
         policy_name=names.get(reconciliation.policy_id.value, reconciliation.policy_name.value),
         policy_deleted=reconciliation.policy_id.value not in names,
@@ -87,6 +86,7 @@ def _operation(outcome: OperationOutcome) -> ListTableReconciliationsUseCaseOutp
         result=outcome.result.value,
         measurements=tuple(_measurement(m) for m in outcome.measurements),
         next_eligible_at=outcome.next_eligible_at,
+        run_id=outcome.run_id.value if outcome.run_id else None,
     )
 
 

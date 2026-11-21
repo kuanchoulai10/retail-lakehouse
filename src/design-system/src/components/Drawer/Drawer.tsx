@@ -1,9 +1,10 @@
 import { Dialog, VisuallyHidden } from "radix-ui";
-import { type ReactNode, useLayoutEffect, useRef } from "react";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { IconX } from "../../icons";
 import { cn } from "../../lib/cn";
 import { useMatchesMedia } from "../../lib/useMatchesMedia";
 import { useReturnFocus } from "../../lib/useReturnFocus";
+import { useTabStopWhileScrolling } from "../../lib/useTabStopWhileScrolling";
 import { IconButton } from "../IconButton/IconButton";
 
 export type DrawerProps = {
@@ -41,6 +42,11 @@ export function Drawer({
   const isModal = modal || !isWide;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  // A body that scrolls takes a tab stop, so a record with no control of its own can still be scrolled
+  // from the keyboard.
+  const [body, setBody] = useState<HTMLDivElement | null>(null);
+  const [bodyContent, setBodyContent] = useState<HTMLDivElement | null>(null);
+  useTabStopWhileScrolling(body, bodyContent);
   const heading = (
     <Dialog.Title ref={headingRef} tabIndex={-1} className="type-title-large">
       {title}
@@ -91,7 +97,15 @@ export function Drawer({
               <IconButton aria-label="Close" styleType="ghost" icon={<IconX />} />
             </Dialog.Close>
           </div>
-          <div className="type-body-large flex-1 overflow-y-auto px-6 py-4">{children}</div>
+          <div
+            ref={setBody}
+            className={cn(
+              "type-body-large flex-1 overflow-y-auto px-6 py-4",
+              "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring",
+            )}
+          >
+            <div ref={setBodyContent}>{children}</div>
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

@@ -19,14 +19,8 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
     PolicyTarget,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_run import (
-    TableMaintenanceRunId,
-)
 from context.table_maintenance.application.domain.model.table_reconciliation.operation_outcome import (
     OperationOutcome,
-)
-from context.table_maintenance.application.domain.model.table_reconciliation.operation_result import (
-    OperationResult,
 )
 from context.table_maintenance.application.domain.model.table_reconciliation.reconciliation_outcome import (
     ReconciliationOutcome,
@@ -60,7 +54,6 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
     outcome: ReconciliationOutcome
     skip_reason: str | None
     operations: tuple[OperationOutcome, ...]
-    run_id: TableMaintenanceRunId | None
     policy_id: TableMaintenancePolicyId
     policy_name: TableMaintenancePolicyName
     policy_version: PositiveInt
@@ -68,7 +61,7 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
 
     @model_validator(mode="after")
     def _combinations_that_cannot_happen(self) -> TableReconciliation:
-        """Reject combinations of wake reasons, outcome, operations and run id that cannot happen."""
+        """Reject combinations of wake reasons, outcome and operations that cannot happen."""
         if not self.wake_reasons:
             raise ValueError("a reconciliation needs at least one wake reason")
         if any(count < 1 for count in self.wake_reasons.values()):
@@ -80,11 +73,9 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
                 raise ValueError("a skipped reconciliation assessed no operations")
         elif self.skip_reason is not None:
             raise ValueError("a planned reconciliation has no skip reason")
-        started = any(op.result is OperationResult.STARTED for op in self.operations)
-        if self.run_id is not None and not started:
-            raise ValueError("a run id needs a started operation")
-        if started and self.run_id is None:
-            raise ValueError("a started operation needs the run id it started")
+        run_ids = [op.run_id for op in self.operations if op.run_id is not None]
+        if len(run_ids) != len(set(run_ids)):
+            raise ValueError("each run belongs to one operation")
         return self
 
     @classmethod
@@ -98,7 +89,6 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
         outcome: ReconciliationOutcome,
         skip_reason: str | None,
         operations: Iterable[OperationOutcome],
-        run_id: TableMaintenanceRunId | None,
         policy_id: TableMaintenancePolicyId,
         policy_name: TableMaintenancePolicyName,
         policy_version: int,
@@ -115,7 +105,6 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
             outcome=outcome,
             skip_reason=skip_reason,
             operations=tuple(sorted(operations, key=lambda o: position[o.operation])),
-            run_id=run_id,
             policy_id=policy_id,
             policy_name=policy_name,
             policy_version=policy_version,

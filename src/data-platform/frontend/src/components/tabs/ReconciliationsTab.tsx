@@ -97,8 +97,11 @@ function RunLink({ runId, label, className }: { runId: string; label: string; cl
   );
 }
 
-function startedRun(r: TableReconciliationApiResponse): string | null {
-  return r.run_id !== null && r.operations.some((op) => op.result === "started") ? r.run_id : null;
+// The run the line links to: only when exactly one operation started a run, since a timeline line holds
+// one action; the details list one link per operation.
+function onlyStartedRun(r: TableReconciliationApiResponse): string | null {
+  const runIds = r.operations.flatMap((op) => (op.result === "started" && op.run_id !== null ? [op.run_id] : []));
+  return runIds.length === 1 ? runIds[0]! : null;
 }
 
 // Filled when the reconciliation started, or in dry run would have started, something.
@@ -107,7 +110,7 @@ function startedSomething(r: TableReconciliationApiResponse): boolean {
 }
 
 function RecordLine({ record, onOpen }: { record: TableReconciliationApiResponse; onOpen: () => void }) {
-  const runId = startedRun(record);
+  const runId = onlyStartedRun(record);
   return (
     <TimelineItem
       marker={startedSomething(record) ? "filled" : "outlined"}
@@ -252,7 +255,7 @@ function AllMeasurements({ operation }: { operation: ReconciliationOperationApiR
 function OperationBlock({ record, operation }: { record: TableReconciliationApiResponse; operation: ReconciliationOperationApiResponse }) {
   const headingId = useId();
   const status = operation.result === "started" || operation.result === "would_start" ? "notice" : "neutral";
-  const runId = operation.result === "started" ? startedRun(record) : null;
+  const runId = operation.result === "started" ? operation.run_id : null;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-1 border-l-2 border-outline pl-4">
       <div className="flex items-center justify-between gap-2">

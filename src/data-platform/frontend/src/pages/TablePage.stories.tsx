@@ -17,23 +17,27 @@ import { apiError } from "@/stories/apiError";
 import { ConsolePage } from "@/stories/ConsolePage";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
-import { PHONE } from "@/stories/phone";
+import { DESKTOP, PHONE } from "@/stories/phone";
 import {
   ESCALATED_RUN,
   ESCALATED_RUN_ID,
   inFlightRun,
   IN_FLIGHT_RUN_ID,
   MAINTAINED_ORDERS,
+  OLDER_RUN_ID,
   ORDERS_HOURLY_SPEC_COMPARISON,
   ORDERS_HOURLY_SPEC_VERSIONS,
   ordersManySchemaVersions,
   ordersSchemaComparison,
   PARTITION_SCOPE_RUN,
   PARTITION_SCOPE_RUN_ID,
+  PENDING_RUN_ID,
+  pendingRun,
   POLICIES,
   QUEUE_TIMEOUT_RUN,
   QUEUE_TIMEOUT_RUN_ID,
   queuedRun,
+  SCHEDULED_ORPHANS_RUN_ID,
   SCHEDULED_RUN_ID,
 } from "@/stories/storyData";
 
@@ -282,125 +286,213 @@ export const CommitsPhone: Story = {
 
 export const Maintenance: Story = {
   args: { route: `${ORDERS}/maintenance` },
+  globals: DESKTOP,
   play: async ({ canvasElement }) => {
-    const link = await within(canvasElement).findByRole("link", { name: "Running workflows in Temporal" });
+    const canvas = within(canvasElement);
+    const link = await canvas.findByRole("link", { name: "Running workflows in Temporal" });
     await expect(link).toHaveAttribute("href", temporalWorkflowsUrl(MAINTAINED_ORDERS.uuid));
+    const runs = canvas.getByRole("table", { name: "Maintenance runs, newest first" });
+    await expect(
+      within(runs)
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => within(row).getAllByRole("cell")[0]!.textContent),
+    ).toEqual(["Remove orphan files", "Expire snapshots", "Rewrite manifests", "Rewrite data files"]);
   },
 };
 
-async function openEscalatedRun(canvasElement: HTMLElement) {
-  const canvas = within(canvasElement);
-  await userEvent.click(await canvas.findByRole("button", { name: `Expand run ${ESCALATED_RUN_ID}` }));
-  return within(canvas.getByRole("table", { name: `Attempts of rewrite_data_files in run ${ESCALATED_RUN_ID}` }));
+// The run's side panel, opened through its url as a reconciliation's link opens it.
+async function openedRun(canvasElement: HTMLElement, name: string) {
+  return within(await within(canvasElement.ownerDocument.body).findByRole("dialog", { name }));
 }
 
-export const MaintenanceAttemptsEscalated: Story = {
+function maintenanceRoute(runId: string) {
+  return `${ORDERS}/maintenance?run=${runId}`;
+}
+
+export const MaintenanceRunPanel: Story = {
   args: { route: `${ORDERS}/maintenance` },
+  globals: DESKTOP,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const runs = await canvas.findByRole("region", { name: "Maintenance runs, newest first" });
+    runs.focus();
+    await userEvent.tab();
+    const open = canvas.getByRole("button", { name: `Open Remove orphan files run ${SCHEDULED_ORPHANS_RUN_ID}` });
+    await expect(open).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    const panel = await openedRun(canvasElement, "Remove orphan files");
+    await waitFor(() => expect(panel.getByRole("heading", { name: "Remove orphan files" })).toHaveFocus());
+    await expect(panel.getByText(SCHEDULED_ORPHANS_RUN_ID)).toBeVisible();
+    await expect(canvasElement.ownerDocument.body.querySelector(".bg-scrim")).toBeNull();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(within(canvasElement.ownerDocument.body).queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(open).toHaveFocus());
+  },
+};
+
+export const MaintenanceRunPanelPhone: Story = {
+  args: { route: maintenanceRoute(SCHEDULED_RUN_ID) },
+  globals: PHONE,
+  play: async ({ canvasElement }) => {
+    const panel = await within(canvasElement.ownerDocument.body).findByRole("dialog", { name: "Rewrite data files" });
+    await expect(panel.getBoundingClientRect().width).toBe(window.innerWidth);
+    await expect(within(panel).getByText("spec 0: (`region` = 'eu')")).toBeVisible();
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
+
+export const MaintenanceAttemptsEscalated: Story = {
+  args: { route: maintenanceRoute(ESCALATED_RUN_ID) },
+  globals: DESKTOP,
   beforeEach({ msw }) {
     msw.use(getListTableMaintenanceRunsMockHandler([ESCALATED_RUN]));
   },
   play: async ({ canvasElement }) => {
-    const attempts = await openEscalatedRun(canvasElement);
+    const panel = await openedRun(canvasElement, "Rewrite data files");
+    const attempts = within(panel.getByRole("list", { name: "Attempts" }));
+    await expect(attempts.getByText("Attempt 1 · S")).toBeVisible();
     await expect(attempts.getByText("Out of memory")).toBeVisible();
-    await expect(attempts.getByText("Did not finish")).toBeVisible();
+    await expect(attempts.getByText("Event log: Did not finish")).toBeVisible();
     await expect(attempts.getByText("Retrying at size M")).toBeVisible();
+    await expect(attempts.getByText("Attempt 2 · M")).toBeVisible();
     await expect(attempts.getByText("Done")).toBeVisible();
   },
 };
 
 export const MaintenanceAttemptsEscalatedPhone: Story = {
-  args: { route: `${ORDERS}/maintenance` },
+  args: { route: maintenanceRoute(ESCALATED_RUN_ID) },
   globals: PHONE,
   beforeEach({ msw }) {
     msw.use(getListTableMaintenanceRunsMockHandler([ESCALATED_RUN]));
   },
   play: async ({ canvasElement }) => {
-    await openEscalatedRun(canvasElement);
+    await openedRun(canvasElement, "Rewrite data files");
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };
 
-async function openRun(canvasElement: HTMLElement, runId: string) {
-  const canvas = within(canvasElement);
-  await userEvent.click(await canvas.findByRole("button", { name: `Expand run ${runId}` }));
-  return within(canvas.getByRole("table", { name: `Attempts of rewrite_data_files in run ${runId}` }));
-}
-
 export const MaintenanceAttemptRunning: Story = {
-  args: { route: `${ORDERS}/maintenance` },
+  args: { route: maintenanceRoute(IN_FLIGHT_RUN_ID) },
+  globals: DESKTOP,
   beforeEach({ msw }) {
     msw.use(getListTableMaintenanceRunsMockHandler([inFlightRun()]));
   },
   play: async ({ canvasElement }) => {
-    const attempts = await openRun(canvasElement, IN_FLIGHT_RUN_ID);
-    await expect(attempts.getByText(/\(running\)$/)).toBeVisible();
-    await expect(attempts.getByText("Out of memory")).toBeVisible();
+    const panel = await openedRun(canvasElement, "Rewrite data files");
+    await expect(panel.getByText(/^Ran .*\(running\)$/)).toBeVisible();
+    await expect(panel.getByText("Out of memory")).toBeVisible();
   },
 };
 
 export const MaintenanceAttemptQueued: Story = {
-  args: { route: `${ORDERS}/maintenance` },
+  args: { route: maintenanceRoute(IN_FLIGHT_RUN_ID) },
+  globals: DESKTOP,
   beforeEach({ msw }) {
     msw.use(getListTableMaintenanceRunsMockHandler([queuedRun()]));
   },
   play: async ({ canvasElement }) => {
-    const attempts = await openRun(canvasElement, IN_FLIGHT_RUN_ID);
-    await expect(attempts.getByText(/\(waiting\)$/)).toBeVisible();
+    const panel = await openedRun(canvasElement, "Rewrite data files");
+    await expect(panel.getByText(/^Queued .*\(waiting\)$/)).toBeVisible();
   },
 };
 
 export const MaintenanceQueueTimeout: Story = {
-  args: { route: `${ORDERS}/maintenance` },
+  args: { route: maintenanceRoute(QUEUE_TIMEOUT_RUN_ID) },
+  globals: DESKTOP,
   beforeEach({ msw }) {
     msw.use(getListTableMaintenanceRunsMockHandler([QUEUE_TIMEOUT_RUN]));
   },
   play: async ({ canvasElement }) => {
-    const attempts = await openRun(canvasElement, QUEUE_TIMEOUT_RUN_ID);
-    await expect(attempts.getByText("Waited too long in the queue")).toBeVisible();
-    await expect(attempts.getByText("24h 0m")).toBeVisible();
+    const panel = await openedRun(canvasElement, "Rewrite data files");
+    await expect(panel.getByText("Waited too long in the queue")).toBeVisible();
+    await expect(panel.getByText("Queued 24h 0m")).toBeVisible();
   },
 };
 
 export const MaintenanceQueuedPhone: Story = {
-  args: { route: `${ORDERS}/maintenance` },
+  args: { route: maintenanceRoute(IN_FLIGHT_RUN_ID) },
   globals: PHONE,
   beforeEach({ msw }) {
     msw.use(getListTableMaintenanceRunsMockHandler([queuedRun()]));
   },
   play: async ({ canvasElement }) => {
-    await openRun(canvasElement, IN_FLIGHT_RUN_ID);
+    await openedRun(canvasElement, "Rewrite data files");
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };
 
 export const MaintenancePartitionScope: Story = {
-  args: { route: `${ORDERS}/maintenance` },
+  args: { route: maintenanceRoute(PARTITION_SCOPE_RUN_ID) },
+  globals: DESKTOP,
   beforeEach({ msw }) {
     msw.use(getListTableMaintenanceRunsMockHandler([PARTITION_SCOPE_RUN, ESCALATED_RUN]));
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole("button", { name: `Expand run ${PARTITION_SCOPE_RUN_ID}` }));
-    await expect(canvas.getByText("Scope: Partitions over the target")).toBeVisible();
-    await expect(canvas.getByText(/^spec 0: .*DATE '2026-11-19'\)$/)).toBeVisible();
-    await expect(canvas.getByText(/^spec 1: /)).toBeVisible();
-    await userEvent.click(await canvas.findByRole("button", { name: `Expand run ${ESCALATED_RUN_ID}` }));
-    await expect(canvas.getByText("Scope: Whole table")).toBeVisible();
-    await expect(canvas.getByText("Scope: Partitions over the target")).toBeVisible();
+    const panel = await openedRun(canvasElement, "Rewrite data files");
+    await expect(panel.getByText("Partitions over the target")).toBeVisible();
+    await expect(panel.getByText(/^spec 0: .*DATE '2026-11-19'\)$/)).toBeVisible();
+    await expect(panel.getByText(/^spec 1: /)).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: `Open Rewrite data files run ${ESCALATED_RUN_ID}` }));
+    await expect(await panel.findByText("Whole table")).toBeVisible();
+    await expect(panel.queryByText("Partitions over the target")).toBeNull();
+    await expect(within(canvasElement.ownerDocument.body).getAllByRole("dialog")).toHaveLength(1);
   },
 };
 
 export const MaintenancePartitionScopePhone: Story = {
-  args: { route: `${ORDERS}/maintenance` },
+  args: { route: maintenanceRoute(PARTITION_SCOPE_RUN_ID) },
   globals: PHONE,
   beforeEach({ msw }) {
     msw.use(getListTableMaintenanceRunsMockHandler([PARTITION_SCOPE_RUN, ESCALATED_RUN]));
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole("button", { name: `Expand run ${PARTITION_SCOPE_RUN_ID}` }));
-    await expect(canvas.getByText("Scope: Partitions over the target")).toBeVisible();
+    const panel = await openedRun(canvasElement, "Rewrite data files");
+    await expect(panel.getByText("Partitions over the target")).toBeVisible();
     await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
+
+// A run older than the latest 50 the list returns opens through the read by id.
+export const MaintenanceOlderRunLink: Story = {
+  args: { route: maintenanceRoute(OLDER_RUN_ID) },
+  globals: DESKTOP,
+  play: async ({ canvasElement }) => {
+    const panel = await openedRun(canvasElement, "Expire snapshots");
+    await expect(await panel.findByText(OLDER_RUN_ID)).toBeVisible();
+    await expect(panel.getByText("retain_last")).toBeVisible();
+  },
+};
+
+export const MaintenanceRunGone: Story = {
+  args: { route: maintenanceRoute("mr-01m000000000000000000000zz") },
+  globals: DESKTOP,
+  play: async ({ canvasElement }) => {
+    const panel = await openedRun(canvasElement, "Maintenance run");
+    await expect(await panel.findByText("This run is no longer available")).toBeVisible();
+  },
+};
+
+// A plan in flight: its compaction runs, and the expiry after it waits pending, listed above it.
+export const MaintenancePlanInFlight: Story = {
+  args: { route: maintenanceRoute(PENDING_RUN_ID) },
+  globals: DESKTOP,
+  beforeEach({ msw }) {
+    const now = new Date();
+    msw.use(getListTableMaintenanceRunsMockHandler([pendingRun(now), inFlightRun(now)]));
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const rows = within(await canvas.findByRole("table", { name: "Maintenance runs, newest first" }))
+      .getAllByRole("row")
+      .slice(1);
+    await expect(within(rows[0]!).getByText("Expire snapshots")).toBeVisible();
+    await expect(within(rows[0]!).getByText("Pending")).toBeVisible();
+    await expect(within(rows[1]!).getByText("Rewrite data files")).toBeVisible();
+    await expect(within(rows[1]!).getByText("Running")).toBeVisible();
+    const panel = await openedRun(canvasElement, "Expire snapshots");
+    await expect(panel.getByText("No attempt yet. This run waits for the runs before it.")).toBeVisible();
   },
 };
 
@@ -433,10 +525,13 @@ export const ReconciliationDrawer: Story = {
     const drawer = within(await within(canvasElement.ownerDocument.body).findByRole("dialog"));
     await expect(drawer.getByRole("heading", { level: 2, name: "Started Rewrite data files" })).toBeVisible();
     await expect(drawer.getByText(/Catalog commit × 3/)).toBeVisible();
-    await expect(drawer.getByRole("link", { name: `Open maintenance run ${SCHEDULED_RUN_ID}` })).toHaveAttribute(
+    // Each operation links the run it started; only the compaction started one here.
+    const compaction = within(drawer.getByRole("region", { name: "Rewrite data files" }));
+    await expect(compaction.getByRole("link", { name: `Open maintenance run ${SCHEDULED_RUN_ID}` })).toHaveAttribute(
       "href",
       `${ORDERS}/maintenance?run=${SCHEDULED_RUN_ID}`,
     );
+    await expect(drawer.getAllByRole("link", { name: /^Open maintenance run/ })).toHaveLength(1);
     const measurements = drawer.getAllByRole("button", { name: "All measurements" })[0]!;
     await userEvent.click(measurements);
     await expect(measurements).toHaveAttribute("aria-expanded", "true");

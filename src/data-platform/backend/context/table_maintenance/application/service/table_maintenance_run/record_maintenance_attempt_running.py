@@ -13,13 +13,16 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     RecordMaintenanceAttemptRunningUseCaseOutput,
 )
 from context.table_maintenance.application.service.shared import translate_domain_errors
+from context.table_maintenance.application.service.table_maintenance_run.require_run_operation import (
+    require_run_operation,
+)
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_maintenance_run import TableMaintenanceRunsRepo
 
 
 class RecordMaintenanceAttemptRunningService(RecordMaintenanceAttemptRunningUseCase):
-    """Record that the driver of an operation attempt started running, so its queued time ends."""
+    """Record that the driver of a run's attempt started running, so its queued time ends."""
 
     def __init__(self, runs_repo: TableMaintenanceRunsRepo) -> None:
         """Bind the runs repo."""
@@ -28,9 +31,10 @@ class RecordMaintenanceAttemptRunningService(RecordMaintenanceAttemptRunningUseC
     def execute(
         self, request: RecordMaintenanceAttemptRunningUseCaseInput
     ) -> RecordMaintenanceAttemptRunningUseCaseOutput:
-        """Record the driver's start on the run and return the operation's status and the attempt's running time.
+        """Record the driver's start on the run and return the run's status and the attempt's running time.
 
-        Repeating the report, or reporting an earlier attempt, changes nothing.
+        Repeating the report, or reporting an earlier attempt, changes nothing. A report naming an operation
+        other than the run's is a conflict.
         """
         try:
             operation = MaintenanceOperation(request.operation)
@@ -39,12 +43,12 @@ class RecordMaintenanceAttemptRunningService(RecordMaintenanceAttemptRunningUseC
         run = self._runs_repo.get(TableMaintenanceRunId(request.run_id))
         if run is None:
             raise NotFoundError(f"maintenance run {request.run_id} not found")
+        require_run_operation(run, operation)
         with translate_domain_errors():
-            run.record_attempt_running(operation, request.attempt, request.started_running_at, request.now)
+            run.record_attempt_running(request.attempt, request.started_running_at, request.now)
         self._runs_repo.update(run)
-        record = run.attempt_record(operation, request.attempt)
-        current = next(op for op in run.operations if op.operation == operation)
+        record = run.attempt_record(request.attempt)
         return RecordMaintenanceAttemptRunningUseCaseOutput(
-            status=current.status.value,
+            status=run.status.value,
             started_running_at=record.started_running_at if record else None,
         )

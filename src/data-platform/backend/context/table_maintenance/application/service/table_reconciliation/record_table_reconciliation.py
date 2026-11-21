@@ -66,6 +66,7 @@ class RecordTableReconciliationService(RecordTableReconciliationUseCase):
         """Store the reconciliation unless its id already exists, then purge old records."""
         with translate_domain_errors():
             reconciliation_id = TableReconciliationId(request.reconciliation_id)
+            _refuse_runs_of_unplanned_operations(request)
             table_uuid = TableId(request.table_uuid)
             if self._reconciliations_repo.get(reconciliation_id) is not None:
                 self._purge(table_uuid, request)
@@ -79,7 +80,6 @@ class RecordTableReconciliationService(RecordTableReconciliationUseCase):
                 outcome=_outcome(request.status),
                 skip_reason=request.skip_reason,
                 operations=[_operation_outcome(check, request) for check in request.checks],
-                run_id=TableMaintenanceRunId(request.run_id) if request.run_id else None,
                 policy_id=TableMaintenancePolicyId(request.policy_id),
                 policy_name=TableMaintenancePolicyName(value=request.policy_name),
                 policy_version=request.policy_version,
@@ -91,6 +91,13 @@ class RecordTableReconciliationService(RecordTableReconciliationUseCase):
 
     def _purge(self, table_uuid: TableId, request: RecordTableReconciliationUseCaseInput) -> None:
         self._reconciliations_repo.delete_older_than(table_uuid, request.reconciled_at - _RETENTION)
+
+
+def _refuse_runs_of_unplanned_operations(request: RecordTableReconciliationUseCaseInput) -> None:
+    planned = {check.get("operation") for check in request.checks if check.get("verdict") == "due"}
+    for operation in request.run_ids:
+        if operation not in planned:
+            raise ValidationError(f"run for {operation!r}, which is not a planned operation")
 
 
 def _wake_reasons(raw: dict[str, int]) -> dict[WakeReason, int]:
@@ -119,12 +126,14 @@ def _outcome(status: str) -> ReconciliationOutcome:
             raise ValidationError(f"unknown reconciliation status: {status!r}")
 
 
-def _result(verdict: str, request: RecordTableReconciliationUseCaseInput) -> OperationResult:
+def _result(
+    verdict: str, operation: MaintenanceOperation, request: RecordTableReconciliationUseCaseInput
+) -> OperationResult:
     if verdict != "due":
         if verdict not in _RESULT_BY_VERDICT:
             raise ValidationError(f"unknown check verdict: {verdict!r}")
         return _RESULT_BY_VERDICT[verdict]
-    if request.run_id:
+    if operation.value in request.run_ids:
         return OperationResult.STARTED
     if request.run_start_failed:
         return OperationResult.START_FAILED
@@ -141,9 +150,11 @@ def _operation_outcome(check: dict[str, Any], request: RecordTableReconciliation
         next_eligible_at = _instant(check.get("next_eligible_at"))
     except (KeyError, ValueError, TypeError, AttributeError) as exc:
         raise ValidationError(f"invalid check {check!r}: {exc}") from exc
+    result = _result(verdict, operation, request)
     return OperationOutcome(
         operation=operation,
-        result=_result(verdict, request),
+        result=result,
+        run_id=TableMaintenanceRunId(request.run_ids[operation.value]) if result is OperationResult.STARTED else None,
         measurements=measurements,
         next_eligible_at=next_eligible_at,
     )

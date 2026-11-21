@@ -54,6 +54,7 @@ def _encode_operation(op: OperationOutcome) -> dict[str, Any]:
         "result": op.result.value,
         "measurements": [_encode_measurement(m) for m in op.measurements],
         "next_eligible_at": IsoDatetimeCodec.encode(op.next_eligible_at),
+        "run_id": None if op.run_id is None else op.run_id.value,
     }
 
 
@@ -63,6 +64,7 @@ def _decode_operation(data: dict[str, Any]) -> OperationOutcome:
         result=OperationResult(data["result"]),
         measurements=tuple(_decode_measurement(m) for m in data["measurements"]),
         next_eligible_at=IsoDatetimeCodec.decode(data["next_eligible_at"]),
+        run_id=None if data.get("run_id") is None else TableMaintenanceRunId(data["run_id"]),
     )
 
 
@@ -81,7 +83,6 @@ class TableReconciliationRowMapper:
             "outcome": rec.outcome.value,
             "skip_reason": rec.skip_reason,
             "operations_json": [_encode_operation(op) for op in rec.operations],
-            "run_id": None if rec.run_id is None else rec.run_id.value,
             "policy_id": rec.policy_id.value,
             "policy_name": rec.policy_name.value,
             "policy_version": rec.policy_version,
@@ -91,7 +92,6 @@ class TableReconciliationRowMapper:
     @staticmethod
     def to_aggregate(row: RowMapping) -> TableReconciliation:
         """Rebuild the aggregate from a row."""
-        run_id = row["run_id"]
         target = row["policy_target_json"]
         return TableReconciliation(
             id=TableReconciliationId(row["id"]),
@@ -102,7 +102,6 @@ class TableReconciliationRowMapper:
             outcome=ReconciliationOutcome(row["outcome"]),
             skip_reason=row["skip_reason"],
             operations=tuple(_decode_operation(d) for d in row["operations_json"]),
-            run_id=None if run_id is None else TableMaintenanceRunId(run_id),
             policy_id=TableMaintenancePolicyId(row["policy_id"]),
             policy_name=TableMaintenancePolicyName(value=row["policy_name"]),
             policy_version=row["policy_version"],

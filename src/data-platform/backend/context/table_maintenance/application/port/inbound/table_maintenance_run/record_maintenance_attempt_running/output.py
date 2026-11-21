@@ -8,9 +8,9 @@ from base import UseCaseOutput
 
 
 class RecordMaintenanceAttemptRunningUseCaseOutput(UseCaseOutput):
-    """Carry the operation's status and the attempt's recorded running time after the request.
+    """Carry the run's status and the attempt's recorded running time after the request.
 
-    ``started_running_at`` is None when the attempt has no history entry to hold it.
+    ``started_running_at`` is None while the attempt has no running time.
     """
 
     status: str

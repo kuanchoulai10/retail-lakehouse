@@ -22,6 +22,9 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     PolicyTarget,
     PolicyTargetType,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    TableMaintenanceRunId,
+)
 from context.table_maintenance.application.domain.model.table_reconciliation import (
     OperationOutcome,
     OperationResult,
@@ -50,10 +53,14 @@ NEW = "rc-00000000000000000000000002"
 FIRST = "rc-00000000000000000000000003"
 SECOND = "rc-00000000000000000000000004"
 THIRD = "rc-00000000000000000000000005"
+RUN_1 = "mr-00000000000000000000000001"
+RUN_2 = "mr-00000000000000000000000002"
 NIGHTLY = TableMaintenancePolicyId("mp-00000000000000000000000004")
 
 
-def _reconciliation(rec_id: str, at: datetime, table: str = "t-1") -> TableReconciliation:
+def _reconciliation(
+    rec_id: str, at: datetime, table: str = "t-1", operations: tuple[OperationOutcome, ...] | None = None
+) -> TableReconciliation:
     return TableReconciliation.record(
         id=TableReconciliationId(rec_id),
         table_uuid=TableId(table),
@@ -62,7 +69,8 @@ def _reconciliation(rec_id: str, at: datetime, table: str = "t-1") -> TableRecon
         dry_run=False,
         outcome=ReconciliationOutcome.PLANNED,
         skip_reason=None,
-        operations=[
+        operations=operations
+        or [
             OperationOutcome(
                 operation=MaintenanceOperation.REWRITE_DATA_FILES,
                 result=OperationResult.NOT_NEEDED,
@@ -78,7 +86,6 @@ def _reconciliation(rec_id: str, at: datetime, table: str = "t-1") -> TableRecon
                 ),
             )
         ],
-        run_id=None,
         policy_id=NIGHTLY,
         policy_name=TableMaintenancePolicyName(value="nightly"),
         policy_version=4,
@@ -177,7 +184,30 @@ def test_context_measurement_has_null_threshold_and_met() -> None:
     }
     assert body["wake_reasons"] == {"schedule": 1}
     assert body["outcome"] == "planned"
-    assert body["run_id"] is None
+    assert operation["run_id"] is None
+    assert "run_id" not in body
+
+
+def test_the_api_shows_the_run_on_each_operation() -> None:
+    """A started operation shows the mr- id of its run; a record has no run id of its own."""
+    started = tuple(
+        OperationOutcome(
+            operation=operation, result=OperationResult.STARTED, run_id=TableMaintenanceRunId(run), measurements=()
+        )
+        for operation, run in (
+            (MaintenanceOperation.REWRITE_DATA_FILES, RUN_1),
+            (MaintenanceOperation.EXPIRE_SNAPSHOTS, RUN_2),
+        )
+    )
+    reconciliation = _reconciliation(FIRST, NOW, operations=started)
+
+    body = _client(reconciliation).get("/v1/tables/t-1/reconciliations").json()[0]
+
+    assert [(o["operation"], o["run_id"]) for o in body["operations"]] == [
+        ("rewrite_data_files", RUN_1),
+        ("expire_snapshots", RUN_2),
+    ]
+    assert "run_id" not in body
 
 
 def test_response_names_the_policy_used() -> None:

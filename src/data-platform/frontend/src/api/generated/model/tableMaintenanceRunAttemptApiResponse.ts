@@ -6,7 +6,7 @@
  */
 
 /**
- * Describe one attempt of a maintenance operation: its size, how it ended and what followed it.
+ * Describe one attempt of a maintenance run: its job, size, how it ended and what followed it.
  */
 export interface TableMaintenanceRunAttemptApiResponse {
   attempt: number;
@@ -14,6 +14,7 @@ export interface TableMaintenanceRunAttemptApiResponse {
   event_log_finished: boolean | null;
   failure_class: string | null;
   finished_at: string | null;
+  job_name: string | null;
   next_size: string | null;
   next_step: string | null;
   size: string | null;

@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
-from context.table_maintenance.application.exceptions import ValidationError
+from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRunId
+from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     GetMaintenanceJobStatusUseCase,
     GetMaintenanceJobStatusUseCaseInput,
@@ -19,11 +20,15 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
     ReadMaintenanceJobGatewayInput,
     ReadMaintenanceJobPodsGatewayInput,
 )
+from context.table_maintenance.application.service.table_maintenance_run.require_run_operation import (
+    require_run_operation,
+)
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         ReadMaintenanceJobGateway,
         ReadMaintenanceJobPodsGateway,
+        TableMaintenanceRunsRepo,
     )
 
 logger = logging.getLogger(__name__)
@@ -33,10 +38,16 @@ _NOT_FOUND = "NOT_FOUND"
 
 
 class GetMaintenanceJobStatusService(GetMaintenanceJobStatusUseCase):
-    """Report the state of the job of one operation attempt and when its driver started."""
+    """Report the state of the job of one attempt of a run and when its driver started."""
 
-    def __init__(self, read_gateway: ReadMaintenanceJobGateway, pods_gateway: ReadMaintenanceJobPodsGateway) -> None:
-        """Bind the job read gateway and the pods read gateway."""
+    def __init__(
+        self,
+        runs_repo: TableMaintenanceRunsRepo,
+        read_gateway: ReadMaintenanceJobGateway,
+        pods_gateway: ReadMaintenanceJobPodsGateway,
+    ) -> None:
+        """Bind the runs repo, the job read gateway and the pods read gateway."""
+        self._runs_repo = runs_repo
         self._read_gateway = read_gateway
         self._pods_gateway = pods_gateway
 
@@ -44,7 +55,8 @@ class GetMaintenanceJobStatusService(GetMaintenanceJobStatusUseCase):
         """Return the gateway's state and error and the driver's start, rejecting an unknown state.
 
         A job that is gone reads no pods. Pods that cannot be read, or a driver start that is not a
-        time, leave the driver start out (logged) and the state still answers.
+        time, leave the driver start out (logged) and the state still answers. An unknown run is not
+        found, and an operation other than the run's is a conflict; neither reads anything.
         """
         try:
             operation = MaintenanceOperation(request.operation)
@@ -52,6 +64,10 @@ class GetMaintenanceJobStatusService(GetMaintenanceJobStatusUseCase):
             raise ValidationError(str(exc)) from exc
         if request.attempt < 1:
             raise ValidationError(f"attempt must be >= 1, got {request.attempt}")
+        run = self._runs_repo.get(TableMaintenanceRunId(request.run_id))
+        if run is None:
+            raise NotFoundError(f"maintenance run {request.run_id} not found")
+        require_run_operation(run, operation)
         result = self._read_gateway.read(
             ReadMaintenanceJobGatewayInput(
                 run_id=request.run_id,

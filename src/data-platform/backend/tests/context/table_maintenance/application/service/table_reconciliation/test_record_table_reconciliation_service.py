@@ -6,6 +6,9 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    TableMaintenanceRunId,
+)
 from context.table_maintenance.application.domain.model.table_reconciliation import (
     OperationResult,
     ReconciliationOutcome,
@@ -23,6 +26,7 @@ from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo 
 )
 
 RUN_1 = "mr-00000000000000000000000001"
+RUN_2 = "mr-00000000000000000000000002"
 REC_1 = "rc-00000000000000000000000001"
 OLD_REC = "rc-00000000000000000000000002"
 RECENT_REC = "rc-00000000000000000000000003"
@@ -56,7 +60,7 @@ def _input(**overrides: object) -> RecordTableReconciliationUseCaseInput:
         status="planned",
         skip_reason=None,
         checks=(_due_check(),),
-        run_id=RUN_1,
+        run_ids={"rewrite_data_files": RUN_1},
         run_start_failed=False,
         policy_id=DEFAULT_POLICY_ID,
         policy_name="default",
@@ -87,35 +91,80 @@ def test_started_due_operations_link_the_run(
     assert out.recorded is True
     saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
-    assert saved.run_id is not None
-    assert saved.run_id.value == RUN_1
+    assert saved.operations[0].run_id is not None
+    assert saved.operations[0].run_id.value == RUN_1
     assert saved.outcome is ReconciliationOutcome.PLANNED
     assert saved.operations[0].result is OperationResult.STARTED
     assert saved.operations[0].measurements[0].met is True
+
+
+def test_record_links_each_started_operation_to_its_run(
+    service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
+) -> None:
+    """Each started operation keeps the id of its own run; the others keep none."""
+    checks = (
+        _due_check("rewrite_data_files"),
+        _due_check("expire_snapshots"),
+        {"operation": "rewrite_manifests", "verdict": "not_needed", "measurements": [], "next_eligible_at": None},
+    )
+    service.execute(_input(checks=checks, run_ids={"rewrite_data_files": RUN_1, "expire_snapshots": RUN_2}))
+
+    saved = repo.get(TableReconciliationId(REC_1))
+    assert saved is not None
+    by_op = {op.operation.value: op for op in saved.operations}
+    assert (by_op["rewrite_data_files"].result, by_op["rewrite_data_files"].run_id) == (
+        OperationResult.STARTED,
+        TableMaintenanceRunId(RUN_1),
+    )
+    assert (by_op["expire_snapshots"].result, by_op["expire_snapshots"].run_id) == (
+        OperationResult.STARTED,
+        TableMaintenanceRunId(RUN_2),
+    )
+    assert by_op["rewrite_manifests"].run_id is None
+
+
+def test_record_refuses_a_run_for_an_operation_not_planned(service: RecordTableReconciliationService) -> None:
+    """A run id for an operation the plan did not start is refused."""
+    with pytest.raises(ValidationError, match="not a planned operation"):
+        service.execute(_input(run_ids={"rewrite_data_files": RUN_1, "rewrite_manifests": RUN_2}))
+
+
+def test_record_refuses_a_run_for_an_operation_that_is_not_due(service: RecordTableReconciliationService) -> None:
+    """Planned means due: an operation that was assessed but not due cannot have started a run."""
+    not_needed = {
+        "operation": "rewrite_manifests",
+        "verdict": "not_needed",
+        "measurements": [],
+        "next_eligible_at": None,
+    }
+    checks = (_due_check(), not_needed)
+
+    with pytest.raises(ValidationError, match="not a planned operation"):
+        service.execute(_input(checks=checks, run_ids={"rewrite_data_files": RUN_1, "rewrite_manifests": RUN_2}))
 
 
 def test_dry_run_due_becomes_would_start(
     service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
 ) -> None:
     """Dry run due becomes would start."""
-    service.execute(_input(dry_run=True, run_id=None))
+    service.execute(_input(dry_run=True, run_ids={}))
 
     saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
     assert saved.operations[0].result is OperationResult.WOULD_START
-    assert saved.run_id is None
+    assert saved.operations[0].run_id is None
 
 
 def test_failed_start_records_start_failed_without_run(
     service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
 ) -> None:
     """Failed start records start failed without run."""
-    service.execute(_input(run_id=None, run_start_failed=True))
+    service.execute(_input(run_ids={}, run_start_failed=True))
 
     saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
     assert saved.operations[0].result is OperationResult.START_FAILED
-    assert saved.run_id is None
+    assert saved.operations[0].run_id is None
 
 
 def test_other_verdicts_map_by_name_and_next_eligible_is_parsed(
@@ -131,7 +180,7 @@ def test_other_verdicts_map_by_name_and_next_eligible_is_parsed(
     off = {**cooling, "operation": "remove_orphan_files", "verdict": "off", "next_eligible_at": None}
     not_due = {**cooling, "operation": "rewrite_manifests", "verdict": "not_needed", "next_eligible_at": None}
     unchecked = {**not_due, "operation": "rewrite_data_files", "verdict": "not_checked"}
-    service.execute(_input(checks=(cooling, off, not_due, unchecked), run_id=None))
+    service.execute(_input(checks=(cooling, off, not_due, unchecked), run_ids={}))
 
     saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
@@ -153,11 +202,11 @@ def test_waiting_for_writes_is_recorded(
         "measurements": [],
         "next_eligible_at": "2026-11-10T12:02:00+00:00",
     }
-    service.execute(_input(checks=(waiting,), run_id=None))
+    service.execute(_input(checks=(waiting,), run_ids={}))
 
     saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
-    assert saved.run_id is None
+    assert saved.operations[0].run_id is None
     assert saved.operations[0].result is OperationResult.WAITING_FOR_WRITES
     assert saved.operations[0].next_eligible_at == datetime(2026, 11, 10, 12, 2, tzinfo=UTC)
 
@@ -166,7 +215,7 @@ def test_skip_is_recorded_with_reason(
     service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
 ) -> None:
     """Skip is recorded with reason."""
-    service.execute(_input(status="skip", skip_reason="table is paused", checks=(), run_id=None))
+    service.execute(_input(status="skip", skip_reason="table is paused", checks=(), run_ids={}))
 
     saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
@@ -179,14 +228,12 @@ def test_records_older_than_thirty_days_are_purged(
     service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
 ) -> None:
     """Records older than thirty days are purged."""
+    service.execute(_input(reconciliation_id=OLD_REC, reconciled_at=NOW - timedelta(days=31), run_ids={}, dry_run=True))
     service.execute(
-        _input(reconciliation_id=OLD_REC, reconciled_at=NOW - timedelta(days=31), run_id=None, dry_run=True)
-    )
-    service.execute(
-        _input(reconciliation_id=RECENT_REC, reconciled_at=NOW - timedelta(days=29), run_id=None, dry_run=True)
+        _input(reconciliation_id=RECENT_REC, reconciled_at=NOW - timedelta(days=29), run_ids={}, dry_run=True)
     )
 
-    service.execute(_input(reconciliation_id=NOW_REC, run_id=None, dry_run=True))
+    service.execute(_input(reconciliation_id=NOW_REC, run_ids={}, dry_run=True))
 
     assert repo.get(TableReconciliationId(OLD_REC)) is None
     assert repo.get(TableReconciliationId(RECENT_REC)) is not None
@@ -202,12 +249,12 @@ def test_purge_leaves_other_tables_alone(
             reconciliation_id=OTHER_REC,
             table_uuid="table-2",
             reconciled_at=NOW - timedelta(days=40),
-            run_id=None,
+            run_ids={},
             dry_run=True,
         )
     )
 
-    service.execute(_input(run_id=None, dry_run=True))
+    service.execute(_input(run_ids={}, dry_run=True))
 
     assert repo.get(TableReconciliationId(OTHER_REC)) is not None
 
@@ -234,9 +281,10 @@ def test_recording_twice_keeps_one_record(
         {"checks": ({**_due_check(), "verdict": "cooldown"},)},
         {"checks": ({**_due_check(), "verdict": "disabled"},)},
         {"checks": ({**_due_check(), "measurements": ["x"]},)},
-        {"run_id": None},
+        {"run_ids": {}},
+        {"run_ids": {"rewrite_manifests": RUN_1}},
         {"status": "weird"},
-        {"status": "skip", "skip_reason": None, "checks": (), "run_id": None},
+        {"status": "skip", "skip_reason": None, "checks": (), "run_ids": {}},
         {"policy_id": "nightly"},
     ],
 )
@@ -251,9 +299,7 @@ def test_noop_path_still_purges_old_records(
 ) -> None:
     """A retried record that already exists still purges records past retention."""
     service.execute(_input())
-    service.execute(
-        _input(reconciliation_id=OLD_REC, reconciled_at=NOW - timedelta(days=31), run_id=None, dry_run=True)
-    )
+    service.execute(_input(reconciliation_id=OLD_REC, reconciled_at=NOW - timedelta(days=31), run_ids={}, dry_run=True))
 
     again = service.execute(_input())
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import MaintenanceOperation, TablePriority
+from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation, TablePriority
 from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
 from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
@@ -40,18 +40,19 @@ def table(tables_repo, now) -> Table:
     return t
 
 
-def _stored_run(runs_repo, now, priority: TablePriority) -> TableMaintenanceRun:
-    """Store a run at ``priority`` whose first attempt is queued."""
+def _stored_run(runs_repo, now, priority: TablePriority, *, started: bool = True) -> TableMaintenanceRun:
+    """Store a run at ``priority`` whose first attempt is queued, or that is pending when not ``started``."""
     r = TableMaintenanceRun.create(
         TableMaintenanceRunId(RUN_1),
         TableId("u-1"),
         TriggerType.SCHEDULED,
-        [RDF],
+        RDF,
         now,
         execution_ref="wf-1",
         priority=priority,
     )
-    r.start_attempt(RDF, 1, None, now)
+    if started:
+        r.start_attempt(1, None, now, size=ComputeSize.S)
     runs_repo.create(r)
     return r
 
@@ -130,3 +131,25 @@ def test_service_refuses_an_unknown_run(service, now):
     """An unknown run is not found."""
     with pytest.raises(NotFoundError):
         service.execute(_input(now, "P0", run_id=UNKNOWN_RUN))
+
+
+def test_service_raises_a_pending_run(service, runs_repo, now):
+    """A run that has not started yet is raised, so its first submit goes at the new priority."""
+    _stored_run(runs_repo, now, TablePriority.P3, started=False)
+
+    out = service.execute(_input(now, "P0"))
+
+    assert (out.priority, out.raised) == ("P0", True)
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).priority is TablePriority.P0
+
+
+def test_service_does_not_raise_a_succeeded_run(service, runs_repo, run, now):
+    """A run that succeeded keeps its priority and is not saved."""
+    run.succeed(1, {}, now)
+    saved: list[tuple[str, str]] = []
+    track_calls(runs_repo, "update", "runs.update", saved, lambda r: r.id.value)
+
+    out = service.execute(_input(now, "P0"))
+
+    assert (out.priority, out.raised) == ("P3", False)
+    assert saved == []

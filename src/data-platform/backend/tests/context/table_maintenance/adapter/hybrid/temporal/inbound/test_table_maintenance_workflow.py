@@ -40,6 +40,7 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_ma
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_activities_with_fakes import (  # noqa: E501
     table_maintenance_activities_with_fakes,
 )
+from tests.context.table_maintenance.numbered_id import numbered_id
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -48,7 +49,8 @@ if TYPE_CHECKING:
 
 COMPACTION = "rewrite_data_files"
 EXPIRE = "expire_snapshots"
-RUN_ID = "mr-00000000000000000000000001"
+ORPHANS = "remove_orphan_files"
+RUN_IDS = (numbered_id("mr", 1), numbered_id("mr", 2), numbered_id("mr", 3), numbered_id("mr", 4))
 PREVIOUS_RUN_ID = "mr-00000000000000000000000000"
 TABLE = "iceberg.e2e.t"
 TABLE_UUID = "u1"
@@ -85,10 +87,16 @@ def _plan(*operations: str, start_size: str | None = None) -> dict:
     }
 
 
-def _report(*, record_failures: int = 0, unapplied_raise: bool = False, raises_received: int = 0) -> dict:
-    """Return the report the run sends its parent when it finishes."""
+def _report(
+    *,
+    run_ids: list[str] | None = None,
+    record_failures: int = 0,
+    unapplied_raise: bool = False,
+    raises_received: int = 0,
+) -> dict:
+    """Return the report the workflow sends its parent when it finishes, for its runs (the first one by default)."""
     return {
-        "run_id": RUN_ID,
+        "run_ids": run_ids if run_ids is not None else [RUN_IDS[0]],
         "record_failures": record_failures,
         "unapplied_raise": unapplied_raise,
         "raises_received": raises_received,
@@ -130,7 +138,7 @@ class Harness:
         return await self.client.start_workflow(
             TABLE_MAINTENANCE_WORKFLOW,
             TableMaintenanceWorkflowInput(
-                run_id=RUN_ID,
+                run_ids=list(RUN_IDS[: len((plan or _plan(*operations))["operations"])]),
                 table_uuid=TABLE_UUID,
                 parent_workflow_id=parent_id,
                 trigger="scheduled",
@@ -212,12 +220,13 @@ def test_the_run_is_created_with_the_priority_of_the_plan():
 
 
 def test_the_workflow_creates_the_run_with_the_plans_filters():
-    """The create-run activity gets the plan's compaction filters, keyed by operation."""
+    """The create-run activity gets the compaction's filters and procedure arguments from the plan."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
         await h.run_maintenance(COMPACTION)
-        assert h.fakes.created[0]["filters"] == {COMPACTION: [{"spec_id": 0, "where": f"{COMPACTION} = 1"}]}
+        assert h.fakes.created[0]["filters"] == [{"spec_id": 0, "where": f"{COMPACTION} = 1"}]
+        assert h.fakes.created[0]["procedure_args"] == {"op": COMPACTION}
 
     _run(scenario)
 
@@ -230,7 +239,7 @@ def test_the_workflow_sends_no_filters_for_a_whole_table_plan():
         plan = _plan(COMPACTION)
         plan["operations"][0] = {**plan["operations"][0], "filters": []}
         await h.run_maintenance(plan=plan)
-        assert h.fakes.created[0]["filters"] == {}
+        assert h.fakes.created[0]["filters"] == []
 
     _run(scenario)
 
@@ -256,14 +265,12 @@ def test_operations_run_in_order_and_parent_signalled():
         }
         await h.run_maintenance(COMPACTION, EXPIRE)
 
-        assert h.fakes.created[0]["run_id"] == RUN_ID
-        assert h.fakes.created[0]["table_uuid"] == "u1"
-        assert h.fakes.created[0]["trigger"] == "scheduled"
-        assert h.fakes.created[0]["operations"] == [COMPACTION, EXPIRE]
-        assert h.fakes.created[0]["execution_ref"] == WORKFLOW_ID
-        first = h.fakes.submits[0]
-        assert first["filters"] == [{"spec_id": 0, "where": f"{COMPACTION} = 1"}]
-        assert first["procedure_args"] == {"op": COMPACTION}
+        assert [c["run_id"] for c in h.fakes.created] == list(RUN_IDS[:2])
+        assert {c["table_uuid"] for c in h.fakes.created} == {"u1"}
+        assert {c["trigger"] for c in h.fakes.created} == {"scheduled"}
+        assert [c["operation"] for c in h.fakes.created] == [COMPACTION, EXPIRE]
+        assert {c["execution_ref"] for c in h.fakes.created} == {WORKFLOW_ID}
+        assert len({c["now"] for c in h.fakes.created}) == 1
         assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [
             (COMPACTION, 1),
             (EXPIRE, 1),
@@ -271,10 +278,10 @@ def test_operations_run_in_order_and_parent_signalled():
         assert h.recorded() == [(COMPACTION, 1, True, None), (EXPIRE, 1, True, None)]
         assert h.fakes.records[0]["metrics"] == {"files": 1}
         assert h.fakes.deletes == [
-            f"{RUN_ID}-{COMPACTION}-1",
-            f"{RUN_ID}-{EXPIRE}-1",
+            f"{RUN_IDS[0]}-{COMPACTION}-1",
+            f"{RUN_IDS[1]}-{EXPIRE}-1",
         ]
-        assert await h.parent_payloads() == [_report()]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
 
     _run(scenario)
 
@@ -303,7 +310,7 @@ def test_failed_operation_retried_three_attempts_total_then_next_operation_runs(
         assert times[2] - times[1] >= timedelta(seconds=120)
         assert times[2] - times[1] < timedelta(seconds=180)
         assert len(h.fakes.deletes) == 4
-        assert await h.parent_payloads() == [_report()]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
 
     _run(scenario)
 
@@ -356,7 +363,7 @@ def test_stale_attempt_callback_is_ignored():
             (COMPACTION, 2): [(1, True, None)],
             (COMPACTION, 3): [(3, True, None)],
         }
-        h.fakes.states[f"{RUN_ID}-{COMPACTION}-2"] = {"state": "FAILED", "error": None}
+        h.fakes.states[f"{RUN_IDS[0]}-{COMPACTION}-2"] = {"state": "FAILED", "error": None}
         await h.run_maintenance(COMPACTION)
 
         assert h.recorded() == [
@@ -364,7 +371,7 @@ def test_stale_attempt_callback_is_ignored():
             (COMPACTION, 2, False, "spark job failed"),
             (COMPACTION, 3, True, None),
         ]
-        assert h.fakes.status_calls == [f"{RUN_ID}-{COMPACTION}-2"]
+        assert h.fakes.status_calls == [f"{RUN_IDS[0]}-{COMPACTION}-2"]
 
     _run(scenario)
 
@@ -374,8 +381,8 @@ def test_polling_detects_crashed_driver():
 
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, 3): [(3, True, None)]}
-        h.fakes.states[f"{RUN_ID}-{COMPACTION}-1"] = {"state": "FAILED", "error": None}
-        h.fakes.states[f"{RUN_ID}-{COMPACTION}-2"] = {"state": "FAILED", "error": "oom"}
+        h.fakes.states[f"{RUN_IDS[0]}-{COMPACTION}-1"] = {"state": "FAILED", "error": None}
+        h.fakes.states[f"{RUN_IDS[0]}-{COMPACTION}-2"] = {"state": "FAILED", "error": "oom"}
         await h.run_maintenance(COMPACTION)
 
         assert h.recorded() == [
@@ -391,11 +398,11 @@ def test_polling_detects_missing_job_and_completed_without_callback():
     """Polling records a failure for a missing job and a completed job that never called back."""
 
     async def scenario(h: Harness) -> None:
-        h.fakes.states[f"{RUN_ID}-{COMPACTION}-1"] = {
+        h.fakes.states[f"{RUN_IDS[0]}-{COMPACTION}-1"] = {
             "state": "NOT_FOUND",
             "error": None,
         }
-        h.fakes.states[f"{RUN_ID}-{COMPACTION}-2"] = {
+        h.fakes.states[f"{RUN_IDS[0]}-{COMPACTION}-2"] = {
             "state": "COMPLETED",
             "error": None,
         }
@@ -406,7 +413,7 @@ def test_polling_detects_missing_job_and_completed_without_callback():
             (COMPACTION, 2, True, None),
         ]
         assert h.fakes.records[1]["metrics"] == {"completed_without_callback": 1}
-        completed_polls = h.fakes.status_calls.count(f"{RUN_ID}-{COMPACTION}-2")
+        completed_polls = h.fakes.status_calls.count(f"{RUN_IDS[0]}-{COMPACTION}-2")
         assert completed_polls == 5
 
     _run(scenario)
@@ -427,8 +434,8 @@ def test_job_deleted_when_submit_activity_fails():
         times = h.submit_times()
         assert times[1] - times[0] < timedelta(seconds=120)
         assert h.fakes.deletes == [
-            f"{RUN_ID}-{COMPACTION}-1",
-            f"{RUN_ID}-{COMPACTION}-2",
+            f"{RUN_IDS[0]}-{COMPACTION}-1",
+            f"{RUN_IDS[0]}-{COMPACTION}-2",
         ]
 
     _run(scenario)
@@ -451,11 +458,11 @@ def test_completed_window_restarts_when_state_leaves_completed():
     async def scenario(h: Harness) -> None:
         completed = {"state": "COMPLETED", "error": None}
         running = {"state": "RUNNING", "error": None}
-        h.fakes.states[f"{RUN_ID}-{COMPACTION}-1"] = [completed, running, completed]
+        h.fakes.states[f"{RUN_IDS[0]}-{COMPACTION}-1"] = [completed, running, completed]
         await h.run_maintenance(COMPACTION)
 
         assert h.recorded() == [(COMPACTION, 1, True, None)]
-        assert h.fakes.status_calls.count(f"{RUN_ID}-{COMPACTION}-1") == 7
+        assert h.fakes.status_calls.count(f"{RUN_IDS[0]}-{COMPACTION}-1") == 7
 
     _run(scenario)
 
@@ -475,9 +482,9 @@ def test_attempt_times_out_after_deadline():
         deadline = timedelta(seconds=ATTEMPT_DEADLINE_SECONDS)
         assert deadline <= times[1] - times[0] < deadline + timedelta(seconds=120)
         assert h.fakes.deletes == [
-            f"{RUN_ID}-{COMPACTION}-1",
-            f"{RUN_ID}-{COMPACTION}-1",
-            f"{RUN_ID}-{COMPACTION}-2",
+            f"{RUN_IDS[0]}-{COMPACTION}-1",
+            f"{RUN_IDS[0]}-{COMPACTION}-1",
+            f"{RUN_IDS[0]}-{COMPACTION}-2",
         ]
 
     _run(scenario)
@@ -490,7 +497,7 @@ def test_poll_interval_backs_off_after_ten_minutes():
         h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
         await h.run_maintenance(COMPACTION)
 
-        app = f"{RUN_ID}-{COMPACTION}-1"
+        app = f"{RUN_IDS[0]}-{COMPACTION}-1"
         submitted = h.submit_times()[0]
         polls = [t for t, name in zip(h.fakes.status_times, h.fakes.status_calls, strict=True) if name == app]
         first_hour = [t for t in polls if t - submitted < timedelta(hours=1, seconds=30)]
@@ -516,8 +523,8 @@ def test_cancelled_workflow_records_deletes_and_notifies():
         assert cancelled == [True]
 
         assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
-        assert set(h.fakes.deletes) == {f"{RUN_ID}-{COMPACTION}-1"}
-        assert await h.parent_payloads() == [_report()]
+        assert set(h.fakes.deletes) == {f"{RUN_IDS[0]}-{COMPACTION}-1"}
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
 
     _run(scenario)
 
@@ -537,7 +544,7 @@ def test_record_failures_are_counted_in_the_parent_payload():
             (COMPACTION, 1),
             (EXPIRE, 1),
         ]
-        assert await h.parent_payloads() == [_report(record_failures=1)]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]), record_failures=1)]
 
     _run(scenario)
 
@@ -551,8 +558,9 @@ async def _cancel_while_blocked(
     gate: asyncio.Event,
     blocked: Callable[[], bool],
     advance: timedelta = timedelta(0),
+    operations: tuple[str, ...] = (COMPACTION, EXPIRE),
 ) -> None:
-    handle = await h.start_maintenance(COMPACTION, EXPIRE)
+    handle = await h.start_maintenance(*operations)
     try:
         await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
         if advance:
@@ -566,8 +574,8 @@ async def _cancel_while_blocked(
     assert isinstance(caught.value.cause, CancelledError)
     assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
     assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1)]
-    assert set(h.fakes.deletes) == {f"{RUN_ID}-{COMPACTION}-1"}
-    assert await h.parent_payloads() == [_report()]
+    assert set(h.fakes.deletes) == {f"{RUN_IDS[0]}-{COMPACTION}-1"}
+    assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[: len(operations)]))]
 
 
 def test_cancel_during_status_poll_activity_cancels_the_workflow():
@@ -581,7 +589,8 @@ def test_cancel_during_status_poll_activity_cancels_the_workflow():
             lambda: len(h.fakes.status_calls) == 1,
             advance=timedelta(seconds=31),
         )
-        assert h.fakes.status_calls == [f"{RUN_ID}-{COMPACTION}-1"]
+        assert h.fakes.status_calls == [f"{RUN_IDS[0]}-{COMPACTION}-1"]
+        assert [s["run_id"] for s in h.fakes.skips] == [RUN_IDS[1]]
 
     _run(scenario)
 
@@ -592,6 +601,7 @@ def test_cancel_during_submit_activity_cancels_the_workflow():
     async def scenario(h: Harness) -> None:
         gate = h.fakes.submit_gate = asyncio.Event()
         await _cancel_while_blocked(h, gate, lambda: len(h.fakes.submits) == 1)
+        assert [s["run_id"] for s in h.fakes.skips] == [RUN_IDS[0], RUN_IDS[1]]
 
     _run(scenario)
 
@@ -601,7 +611,7 @@ def test_result_arriving_during_last_poll_before_deadline_wins():
 
     async def scenario(h: Harness) -> None:
         deadline = timedelta(seconds=100)
-        app = f"{RUN_ID}-{COMPACTION}-1"
+        app = f"{RUN_IDS[0]}-{COMPACTION}-1"
         signalled: list[datetime] = []
 
         async def hook(app_name: str, scheduled: datetime) -> None:
@@ -613,7 +623,7 @@ def test_result_arriving_during_last_poll_before_deadline_wins():
             signalled.append(scheduled)
             await h.client.get_workflow_handle(WORKFLOW_ID).signal(
                 TableMaintenanceSignal.OPERATION_RESULT,
-                OperationResultSignal(RUN_ID, COMPACTION, 1, True, {"files": 7}, None),
+                OperationResultSignal(RUN_IDS[0], COMPACTION, 1, True, {"files": 7}, None),
             )
             await h.env.sleep(timedelta(seconds=30))
 
@@ -633,7 +643,7 @@ def test_result_arriving_during_last_poll_before_deadline_wins():
 
 FENCE_DEADLINE_SECONDS = 300
 UNCONFIRMED_ERROR = "spark job timed out; its pods were still running 15 minutes after the timeout"
-FIRST = f"{RUN_ID}-{COMPACTION}-1"
+FIRST = f"{RUN_IDS[0]}-{COMPACTION}-1"
 
 
 def _names(commands: list[tuple[str, datetime]]) -> list[str]:
@@ -810,7 +820,7 @@ def test_cancelled_run_fences_its_live_attempt_before_it_reports():
         assert h.fakes.pods_times[-1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=10)
         assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
         assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1)]
-        assert await h.parent_payloads() == [_report()]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
 
     _run(scenario)
 
@@ -910,7 +920,7 @@ def test_job_completing_during_fencing_still_counts_as_timed_out():
             sent.append(app_name)
             await h.client.get_workflow_handle(WORKFLOW_ID).signal(
                 TableMaintenanceSignal.OPERATION_RESULT,
-                OperationResultSignal(RUN_ID, COMPACTION, 1, True, {"files": 7}, None),
+                OperationResultSignal(RUN_IDS[0], COMPACTION, 1, True, {"files": 7}, None),
             )
 
         h.fakes.pods_hook = late_result
@@ -994,7 +1004,7 @@ def test_needs_attention_stops_the_operation_without_another_attempt():
         ]
         times = h.submit_times()
         assert times[2] - times[1] < timedelta(seconds=60)
-        assert await h.parent_payloads() == [_report()]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
 
     _run(scenario)
 
@@ -1151,7 +1161,7 @@ PLANNED_FILTERS = [{"spec_id": 0, "where": "region IN ('eu', 'us', 'ap', 'sa')"}
 
 
 def test_oom_retry_keeps_the_planned_filters():
-    """Every attempt, also after running out of memory, submits the operation's filters."""
+    """The run holds the operation's filters, and no attempt, also after running out of memory, sends its own."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, a): [(a, False, OOM_ERROR)] for a in (1, 2)}
@@ -1165,7 +1175,9 @@ def test_oom_retry_keeps_the_planned_filters():
             "filters": PLANNED_FILTERS,
         }
         await h.run_maintenance(plan=plan)
-        assert [s["filters"] for s in h.fakes.submits] == [PLANNED_FILTERS] * 3
+        assert h.fakes.created[0]["filters"] == PLANNED_FILTERS
+        assert len(h.fakes.submits) == 3
+        assert not [s for s in h.fakes.submits if "filters" in s or "procedure_args" in s]
 
     _run(scenario)
 
@@ -1196,12 +1208,12 @@ def test_late_result_of_another_run_is_ignored():
         )
         await handle.signal(
             TableMaintenanceSignal.OPERATION_RESULT,
-            OperationResultSignal(RUN_ID, COMPACTION, 1, True, {"files": 3}, None),
+            OperationResultSignal(RUN_IDS[0], COMPACTION, 1, True, {"files": 3}, None),
         )
         await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
 
         assert h.recorded() == [(COMPACTION, 1, True, None)]
-        assert all(r["run_id"] == RUN_ID for r in h.fakes.records)
+        assert all(r["run_id"] == RUN_IDS[0] for r in h.fakes.records)
         assert h.fakes.records[0]["metrics"] == {"files": 3}
 
     _run(scenario)
@@ -1209,7 +1221,7 @@ def test_late_result_of_another_run_is_ignored():
 
 QUEUED_FOR = timedelta(hours=3)
 SHORT_DEADLINE = timedelta(hours=1)
-FIRST_APP = f"{RUN_ID}-{COMPACTION}-1"
+FIRST_APP = f"{RUN_IDS[0]}-{COMPACTION}-1"
 
 
 async def _run_with_a_short_deadline(h: Harness) -> None:
@@ -1244,7 +1256,7 @@ def test_attempt_is_recorded_running_once():
         first = h.submit_times()[0]
         records = [r for r in h.fakes.running_records if r["attempt"] == 1]
         assert len(records) == 1
-        assert (records[0]["run_id"], records[0]["operation"]) == (RUN_ID, COMPACTION)
+        assert (records[0]["run_id"], records[0]["operation"]) == (RUN_IDS[0], COMPACTION)
         assert datetime.fromisoformat(records[0]["started_running_at"]) == first + QUEUED_FOR
         assert datetime.fromisoformat(records[0]["now"]) >= first + QUEUED_FOR
 
@@ -1627,7 +1639,7 @@ def _succeed_on_the_status_read_after_the_raise(h: Harness) -> None:
             await h.client.get_workflow_handle(WORKFLOW_ID).signal(
                 TableMaintenanceSignal.OPERATION_RESULT,
                 OperationResultSignal(
-                    run_id=RUN_ID, operation=COMPACTION, attempt=1, succeeded=True, metrics={}, error=None
+                    run_id=RUN_IDS[0], operation=COMPACTION, attempt=1, succeeded=True, metrics={}, error=None
                 ),
             )
 
@@ -1798,7 +1810,7 @@ def test_driver_start_read_at_the_queue_limit_runs_the_attempt():
                 h.fakes.callbacks[(COMPACTION, 1)] = [(1, True, None)]
                 await h.client.get_workflow_handle(WORKFLOW_ID).signal(
                     TableMaintenanceSignal.OPERATION_RESULT,
-                    OperationResultSignal(RUN_ID, COMPACTION, 1, True, {"files": 4}, None),
+                    OperationResultSignal(RUN_IDS[0], COMPACTION, 1, True, {"files": 4}, None),
                 )
 
         h.fakes.status_hook = succeed_once_running
@@ -1846,7 +1858,7 @@ def test_late_result_of_the_replaced_job_is_dropped():
                 sent.append(True)
                 await h.client.get_workflow_handle(WORKFLOW_ID).signal(
                     TableMaintenanceSignal.OPERATION_RESULT,
-                    OperationResultSignal(RUN_ID, COMPACTION, 1, False, {}, "driver killed by the delete"),
+                    OperationResultSignal(RUN_IDS[0], COMPACTION, 1, False, {}, "driver killed by the delete"),
                 )
 
         async def replacement_succeeds(_: dict) -> None:
@@ -1919,5 +1931,372 @@ def test_running_at_the_queue_limit_without_a_readable_start_runs_under_its_dead
         assert started - h.submit_times()[0] >= SHORT_QUEUE_LIMIT
         timed_out_at = datetime.fromisoformat(h.fakes.records[0]["now"])
         assert timed_out_at - started >= SHORT_DEADLINE
+
+    _run(scenario)
+
+
+STOPPED_BEFORE_IT_STARTED = "the table's maintenance stopped before this run started"
+
+
+def _app(run: int, operation: str, attempt: int = 1) -> str:
+    """Return the Spark application name of an attempt of the ``run``-th run (from 0) of the plan."""
+    return ScriptedMaintenanceActivities.app_name(RUN_IDS[run], operation, attempt)
+
+
+def test_each_operation_gets_its_own_run_created_before_the_first_submit():
+    """Every planned operation gets its own run, created with its filters and arguments before anything is submitted."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)], (EXPIRE, 1): [(1, True, None)]}
+        await h.run_maintenance(COMPACTION, EXPIRE)
+        assert [(c["run_id"], c["operation"]) for c in h.fakes.created] == [
+            (RUN_IDS[0], COMPACTION),
+            (RUN_IDS[1], EXPIRE),
+        ]
+        assert h.fakes.created[0]["filters"] == [{"spec_id": 0, "where": f"{COMPACTION} = 1"}]
+        assert h.fakes.created[1]["procedure_args"] == {"op": EXPIRE}
+        assert "filters" not in h.fakes.submits[0] and "procedure_args" not in h.fakes.submits[0]
+        names = [name for name, _ in await h.commands()]
+        assert names.index("submit_maintenance_operation") > max(
+            i for i, n in enumerate(names) if n == "create_maintenance_run"
+        )
+        assert [(s["run_id"], s["operation"]) for s in h.fakes.submits] == [
+            (RUN_IDS[0], COMPACTION),
+            (RUN_IDS[1], EXPIRE),
+        ]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
+
+    _run(scenario)
+
+
+def test_the_next_run_submits_only_after_the_previous_run_ended():
+    """A run's first submit comes after the previous run's last attempt was recorded and its job deleted."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)], (EXPIRE, 1): [(1, True, None)]}
+        await h.run_maintenance(COMPACTION, EXPIRE)
+        names = [name for name, _ in await h.commands()]
+        second_submit = [i for i, n in enumerate(names) if n == "submit_maintenance_operation"][1]
+        assert (
+            names.index("record_maintenance_operation_result") < names.index("delete_maintenance_job") < second_submit
+        )
+
+    _run(scenario)
+
+
+def test_a_failed_run_does_not_stop_the_next():
+    """A run that fails for good is recorded, and the next run still runs; nothing is skipped."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, False, "boom")], (EXPIRE, 1): [(1, True, None)]}
+        h.fakes.record_replies = {(COMPACTION, 1): {"next_step": "not_retried"}}
+        await h.run_maintenance(COMPACTION, EXPIRE)
+
+        assert h.recorded() == [(COMPACTION, 1, False, "boom"), (EXPIRE, 1, True, None)]
+        assert [(s["run_id"], s["attempt"]) for s in h.fakes.submits] == [(RUN_IDS[0], 1), (RUN_IDS[1], 1)]
+        assert h.fakes.skips == []
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
+
+    _run(scenario)
+
+
+def test_a_submit_failure_fails_its_run_and_the_next_run_still_runs():
+    """A run whose every submit fails ends failed; the workflow goes on to the next run, then reports.
+
+    No submit of the first run returned, so the workflow cannot tell whether that run ever left pending; it asks
+    for a skip at the end, which leaves a run that did start (here: failed) as it is.
+    """
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.submit_errors = {(COMPACTION, a): "k8s down" for a in (1, 2, 3)}
+        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
+        await h.run_maintenance(COMPACTION, EXPIRE)
+
+        assert h.recorded() == [
+            (COMPACTION, 1, False, "submit failed: k8s down"),
+            (COMPACTION, 2, False, "submit failed: k8s down"),
+            (COMPACTION, 3, False, "submit failed: k8s down"),
+            (EXPIRE, 1, True, None),
+        ]
+        assert [s["run_id"] for s in h.fakes.skips] == [RUN_IDS[0]]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
+
+    _run(scenario)
+
+
+def test_runs_never_reached_are_skipped_when_the_workflow_is_cancelled():
+    """A cancel during the first run skips the runs after it, saying why, and the parent still gets the report."""
+
+    async def scenario(h: Harness) -> None:
+        gate = h.fakes.status_gate = asyncio.Event()
+        await _cancel_while_blocked(
+            h,
+            gate,
+            lambda: len(h.fakes.status_calls) == 1,
+            advance=timedelta(seconds=31),
+            operations=(COMPACTION, EXPIRE, ORPHANS),
+        )
+        assert [s["run_id"] for s in h.fakes.skips] == [RUN_IDS[1], RUN_IDS[2]]
+        assert {s["reason"] for s in h.fakes.skips} == {STOPPED_BEFORE_IT_STARTED}
+        names = _names(await h.commands())
+        assert max(i for i, n in enumerate(names) if n == "skip_maintenance_run") < names.index("signal_parent")
+
+    _run(scenario)
+
+
+def test_a_create_failure_submits_nothing_and_skips_the_runs_created():
+    """A run whose create fails stops the workflow before any submit; only the runs already created are skipped."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.create_errors = {RUN_IDS[1]}
+        handle = await h.start_maintenance(COMPACTION, EXPIRE, ORPHANS)
+        with pytest.raises(WorkflowFailureError):
+            await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert [c["run_id"] for c in h.fakes.created] == [RUN_IDS[0], RUN_IDS[1]]
+        assert h.fakes.submits == []
+        assert [s["run_id"] for s in h.fakes.skips] == [RUN_IDS[0]]
+        assert h.fakes.skips[0]["reason"] == STOPPED_BEFORE_IT_STARTED
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:3]))]
+
+    _run(scenario)
+
+
+def test_a_result_naming_another_runs_id_is_dropped():
+    """A result for the first run's operation that names the second run's id is dropped; the first run's own counts."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
+        handle = await h.start_maintenance(COMPACTION, EXPIRE)
+        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
+        await handle.signal(
+            TableMaintenanceSignal.OPERATION_RESULT,
+            OperationResultSignal(RUN_IDS[1], COMPACTION, 1, False, {}, "for another run"),
+        )
+        await handle.signal(
+            TableMaintenanceSignal.OPERATION_RESULT,
+            OperationResultSignal(RUN_IDS[0], COMPACTION, 1, True, {"files": 5}, None),
+        )
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert h.recorded() == [(COMPACTION, 1, True, None), (EXPIRE, 1, True, None)]
+        assert [r["run_id"] for r in h.fakes.records] == [RUN_IDS[0], RUN_IDS[1]]
+        assert h.fakes.records[0]["metrics"] == {"files": 5}
+
+    _run(scenario)
+
+
+def test_a_raise_reaches_every_run_not_finished():
+    """A raise while the first of three runs is queued raises all three; only the first run's attempt is requeued."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.vanish_after_delete[FIRST_APP] = timedelta(0)
+        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)], (ORPHANS, 1): [(1, True, None)]}
+
+        async def hook(_: dict) -> None:
+            h.fakes.callbacks[(COMPACTION, 1)] = [(1, True, None)]
+
+        h.fakes.raise_hook = hook
+        handle = await h.start_maintenance(COMPACTION, EXPIRE, ORPHANS)
+        await _raise_after(h, handle, timedelta(minutes=15), priority="P1")
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert [(r["run_id"], r["priority"]) for r in h.fakes.raises] == [(r, "P1") for r in RUN_IDS[:3]]
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [
+            (COMPACTION, 1),
+            (COMPACTION, 1),
+            (EXPIRE, 1),
+            (ORPHANS, 1),
+        ]
+        assert h.fakes.submitted_priorities == ["P3", "P1", "P1", "P1"]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:3]), raises_received=1)]
+
+    _run(scenario)
+
+
+def test_only_the_current_runs_reply_decides_the_requeue():
+    """A raise the current run refuses leaves its queued attempt alone, even when the run after it took it.
+
+    The current run's attempt is still queued (no driver start) when the raise arrives; its result is
+    sent from a status poll at least a minute after the raise, so a requeue, which polls at once,
+    would delete and resubmit that attempt first.
+    """
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.vanish_after_delete[FIRST_APP] = timedelta(0)
+        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
+
+        async def reply(request: dict) -> None:
+            current = request["run_id"] == RUN_IDS[0]
+            h.fakes.raise_reply = {"priority": "P1", "raised": False} if current else None
+
+        async def finish_after_the_raise(_: str, polled_at: datetime) -> None:
+            if h.raise_sent_at is not None and polled_at - h.raise_sent_at >= timedelta(minutes=1):
+                await h.client.get_workflow_handle(WORKFLOW_ID).signal(
+                    TableMaintenanceSignal.OPERATION_RESULT,
+                    OperationResultSignal(RUN_IDS[0], COMPACTION, 1, True, {}, None),
+                )
+
+        h.fakes.raise_hook = reply
+        h.fakes.status_hook = finish_after_the_raise
+        handle = await h.start_maintenance(COMPACTION, EXPIRE)
+        await _raise_after(h, handle, timedelta(minutes=15), priority="P2")
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert [r["run_id"] for r in h.fakes.raises] == list(RUN_IDS[:2])
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1), (EXPIRE, 1)]
+        assert h.fakes.submitted_priorities == ["P3", "P2"]
+        assert h.recorded() == [(COMPACTION, 1, True, None), (EXPIRE, 1, True, None)]
+
+    _run(scenario)
+
+
+def test_a_failed_raise_of_a_later_run_is_reported_unapplied():
+    """A raise that fails for the third run is reported to the parent as left unapplied."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.raise_errors = {2}
+        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)], (ORPHANS, 1): [(1, True, None)]}
+        _succeed_on_raise(h)
+        handle = await h.start_maintenance(COMPACTION, EXPIRE, ORPHANS)
+        await _raise_after(h, handle, timedelta(minutes=1))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert [r["run_id"] for r in h.fakes.raises] == list(RUN_IDS[:3])
+        assert h.recorded() == [(COMPACTION, 1, True, None), (EXPIRE, 1, True, None), (ORPHANS, 1, True, None)]
+        assert await h.parent_payloads() == [
+            _report(run_ids=list(RUN_IDS[:3]), unapplied_raise=True, raises_received=1)
+        ]
+
+    _run(scenario)
+
+
+def test_a_raise_during_the_retry_backoff_reaches_the_retry():
+    """A raise that arrives while run 1's failed attempt waits out its backoff reaches the retry and runs 2 and 3.
+
+    It is applied before the retry is submitted, and the later runs are submitted at the raised priority.
+    """
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {
+            (COMPACTION, 1): [(1, False, "boom")],
+            (COMPACTION, 2): [(2, True, None)],
+            (EXPIRE, 1): [(1, True, None)],
+            (ORPHANS, 1): [(1, True, None)],
+        }
+
+        async def hook(request: dict) -> None:
+            if (request["operation"], request["attempt"]) == (COMPACTION, 1):
+                await h.client.get_workflow_handle(WORKFLOW_ID).signal(
+                    TableMaintenanceSignal.RAISE_PRIORITY, RaisePrioritySignal("P1")
+                )
+
+        h.fakes.record_hook = hook
+        await h.run_maintenance(COMPACTION, EXPIRE, ORPHANS)
+
+        assert [(r["run_id"], r["priority"]) for r in h.fakes.raises] == [(run, "P1") for run in RUN_IDS[:3]]
+        names = _names(await h.commands())
+        submits = [i for i, n in enumerate(names) if n == "submit_maintenance_operation"]
+        raises = [i for i, n in enumerate(names) if n == "raise_maintenance_run_priority"]
+        assert names.index("record_maintenance_operation_result") < raises[0]
+        assert raises[-1] < submits[1]
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [
+            (COMPACTION, 1),
+            (COMPACTION, 2),
+            (EXPIRE, 1),
+            (ORPHANS, 1),
+        ]
+        assert h.fakes.submitted_priorities == ["P3", "P1", "P1", "P1"]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:3]), raises_received=1)]
+
+    _run(scenario)
+
+
+def test_the_jobs_of_a_run_are_deleted_when_it_ends():
+    """Each run's job is deleted once that run ended, and none is deleted again when the workflow finishes."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)], (EXPIRE, 1): [(1, True, None)]}
+        await h.run_maintenance(COMPACTION, EXPIRE)
+
+        assert h.fakes.deletes == [_app(0, COMPACTION), _app(1, EXPIRE)]
+        names = _names(await h.commands())
+        deletes = [i for i, n in enumerate(names) if n == "delete_maintenance_job"]
+        expire_submit = [i for i, n in enumerate(names) if n == "submit_maintenance_operation"][1]
+        assert deletes[0] < expire_submit < deletes[1]
+
+    _run(scenario)
+
+
+def test_an_early_result_for_a_later_run_is_dropped():
+    """A result for run 2 that arrives while run 1 runs is dropped; run 2's attempt ends with its own result.
+
+    Run 2's attempt has not started when the early result arrives, so keeping it would end that attempt
+    as soon as it is submitted, with the early result's outcome.
+    """
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
+        handle = await h.start_maintenance(COMPACTION, EXPIRE)
+        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
+        await handle.signal(
+            TableMaintenanceSignal.OPERATION_RESULT,
+            OperationResultSignal(RUN_IDS[1], EXPIRE, 1, False, {}, "too early"),
+        )
+        await handle.signal(
+            TableMaintenanceSignal.OPERATION_RESULT,
+            OperationResultSignal(RUN_IDS[0], COMPACTION, 1, True, {"files": 5}, None),
+        )
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert h.recorded() == [(COMPACTION, 1, True, None), (EXPIRE, 1, True, None)]
+        assert h.fakes.records[1]["metrics"] == {"files": 1}
+
+    _run(scenario)
+
+
+def test_a_create_interrupted_by_a_cancel_is_skipped():
+    """A cancel while run 2's create is in flight skips run 1 and run 2, whose create may have landed."""
+
+    async def scenario(h: Harness) -> None:
+        gate = h.fakes.create_gates[RUN_IDS[1]] = asyncio.Event()
+        handle = await h.start_maintenance(COMPACTION, EXPIRE, ORPHANS)
+        try:
+            await eventually(lambda: _value(len(h.fakes.created)), lambda n: n == 2)
+            await handle.cancel()
+            with pytest.raises(WorkflowFailureError) as caught:
+                await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+        finally:
+            gate.set()
+
+        assert isinstance(caught.value.cause, CancelledError)
+        assert [c["run_id"] for c in h.fakes.created] == list(RUN_IDS[:2])
+        assert h.fakes.submits == []
+        assert [s["run_id"] for s in h.fakes.skips] == list(RUN_IDS[:2])
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:3]))]
+
+    _run(scenario)
+
+
+def test_a_create_interrupted_by_a_cancel_whose_run_is_not_found_is_only_logged():
+    """A skip of the interrupted create's run that finds no run is logged, and the parent still gets the report."""
+
+    async def scenario(h: Harness) -> None:
+        gate = h.fakes.create_gates[RUN_IDS[0]] = asyncio.Event()
+        h.fakes.skip_errors = {RUN_IDS[0]}
+        handle = await h.start_maintenance(COMPACTION, EXPIRE)
+        try:
+            await eventually(lambda: _value(len(h.fakes.created)), lambda n: n == 1)
+            await handle.cancel()
+            with pytest.raises(WorkflowFailureError) as caught:
+                await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+        finally:
+            gate.set()
+
+        assert isinstance(caught.value.cause, CancelledError)
+        assert [s["run_id"] for s in h.fakes.skips] == [RUN_IDS[0]]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
 
     _run(scenario)

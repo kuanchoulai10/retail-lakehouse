@@ -15,10 +15,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     TableMaintenanceRunId,
     TriggerType,
 )
-from context.table_maintenance.application.exceptions import (
-    NotFoundError,
-    ValidationError,
-)
+from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     CreateTableMaintenanceRunUseCase,
     CreateTableMaintenanceRunUseCaseInput,
@@ -40,7 +37,7 @@ if TYPE_CHECKING:
 
 
 class CreateTableMaintenanceRunService(CreateTableMaintenanceRunUseCase):
-    """Create the run that tracks one execution of maintenance operations."""
+    """Create the run that tracks one maintenance operation against a table."""
 
     def __init__(self, runs_repo: TableMaintenanceRunsRepo, tables_repo: TablesRepo) -> None:
         """Bind the repos."""
@@ -48,21 +45,16 @@ class CreateTableMaintenanceRunService(CreateTableMaintenanceRunUseCase):
         self._tables_repo = tables_repo
 
     def execute(self, request: CreateTableMaintenanceRunUseCaseInput) -> CreateTableMaintenanceRunUseCaseOutput:
-        """Create the run, or return the existing one when the id is already used.
+        """Create the pending run, or return the existing one when the id is already used.
 
         ``run_id`` and ``now`` come from the caller so a workflow can supply
         deterministic values and retry safely.
         """
-        if not request.operations:
-            raise ValidationError("operations must not be empty")
         with translate_domain_errors():
             trigger = TriggerType(request.trigger)
             priority = TablePriority(request.priority)
-            operations = [MaintenanceOperation(op) for op in request.operations]
-            filters = {
-                MaintenanceOperation(name): [SpecFilter(spec_id=f.spec_id, where=f.where) for f in clauses]
-                for name, clauses in request.filters.items()
-            }
+            operation = MaintenanceOperation(request.operation)
+            filters = [SpecFilter(spec_id=f.spec_id, where=f.where) for f in request.filters]
             run = self._runs_repo.get(TableMaintenanceRunId(request.run_id))
             if run is None:
                 table_uuid = TableId(request.table_uuid)
@@ -74,25 +66,24 @@ class CreateTableMaintenanceRunService(CreateTableMaintenanceRunUseCase):
                         TableMaintenanceRunId(request.run_id),
                         table_uuid,
                         trigger,
-                        operations,
+                        operation,
                         request.now,
                         execution_ref=request.execution_ref,
                         priority=priority,
                         filters=filters,
+                        procedure_args=request.procedure_args,
                     )
                 )
                 if trigger is TriggerType.MANUAL:
-                    self._clear_needs_attention(table, operations, request.now)
+                    self._clear_needs_attention(table, operation, request.now)
         return CreateTableMaintenanceRunUseCaseOutput(**table_maintenance_run_output_fields(run))
 
-    def _clear_needs_attention(self, table: Table, operations: list[MaintenanceOperation], now: datetime) -> None:
-        """Lift the needs-attention mark of the run's operations: a person asked for this run.
+    def _clear_needs_attention(self, table: Table, operation: MaintenanceOperation, now: datetime) -> None:
+        """Lift the needs-attention mark of the run's operation: a person asked for this run.
 
         A dropped table keeps its state, as every other change to it is refused.
         """
-        marked = [op for op in operations if table.operation_state(op).attention is not None]
-        if not marked or table.status is TableStatus.DROPPED:
+        if table.operation_state(operation).attention is None or table.status is TableStatus.DROPPED:
             return
-        for op in marked:
-            table.clear_needs_attention(op, now)
+        table.clear_needs_attention(operation, now)
         self._tables_repo.update(table)

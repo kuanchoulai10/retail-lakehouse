@@ -17,6 +17,7 @@ function attempt(overrides: Partial<TableMaintenanceRunAttemptApiResponse>): Tab
     event_log_finished: true,
     next_step: "done",
     next_size: null,
+    job_name: "tm-orders-rewrite-a1",
     ...overrides,
   };
 }

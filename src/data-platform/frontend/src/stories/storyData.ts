@@ -545,103 +545,138 @@ export const COMMITS: TableCommitsApiResponse = {
 };
 
 export const SCHEDULED_RUN_ID = "mr-01m6we4j80f049yj9fq93t3z57";
+export const SCHEDULED_MANIFESTS_RUN_ID = "mr-01m6we4j80f049yj9fq93t3z58";
+export const SCHEDULED_EXPIRE_RUN_ID = "mr-01m6we4j80f049yj9fq93t3z59";
+export const SCHEDULED_ORPHANS_RUN_ID = "mr-01m6we4j80f049yj9fq93t3z5a";
 export const ESCALATED_RUN_ID = "mr-01m6z0h980ebq90tzxr5xezxae";
+// A run older than the latest 50 the list returns: only the read by id answers it.
+export const OLDER_RUN_ID = "mr-01m3p7k2c0d9e8f6g5h4j3k2m1";
 
-export const RUNS: TableMaintenanceRunApiResponse[] = [
-  {
-    run_id: SCHEDULED_RUN_ID,
+type Attempt = TableMaintenanceRunAttemptApiResponse;
+
+// An attempt that ran at S and succeeded, as most attempts do.
+function succeededAttempt(jobName: string, startedAt: string, finishedAt: string): Attempt {
+  return {
+    attempt: 1,
+    size: "S",
+    status: "succeeded",
+    started_at: startedAt,
+    started_running_at: startedAt,
+    finished_at: finishedAt,
+    failure_class: null,
+    error: null,
+    event_log_finished: true,
+    next_step: "done",
+    next_size: null,
+    job_name: jobName,
+  };
+}
+
+// One run of one operation that ended: every field a run has, the attempts its timeline.
+function endedRun(
+  runId: string,
+  operation: string,
+  attempts: Attempt[],
+  overrides: Partial<TableMaintenanceRunApiResponse> = {},
+): TableMaintenanceRunApiResponse {
+  return {
+    run_id: runId,
     table_uuid: ORDERS_UUID,
     execution_ref: `table-maintenance:table-uuid=${ORDERS_UUID}`,
     trigger: "scheduled",
+    operation,
     priority: "P3",
     status: "succeeded",
     created_at: "2026-11-08T02:00:00Z",
-    finished_at: "2026-11-08T02:03:10Z",
-    operations: [
-      {
-        operation: "rewrite_data_files",
-        status: "succeeded",
-        attempts: 1,
-        started_at: "2026-11-08T02:00:00Z",
-        finished_at: "2026-11-08T02:03:10Z",
-        job_name: "tm-orders-rewrite",
-        metrics: { rewritten_data_files_count: 14 },
-        error: null,
-        expected_files: null,
-        filters: [{ spec_id: 0, where: "(`region` = 'eu')" }],
-        attempt_history: [
-          {
-            attempt: 1,
-            size: "S",
-            status: "succeeded",
-            started_at: "2026-11-08T02:00:00Z",
-            started_running_at: "2026-11-08T02:00:00Z",
-            finished_at: "2026-11-08T02:03:10Z",
-            failure_class: null,
-            error: null,
-            event_log_finished: true,
-            next_step: "done",
-            next_size: null,
-          },
-        ],
-      },
-    ],
-  },
+    started_at: attempts[0]?.started_at ?? null,
+    finished_at: attempts.at(-1)?.finished_at ?? null,
+    filters: [],
+    procedure_args: {},
+    metrics: {},
+    error: null,
+    skip_reason: null,
+    attempts,
+    ...overrides,
+  };
+}
+
+// The four runs of one scheduled plan, created together and run one at a time in the plan's order,
+// listed as the API lists them: newest first, the plan's last operation first.
+export const RUNS: TableMaintenanceRunApiResponse[] = [
+  endedRun(
+    SCHEDULED_ORPHANS_RUN_ID,
+    "remove_orphan_files",
+    [succeededAttempt("tm-orders-orphans", "2026-11-08T02:04:50Z", "2026-11-08T02:05:30Z")],
+    { procedure_args: { older_than: "2026-11-05T02:00:00+00:00" }, metrics: { orphan_file_location_count: 3 } },
+  ),
+  endedRun(
+    SCHEDULED_EXPIRE_RUN_ID,
+    "expire_snapshots",
+    [succeededAttempt("tm-orders-expire", "2026-11-08T02:04:10Z", "2026-11-08T02:04:40Z")],
+    {
+      procedure_args: { older_than: "2026-11-03T02:00:00+00:00", retain_last: 5 },
+      metrics: { deleted_data_files_count: 42, deleted_manifest_files_count: 6 },
+    },
+  ),
+  endedRun(
+    SCHEDULED_MANIFESTS_RUN_ID,
+    "rewrite_manifests",
+    [succeededAttempt("tm-orders-manifests", "2026-11-08T02:03:20Z", "2026-11-08T02:04:00Z")],
+    { metrics: { rewritten_manifests_count: 18, added_manifests_count: 2 } },
+  ),
+  endedRun(
+    SCHEDULED_RUN_ID,
+    "rewrite_data_files",
+    [succeededAttempt("tm-orders-rewrite", "2026-11-08T02:00:00Z", "2026-11-08T02:03:10Z")],
+    {
+      filters: [{ spec_id: 0, where: "(`region` = 'eu')" }],
+      procedure_args: { options: { "target-file-size-bytes": 134217728 } },
+      metrics: { rewritten_data_files_count: 14 },
+    },
+  ),
 ];
 
 // A compaction that ran out of memory at S and succeeded at M.
-export const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
-  run_id: ESCALATED_RUN_ID,
-  table_uuid: ORDERS_UUID,
-  execution_ref: `table-maintenance:table-uuid=${ORDERS_UUID}`,
-  trigger: "manual",
-  priority: "P3",
-  status: "succeeded",
-  created_at: "2026-11-09T02:00:00Z",
-  finished_at: "2026-11-09T02:09:40Z",
-  operations: [
+export const ESCALATED_RUN: TableMaintenanceRunApiResponse = endedRun(
+  ESCALATED_RUN_ID,
+  "rewrite_data_files",
+  [
     {
-      operation: "rewrite_data_files",
+      attempt: 1,
+      size: "S",
+      status: "failed",
+      started_at: "2026-11-09T02:00:00Z",
+      started_running_at: "2026-11-09T02:00:00Z",
+      finished_at: "2026-11-09T02:02:10Z",
+      failure_class: "oom",
+      error: "Py4JJavaError: An error occurred while calling o61.sql. java.lang.OutOfMemoryError: Java heap space",
+      event_log_finished: false,
+      next_step: "retry_larger",
+      next_size: "M",
+      job_name: "tm-orders-rewrite-2-a1",
+    },
+    {
+      attempt: 2,
+      size: "M",
       status: "succeeded",
-      attempts: 2,
       started_at: "2026-11-09T02:03:20Z",
+      started_running_at: "2026-11-09T02:03:20Z",
       finished_at: "2026-11-09T02:09:40Z",
-      job_name: "tm-orders-rewrite-2",
-      metrics: { rewritten_data_files_count: 24, peak_driver_heap_bytes: 612368384, peak_executor_heap_bytes: 1140850688 },
+      failure_class: null,
       error: null,
-      expected_files: null,
-      filters: [],
-      attempt_history: [
-        {
-          attempt: 1,
-          size: "S",
-          status: "failed",
-          started_at: "2026-11-09T02:00:00Z",
-          started_running_at: "2026-11-09T02:00:00Z",
-          finished_at: "2026-11-09T02:02:10Z",
-          failure_class: "oom",
-          error: "Py4JJavaError: An error occurred while calling o61.sql. java.lang.OutOfMemoryError: Java heap space",
-          event_log_finished: false,
-          next_step: "retry_larger",
-          next_size: "M",
-        },
-        {
-          attempt: 2,
-          size: "M",
-          status: "succeeded",
-          started_at: "2026-11-09T02:03:20Z",
-          started_running_at: "2026-11-09T02:03:20Z",
-          finished_at: "2026-11-09T02:09:40Z",
-          failure_class: null,
-          error: null,
-          event_log_finished: true,
-          next_step: "done",
-          next_size: null,
-        },
-      ],
+      event_log_finished: true,
+      next_step: "done",
+      next_size: null,
+      job_name: "tm-orders-rewrite-2-a2",
     },
   ],
-};
+  {
+    trigger: "manual",
+    created_at: "2026-11-09T02:00:00Z",
+    procedure_args: { options: { "target-file-size-bytes": 134217728 } },
+    metrics: { rewritten_data_files_count: 24, peak_driver_heap_bytes: 612368384, peak_executor_heap_bytes: 1140850688 },
+  },
+);
 
 export const PARTITION_SCOPE_RUN_ID = "mr-01m8c2v7e0k3b9x4d5n6q1w2yb";
 
@@ -652,56 +687,46 @@ const TEN_PARTITIONS_WHERE = Array.from(
 
 // A scheduled compaction of the partitions over the target: one where clause per partition spec, the first of them long.
 export const PARTITION_SCOPE_RUN: TableMaintenanceRunApiResponse = {
-  ...RUNS[0]!,
+  ...RUNS[3]!,
   run_id: PARTITION_SCOPE_RUN_ID,
-  operations: [
-    {
-      ...RUNS[0]!.operations[0]!,
-      filters: [
-        { spec_id: 0, where: TEN_PARTITIONS_WHERE },
-        { spec_id: 1, where: "(`order_hour` = TIMESTAMP '2026-11-19 03:00:00')" },
-      ],
-    },
+  filters: [
+    { spec_id: 0, where: TEN_PARTITIONS_WHERE },
+    { spec_id: 1, where: "(`order_hour` = TIMESTAMP '2026-11-19 03:00:00')" },
   ],
 };
 
+// An expiry from October, older than the latest 50 runs the list returns.
+export const OLDER_RUN: TableMaintenanceRunApiResponse = endedRun(
+  OLDER_RUN_ID,
+  "expire_snapshots",
+  [succeededAttempt("tm-orders-expire-old", "2026-10-01T02:00:00Z", "2026-10-01T02:00:40Z")],
+  {
+    created_at: "2026-10-01T02:00:00Z",
+    procedure_args: { older_than: "2026-09-26T02:00:00+00:00", retain_last: 5 },
+    metrics: { deleted_data_files_count: 7 },
+  },
+);
+
 export const IN_FLIGHT_RUN_ID = "mr-01m7bk4q80f3dt6ywe2m5c1h9a";
+export const PENDING_RUN_ID = "mr-01m7bk4q80f3dt6ywe2m5c1h9b";
 export const QUEUE_TIMEOUT_RUN_ID = "mr-01m7bk9d30ff8e5hn7a2xk4b6c";
 const MINUTE_MS = 60_000;
 
-type Attempt = TableMaintenanceRunAttemptApiResponse;
-
+// A manual compaction made of these attempts, created when its first attempt was submitted.
 function runOfAttempts(
   runId: string,
   status: string,
   attempts: Attempt[],
   finishedAt: string | null,
 ): TableMaintenanceRunApiResponse {
-  return {
-    run_id: runId,
-    table_uuid: ORDERS_UUID,
-    execution_ref: `table-maintenance:table-uuid=${ORDERS_UUID}`,
+  return endedRun(runId, "rewrite_data_files", attempts, {
     trigger: "manual",
     priority: "P1",
     status,
     created_at: attempts[0]!.started_at,
     finished_at: finishedAt,
-    operations: [
-      {
-        operation: "rewrite_data_files",
-        status,
-        attempts: attempts.length,
-        started_at: attempts[0]!.started_at,
-        finished_at: finishedAt,
-        job_name: "tm-orders-rewrite-live",
-        metrics: {},
-        error: null,
-        expected_files: null,
-        filters: [],
-        attempt_history: attempts,
-      },
-    ],
-  };
+    procedure_args: { options: { "target-file-size-bytes": 134217728 } },
+  });
 }
 
 // The first attempt of a run in flight ran out of memory at S. A story builds the run when it starts, so its
@@ -719,6 +744,7 @@ function outOfMemoryAtS(minutesAgo: (minutes: number) => string): Attempt {
     event_log_finished: false,
     next_step: "retry_larger",
     next_size: "M",
+    job_name: "tm-orders-rewrite-live-a1",
   };
 }
 
@@ -735,6 +761,7 @@ function attemptAtM(overrides: Partial<Attempt>): Attempt {
     event_log_finished: null,
     next_step: null,
     next_size: null,
+    job_name: "tm-orders-rewrite-live-a2",
     ...overrides,
   };
 }
@@ -752,6 +779,18 @@ export function inFlightRun(now: Date = new Date()): TableMaintenanceRunApiRespo
     [outOfMemoryAtS(minutesAgo), attemptAtM({ started_at: minutesAgo(25), started_running_at: minutesAgo(18) })],
     null,
   );
+}
+
+// The next run of inFlightRun's plan, created with it: it waits, with no attempt, until the
+// compaction ends. It lists above the compaction, as the plan's later operation.
+export function pendingRun(now: Date = new Date()): TableMaintenanceRunApiResponse {
+  return endedRun(PENDING_RUN_ID, "expire_snapshots", [], {
+    trigger: "manual",
+    priority: "P1",
+    status: "pending",
+    created_at: agoFrom(now)(40),
+    procedure_args: { older_than: agoFrom(now)(40 + 5 * 24 * 60), retain_last: 5 },
+  });
 }
 
 // The same run (same id) earlier in its life: the larger attempt still waits in its Volcano queue.
@@ -778,6 +817,7 @@ export const QUEUE_TIMEOUT_RUN = runOfAttempts(
       finished_at: "2026-11-19T02:00:00Z",
       failure_class: "queue_timeout",
       next_step: "not_retried",
+      job_name: "tm-orders-rewrite-timeout-a1",
     }),
   ],
   "2026-11-19T02:00:00Z",
@@ -818,20 +858,23 @@ const QUIET_OPERATIONS: ReconciliationOperationApiResponse[] = [
       { key: "qualifying_partitions", observed: 0, unit: "count", threshold: null, comparison: null, met: null },
     ],
     next_eligible_at: null,
+    run_id: null,
   },
   {
     operation: "rewrite_manifests",
     result: "not_needed",
     measurements: [{ key: "small_manifests", observed: 12, unit: "count", threshold: 20, comparison: ">=", met: false }],
     next_eligible_at: null,
+    run_id: null,
   },
   {
     operation: "expire_snapshots",
     result: "not_needed",
     measurements: [{ key: "expirable_snapshots", observed: 0, unit: "count", threshold: 1, comparison: ">=", met: false }],
     next_eligible_at: null,
+    run_id: null,
   },
-  { operation: "remove_orphan_files", result: "off", measurements: [], next_eligible_at: null },
+  { operation: "remove_orphan_files", result: "off", measurements: [], next_eligible_at: null, run_id: null },
 ];
 
 function reconciliation(
@@ -848,7 +891,6 @@ function reconciliation(
     outcome: "planned",
     skip_reason: null,
     operations: QUIET_OPERATIONS,
-    run_id: null,
     policy_id: DEFAULT_POLICY_ID,
     policy_name: "default",
     policy_deleted: false,
@@ -868,7 +910,6 @@ export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
     policy_name: "retail-nightly",
     policy_version: 4,
     policy_target: { type: "namespace", path: ["iceberg", "retail"] },
-    run_id: SCHEDULED_RUN_ID,
     operations: [
       {
         operation: "rewrite_data_files",
@@ -879,20 +920,23 @@ export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
           { key: "qualifying_partitions", observed: 3, unit: "count", threshold: null, comparison: null, met: null },
         ],
         next_eligible_at: null,
+        run_id: SCHEDULED_RUN_ID,
       },
       {
         operation: "rewrite_manifests",
         result: "not_needed",
         measurements: [{ key: "small_manifests", observed: 18, unit: "count", threshold: 20, comparison: ">=", met: false }],
         next_eligible_at: null,
+        run_id: null,
       },
       {
         operation: "expire_snapshots",
         result: "cooling_down",
         measurements: [{ key: "expirable_snapshots", observed: 312, unit: "count", threshold: 1, comparison: ">=", met: true }],
         next_eligible_at: "2026-11-14T03:00:00Z",
+        run_id: null,
       },
-      { operation: "remove_orphan_files", result: "off", measurements: [], next_eligible_at: null },
+      { operation: "remove_orphan_files", result: "off", measurements: [], next_eligible_at: null, run_id: null },
     ],
   }),
   reconciliation("rc-01m72dbyj0estvsettdm9dkcmx", "2026-11-10T09:42:00Z"),
@@ -911,6 +955,7 @@ export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
           { key: "qualifying_partitions", observed: 2, unit: "count", threshold: null, comparison: null, met: null },
         ],
         next_eligible_at: null,
+        run_id: null,
       },
       ...QUIET_OPERATIONS.slice(1),
     ],
@@ -934,6 +979,7 @@ export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
           { key: "waiting_partitions", observed: 3, unit: "count", threshold: null, comparison: null, met: null },
         ],
         next_eligible_at: null,
+        run_id: PARTITION_SCOPE_RUN_ID,
       },
       ...QUIET_OPERATIONS.slice(1),
     ],
@@ -951,6 +997,7 @@ export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
           { key: "waiting_partitions", observed: 2, unit: "count", threshold: null, comparison: null, met: null },
         ],
         next_eligible_at: "2026-11-10T02:47:00Z",
+        run_id: null,
       },
       ...QUIET_OPERATIONS.slice(1),
     ],

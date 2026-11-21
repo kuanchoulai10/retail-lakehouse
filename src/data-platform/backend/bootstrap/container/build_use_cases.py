@@ -55,6 +55,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
     RaiseTableMaintenanceRunPriorityService,
     RecordMaintenanceAttemptRunningService,
     RecordTableMaintenanceOperationResultService,
+    SkipTableMaintenanceRunService,
     SubmitMaintenanceOperationService,
 )
 from context.table_maintenance.application.service.table_reconciliation import (
@@ -165,11 +166,11 @@ def build_use_cases(
             resolve_applicable_policy,
             size_memory=size_memory or {},
         ),
-        delete_maintenance_job=DeleteMaintenanceJobService(gateways.delete_maintenance_job),
+        delete_maintenance_job=DeleteMaintenanceJobService(runs, gateways.delete_maintenance_job),
         get_maintenance_job_status=GetMaintenanceJobStatusService(
-            gateways.read_maintenance_job, gateways.read_maintenance_job_pods
+            runs, gateways.read_maintenance_job, gateways.read_maintenance_job_pods
         ),
-        get_maintenance_job_pods=GetMaintenanceJobPodsService(gateways.read_maintenance_job_pods),
+        get_maintenance_job_pods=GetMaintenanceJobPodsService(runs, gateways.read_maintenance_job_pods),
         record_maintenance_attempt_running=RecordMaintenanceAttemptRunningService(runs),
         raise_table_maintenance_run_priority=RaiseTableMaintenanceRunPriorityService(runs, tables),
         plan_table_maintenance=PlanTableMaintenanceService(
@@ -183,5 +184,6 @@ def build_use_cases(
         get_platform_settings=GetPlatformSettingsService(platform_settings),
         list_table_reconciliations=ListTableReconciliationsService(reconciliations, policies),
         record_table_reconciliation=RecordTableReconciliationService(reconciliations),
+        skip_table_maintenance_run=SkipTableMaintenanceRunService(runs),
         submit_maintenance_operation=SubmitMaintenanceOperationService(runs, tables, gateways.submit_maintenance_job),
     )

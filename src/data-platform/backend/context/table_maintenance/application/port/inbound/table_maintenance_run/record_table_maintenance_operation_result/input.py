@@ -11,8 +11,9 @@ from base import UseCaseInput
 class RecordTableMaintenanceOperationResultUseCaseInput(UseCaseInput):
     """Carry the request to record the result of a maintenance operation attempt.
 
-    ``ended_by`` names what ended the attempt (an ``AttemptEnding`` value), ``still_running`` says
-    its job may still be running, and ``max_attempts`` is how many attempts the operation is allowed.
+    ``operation`` must be the run's own. ``ended_by`` names what ended the attempt (an ``AttemptEnding``
+    value), ``still_running`` says its job may still be running, and ``max_attempts`` is how many attempts
+    the run is allowed.
     ``policy_id`` (the policy's ``mp-`` id), ``policy_version`` and ``policy_target`` point at the
     policy the run was planned under, and ``policy_name`` is its name then, which a needs-attention
     mark keeps for display; without them (a run planned before policies had ids leaves

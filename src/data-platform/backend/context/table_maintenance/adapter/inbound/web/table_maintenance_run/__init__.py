@@ -11,7 +11,6 @@ from context.table_maintenance.adapter.inbound.web.table_maintenance_run.dto imp
     TableMaintenanceRunApiResponse,
     TableMaintenanceRunAttemptApiResponse,
     TableMaintenanceRunFilterApiResponse,
-    TableMaintenanceRunOperationApiResponse,
 )
 from context.table_maintenance.adapter.inbound.web.table_maintenance_run.platform_settings_router import (
     platform_settings_router,
@@ -29,7 +28,6 @@ __all__ = [
     "TableMaintenanceRunApiResponse",
     "TableMaintenanceRunAttemptApiResponse",
     "TableMaintenanceRunFilterApiResponse",
-    "TableMaintenanceRunOperationApiResponse",
     "platform_settings_router",
     "router",
 ]

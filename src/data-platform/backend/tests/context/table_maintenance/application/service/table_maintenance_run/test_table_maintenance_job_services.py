@@ -12,6 +12,7 @@ import pytest
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    SpecFilter,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -23,6 +24,7 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
     TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    RunStatus,
     TableMaintenanceRun,
     TableMaintenanceRunId,
     TriggerType,
@@ -35,6 +37,7 @@ from context.table_maintenance.application.exceptions import (
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     DeleteMaintenanceJobUseCaseInput,
     GetMaintenanceJobStatusUseCaseInput,
+    ProcessTableMaintenanceCallbackUseCaseInput,
     RecordTableMaintenanceOperationResultUseCaseInput,
     SubmitMaintenanceOperationUseCaseInput,
 )
@@ -47,6 +50,7 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
 from context.table_maintenance.application.service.table_maintenance_run import (
     DeleteMaintenanceJobService,
     GetMaintenanceJobStatusService,
+    ProcessTableMaintenanceCallbackService,
     RecordTableMaintenanceOperationResultService,
     SubmitMaintenanceOperationService,
 )
@@ -70,6 +74,7 @@ UNKNOWN_RUN = "mr-7zzzzzzzzzzzzzzzzzzzzzzzzz"
 NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 KEY = ("iceberg", "sales", "orders")
 OPS = MaintenanceOperation
+EU = SpecFilter(spec_id=0, where="(`region` = 'eu')")
 
 
 def _table(repo, now, settings=None, uuid="u-1", name=NAME):
@@ -78,20 +83,32 @@ def _table(repo, now, settings=None, uuid="u-1", name=NAME):
     return table
 
 
-@pytest.fixture
-def run(runs_repo, tables_repo, now):
-    """Provide a stored run with a rewrite data files operation."""
-    _table(tables_repo, now)
+def _stored_run(
+    runs_repo, now, operation=OPS.REWRITE_DATA_FILES, trigger=TriggerType.SCHEDULED, **kwargs
+) -> TableMaintenanceRun:
     created = TableMaintenanceRun.create(
         TableMaintenanceRunId(RUN_1),
         TableId("u-1"),
-        TriggerType.SCHEDULED,
-        [OPS.REWRITE_DATA_FILES, OPS.EXPIRE_SNAPSHOTS],
+        trigger,
+        operation,
         now,
         execution_ref="wf-run-1",
+        **kwargs,
     )
     runs_repo.create(created)
     return created
+
+
+@pytest.fixture
+def run(runs_repo, tables_repo, now):
+    """Provide a stored compaction run of two partition specs, with its procedure arguments."""
+    _table(tables_repo, now)
+    return _stored_run(
+        runs_repo,
+        now,
+        filters=[SpecFilter(spec_id=0, where="a = 1"), SpecFilter(spec_id=1, where="b = 2")],
+        procedure_args={"min-input-files": 2},
+    )
 
 
 @pytest.fixture
@@ -100,20 +117,11 @@ def submitter(runs_repo, tables_repo, submit_job):
     return SubmitMaintenanceOperationService(runs_repo, tables_repo, submit_job)
 
 
-def _filter(spec_id, where):
-    return SubmitMaintenanceOperationUseCaseInput.Filter(spec_id=spec_id, where=where)
-
-
 def _submit(submitter, now, **overrides):
     fields: dict[str, Any] = {
         "run_id": RUN_1,
         "operation": "rewrite_data_files",
         "attempt": 1,
-        "filters": (
-            SubmitMaintenanceOperationUseCaseInput.Filter(spec_id=0, where="a = 1"),
-            SubmitMaintenanceOperationUseCaseInput.Filter(spec_id=1, where="b = 2"),
-        ),
-        "procedure_args": {"min-input-files": 2},
         "callback_base_url": "http://tm.example:8000/",
         "now": now,
     }
@@ -134,11 +142,36 @@ def test_submit_submits_job_then_records_attempt_with_its_job_name(submitter, ru
     assert (job.catalog, job.namespace, job.table) == ("iceberg", "sales", "orders")
     assert job.where == ["a = 1", "b = 2"]
     assert job.procedure_args == {"min-input-files": 2}
-    assert job.callback_url == (
-        f"http://tm.example:8000/v1/table-maintenance-runs/{RUN_1}/operations/rewrite_data_files/result"
+    assert len(run.attempts) == 1
+    assert run.attempts[0].job_name == out.job_name
+
+
+def test_submit_builds_the_run_result_callback_url(submitter, run, submit_job, now):
+    """The job posts its result to the run's own result route, which names no operation."""
+    out = _submit(submitter, now)
+    assert submit_job.jobs[out.job_name].callback_url == (
+        f"http://tm.example:8000/v1/table-maintenance-runs/{RUN_1}/result"
     )
-    op = run.operations[0]
-    assert (op.attempts, op.job_name) == (1, out.job_name)
+
+
+def test_submit_takes_the_where_and_the_arguments_from_the_run(submitter, runs_repo, tables_repo, submit_job, now):
+    """The job is submitted with the where clauses and the arguments the run recorded."""
+    _table(tables_repo, now)
+    _stored_run(runs_repo, now, filters=[EU], procedure_args={"options": {"min-input-files": "2"}})
+    _submit(submitter, now)
+    (call,) = submit_job.calls
+    assert call.where == ["(`region` = 'eu')"]
+    assert call.procedure_args == {"options": {"min-input-files": "2"}}
+
+
+def test_submit_refuses_another_operation(submitter, runs_repo, tables_repo, submit_job, now):
+    """A submit naming an operation the run does not run is a conflict and submits nothing."""
+    _table(tables_repo, now)
+    _stored_run(runs_repo, now, operation=OPS.EXPIRE_SNAPSHOTS)
+    with pytest.raises(ConflictError, match=f"run {RUN_1} does not run rewrite_data_files"):
+        _submit(submitter, now)
+    assert submit_job.calls == []
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempts == ()
 
 
 def test_submit_records_the_attempt_before_submitting_then_attaches_the_job(
@@ -162,7 +195,7 @@ def test_submit_never_calls_the_gateway_for_a_rejected_attempt(submitter, run, r
     with pytest.raises(ConflictError):
         _submit(submitter, now, operation="remove_orphan_files")
     assert submit_job.calls == []
-    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).operations[0].attempts == 0
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempts == ()
 
 
 class _FailingSubmitGateway(SubmitMaintenanceJobGateway):
@@ -196,22 +229,26 @@ def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(
             now=now,
         )
     )
-    op = runs_repo.get(TableMaintenanceRunId(RUN_1)).operations[0]
-    assert (op.status.value, op.attempts) == ("failed", 1)
+    stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
+    assert (stored.status, len(stored.attempts)) == (RunStatus.FAILED, 1)
     working = SubmitMaintenanceOperationService(runs_repo, tables_repo, submit_job)
     out = _submit(working, now, attempt=2)
     assert out.job_name == f"job-{RUN_1}-rewrite_data_files-2"
 
 
-def test_submit_whole_table_filter_means_no_where(submitter, run, submit_job, now):
+def test_submit_whole_table_filter_means_no_where(submitter, runs_repo, tables_repo, submit_job, now):
     """A whole table filter submits the job without a where clause."""
-    _submit(submitter, now, filters=(_filter(0, ""),))
+    _table(tables_repo, now)
+    _stored_run(runs_repo, now, filters=[SpecFilter(spec_id=0, where="")])
+    _submit(submitter, now)
     assert next(iter(submit_job.jobs.values())).where == []
 
 
-def test_submit_any_empty_where_makes_the_whole_table_the_target(submitter, run, submit_job, now):
+def test_submit_any_empty_where_makes_the_whole_table_the_target(submitter, runs_repo, tables_repo, submit_job, now):
     """If any filter has an empty where clause the job targets the whole table."""
-    _submit(submitter, now, filters=(_filter(0, "a = 1"), _filter(1, "")))
+    _table(tables_repo, now)
+    _stored_run(runs_repo, now, filters=[SpecFilter(spec_id=0, where="a = 1"), SpecFilter(spec_id=1, where="")])
+    _submit(submitter, now)
     assert next(iter(submit_job.jobs.values())).where == []
 
 
@@ -222,8 +259,7 @@ def test_retried_submit_leaves_one_job_and_records_the_attempt_once(submitter, r
     assert first == second
     assert len(submit_job.calls) == 2
     assert len(submit_job.jobs) == 1
-    op = run.operations[0]
-    assert (op.attempts, op.job_name) == (1, first.job_name)
+    assert [(a.attempt, a.job_name) for a in run.attempts] == [(1, first.job_name)]
 
 
 def test_retried_submit_after_a_lost_record_still_records_the_attempt(submitter, run, runs_repo, submit_job, now):
@@ -243,14 +279,14 @@ def test_retried_submit_after_a_lost_record_still_records_the_attempt(submitter,
     )
     out = _submit(submitter, now)
     assert len(submit_job.jobs) == 1
-    stored = runs_repo.get(TableMaintenanceRunId(RUN_1)).operations[0]
-    assert (stored.attempts, stored.job_name) == (1, out.job_name)
+    stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
+    assert [(a.attempt, a.job_name) for a in stored.attempts] == [(1, out.job_name)]
 
 
 def test_submit_next_attempt_uses_a_new_job_name(submitter, run, submit_job, now):
     """The next attempt submits a job with a new name."""
     _submit(submitter, now)
-    run.fail(OPS.REWRITE_DATA_FILES, 1, "boom", now)
+    run.fail(1, "boom", now)
     out = _submit(submitter, now, attempt=2)
     assert out.job_name == f"job-{RUN_1}-rewrite_data_files-2"
     assert len(submit_job.jobs) == 2
@@ -268,6 +304,33 @@ def test_submit_rejects_bad_requests(submitter, run, submit_job, tables_repo, no
         _submit(submitter, now)
 
 
+# --- callback ---
+
+
+def _callback(operation: str | None) -> ProcessTableMaintenanceCallbackUseCaseInput:
+    return ProcessTableMaintenanceCallbackUseCaseInput(
+        run_id=RUN_1, operation=operation, attempt=1, succeeded=True, metrics={}, error=None
+    )
+
+
+def test_callback_forwards_the_runs_operation_when_the_body_names_none(runs_repo, tables_repo, results, now):
+    """A callback that names no operation is forwarded with the run's own."""
+    _table(tables_repo, now)
+    _stored_run(runs_repo, now, operation=OPS.EXPIRE_SNAPSHOTS)
+    ProcessTableMaintenanceCallbackService(runs_repo, results).execute(_callback(None))
+    (call,) = results.calls
+    assert call.operation == "expire_snapshots"
+
+
+def test_callback_refuses_another_operation(runs_repo, tables_repo, results, now):
+    """A callback naming an operation the run does not run is invalid and sends nothing."""
+    _table(tables_repo, now)
+    _stored_run(runs_repo, now, operation=OPS.EXPIRE_SNAPSHOTS)
+    with pytest.raises(ValidationError, match="the run's operation is expire_snapshots"):
+        ProcessTableMaintenanceCallbackService(runs_repo, results).execute(_callback("rewrite_data_files"))
+    assert results.calls == []
+
+
 # --- job status / delete ---
 
 
@@ -275,10 +338,10 @@ def _status_input(run_id=RUN_1, operation="rewrite_data_files", attempt=1):
     return GetMaintenanceJobStatusUseCaseInput(run_id=run_id, operation=operation, attempt=attempt)
 
 
-def test_get_job_status_passes_state_and_error_through(read_job):
+def test_get_job_status_passes_state_and_error_through(runs_repo, run, read_job):
     """The job status service passes the state and error of the gateway through."""
     read_job.set_state(RUN_1, "rewrite_data_files", 1, "FAILED", "OOM")
-    service = GetMaintenanceJobStatusService(read_job, ScriptedReadMaintenanceJobPodsGateway())
+    service = GetMaintenanceJobStatusService(runs_repo, read_job, ScriptedReadMaintenanceJobPodsGateway())
     out = service.execute(_status_input())
     assert (out.state, out.error) == ("FAILED", "OOM")
     missing = service.execute(_status_input(attempt=2))
@@ -289,56 +352,78 @@ def test_get_job_status_passes_state_and_error_through(read_job):
     ]
 
 
-def test_get_job_status_rejects_unknown_state(read_job):
+def test_get_job_status_rejects_unknown_state(runs_repo, run, read_job):
     """A job state the service does not know raises a ValidationError."""
     read_job.set_state(RUN_1, "rewrite_data_files", 1, "WEIRD")
     with pytest.raises(ValidationError):
-        GetMaintenanceJobStatusService(read_job, ScriptedReadMaintenanceJobPodsGateway()).execute(_status_input())
+        GetMaintenanceJobStatusService(runs_repo, read_job, ScriptedReadMaintenanceJobPodsGateway()).execute(
+            _status_input()
+        )
 
 
-@pytest.mark.parametrize(("operation", "attempt"), [("nope", 1), ("expire_snapshots", 0)])
-def test_get_job_status_rejects_invalid_operation_or_attempt(read_job, operation, attempt):
+@pytest.mark.parametrize(("operation", "attempt"), [("nope", 1), ("rewrite_data_files", 0)])
+def test_get_job_status_rejects_invalid_operation_or_attempt(runs_repo, run, read_job, operation, attempt):
     """An invalid operation or attempt is rejected before the gateway is called."""
     with pytest.raises(ValidationError):
-        GetMaintenanceJobStatusService(read_job, ScriptedReadMaintenanceJobPodsGateway()).execute(
+        GetMaintenanceJobStatusService(runs_repo, read_job, ScriptedReadMaintenanceJobPodsGateway()).execute(
             _status_input(operation=operation, attempt=attempt)
         )
     assert read_job.calls == []
 
 
-def test_job_status_reports_the_driver_start(read_job):
+def test_get_job_status_refuses_another_operation(runs_repo, run, read_job):
+    """A status read naming an operation the run does not run is a conflict and reads nothing."""
+    with pytest.raises(ConflictError, match=f"run {RUN_1} does not run expire_snapshots"):
+        GetMaintenanceJobStatusService(runs_repo, read_job, ScriptedReadMaintenanceJobPodsGateway()).execute(
+            _status_input(operation="expire_snapshots")
+        )
+    assert read_job.calls == []
+
+
+def test_get_job_status_of_an_unknown_run_is_not_found(runs_repo, read_job):
+    """A status read for a run that does not exist raises NotFoundError and reads nothing."""
+    with pytest.raises(NotFoundError):
+        GetMaintenanceJobStatusService(runs_repo, read_job, ScriptedReadMaintenanceJobPodsGateway()).execute(
+            _status_input(run_id=UNKNOWN_RUN)
+        )
+    assert read_job.calls == []
+
+
+def test_job_status_reports_the_driver_start(runs_repo, run, read_job):
     """A job that exists reports when its driver started, read from the pods."""
     pods = ScriptedReadMaintenanceJobPodsGateway()
     started = datetime(2026, 11, 20, 3, 0, 5, tzinfo=UTC)
     read_job.set_state(RUN_1, "rewrite_data_files", 1, "RUNNING")
     pods.set_driver_started_at(RUN_1, "rewrite_data_files", 1, started.isoformat())
 
-    out = GetMaintenanceJobStatusService(read_job, pods).execute(_status_input())
+    out = GetMaintenanceJobStatusService(runs_repo, read_job, pods).execute(_status_input())
 
     assert (out.state, out.driver_started_at) == ("RUNNING", started)
     assert [(c.run_id, c.operation, c.attempt) for c in pods.calls] == [(RUN_1, "rewrite_data_files", 1)]
 
 
-def test_job_status_without_a_started_driver_has_no_driver_start(read_job):
+def test_job_status_without_a_started_driver_has_no_driver_start(runs_repo, run, read_job):
     """A job whose driver has not started reports no driver start."""
     read_job.set_state(RUN_1, "rewrite_data_files", 1, "PENDING")
 
-    out = GetMaintenanceJobStatusService(read_job, ScriptedReadMaintenanceJobPodsGateway()).execute(_status_input())
+    out = GetMaintenanceJobStatusService(runs_repo, read_job, ScriptedReadMaintenanceJobPodsGateway()).execute(
+        _status_input()
+    )
 
     assert (out.state, out.driver_started_at) == ("PENDING", None)
 
 
-def test_job_status_of_a_missing_job_reads_no_pods(read_job):
+def test_job_status_of_a_missing_job_reads_no_pods(runs_repo, run, read_job):
     """A job that is gone reads no pods."""
     pods = ScriptedReadMaintenanceJobPodsGateway()
 
-    out = GetMaintenanceJobStatusService(read_job, pods).execute(_status_input())
+    out = GetMaintenanceJobStatusService(runs_repo, read_job, pods).execute(_status_input())
 
     assert (out.state, out.driver_started_at) == ("NOT_FOUND", None)
     assert pods.calls == []
 
 
-def test_job_status_survives_a_failed_pods_read(read_job, caplog):
+def test_job_status_survives_a_failed_pods_read(runs_repo, run, read_job, caplog):
     """A pods read that fails keeps the state and leaves the driver start out, logged as an error with its traceback.
 
     Without the driver start the attempt stays queued, so the error must be visible.
@@ -348,7 +433,7 @@ def test_job_status_survives_a_failed_pods_read(read_job, caplog):
     read_job.set_state(RUN_1, "rewrite_data_files", 1, "RUNNING")
 
     with caplog.at_level(logging.ERROR):
-        out = GetMaintenanceJobStatusService(read_job, pods).execute(_status_input())
+        out = GetMaintenanceJobStatusService(runs_repo, read_job, pods).execute(_status_input())
 
     assert (out.state, out.driver_started_at) == ("RUNNING", None)
     [record] = [r for r in caplog.records if "cannot read the pods" in r.getMessage()]
@@ -357,22 +442,22 @@ def test_job_status_survives_a_failed_pods_read(read_job, caplog):
     assert record.exc_info[1] is pods.error
 
 
-def test_job_status_survives_a_driver_start_it_cannot_read(read_job, caplog):
+def test_job_status_survives_a_driver_start_it_cannot_read(runs_repo, run, read_job, caplog):
     """A driver start the pods report in a form that is not a time is logged and left unknown; the state answers."""
     pods = ScriptedReadMaintenanceJobPodsGateway()
     read_job.set_state(RUN_1, "rewrite_data_files", 1, "RUNNING")
     pods.set_driver_started_at(RUN_1, "rewrite_data_files", 1, "not-a-time")
 
     with caplog.at_level(logging.ERROR):
-        out = GetMaintenanceJobStatusService(read_job, pods).execute(_status_input())
+        out = GetMaintenanceJobStatusService(runs_repo, read_job, pods).execute(_status_input())
 
     assert (out.state, out.driver_started_at) == ("RUNNING", None)
     assert [r for r in caplog.records if "cannot read the pods" in r.getMessage()]
 
 
-def test_delete_job_forwards_the_attempt_to_the_gateway(delete_job):
+def test_delete_job_forwards_the_attempt_to_the_gateway(runs_repo, run, delete_job):
     """Deleting a job forwards the run, operation and attempt to the gateway."""
-    out = DeleteMaintenanceJobService(delete_job).execute(
+    out = DeleteMaintenanceJobService(runs_repo, delete_job).execute(
         DeleteMaintenanceJobUseCaseInput(run_id=RUN_1, operation="rewrite_data_files", attempt=2)
     )
     assert (out.run_id, out.operation, out.attempt) == (
@@ -383,12 +468,30 @@ def test_delete_job_forwards_the_attempt_to_the_gateway(delete_job):
     assert [(c.run_id, c.operation, c.attempt) for c in delete_job.calls] == [(RUN_1, "rewrite_data_files", 2)]
 
 
-@pytest.mark.parametrize(("operation", "attempt"), [("nope", 1), ("expire_snapshots", 0)])
-def test_delete_job_rejects_invalid_operation_or_attempt(delete_job, operation, attempt):
+@pytest.mark.parametrize(("operation", "attempt"), [("nope", 1), ("rewrite_data_files", 0)])
+def test_delete_job_rejects_invalid_operation_or_attempt(runs_repo, run, delete_job, operation, attempt):
     """An invalid operation or attempt is rejected before the gateway is called."""
     with pytest.raises(ValidationError):
-        DeleteMaintenanceJobService(delete_job).execute(
+        DeleteMaintenanceJobService(runs_repo, delete_job).execute(
             DeleteMaintenanceJobUseCaseInput(run_id=RUN_1, operation=operation, attempt=attempt)
+        )
+    assert delete_job.calls == []
+
+
+def test_delete_job_refuses_another_operation(runs_repo, run, delete_job):
+    """A delete naming an operation the run does not run is a conflict and deletes nothing."""
+    with pytest.raises(ConflictError, match=f"run {RUN_1} does not run expire_snapshots"):
+        DeleteMaintenanceJobService(runs_repo, delete_job).execute(
+            DeleteMaintenanceJobUseCaseInput(run_id=RUN_1, operation="expire_snapshots", attempt=1)
+        )
+    assert delete_job.calls == []
+
+
+def test_delete_job_of_an_unknown_run_is_not_found(runs_repo, delete_job):
+    """A delete for a run that does not exist raises NotFoundError and deletes nothing."""
+    with pytest.raises(NotFoundError):
+        DeleteMaintenanceJobService(runs_repo, delete_job).execute(
+            DeleteMaintenanceJobUseCaseInput(run_id=UNKNOWN_RUN, operation="rewrite_data_files", attempt=1)
         )
     assert delete_job.calls == []
 
@@ -442,16 +545,7 @@ def test_submit_does_not_overwrite_a_run_cancelled_during_the_submit(tables_repo
     """A run recorded as failed during the submit is not overwritten when the job name is attached."""
     runs_repo = _CopyingRunsRepo()
     _table(tables_repo, now)
-    runs_repo.create(
-        TableMaintenanceRun.create(
-            TableMaintenanceRunId(RUN_1),
-            TableId("u-1"),
-            TriggerType.SCHEDULED,
-            [OPS.REWRITE_DATA_FILES],
-            now,
-            execution_ref="wf-run-1",
-        )
-    )
+    _stored_run(runs_repo, now)
     recorder = RecordTableMaintenanceOperationResultService(
         runs_repo,
         tables_repo,
@@ -467,15 +561,16 @@ def test_submit_does_not_overwrite_a_run_cancelled_during_the_submit(tables_repo
     )
     out = _submit(submitter, now)
     assert out.job_name == "job-cancelled"
-    op = runs_repo.get(TableMaintenanceRunId(RUN_1)).operations[0]
-    assert (op.status.value, op.attempts, op.job_name) == ("failed", 1, None)
+    stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
+    assert stored.status is RunStatus.FAILED
+    assert [(a.attempt, a.job_name) for a in stored.attempts] == [(1, None)]
 
 
 def test_submit_records_the_attempt_size(submitter, run, runs_repo, submit_job, now):
     """The attempt is recorded at its size and the job is submitted at it."""
     out = _submit(submitter, now, size="M")
     assert submit_job.jobs[out.job_name].size == "M"
-    record = runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(MaintenanceOperation.REWRITE_DATA_FILES, 1)
+    record = runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(1)
     assert record is not None
     assert record.size is ComputeSize.M
 
@@ -491,23 +586,13 @@ def test_submit_refuses_an_unknown_size(submitter, run, runs_repo, submit_job, n
     with pytest.raises(ValidationError, match="XL"):
         _submit(submitter, now, size="XL")
     assert submit_job.jobs == {}
-    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).operations[0].attempts == 0
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempts == ()
 
 
 def test_submit_passes_the_runs_priority(submitter, runs_repo, tables_repo, submit_job, now):
     """The job is submitted with the priority the run was created with."""
     _table(tables_repo, now)
-    runs_repo.create(
-        TableMaintenanceRun.create(
-            TableMaintenanceRunId(RUN_1),
-            TableId("u-1"),
-            TriggerType.MANUAL,
-            [OPS.REWRITE_DATA_FILES],
-            now,
-            execution_ref="wf-run-1",
-            priority=TablePriority.P1,
-        )
-    )
+    _stored_run(runs_repo, now, trigger=TriggerType.MANUAL, priority=TablePriority.P1)
     out = _submit(submitter, now)
     assert submit_job.jobs[out.job_name].priority == "P1"
 

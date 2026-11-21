@@ -22,7 +22,6 @@ export interface TableReconciliationApiResponse {
   policy_version: number;
   reconciled_at: string;
   reconciliation_id: string;
-  run_id: string | null;
   skip_reason: string | null;
   table_uuid: string;
   wake_reasons: TableReconciliationApiResponseWakeReasons;

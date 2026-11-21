@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class RaiseTableMaintenanceRunPriorityService(RaiseTableMaintenanceRunPriorityUseCase):
-    """Raise the priority of a maintenance run in flight, only upward, as a manual run asks."""
+    """Raise the priority of a maintenance run that has not ended, only upward, as a manual run asks."""
 
     def __init__(self, runs_repo: TableMaintenanceRunsRepo, tables_repo: TablesRepo) -> None:
         """Bind the runs and tables repos."""
@@ -33,8 +33,9 @@ class RaiseTableMaintenanceRunPriorityService(RaiseTableMaintenanceRunPriorityUs
     ) -> RaiseTableMaintenanceRunPriorityUseCaseOutput:
         """Raise the run to the priority asked for, or to its table's priority when none is named.
 
-        The run is saved only when it was raised: an equal or lower priority, a finished run, or no
-        priority for a table that no longer exists changes nothing.
+        A pending run, a run in flight and a failed run with a retry to follow take the raise. The run is
+        saved only when it was raised: an equal or lower priority, a run that has ended, or no priority for a
+        table that no longer exists changes nothing.
         """
         try:
             asked = None if request.priority is None else TablePriority(request.priority)

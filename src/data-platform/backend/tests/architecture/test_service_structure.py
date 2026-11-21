@@ -39,6 +39,7 @@ UTILITY_FILES = {
     "attention_policy_names.py",
     "table_maintenance_run_output_fields.py",
     "maintenance_procedure_args.py",
+    "require_run_operation.py",
     "compaction_share.py",
     "table_observation_from_gateway.py",
     "register_discovered_table.py",
@@ -116,6 +117,7 @@ KNOWN_VERBS = {
     "Record",
     "Release",
     "Set",
+    "Skip",
 }
 
 

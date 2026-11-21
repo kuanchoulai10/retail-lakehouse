@@ -21,10 +21,17 @@ function runWithStatus(status: string): TableMaintenanceRunApiResponse {
     execution_ref: "table-maintenance:table-uuid=uuid-orders",
     trigger: "manual",
     priority: "P3",
+    operation: "rewrite_data_files",
     status,
     created_at: "2026-11-20T10:00:00Z",
+    started_at: null,
     finished_at: null,
-    operations: [],
+    filters: [],
+    procedure_args: {},
+    metrics: {},
+    error: null,
+    skip_reason: null,
+    attempts: [],
   };
 }
 

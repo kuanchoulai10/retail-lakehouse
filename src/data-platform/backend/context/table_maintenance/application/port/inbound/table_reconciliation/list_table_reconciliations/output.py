@@ -21,12 +21,13 @@ class ListTableReconciliationsUseCaseOutput(UseCaseOutput):
         met: bool | None
 
     class Operation(UseCaseOutput):
-        """What a reconciliation measured and decided for one operation."""
+        """What a reconciliation measured and decided for one operation; ``run_id`` is the run it started."""
 
         operation: str
         result: str
         measurements: tuple[ListTableReconciliationsUseCaseOutput.Measurement, ...]
         next_eligible_at: datetime | None
+        run_id: str | None
 
     class PolicyTarget(UseCaseOutput):
         """Where the policy a reconciliation used was attached."""
@@ -50,7 +51,6 @@ class ListTableReconciliationsUseCaseOutput(UseCaseOutput):
         outcome: str
         skip_reason: str | None
         operations: tuple[ListTableReconciliationsUseCaseOutput.Operation, ...]
-        run_id: str | None
         policy_id: str
         policy_name: str
         policy_deleted: bool

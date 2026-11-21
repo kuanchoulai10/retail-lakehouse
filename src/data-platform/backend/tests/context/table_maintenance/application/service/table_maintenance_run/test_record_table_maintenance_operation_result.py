@@ -33,7 +33,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     TableMaintenanceRunId,
     TriggerType,
 )
-from context.table_maintenance.application.exceptions import ValidationError
+from context.table_maintenance.application.exceptions import ConflictError, ValidationError
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     RecordTableMaintenanceOperationResultUseCaseInput,
 )
@@ -118,12 +118,12 @@ def recorder(runs_repo, tables_repo, evidence, event_log, resolve_applicable_pol
 def _run(runs_repo, table, now, *sizes: ComputeSize) -> TableMaintenanceRun:
     """Store a run whose rewrite operation has failed every size but the last, which is running."""
     run = TableMaintenanceRun.create(
-        TableMaintenanceRunId(RUN_1), table.id, TriggerType.SCHEDULED, [RDF], now, execution_ref="wf-1"
+        TableMaintenanceRunId(RUN_1), table.id, TriggerType.SCHEDULED, RDF, now, execution_ref="wf-1"
     )
     for attempt, size in enumerate(sizes, start=1):
         if attempt > 1:
-            run.fail(RDF, attempt - 1, "earlier", now)
-        run.start_attempt(RDF, attempt, f"job-{attempt}", now, size=size)
+            run.fail(attempt - 1, "earlier", now)
+        run.start_attempt(attempt, f"job-{attempt}", now, size=size)
     runs_repo.create(run)
     return run
 
@@ -151,7 +151,7 @@ def test_oom_text_is_classified_and_retried_at_the_next_size(recorder, runs_repo
     _run(runs_repo, table, now, ComputeSize.S)
     out = _record(recorder, now)
     assert (out.failure_class, out.next_step, out.next_size) == ("oom", "retry_larger", "M")
-    record = runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1)
+    record = runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(1)
     assert (record.failure_class, record.next_step, record.next_size, record.error) == (
         FailureClass.OOM,
         NextStep.RETRY_LARGER,
@@ -183,15 +183,15 @@ def test_event_log_state_is_recorded_on_the_attempt(recorder, runs_repo, table, 
     evidence.set_evidence(RUN_1, "rewrite_data_files", 1, _evidence())
     event_log.finished[APP_ID] = False
     _record(recorder, now)
-    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1).event_log_finished is False
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(1).event_log_finished is False
 
     run = runs_repo.get(TableMaintenanceRunId(RUN_1))
-    run.start_attempt(RDF, 2, "job-2", now, size=ComputeSize.M)
+    run.start_attempt(2, "job-2", now, size=ComputeSize.M)
     runs_repo.update(run)
     evidence.set_evidence(RUN_1, "rewrite_data_files", 2, _evidence("spark-0002"))
     event_log.finished["spark-0002"] = True
     _record(recorder, now, attempt=2, succeeded=True, error=None)
-    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 2).event_log_finished is True
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(2).event_log_finished is True
     assert len(event_log.calls) == 2
 
 
@@ -199,7 +199,7 @@ def test_no_execution_id_leaves_the_event_log_unknown_without_reading_it(recorde
     """An attempt whose job has no execution id records an unknown event log state and reads no log."""
     _run(runs_repo, table, now, ComputeSize.S)
     _record(recorder, now)
-    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1).event_log_finished is None
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(1).event_log_finished is None
     assert event_log.calls == []
 
 
@@ -227,7 +227,7 @@ def test_unreadable_evidence_still_records_the_attempt(recorder, runs_repo, tabl
     evidence.error = RuntimeError("k8s down")
     out = _record(recorder, now)
     assert out.failure_class == "oom"
-    record = runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1)
+    record = runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(1)
     assert record.status.value == "failed"
     assert record.event_log_finished is None
     assert event_log.calls == []
@@ -239,7 +239,7 @@ def test_unreadable_event_log_still_records_the_attempt(recorder, runs_repo, tab
     evidence.set_evidence(RUN_1, "rewrite_data_files", 1, _evidence())
     event_log.error = OSError("rustfs down")
     _record(recorder, now)
-    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1).event_log_finished is None
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(1).event_log_finished is None
 
 
 def test_oom_at_l_marks_the_operation_needs_attention_under_the_applicable_policy(
@@ -301,7 +301,7 @@ def test_a_stale_attempt_returns_its_stored_decision(recorder, runs_repo, table,
     run = _run(runs_repo, table, now, ComputeSize.S)
     _record(recorder, now)
     run = runs_repo.get(run.id)
-    run.start_attempt(RDF, 2, "job-2", now, size=ComputeSize.M)
+    run.start_attempt(2, "job-2", now, size=ComputeSize.M)
     runs_repo.update(run)
     out = _record(recorder, now, error="late", attempt=1)
     assert (out.failure_class, out.next_step, out.next_size) == ("oom", "retry_larger", "M")
@@ -440,7 +440,7 @@ def test_a_result_takes_the_driver_start_from_the_evidence(recorder, runs_repo, 
         ReadMaintenanceJobEvidenceGatewayOutput(execution_id=APP_ID, error=None, driver_started_at=started.isoformat()),
     )
     _record(recorder, now + timedelta(hours=1), succeeded=True, error=None)
-    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1).started_running_at == started
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(1).started_running_at == started
 
 
 def test_a_failure_takes_the_driver_start_from_the_evidence(recorder, runs_repo, table, evidence, now):
@@ -454,11 +454,21 @@ def test_a_failure_takes_the_driver_start_from_the_evidence(recorder, runs_repo,
         ReadMaintenanceJobEvidenceGatewayOutput(execution_id=APP_ID, error=None, driver_started_at=started.isoformat()),
     )
     _record(recorder, now + timedelta(hours=1), ended_by="job_failed")
-    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1).started_running_at == started
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(1).started_running_at == started
 
 
 def test_a_result_without_driver_evidence_leaves_the_running_time_unset(recorder, runs_repo, table, now):
     """An attempt whose job left no driver start has no running time."""
     _run(runs_repo, table, now, ComputeSize.S)
     _record(recorder, now + timedelta(hours=1), succeeded=True, error=None)
-    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1).started_running_at is None
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(1).started_running_at is None
+
+
+def test_another_operation_is_a_conflict(recorder, runs_repo, tables_repo, evidence, table, now):
+    """A result naming an operation the run does not run is refused and changes neither the run nor the table."""
+    _run(runs_repo, table, now, ComputeSize.S)
+    with pytest.raises(ConflictError, match=f"run {RUN_1} does not run expire_snapshots"):
+        _record(recorder, now, operation="expire_snapshots")
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).status.value == "queued"
+    assert evidence.calls == []
+    assert tables_repo.get(TableId("u-1")).operation_states == {}

@@ -8,9 +8,10 @@ from base import UseCaseInput
 
 
 class RecordMaintenanceAttemptRunningUseCaseInput(UseCaseInput):
-    """Carry the request to record that the driver of an operation attempt started running.
+    """Carry the request to record that the driver of a run's attempt started running.
 
-    ``started_running_at`` is when the driver container started and ``now`` is when it was read.
+    ``operation`` must be the run's own. ``started_running_at`` is when the driver container started and
+    ``now`` is when it was read.
     """
 
     run_id: str

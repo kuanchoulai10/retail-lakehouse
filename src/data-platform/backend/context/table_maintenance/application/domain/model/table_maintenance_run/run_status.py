@@ -6,11 +6,15 @@ from enum import StrEnum
 
 
 class RunStatus(StrEnum):
-    """Enumerate the derived status of a maintenance run."""
+    """Enumerate the status of a maintenance run and of each of its attempts.
+
+    A run is pending until its first attempt is submitted and skipped when it never starts. An attempt is
+    only ever queued, running, succeeded or failed.
+    """
 
     PENDING = "pending"
     QUEUED = "queued"
     RUNNING = "running"
     SUCCEEDED = "succeeded"
-    PARTIALLY_FAILED = "partially_failed"
     FAILED = "failed"
+    SKIPPED = "skipped"

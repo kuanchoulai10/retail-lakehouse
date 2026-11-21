@@ -14,4 +14,6 @@ export interface ReconciliationOperationApiResponse {
   next_eligible_at: string | null;
   operation: string;
   result: string;
+  /** The mr- id of the maintenance run this operation started; set only when result is started. */
+  run_id: string | null;
 }

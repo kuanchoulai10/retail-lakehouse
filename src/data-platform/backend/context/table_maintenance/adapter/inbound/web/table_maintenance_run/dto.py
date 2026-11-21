@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class TableMaintenanceRunAttemptApiResponse(BaseModel):
-    """Describe one attempt of a maintenance operation: its size, how it ended and what followed it."""
+    """Describe one attempt of a maintenance run: its job, size, how it ended and what followed it."""
 
     model_config = ConfigDict(from_attributes=True)
 
     attempt: int
     size: str | None
     status: str
+    job_name: str | None
     started_at: datetime
     started_running_at: datetime | None = Field(
         description="When the attempt's Spark driver started running; null while the attempt waits in its queue."
@@ -36,31 +38,8 @@ class TableMaintenanceRunFilterApiResponse(BaseModel):
     where: str
 
 
-class TableMaintenanceRunOperationApiResponse(BaseModel):
-    """Describe one operation of a maintenance run, its latest attempt and every attempt it made."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    operation: str
-    status: str
-    attempts: int
-    started_at: datetime | None
-    finished_at: datetime | None
-    job_name: str | None
-    metrics: dict[str, int]
-    error: str | None
-    expected_files: int | None
-    attempt_history: list[TableMaintenanceRunAttemptApiResponse]
-    filters: list[TableMaintenanceRunFilterApiResponse] = Field(
-        description=(
-            "The where clauses each job of this operation passes to rewrite_data_files, "
-            "one per partition spec; empty: the whole table."
-        )
-    )
-
-
 class TableMaintenanceRunApiResponse(BaseModel):
-    """Describe a maintenance run."""
+    """Describe a maintenance run: one operation on one table, and the attempts that make up its timeline."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -69,10 +48,24 @@ class TableMaintenanceRunApiResponse(BaseModel):
     execution_ref: str
     trigger: str
     priority: str = Field(description="The priority this run was started with, `P0` to `P3`.")
+    operation: str = Field(description="The one operation this run does.")
     status: str
-    operations: list[TableMaintenanceRunOperationApiResponse]
+    filters: list[TableMaintenanceRunFilterApiResponse] = Field(
+        description=(
+            "The where clauses each job of this run passes to rewrite_data_files, "
+            "one per partition spec; empty: the whole table."
+        )
+    )
+    procedure_args: dict[str, Any] = Field(
+        description="The arguments this run passes to the Iceberg procedure, besides the where clauses."
+    )
+    metrics: dict[str, int] = Field(description="The numbers the procedure returned.")
+    error: str | None
+    skip_reason: str | None = Field(description="Why the run was skipped; set only when status is skipped.")
     created_at: datetime
+    started_at: datetime | None = Field(description="When the first attempt was submitted; null while pending.")
     finished_at: datetime | None
+    attempts: list[TableMaintenanceRunAttemptApiResponse] = Field(description="Every attempt, oldest first.")
 
 
 class ProcessTableMaintenanceCallbackApiRequest(BaseModel):

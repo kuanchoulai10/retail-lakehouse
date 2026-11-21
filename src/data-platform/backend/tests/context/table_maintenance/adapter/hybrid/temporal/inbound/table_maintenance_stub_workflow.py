@@ -62,7 +62,7 @@ class TableMaintenanceStubWorkflow:
         await handle.signal(
             TableReconciliationSignal.MAINTENANCE_FINISHED,
             {
-                "run_id": input.run_id,
+                "run_ids": input.run_ids,
                 "record_failures": 0,
                 "unapplied_raise": unapplied,
                 "raises_received": len(self._raises),
@@ -86,9 +86,9 @@ class TableMaintenanceStubWorkflow:
 
     @workflow.query
     def started_with(self) -> dict:
-        """Query returning the run, table, parent and trigger the workflow started with."""
+        """Query returning the runs, table, parent and trigger the workflow started with."""
         return {
-            "run_id": self._input.run_id,
+            "run_ids": self._input.run_ids,
             "table_uuid": self._input.table_uuid,
             "parent_workflow_id": self._input.parent_workflow_id,
             "trigger": self._input.trigger,

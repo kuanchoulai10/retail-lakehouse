@@ -34,7 +34,6 @@ from context.table_maintenance.application.domain.service.table_maintenance_run 
     decide_next_attempt,
 )
 from context.table_maintenance.application.exceptions import (
-    ConflictError,
     NotFoundError,
     ValidationError,
 )
@@ -51,6 +50,9 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
     ReadMaintenanceJobEvidenceGatewayInput,
 )
 from context.table_maintenance.application.service.shared import applied_policy_ref_of, translate_domain_errors
+from context.table_maintenance.application.service.table_maintenance_run.require_run_operation import (
+    require_run_operation,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -60,7 +62,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table import Table
     from context.table_maintenance.application.domain.model.table_maintenance_run import (
         OperationAttempt,
-        OperationRun,
         TableMaintenanceRun,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
@@ -84,7 +85,7 @@ _NEEDS_ATTENTION_REASON = "out of memory at size L"
 
 
 class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperationResultUseCase):
-    """Record the outcome of an operation attempt, why it failed and what follows it, on the run and the table."""
+    """Record the outcome of a run's attempt, why it failed and what follows it, on the run and the table."""
 
     def __init__(
         self,
@@ -117,7 +118,8 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         nothing and returns what the run holds for that attempt, but still brings
         the table up to date, so a retry after a crash between the two saves
         loses no table update; the table takes each attempt in once. A stale
-        lower attempt changes nothing.
+        lower attempt changes nothing. A result naming an operation other than
+        the run's is a conflict and changes nothing.
         """
         try:
             operation = MaintenanceOperation(request.operation)
@@ -127,22 +129,19 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         run = self._runs_repo.get(TableMaintenanceRunId(request.run_id))
         if run is None:
             raise NotFoundError(f"maintenance run {request.run_id} not found")
+        require_run_operation(run, operation)
         with translate_domain_errors():
-            current = next((op for op in run.operations if op.operation == operation), None)
-            if current is None:
-                raise ConflictError(f"operation {operation} is not part of run {request.run_id}")
-            if request.attempt < current.attempts:
-                return _output(run, run.attempt_record(operation, request.attempt))
-            if _already_recorded(current, request):
-                self._record_on_table(run, operation, run.attempt_record(operation, request.attempt), request)
-                return _output(run, run.attempt_record(operation, request.attempt))
-            record = run.attempt_record(operation, request.attempt)
+            if request.attempt < run.current_attempt:
+                return _output(run, run.attempt_record(request.attempt))
+            if _already_recorded(run, request):
+                self._record_on_table(run, operation, run.attempt_record(request.attempt), request)
+                return _output(run, run.attempt_record(request.attempt))
+            record = run.attempt_record(request.attempt)
             size = record.size if record else None
             evidence = self._read_evidence(request, ending)
             event_log_finished = self._read_event_log(evidence)
             if request.succeeded:
                 run.succeed(
-                    operation,
                     request.attempt,
                     request.metrics,
                     request.now,
@@ -150,15 +149,14 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
                     event_log_finished=event_log_finished,
                 )
             else:
-                self._fail(run, operation, ending, size, request, evidence, event_log_finished)
+                self._fail(run, ending, size, request, evidence, event_log_finished)
             self._runs_repo.update(run)
-            self._record_on_table(run, operation, run.attempt_record(operation, request.attempt), request)
-        return _output(run, run.attempt_record(operation, request.attempt))
+            self._record_on_table(run, operation, run.attempt_record(request.attempt), request)
+        return _output(run, run.attempt_record(request.attempt))
 
-    def _fail(  # noqa: PLR0913
+    def _fail(
         self,
         run: TableMaintenanceRun,
-        operation: MaintenanceOperation,
         ending: AttemptEnding,
         size: ComputeSize | None,
         request: RecordTableMaintenanceOperationResultUseCaseInput,
@@ -176,7 +174,6 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
             failure_class, size, request.attempt, request.max_attempts, still_running=request.still_running
         )
         run.fail(
-            operation,
             request.attempt,
             error,
             request.now,
@@ -311,9 +308,9 @@ def _measured(value: int | None) -> int | None:
     return value if value is not None and value >= 0 else None
 
 
-def _already_recorded(current: OperationRun, request: RecordTableMaintenanceOperationResultUseCaseInput) -> bool:
+def _already_recorded(run: TableMaintenanceRun, request: RecordTableMaintenanceOperationResultUseCaseInput) -> bool:
     outcome = "succeeded" if request.succeeded else "failed"
-    return current.attempts == request.attempt and current.status.value == outcome
+    return run.current_attempt == request.attempt and run.status.value == outcome
 
 
 def _output(

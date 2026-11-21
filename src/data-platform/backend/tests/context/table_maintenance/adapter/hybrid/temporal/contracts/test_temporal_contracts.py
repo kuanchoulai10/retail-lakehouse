@@ -25,7 +25,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationWorkflowInput,
 )
 
-RUN_ID = "mr-00000000000000000000000001"
+RUN_IDS = ["mr-00000000000000000000000001", "mr-00000000000000000000000002"]
 
 
 def _round_trip(value: object) -> object:
@@ -39,12 +39,12 @@ def _round_trip(value: object) -> object:
 
 def test_contracts_round_trip():
     """Each contract survives a round trip through the Temporal payload converter unchanged."""
-    plan = {"status": "planned", "operations": [{"operation": "rewrite_data_files"}]}
+    plan = {"status": "planned", "operations": [{"operation": "rewrite_data_files"}, {"operation": "expire_snapshots"}]}
     values = [
         TableReconciliationWorkflowInput("u1"),
         TableReconciliationWorkflowInput(
             "u1",
-            in_flight_run_id=RUN_ID,
+            in_flight_run_ids=RUN_IDS,
             in_flight_started_at="2026-10-24T00:00:00+00:00",
             in_flight_operation_count=2,
             pending_manual=["expire_snapshots"],
@@ -57,8 +57,8 @@ def test_contracts_round_trip():
         ),
         TableDiscoveryWorkflowInput("iceberg"),
         TableDiscoveryWorkflowInput("iceberg", "sales"),
-        TableMaintenanceWorkflowInput(RUN_ID, "u1", "table-reconciliation:table-uuid=u1", "scheduled", plan),
-        OperationResultSignal(RUN_ID, "x", 1, False, {"a": 1}, "err"),
+        TableMaintenanceWorkflowInput(RUN_IDS, "u1", "table-reconciliation:table-uuid=u1", "scheduled", plan),
+        OperationResultSignal(RUN_IDS[0], "x", 1, False, {"a": 1}, "err"),
     ]
     for value in values:
         assert _round_trip(value) == value
@@ -66,13 +66,13 @@ def test_contracts_round_trip():
 
 def test_maintenance_workflow_input_default_attempt_deadline():
     """The maintenance workflow input defaults its attempt deadline to six hours."""
-    value = TableMaintenanceWorkflowInput(RUN_ID, "u1", "p", "scheduled", {})
+    value = TableMaintenanceWorkflowInput(RUN_IDS, "u1", "p", "scheduled", {})
     assert value.attempt_deadline_seconds == 21600 == DEFAULT_ATTEMPT_DEADLINE_SECONDS
 
 
 def test_maintenance_workflow_input_default_max_attempts():
     """The maintenance workflow input defaults to three attempts per operation, as the workflow always allowed."""
-    value = TableMaintenanceWorkflowInput(RUN_ID, "u1", "p", "scheduled", {})
+    value = TableMaintenanceWorkflowInput(RUN_IDS, "u1", "p", "scheduled", {})
     assert value.max_attempts == 3 == DEFAULT_MAX_ATTEMPTS
 
 
@@ -84,7 +84,7 @@ def test_reconciliation_input_defaults_the_in_flight_max_attempts():
 def test_table_reconcile_workflow_input_defaults():
     """The table reconciliation input starts with no in-flight run."""
     value = TableReconciliationWorkflowInput("u1")
-    assert value.in_flight_run_id is None
+    assert value.in_flight_run_ids is None
     assert value.in_flight_started_at is None
     assert value.in_flight_operation_count == 0
     assert value.pending_manual is None
@@ -100,7 +100,7 @@ def test_table_reconcile_workflow_input_defaults():
     "value",
     [
         TableReconciliationWorkflowInput("u1"),
-        TableMaintenanceWorkflowInput(RUN_ID, "u1", "p", "scheduled", {}),
+        TableMaintenanceWorkflowInput(RUN_IDS, "u1", "p", "scheduled", {}),
     ],
 )
 def test_contracts_are_frozen(value: Any):  # noqa: ANN401

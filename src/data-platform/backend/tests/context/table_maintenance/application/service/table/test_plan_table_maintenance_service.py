@@ -1029,7 +1029,7 @@ def _record(plan, now, **overrides):
         "status": plan.status,
         "skip_reason": plan.reason,
         "checks": tuple(check.model_dump() for check in plan.checks),
-        "run_id": None,
+        "run_ids": {},
         "run_start_failed": False,
         "policy_id": plan.policy_id,
         "policy_name": plan.policy_name,

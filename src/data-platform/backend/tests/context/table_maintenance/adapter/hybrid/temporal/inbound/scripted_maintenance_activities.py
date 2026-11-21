@@ -60,6 +60,13 @@ class ScriptedMaintenanceActivities:
     ``raise_errors`` (by position, from 0) fail non-retryably. ``raise_hook``, when set, runs inside
     each raise with the request. A job in ``vanish_after_delete[app_name]`` reads ``NOT_FOUND`` once
     that long has passed since its first delete, until it is submitted again.
+
+    ``created`` keeps each create request, and the runs in ``create_errors`` (by run id) fail their
+    create non-retryably; a run in ``create_gates`` (by run id) holds its create until that event is
+    set. ``skips`` keeps each skip request; a skip replies with the run skipped, and the runs in
+    ``skip_errors`` (by run id) fail their skip as not found, non-retryably.
+    ``run_priorities`` holds each run's priority as the database would: the created one, then the one
+    each raise that raised it replied; ``submitted_priorities`` keeps, per submit, its run's priority then.
     """
 
     def __init__(self, client: Client) -> None:
@@ -71,6 +78,8 @@ class ScriptedMaintenanceActivities:
         self.record_errors: set[tuple[str, int]] = set()
         self.record_replies: dict[tuple[str, int], dict[str, Any]] = {}
         self.create_gate: asyncio.Event | None = None
+        self.create_gates: dict[str, asyncio.Event] = {}
+        self.skip_errors: set[str] = set()
         self.submit_gate: asyncio.Event | None = None
         self.status_gate: asyncio.Event | None = None
         self.status_hook: Callable[[str, datetime], Awaitable[None]] | None = None
@@ -99,6 +108,10 @@ class ScriptedMaintenanceActivities:
         self.raise_errors: set[int] = set()
         self.raise_hook: Callable[[dict], Awaitable[None]] | None = None
         self.vanish_after_delete: dict[str, timedelta] = {}
+        self.create_errors: set[str] = set()
+        self.skips: list[dict] = []
+        self.run_priorities: dict[str, str] = {}
+        self.submitted_priorities: list[str | None] = []
 
     @staticmethod
     def app_name(run_id: str, operation: str, attempt: int) -> str:
@@ -111,16 +124,30 @@ class ScriptedMaintenanceActivities:
 
     @activity.defn(name=TableMaintenanceActivity.CREATE_MAINTENANCE_RUN)
     async def create_table_maintenance_run(self, request: dict) -> dict:
-        """Return a running run for the request."""
+        """Return a pending run for the request, or fail when the script says its create fails."""
         self.created.append(request)
+        self.run_priorities[request["run_id"]] = request["priority"]
         if self.create_gate is not None:
             await self.create_gate.wait()
-        return {"run_id": request["run_id"], "status": "running"}
+        if request["run_id"] in self.create_gates:
+            await self.create_gates[request["run_id"]].wait()
+        if request["run_id"] in self.create_errors:
+            raise ApplicationError("db down", type="ConflictError", non_retryable=True)
+        return {"run_id": request["run_id"], "status": "pending"}
+
+    @activity.defn(name=TableMaintenanceActivity.SKIP_MAINTENANCE_RUN)
+    async def skip_maintenance_run(self, request: dict) -> dict:
+        """Record the skip and reply with the run skipped."""
+        self.skips.append(request)
+        if request["run_id"] in self.skip_errors:
+            raise ApplicationError("no such run", type="NotFoundError", non_retryable=True)
+        return {"run_id": request["run_id"], "status": "skipped", "skipped": True}
 
     @activity.defn(name=TableMaintenanceActivity.SUBMIT_MAINTENANCE_OPERATION)
     async def submit_maintenance_operation(self, request: dict) -> dict:
         """Submit the operation, or fail with the scripted submit error for it."""
         self.submits.append(request)
+        self.submitted_priorities.append(self.run_priorities.get(request["run_id"]))
         self.submitted_at[self.app_name(request["run_id"], request["operation"], request["attempt"])] = (
             datetime.fromisoformat(request["now"])
         )
@@ -199,7 +226,10 @@ class ScriptedMaintenanceActivities:
             await self.raise_hook(request)
         if position in self.raise_errors:
             raise ApplicationError("db down", type="ConflictError", non_retryable=True)
-        return self.raise_reply or {"priority": request["priority"] or "P0", "raised": True}
+        reply = self.raise_reply or {"priority": request["priority"] or "P0", "raised": True}
+        if reply["raised"]:
+            self.run_priorities[request["run_id"]] = str(reply["priority"])
+        return reply
 
     @activity.defn(name=TableMaintenanceActivity.RECORD_MAINTENANCE_OPERATION_RESULT)
     async def record_table_maintenance_operation_result(self, request: dict) -> dict:
@@ -254,4 +284,5 @@ class ScriptedMaintenanceActivities:
             self.get_maintenance_job_pods,
             self.record_maintenance_attempt_running,
             self.raise_table_maintenance_run_priority,
+            self.skip_maintenance_run,
         ]

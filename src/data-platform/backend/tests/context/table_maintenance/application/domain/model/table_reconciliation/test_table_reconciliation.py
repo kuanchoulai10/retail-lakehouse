@@ -38,6 +38,7 @@ from context.table_maintenance.application.domain.model.table_reconciliation imp
 )
 
 RUN_1 = "mr-00000000000000000000000001"
+RUN_2 = "mr-00000000000000000000000002"
 REC_1 = "rc-00000000000000000000000001"
 NIGHTLY = TableMaintenancePolicyId("mp-00000000000000000000000004")
 DEFAULT_NAME = TableMaintenancePolicyName(value="default")
@@ -45,10 +46,13 @@ DEFAULT_NAME = TableMaintenancePolicyName(value="default")
 NOW = datetime(2026, 11, 10, 12, tzinfo=UTC)
 
 
-def _outcome(op: Op, result: OperationResult = OperationResult.NOT_NEEDED) -> OperationOutcome:
+def _outcome(
+    op: Op, result: OperationResult = OperationResult.NOT_NEEDED, run_id: str | None = None
+) -> OperationOutcome:
     return OperationOutcome(
         operation=op,
         result=result,
+        run_id=None if run_id is None else TableMaintenanceRunId(run_id),
         measurements=(
             Measurement(
                 key="small_files",
@@ -71,7 +75,6 @@ def _record(**overrides):
         "outcome": ReconciliationOutcome.PLANNED,
         "skip_reason": None,
         "operations": (_outcome(Op.EXPIRE_SNAPSHOTS),),
-        "run_id": None,
         "policy_id": DEFAULT_POLICY_ID,
         "policy_name": DEFAULT_NAME,
         "policy_version": 3,
@@ -111,16 +114,27 @@ def test_record_rejects_skipped_with_operations():
         _record(outcome=ReconciliationOutcome.SKIPPED, skip_reason="paused")
 
 
-def test_record_rejects_run_id_without_started_operation():
-    """A run id only makes sense when an operation started."""
-    with pytest.raises(InvariantViolation):
-        _record(run_id=TableMaintenanceRunId(RUN_1))
+def test_only_a_started_operation_has_a_run():
+    """A run id only makes sense on an operation that started."""
+    with pytest.raises(InvariantViolation, match="only a started operation has a run"):
+        _outcome(Op.EXPIRE_SNAPSHOTS, OperationResult.NOT_NEEDED, run_id=RUN_1)
 
 
-def test_record_rejects_started_operation_without_run_id():
+def test_a_started_operation_names_its_run():
     """A started operation points at the run it started."""
-    with pytest.raises(InvariantViolation):
-        _record(operations=(_outcome(Op.EXPIRE_SNAPSHOTS, OperationResult.STARTED),))
+    with pytest.raises(InvariantViolation, match="names its run"):
+        _outcome(Op.EXPIRE_SNAPSHOTS, OperationResult.STARTED)
+
+
+def test_two_operations_cannot_share_a_run():
+    """Each run belongs to one operation."""
+    with pytest.raises(InvariantViolation, match="each run belongs to one operation"):
+        _record(
+            operations=(
+                _outcome(Op.REWRITE_DATA_FILES, OperationResult.STARTED, run_id=RUN_1),
+                _outcome(Op.EXPIRE_SNAPSHOTS, OperationResult.STARTED, run_id=RUN_1),
+            )
+        )
 
 
 def test_record_orders_operations_canonically():
@@ -129,13 +143,15 @@ def test_record_orders_operations_canonically():
     assert [o.operation for o in rec.operations] == [Op.REWRITE_DATA_FILES, Op.EXPIRE_SNAPSHOTS]
 
 
-def test_started_operation_carries_the_run():
-    """A started operation together with a run id is a valid record."""
+def test_each_started_operation_carries_its_own_run():
+    """Started operations with different runs make a valid record."""
     rec = _record(
-        operations=(_outcome(Op.EXPIRE_SNAPSHOTS, OperationResult.STARTED),),
-        run_id=TableMaintenanceRunId(RUN_1),
+        operations=(
+            _outcome(Op.REWRITE_DATA_FILES, OperationResult.STARTED, run_id=RUN_1),
+            _outcome(Op.EXPIRE_SNAPSHOTS, OperationResult.STARTED, run_id=RUN_2),
+        ),
     )
-    assert rec.run_id == TableMaintenanceRunId(RUN_1)
+    assert [o.run_id for o in rec.operations] == [TableMaintenanceRunId(RUN_1), TableMaintenanceRunId(RUN_2)]
 
 
 def test_skipped_record_is_valid():
@@ -156,7 +172,6 @@ def test_direct_construction_checks_the_invariants():
             outcome=ReconciliationOutcome.PLANNED,
             skip_reason=None,
             operations=(),
-            run_id=None,
             policy_id=DEFAULT_POLICY_ID,
             policy_name=DEFAULT_NAME,
             policy_version=1,
@@ -172,11 +187,15 @@ def test_assigning_wrong_type_is_rejected():
 
 
 def test_assignment_rechecks_invariants():
-    """Assigning a run id without a started operation is rejected."""
+    """Assigning operations that share a run is rejected."""
     rec = _record()
+    shared = (
+        _outcome(Op.REWRITE_DATA_FILES, OperationResult.STARTED, run_id=RUN_1),
+        _outcome(Op.EXPIRE_SNAPSHOTS, OperationResult.STARTED, run_id=RUN_1),
+    )
     with pytest.raises(InvariantViolation):
-        rec.run_id = TableMaintenanceRunId(RUN_1)
-    assert rec.run_id is None
+        rec.operations = shared
+    assert rec.operations == (_outcome(Op.EXPIRE_SNAPSHOTS),)
 
 
 def test_operation_outcome_is_immutable():

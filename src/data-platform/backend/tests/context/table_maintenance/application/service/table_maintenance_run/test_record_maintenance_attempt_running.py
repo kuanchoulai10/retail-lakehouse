@@ -30,9 +30,9 @@ RDF = MaintenanceOperation.REWRITE_DATA_FILES
 def queued_run(runs_repo, now) -> TableMaintenanceRun:
     """Provide a stored run whose first attempt is queued."""
     run = TableMaintenanceRun.create(
-        TableMaintenanceRunId(RUN_1), TableId("u-1"), TriggerType.SCHEDULED, [RDF], now, execution_ref="wf-1"
+        TableMaintenanceRunId(RUN_1), TableId("u-1"), TriggerType.SCHEDULED, RDF, now, execution_ref="wf-1"
     )
-    run.start_attempt(RDF, 1, "job-1", now, size=ComputeSize.S)
+    run.start_attempt(1, "job-1", now, size=ComputeSize.S)
     runs_repo.create(run)
     return run
 
@@ -54,7 +54,7 @@ def test_record_running_saves_the_attempt(runs_repo, queued_run, now):
     out = RecordMaintenanceAttemptRunningService(runs_repo).execute(_input(now))
 
     assert (out.status, out.started_running_at) == ("running", now + timedelta(minutes=5))
-    stored = runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1)
+    stored = runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(1)
     assert stored is not None
     assert (stored.status.value, stored.started_running_at) == ("running", now + timedelta(minutes=5))
 
@@ -94,3 +94,10 @@ def test_record_running_of_an_attempt_never_started_is_a_conflict(runs_repo, que
     """A report for an attempt after the current one, which was never started, is refused as a conflict."""
     with pytest.raises(ConflictError, match="never started"):
         RecordMaintenanceAttemptRunningService(runs_repo).execute(_input(now, attempt=2))
+
+
+def test_record_running_of_another_operation_is_a_conflict(runs_repo, queued_run, now):
+    """A report naming an operation the run does not run is refused as a conflict and changes nothing."""
+    with pytest.raises(ConflictError, match=f"run {RUN_1} does not run expire_snapshots"):
+        RecordMaintenanceAttemptRunningService(runs_repo).execute(_input(now, operation="expire_snapshots"))
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).status.value == "queued"

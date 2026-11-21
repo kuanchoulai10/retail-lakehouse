@@ -51,27 +51,24 @@ def get_table_maintenance_run(run_id: RunId, use_cases: UseCases) -> TableMainte
 
 
 @router.post(
-    "/table-maintenance-runs/{run_id}/operations/{operation}/result",
+    "/table-maintenance-runs/{run_id}/result",
     status_code=status.HTTP_202_ACCEPTED,
 )
 def process_table_maintenance_callback(
     run_id: RunId,
-    operation: str,
     body: ProcessTableMaintenanceCallbackApiRequest,
     use_cases: UseCases,
 ) -> ProcessTableMaintenanceCallbackApiResponse:
-    """Accept the result a Spark job reports for one operation attempt."""
+    """Accept the result a Spark job reports for one attempt of the run.
+
+    The run names its operation. A body that names another one is refused with 422.
+    """
     if body.run_id is not None and body.run_id != run_id:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "body run_id differs from the path")
-    if body.operation is not None and body.operation != operation:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
-            "body operation differs from the path",
-        )
     output = use_cases.process_table_maintenance_callback.execute(
         ProcessTableMaintenanceCallbackUseCaseInput(
             run_id=run_id,
-            operation=operation,
+            operation=body.operation,
             attempt=body.attempt,
             succeeded=body.succeeded,
             metrics=body.metrics,

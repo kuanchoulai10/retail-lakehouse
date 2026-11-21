@@ -51,6 +51,7 @@ if TYPE_CHECKING:
         RaiseTableMaintenanceRunPriorityUseCase,
         RecordMaintenanceAttemptRunningUseCase,
         RecordTableMaintenanceOperationResultUseCase,
+        SkipTableMaintenanceRunUseCase,
         SubmitMaintenanceOperationUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_reconciliation import (
@@ -98,6 +99,7 @@ class UseCases:
     record_maintenance_attempt_running: RecordMaintenanceAttemptRunningUseCase
     raise_table_maintenance_run_priority: RaiseTableMaintenanceRunPriorityUseCase
     plan_table_maintenance: PlanTableMaintenanceUseCase
+    skip_table_maintenance_run: SkipTableMaintenanceRunUseCase
     submit_maintenance_operation: SubmitMaintenanceOperationUseCase
     list_table_reconciliations: ListTableReconciliationsUseCase
     record_table_reconciliation: RecordTableReconciliationUseCase

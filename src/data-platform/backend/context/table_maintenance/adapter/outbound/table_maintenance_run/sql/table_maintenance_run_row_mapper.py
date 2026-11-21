@@ -11,8 +11,7 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
     MaintenanceOperation,
     NextStep,
     OperationAttempt,
-    OperationRun,
-    OperationRunStatus,
+    RunStatus,
     SpecFilter,
     TableId,
     TableMaintenanceRun,
@@ -36,6 +35,7 @@ def _encode_attempt(attempt: OperationAttempt) -> dict[str, Any]:
         "attempt": attempt.attempt,
         "size": _value(attempt.size),
         "status": attempt.status.value,
+        "job_name": attempt.job_name,
         "started_at": IsoDatetimeCodec.encode(attempt.started_at),
         "started_running_at": IsoDatetimeCodec.encode(attempt.started_running_at),
         "finished_at": IsoDatetimeCodec.encode(attempt.finished_at),
@@ -61,8 +61,9 @@ def _decode_attempt(data: dict[str, Any]) -> OperationAttempt:
     return OperationAttempt(
         attempt=data["attempt"],
         size=ComputeSize(size) if size is not None else None,
-        status=OperationRunStatus(data["status"]),
+        status=RunStatus(data["status"]),
         started_at=started_at,
+        job_name=data.get("job_name"),
         started_running_at=IsoDatetimeCodec.decode(data.get("started_running_at")),
         finished_at=IsoDatetimeCodec.decode(data.get("finished_at")),
         failure_class=FailureClass(failure_class) if failure_class is not None else None,
@@ -70,38 +71,6 @@ def _decode_attempt(data: dict[str, Any]) -> OperationAttempt:
         event_log_finished=data.get("event_log_finished"),
         next_step=NextStep(next_step) if next_step is not None else None,
         next_size=ComputeSize(next_size) if next_size is not None else None,
-    )
-
-
-def _encode_operation(op: OperationRun) -> dict[str, Any]:
-    return {
-        "operation": op.operation.value,
-        "status": op.status.value,
-        "attempts": op.attempts,
-        "started_at": IsoDatetimeCodec.encode(op.started_at),
-        "finished_at": IsoDatetimeCodec.encode(op.finished_at),
-        "job_name": op.job_name,
-        "metrics": dict(op.metrics),
-        "error": op.error,
-        "expected_files": op.expected_files,
-        "attempt_history": [_encode_attempt(a) for a in op.attempt_history],
-        "filters": [{"spec_id": f.spec_id, "where": f.where} for f in op.filters],
-    }
-
-
-def _decode_operation(data: dict[str, Any]) -> OperationRun:
-    return OperationRun(
-        operation=MaintenanceOperation(data["operation"]),
-        status=OperationRunStatus(data["status"]),
-        attempts=data["attempts"],
-        started_at=IsoDatetimeCodec.decode(data["started_at"]),
-        finished_at=IsoDatetimeCodec.decode(data["finished_at"]),
-        job_name=data["job_name"],
-        metrics=dict(data["metrics"]),
-        error=data["error"],
-        expected_files=data["expected_files"],
-        attempt_history=tuple(_decode_attempt(a) for a in data.get("attempt_history", [])),
-        filters=tuple(SpecFilter(spec_id=f["spec_id"], where=f["where"]) for f in data.get("filters", [])),
     )
 
 
@@ -116,8 +85,15 @@ class TableMaintenanceRunRowMapper:
             "table_uuid": run.table_uuid.value,
             "execution_ref": run.execution_ref,
             "trigger": run.trigger.value,
+            "operation": run.operation.value,
             "priority": run.priority.value,
-            "operations_json": [_encode_operation(op) for op in run.operations],
+            "status": run.status.value,
+            "error": run.error,
+            "skip_reason": run.skip_reason,
+            "filters_json": [{"spec_id": f.spec_id, "where": f.where} for f in run.filters],
+            "procedure_args_json": dict(run.procedure_args),
+            "metrics_json": dict(run.metrics),
+            "attempts_json": [_encode_attempt(a) for a in run.attempts],
             "created_at": run.created_at,
             "finished_at": run.finished_at,
         }
@@ -129,9 +105,16 @@ class TableMaintenanceRunRowMapper:
             id=TableMaintenanceRunId(row["id"]),
             table_uuid=TableId(row["table_uuid"]),
             trigger=TriggerType(row["trigger"]),
-            operations=tuple(_decode_operation(d) for d in row["operations_json"]),
+            operation=MaintenanceOperation(row["operation"]),
             created_at=row["created_at"],
             execution_ref=row["execution_ref"],
-            finished_at=row["finished_at"],
             priority=TablePriority(row["priority"] or TablePriority.default()),
+            status=RunStatus(row["status"]),
+            filters=tuple(SpecFilter(spec_id=f["spec_id"], where=f["where"]) for f in row["filters_json"]),
+            procedure_args=dict(row["procedure_args_json"]),
+            metrics=dict(row["metrics_json"]),
+            error=row["error"],
+            skip_reason=row["skip_reason"],
+            finished_at=row["finished_at"],
+            attempts=tuple(_decode_attempt(a) for a in row["attempts_json"]),
         )

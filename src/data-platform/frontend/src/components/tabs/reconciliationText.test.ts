@@ -32,6 +32,7 @@ function op(overrides: Partial<ReconciliationOperationApiResponse>): Reconciliat
     result: "not_needed",
     measurements: [measurement({})],
     next_eligible_at: null,
+    run_id: null,
     ...overrides,
   };
 }
@@ -46,7 +47,6 @@ function record(overrides: Partial<TableReconciliationApiResponse>): TableReconc
     outcome: "planned",
     skip_reason: null,
     operations: [],
-    run_id: null,
     policy_id: DEFAULT_POLICY_ID,
     policy_name: "default",
     policy_deleted: false,
@@ -61,8 +61,10 @@ const REDUCIBLE_MET = measurement({ key: "reducible_files", observed: 1240, thre
 describe("headline", () => {
   it("names the operations a reconciliation started", () => {
     const r = record({
-      run_id: "run-42",
-      operations: [op({ operation: "rewrite_data_files", result: "started" }), op({ operation: "expire_snapshots", result: "started" })],
+      operations: [
+        op({ operation: "rewrite_data_files", result: "started", run_id: "mr-42" }),
+        op({ operation: "expire_snapshots", result: "started", run_id: "mr-43" }),
+      ],
     });
     expect(headline(r)).toBe("Started Rewrite data files, Expire snapshots");
   });
@@ -90,8 +92,7 @@ describe("headline", () => {
     const r = record({
       dry_run: true,
       wake_reasons: { manual_run: 1 },
-      run_id: "run-43",
-      operations: [op({ operation: "remove_orphan_files", result: "started", measurements: [] })],
+      operations: [op({ operation: "remove_orphan_files", result: "started", measurements: [], run_id: "mr-44" })],
     });
     expect(headline(r)).toBe("Started Remove orphan files (manual run, dry run is on)");
   });

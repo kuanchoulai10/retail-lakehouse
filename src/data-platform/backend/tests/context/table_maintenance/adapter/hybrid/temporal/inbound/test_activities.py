@@ -20,7 +20,8 @@ from context.table_maintenance.application.port.inbound.table import (
     SyncDiscoveredTablesUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
-    SubmitMaintenanceOperationUseCaseInput,
+    SkipTableMaintenanceRunUseCaseInput,
+    SkipTableMaintenanceRunUseCaseOutput,
 )
 from context.table_maintenance.application.port.inbound.table_reconciliation import (
     ListTableReconciliationsUseCaseInput,
@@ -32,6 +33,9 @@ from context.table_maintenance.application.service.table_maintenance_run import 
 from context.table_maintenance.application.service.table_reconciliation import (
     ListTableReconciliationsService,
     RecordTableReconciliationService,
+)
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.runs_repo_with_one_run import (
+    runs_repo_with_one_run,
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_activities_with_fakes import (  # noqa: E501
     table_maintenance_activities_with_fakes,
@@ -49,6 +53,7 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fa
     FakeRecordReconciliation,
     FakeRecordResult,
     FakeRecordRunning,
+    FakeSkip,
     FakeStatus,
     FakeSubmit,
     FakeSync,
@@ -104,7 +109,7 @@ def _maintain(submit: FakeSubmit | None = None) -> tuple[TableMaintenanceActivit
         submit=fakes["submit"],
         status=fakes["status"],
         delete=fakes["delete"],
-        pods=GetMaintenanceJobPodsService(fakes["pods_gateway"]),
+        pods=GetMaintenanceJobPodsService(runs_repo_with_one_run(RUN_1), fakes["pods_gateway"]),
         record_running=fakes["record_running"],
         raise_priority=fakes["raise_priority"],
         callback_base_url="http://cp:8000",
@@ -297,7 +302,7 @@ def _record_payload_of(plan: dict) -> dict:
         "status": plan["status"],
         "skip_reason": plan["reason"],
         "checks": plan["checks"],
-        "run_id": RUN_1,
+        "run_ids": {"rewrite_data_files": RUN_1},
         "run_start_failed": False,
         "policy_id": plan["policy_id"],
         "policy_name": plan["policy_name"],
@@ -538,7 +543,7 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
             "status": "planned",
             "skip_reason": None,
             "checks": [CHECK],
-            "run_id": RUN_1,
+            "run_ids": {"rewrite_data_files": RUN_1},
             "run_start_failed": False,
             "policy_id": NIGHTLY_POLICY_ID,
             "policy_name": "nightly",
@@ -556,7 +561,7 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
             status="planned",
             skip_reason=None,
             checks=(CHECK,),
-            run_id=RUN_1,
+            run_ids={"rewrite_data_files": RUN_1},
             run_start_failed=False,
             policy_id=NIGHTLY_POLICY_ID,
             policy_name="nightly",
@@ -567,16 +572,14 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
     assert result == {"recorded": True}
 
 
-def test_submit_injects_callback_base_url_and_converts_filters():
-    """The submit activity adds the callback base URL and converts its filter payload for the use case."""
+def test_submit_injects_callback_base_url():
+    """The submit activity adds the callback base URL; the where clauses and arguments come from the run."""
     activities, fakes = _maintain()
     result = activities.submit_maintenance_operation(
         {
             "run_id": RUN_1,
             "operation": "rewrite_data_files",
             "attempt": 2,
-            "filters": [{"spec_id": 1, "where": "y = 2"}],
-            "procedure_args": {"a": 1},
             "now": NOW,
         }
     )
@@ -584,8 +587,6 @@ def test_submit_injects_callback_base_url_and_converts_filters():
     assert request.run_id == RUN_1
     assert request.operation == "rewrite_data_files"
     assert request.attempt == 2
-    assert request.filters == (SubmitMaintenanceOperationUseCaseInput.Filter(spec_id=1, where="y = 2"),)
-    assert request.procedure_args == {"a": 1}
     assert request.callback_base_url == "http://cp:8000"
     assert request.now == NOW_DT
     assert result == {"job_name": "app-1"}
@@ -599,8 +600,6 @@ def test_submit_activity_passes_the_size():
             "run_id": RUN_1,
             "operation": "rewrite_data_files",
             "attempt": 2,
-            "filters": [],
-            "procedure_args": {},
             "now": NOW,
             "size": "M",
         }
@@ -616,8 +615,6 @@ def test_submit_activity_defaults_the_size_for_old_requests():
             "run_id": RUN_1,
             "operation": "rewrite_data_files",
             "attempt": 1,
-            "filters": [],
-            "procedure_args": {},
             "now": NOW,
         }
     )
@@ -633,8 +630,6 @@ def test_submit_translates_not_found_to_non_retryable():
                 "run_id": RUN_1,
                 "operation": "rewrite_data_files",
                 "attempt": 1,
-                "filters": [],
-                "procedure_args": {},
                 "now": NOW,
             }
         )
@@ -651,8 +646,6 @@ def test_submit_keeps_other_errors_retryable():
                 "run_id": RUN_1,
                 "operation": "rewrite_data_files",
                 "attempt": 1,
-                "filters": [],
-                "procedure_args": {},
                 "now": NOW,
             }
         )
@@ -718,7 +711,8 @@ def test_create_run_passes_fields_and_returns_iso_dict():
             "run_id": RUN_1,
             "table_uuid": "u1",
             "trigger": "scheduled",
-            "operations": ["rewrite_data_files", "expire_snapshots"],
+            "operation": "expire_snapshots",
+            "procedure_args": {"retain_last": 3},
             "execution_ref": "wf-r1",
             "now": NOW,
         }
@@ -728,10 +722,11 @@ def test_create_run_passes_fields_and_returns_iso_dict():
     assert request.execution_ref == "wf-r1"
     assert request.table_uuid == "u1"
     assert request.trigger == "scheduled"
-    assert request.operations == ("rewrite_data_files", "expire_snapshots")
+    assert request.operation == "expire_snapshots"
+    assert request.procedure_args == {"retain_last": 3}
     assert request.now == NOW_DT
     assert result["run_id"] == RUN_1
-    assert result["status"] == "running"
+    assert result["status"] == "pending"
     assert result["created_at"] == CREATED_AT.isoformat()
 
 
@@ -743,7 +738,7 @@ def test_create_run_passes_the_priority_and_defaults_to_p3():
         "run_id": RUN_1,
         "table_uuid": "u1",
         "trigger": "scheduled",
-        "operations": ["expire_snapshots"],
+        "operation": "expire_snapshots",
         "execution_ref": "wf-r1",
         "now": NOW,
     }
@@ -926,3 +921,35 @@ def test_raise_table_maintenance_run_priority_activity_passes_no_priority():
     activities.raise_table_maintenance_run_priority({"run_id": RUN_1, "priority": None, "now": NOW})
 
     assert fakes["raise_priority"].requests[0].priority is None
+
+
+def test_skip_activity_passes_the_run_reason_and_time_and_returns_the_reply():
+    """The skip activity builds its input from the payload and returns whether the run was skipped."""
+    skip = FakeSkip()
+    activities = table_maintenance_activities_with_fakes(skip=skip)
+
+    result = activities.skip_table_maintenance_run({"run_id": RUN_1, "reason": "stopped", "now": NOW})
+
+    assert skip.requests == [SkipTableMaintenanceRunUseCaseInput(run_id=RUN_1, reason="stopped", now=NOW_DT)]
+    assert result == {"run_id": RUN_1, "status": "skipped", "skipped": True}
+
+
+def test_skip_activity_returns_a_run_left_alone_as_not_skipped():
+    """A run no longer pending comes back with its status and ``skipped`` false, and the activity does not fail."""
+    reply = SkipTableMaintenanceRunUseCaseOutput(run_id=RUN_1, status="succeeded", skipped=False)
+    activities = table_maintenance_activities_with_fakes(skip=FakeSkip(reply))
+
+    result = activities.skip_table_maintenance_run({"run_id": RUN_1, "reason": "stopped", "now": NOW})
+
+    assert result == {"run_id": RUN_1, "status": "succeeded", "skipped": False}
+
+
+def test_skip_activity_refuses_an_unknown_run_without_retry():
+    """A skip of a run that does not exist fails the activity at once, as not found."""
+    activities = table_maintenance_activities_with_fakes(skip=FakeSkip(error=NotFoundError("no run")))
+
+    with pytest.raises(ApplicationError) as caught:
+        activities.skip_table_maintenance_run({"run_id": RUN_1, "reason": "stopped", "now": NOW})
+
+    assert caught.value.non_retryable
+    assert caught.value.type == "NotFoundError"

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ReconciliationMeasurementApiResponse(BaseModel):
@@ -29,6 +29,9 @@ class ReconciliationOperationApiResponse(BaseModel):
     result: str
     measurements: list[ReconciliationMeasurementApiResponse]
     next_eligible_at: datetime | None
+    run_id: str | None = Field(
+        description="The mr- id of the maintenance run this operation started; set only when result is started."
+    )
 
 
 class ReconciliationPolicyTargetApiResponse(BaseModel):
@@ -53,7 +56,6 @@ class TableReconciliationApiResponse(BaseModel):
     outcome: str
     skip_reason: str | None
     operations: list[ReconciliationOperationApiResponse]
-    run_id: str | None
     policy_id: str
     policy_name: str
     policy_deleted: bool

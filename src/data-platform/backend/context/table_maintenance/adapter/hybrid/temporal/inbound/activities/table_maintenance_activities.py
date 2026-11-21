@@ -25,6 +25,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     RaiseTableMaintenanceRunPriorityUseCaseInput,
     RecordMaintenanceAttemptRunningUseCaseInput,
     RecordTableMaintenanceOperationResultUseCaseInput,
+    SkipTableMaintenanceRunUseCaseInput,
     SubmitMaintenanceOperationUseCaseInput,
 )
 
@@ -39,12 +40,13 @@ if TYPE_CHECKING:
         RaiseTableMaintenanceRunPriorityUseCase,
         RecordMaintenanceAttemptRunningUseCase,
         RecordTableMaintenanceOperationResultUseCase,
+        SkipTableMaintenanceRunUseCase,
         SubmitMaintenanceOperationUseCase,
     )
 
 
 class TableMaintenanceActivities:
-    """Run a table maintenance workflow: its run, its Spark jobs and its parent.
+    """Run a table maintenance workflow: its runs, their Spark jobs and its parent.
 
     Each method wraps exactly one use case, except the signal wiring, which talks to
     the Temporal client. Inputs and outputs are primitive dicts.
@@ -61,6 +63,7 @@ class TableMaintenanceActivities:
         pods: GetMaintenanceJobPodsUseCase,
         record_running: RecordMaintenanceAttemptRunningUseCase,
         raise_priority: RaiseTableMaintenanceRunPriorityUseCase,
+        skip: SkipTableMaintenanceRunUseCase,
         client: Client,
         callback_base_url: str,
     ) -> None:
@@ -73,12 +76,13 @@ class TableMaintenanceActivities:
         self._pods = pods
         self._record_running = record_running
         self._raise_priority = raise_priority
+        self._skip = skip
         self._client = client
         self._callback_base_url = callback_base_url
 
     @activity.defn(name=TableMaintenanceActivity.CREATE_MAINTENANCE_RUN)
     def create_table_maintenance_run(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Create the run with its planned operations."""
+        """Create the pending run of one planned operation, with its filters and procedure arguments."""
         with translate_application_errors():
             output = self._create_run.execute(CreateTableMaintenanceRunUseCaseInput.from_primitives(request))
         return activity_payload(output)
@@ -136,6 +140,13 @@ class TableMaintenanceActivities:
         """Raise the priority of a run in flight, only upward, and return its priority and whether it rose."""
         with translate_application_errors():
             output = self._raise_priority.execute(RaiseTableMaintenanceRunPriorityUseCaseInput.from_primitives(request))
+        return activity_payload(output)
+
+    @activity.defn(name=TableMaintenanceActivity.SKIP_MAINTENANCE_RUN)
+    def skip_table_maintenance_run(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Skip a run that never started, saying why; a run no longer pending is left alone and reported not skipped."""
+        with translate_application_errors():
+            output = self._skip.execute(SkipTableMaintenanceRunUseCaseInput.from_primitives(request))
         return activity_payload(output)
 
     @activity.defn(name=TableMaintenanceActivity.SIGNAL_PARENT)

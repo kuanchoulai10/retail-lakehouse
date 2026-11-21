@@ -264,3 +264,41 @@ export const SidePanelPhone: Story = {
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };
+
+// A record taller than the panel and with no control of its own: its body scrolls, so it takes a
+// tab stop and the arrow keys can scroll it.
+export const SidePanelLongContent: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  args: {
+    isOpen: true,
+    modal: false,
+    children: (
+      <ul>
+        {Array.from({ length: 60 }, (_, line) => (
+          <li key={line}>{`Field ${line + 1}`}</li>
+        ))}
+      </ul>
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const dialog = await portalQueries(canvasElement).findByRole("dialog", { name: "Run details" });
+    const heading = within(dialog).getByRole("heading", { name: "Run details" });
+    await waitFor(() => expect(heading).toHaveFocus());
+    await userEvent.tab();
+    await expect(within(dialog).getByRole("button", { name: "Close" })).toHaveFocus();
+    await userEvent.tab();
+    const body = within(dialog).getByText("Field 1").closest("[tabindex]");
+    await waitFor(() => expect(body).toHaveFocus());
+    await expect(body!.scrollHeight).toBeGreaterThan(body!.clientHeight);
+  },
+};
+
+// A short record does not scroll, so its body takes no tab stop.
+export const SidePanelShortContent: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  args: { isOpen: true, modal: false, children: "Run 42" },
+  play: async ({ canvasElement }) => {
+    const dialog = await portalQueries(canvasElement).findByRole("dialog", { name: "Run details" });
+    await expect(within(dialog).getByText("Run 42").closest("[tabindex='0']")).toBeNull();
+  },
+};

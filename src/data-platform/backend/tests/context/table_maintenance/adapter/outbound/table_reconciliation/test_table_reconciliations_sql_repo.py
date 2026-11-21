@@ -53,6 +53,7 @@ if TYPE_CHECKING:
     )
 
 RUN_1 = "mr-00000000000000000000000001"
+RUN_2 = "mr-00000000000000000000000002"
 NIGHTLY = TableMaintenancePolicyId(numbered_id("mp", 4))
 DEFAULT_NAME = TableMaintenancePolicyName(value="default")
 NOW = datetime(2026, 11, 10, 12, tzinfo=UTC)
@@ -72,7 +73,6 @@ def _rec(rec_id: str, table: str = "u1", at: datetime = NOW) -> TableReconciliat
         outcome=ReconciliationOutcome.PLANNED,
         skip_reason=None,
         operations=(),
-        run_id=None,
         policy_id=DEFAULT_POLICY_ID,
         policy_name=DEFAULT_NAME,
         policy_version=1,
@@ -89,7 +89,7 @@ def repo(request: pytest.FixtureRequest, engine: Engine) -> TableReconciliations
 
 
 def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
-    """A stored reconciliation loads back with measurements, wake reasons and run id."""
+    """A stored reconciliation loads back with measurements, wake reasons and the run of its started operation."""
     rec = TableReconciliation.record(
         id=TableReconciliationId(_rc(1)),
         table_uuid=TableId("u1"),
@@ -102,6 +102,7 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
             OperationOutcome(
                 operation=Op.REWRITE_DATA_FILES,
                 result=OperationResult.STARTED,
+                run_id=TableMaintenanceRunId(RUN_1),
                 measurements=(
                     Measurement(
                         key="small_files",
@@ -128,7 +129,6 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
                 next_eligible_at=NOW + timedelta(hours=1),
             ),
         ),
-        run_id=TableMaintenanceRunId(RUN_1),
         policy_id=NIGHTLY,
         policy_name=TableMaintenancePolicyName(value="nightly"),
         policy_version=4,
@@ -146,11 +146,53 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
     assert loaded.dry_run is False
     assert loaded.outcome is ReconciliationOutcome.PLANNED
     assert loaded.skip_reason is None
-    assert loaded.run_id == TableMaintenanceRunId(RUN_1)
+    assert loaded.operations[0].run_id == TableMaintenanceRunId(RUN_1)
+    assert loaded.operations[1].run_id is None
     assert loaded.operations == rec.operations
     assert loaded.operations[0].measurements[1].threshold is None
     assert loaded.operations[0].measurements[1].met is None
     assert loaded.operations[1].next_eligible_at == NOW + timedelta(hours=1)
+
+
+def test_round_trip_keeps_each_operations_run(repo: TableReconciliationsRepo):
+    """Every started operation loads back with its own run, in execution order."""
+    rec = TableReconciliation.record(
+        id=TableReconciliationId(_rc(3)),
+        table_uuid=TableId("u1"),
+        reconciled_at=NOW,
+        wake_reasons={WakeReason.SCHEDULE: 1},
+        dry_run=False,
+        outcome=ReconciliationOutcome.PLANNED,
+        skip_reason=None,
+        operations=(
+            OperationOutcome(
+                operation=Op.EXPIRE_SNAPSHOTS,
+                result=OperationResult.STARTED,
+                run_id=TableMaintenanceRunId(RUN_2),
+                measurements=(),
+            ),
+            OperationOutcome(
+                operation=Op.REWRITE_DATA_FILES,
+                result=OperationResult.STARTED,
+                run_id=TableMaintenanceRunId(RUN_1),
+                measurements=(),
+            ),
+            OperationOutcome(operation=Op.REWRITE_MANIFESTS, result=OperationResult.NOT_NEEDED, measurements=()),
+        ),
+        policy_id=DEFAULT_POLICY_ID,
+        policy_name=DEFAULT_NAME,
+        policy_version=1,
+        policy_target=None,
+    )
+    repo.create(rec)
+    loaded = repo.get(TableReconciliationId(_rc(3)))
+    assert loaded is not None
+    assert loaded == rec
+    assert [(o.operation, o.run_id) for o in loaded.operations] == [
+        (Op.REWRITE_DATA_FILES, TableMaintenanceRunId(RUN_1)),
+        (Op.REWRITE_MANIFESTS, None),
+        (Op.EXPIRE_SNAPSHOTS, TableMaintenanceRunId(RUN_2)),
+    ]
 
 
 def test_a_waiting_for_writes_result_round_trips(repo: TableReconciliationsRepo):
@@ -171,7 +213,6 @@ def test_a_waiting_for_writes_result_round_trips(repo: TableReconciliationsRepo)
                 next_eligible_at=NOW + timedelta(minutes=2),
             ),
         ),
-        run_id=None,
         policy_id=DEFAULT_POLICY_ID,
         policy_name=DEFAULT_NAME,
         policy_version=1,
@@ -195,7 +236,6 @@ def test_skipped_round_trip(repo: TableReconciliationsRepo):
         outcome=ReconciliationOutcome.SKIPPED,
         skip_reason="paused",
         operations=(),
-        run_id=None,
         policy_id=DEFAULT_POLICY_ID,
         policy_name=DEFAULT_NAME,
         policy_version=1,

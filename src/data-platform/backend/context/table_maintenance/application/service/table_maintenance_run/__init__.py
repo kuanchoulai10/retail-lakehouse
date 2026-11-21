@@ -38,6 +38,12 @@ from context.table_maintenance.application.service.table_maintenance_run.record_
 from context.table_maintenance.application.service.table_maintenance_run.record_table_maintenance_operation_result import (  # noqa: E501
     RecordTableMaintenanceOperationResultService,
 )
+from context.table_maintenance.application.service.table_maintenance_run.require_run_operation import (
+    require_run_operation,
+)
+from context.table_maintenance.application.service.table_maintenance_run.skip_table_maintenance_run import (
+    SkipTableMaintenanceRunService,
+)
 from context.table_maintenance.application.service.table_maintenance_run.submit_maintenance_operation import (
     SubmitMaintenanceOperationService,
 )
@@ -57,7 +63,9 @@ __all__ = [
     "RaiseTableMaintenanceRunPriorityService",
     "RecordMaintenanceAttemptRunningService",
     "RecordTableMaintenanceOperationResultService",
+    "SkipTableMaintenanceRunService",
     "SubmitMaintenanceOperationService",
     "maintenance_procedure_args",
+    "require_run_operation",
     "table_maintenance_run_output_fields",
 ]

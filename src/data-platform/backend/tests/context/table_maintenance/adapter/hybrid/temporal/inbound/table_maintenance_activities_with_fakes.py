@@ -11,12 +11,16 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import
 from context.table_maintenance.application.service.table_maintenance_run import (
     GetMaintenanceJobPodsService,
 )
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.runs_repo_with_one_run import (
+    runs_repo_with_one_run,
+)
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fakes import (
     FakeCreateRun,
     FakeDelete,
     FakeRaisePriority,
     FakeRecordResult,
     FakeRecordRunning,
+    FakeSkip,
     FakeStatus,
     FakeSubmit,
 )
@@ -35,6 +39,7 @@ if TYPE_CHECKING:
         RaiseTableMaintenanceRunPriorityUseCase,
         RecordMaintenanceAttemptRunningUseCase,
         RecordTableMaintenanceOperationResultUseCase,
+        SkipTableMaintenanceRunUseCase,
         SubmitMaintenanceOperationUseCase,
     )
 
@@ -49,19 +54,24 @@ def table_maintenance_activities_with_fakes(  # noqa: PLR0913
     pods: GetMaintenanceJobPodsUseCase | None = None,
     record_running: RecordMaintenanceAttemptRunningUseCase | None = None,
     raise_priority: RaiseTableMaintenanceRunPriorityUseCase | None = None,
+    skip: SkipTableMaintenanceRunUseCase | None = None,
     client: Client | None = None,
     callback_base_url: str = "http://cp:8000",
 ) -> TableMaintenanceActivities:
-    """Build the maintenance activities, a recording fake for every use case and a mock client not given."""
+    """Build the maintenance activities, a recording fake for every use case and a mock client not given.
+
+    The pods use case defaults to the real service over a stored compaction run with no live pods.
+    """
     return TableMaintenanceActivities(
         create_run=create_run or FakeCreateRun(),
         record_result=record_result or FakeRecordResult(),
         submit=submit or FakeSubmit(),
         status=status or FakeStatus(),
         delete=delete or FakeDelete(),
-        pods=pods or GetMaintenanceJobPodsService(ScriptedReadMaintenanceJobPodsGateway()),
+        pods=pods or GetMaintenanceJobPodsService(runs_repo_with_one_run(), ScriptedReadMaintenanceJobPodsGateway()),
         record_running=record_running or FakeRecordRunning(),
         raise_priority=raise_priority or FakeRaisePriority(),
+        skip=skip or FakeSkip(),
         client=client or MagicMock(),
         callback_base_url=callback_base_url,
     )

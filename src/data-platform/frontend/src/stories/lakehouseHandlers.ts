@@ -1,3 +1,4 @@
+import { HttpResponse } from "msw";
 import { getListCatalogsMockHandler, getGetCatalogMockHandler } from "@/api/generated/catalogs/catalogs.msw";
 import { getGetPlatformSettingsMockHandler } from "@/api/generated/platform-settings/platform-settings.msw";
 import { getListGenericTablesMockHandler } from "@/api/generated/generic-tables/generic-tables.msw";
@@ -37,16 +38,22 @@ import {
   getSetTablePriorityMockHandler,
   getTriggerTableMaintenanceMockHandler,
 } from "@/api/generated/tables/tables.msw";
-import { getListTableMaintenanceRunsMockHandler } from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
+import {
+  getGetTableMaintenanceRunMockHandler,
+  getListTableMaintenanceRunsMockHandler,
+} from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
 import { getListTableReconciliationsMockHandler } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
 import { getListViewsMockHandler } from "@/api/generated/views/views.msw";
 import {
   applicablePolicy,
   CATALOGS,
   COMMITS,
+  ESCALATED_RUN,
+  inFlightRun,
   MAINTAINED_ORDERS,
   MAINTAINED_TABLES,
   NAMESPACES,
+  OLDER_RUN,
   ORDERS,
   ORDERS_CURRENT_METRICS,
   ORDERS_METRIC_TRENDS,
@@ -55,9 +62,12 @@ import {
   ORDERS_SPEC_VERSIONS,
   ordersSchemaComparison,
   ordersSpecComparison,
+  PARTITION_SCOPE_RUN,
+  pendingRun,
   PLATFORM_SETTINGS,
   POLICIES,
   POLICY_MAPPINGS,
+  QUEUE_TIMEOUT_RUN,
   RECONCILIATIONS,
   RETAIL,
   RETAIL_TABLES,
@@ -123,6 +133,13 @@ export function lakehouseHandlers() {
       };
     }),
     getListTableMaintenanceRunsMockHandler(RUNS),
+    // Every run of the story data by its id, the older one the list never returns included; any other id is gone.
+    getGetTableMaintenanceRunMockHandler(({ params }) => {
+      const runs = [...RUNS, ESCALATED_RUN, PARTITION_SCOPE_RUN, OLDER_RUN, QUEUE_TIMEOUT_RUN, inFlightRun(), pendingRun()];
+      const run = runs.find((r) => r.run_id === params.runId);
+      if (run === undefined) throw HttpResponse.json({ detail: `run ${params.runId} not found` }, { status: 404 });
+      return run;
+    }),
     getGetPlatformSettingsMockHandler(PLATFORM_SETTINGS),
     getListTableReconciliationsMockHandler(({ request }) => {
       const query = new URL(request.url).searchParams;

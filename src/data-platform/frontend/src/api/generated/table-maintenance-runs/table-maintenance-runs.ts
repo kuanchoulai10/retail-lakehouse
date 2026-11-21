@@ -154,21 +154,21 @@ export function useGetTableMaintenanceRun<TData = Awaited<ReturnType<typeof getT
 
 
 
-export const getProcessTableMaintenanceCallbackUrl = (runId: string,
-    operation: string,) => {
+export const getProcessTableMaintenanceCallbackUrl = (runId: string,) => {
 
 
 
 
-  return `/v1/table-maintenance-runs/${encodeURIComponent(String(runId))}/operations/${encodeURIComponent(String(operation))}/result`
+  return `/v1/table-maintenance-runs/${encodeURIComponent(String(runId))}/result`
 }
 
 /**
- * Accept the result a Spark job reports for one operation attempt.
+ * Accept the result a Spark job reports for one attempt of the run.
+ *
+ * The run names its operation. A body that names another one is refused with 422.
  * @summary Process Table Maintenance Callback
  */
 export const processTableMaintenanceCallback = async (runId: string,
-    operation: string,
     processTableMaintenanceCallbackApiRequest: ProcessTableMaintenanceCallbackApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<ProcessTableMaintenanceCallbackApiResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
@@ -185,7 +185,7 @@ export const processTableMaintenanceCallback = async (runId: string,
     }
     return headers;
   };
-return apiFetch<ProcessTableMaintenanceCallbackApiResponse>(getProcessTableMaintenanceCallbackUrl(runId,operation),
+return apiFetch<ProcessTableMaintenanceCallbackApiResponse>(getProcessTableMaintenanceCallbackUrl(runId),
   {
     ...options,
     method: 'POST',
@@ -215,9 +215,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof processTableMaintenanceCallback>>, ProcessTableMaintenanceCallbackMutationVariables> = (props) => {
-          const {runId,operation,data} = props ?? {};
+          const {runId,data} = props ?? {};
 
-          return  processTableMaintenanceCallback(runId,operation,data,requestOptions)
+          return  processTableMaintenanceCallback(runId,data,requestOptions)
         }
 
 
@@ -230,7 +230,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ProcessTableMaintenanceCallbackMutationResult = NonNullable<Awaited<ReturnType<typeof processTableMaintenanceCallback>>>
     export type ProcessTableMaintenanceCallbackMutationBody = ProcessTableMaintenanceCallbackApiRequest
     export type ProcessTableMaintenanceCallbackMutationError = HTTPValidationError
-    export type ProcessTableMaintenanceCallbackMutationVariables = {runId: string;operation: string;data: ProcessTableMaintenanceCallbackApiRequest}
+    export type ProcessTableMaintenanceCallbackMutationVariables = {runId: string;data: ProcessTableMaintenanceCallbackApiRequest}
 
     /**
  * @summary Process Table Maintenance Callback

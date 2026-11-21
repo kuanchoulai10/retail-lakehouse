@@ -45,19 +45,24 @@ class ProcessTableMaintenanceCallbackService(ProcessTableMaintenanceCallbackUseC
     def execute(
         self, request: ProcessTableMaintenanceCallbackUseCaseInput
     ) -> ProcessTableMaintenanceCallbackUseCaseOutput:
-        """Forward the result of a known run; the workflow decides staleness."""
+        """Forward the result of a known run, as a result of the run's operation; the workflow decides staleness.
+
+        A callback that names an operation other than the run's is invalid and forwards nothing.
+        """
         try:
-            operation = MaintenanceOperation(request.operation)
+            named = None if request.operation is None else MaintenanceOperation(request.operation)
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
         run = self._runs_repo.get(TableMaintenanceRunId(request.run_id))
         if run is None:
             raise NotFoundError(f"maintenance run {request.run_id} not found")
+        if named is not None and named is not run.operation:
+            raise ValidationError(f"the run's operation is {run.operation.value}, not {named.value}")
         self._result_gateway.send(
             SendMaintenanceResultGatewayInput(
                 execution_ref=run.execution_ref,
                 run_id=request.run_id,
-                operation=operation.value,
+                operation=run.operation.value,
                 attempt=request.attempt,
                 succeeded=request.succeeded,
                 metrics=dict(request.metrics),

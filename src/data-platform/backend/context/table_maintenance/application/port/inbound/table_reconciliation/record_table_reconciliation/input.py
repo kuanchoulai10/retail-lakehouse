@@ -15,7 +15,8 @@ class RecordTableReconciliationUseCaseInput(UseCaseInput):
     measurements, next_eligible_at), the shape they have after crossing a Temporal activity.
     ``policy_id`` is the ``mp-`` id of the policy the plan applied, ``policy_name`` that policy's
     name when it was planned (kept on the record for display only), and ``policy_target`` the plan's
-    target dict (type, path and, for a table, table_uuid) or None.
+    target dict (type, path and, for a table, table_uuid) or None. ``run_ids`` maps each started
+    operation to the ``mr-`` id of the run it started; it is empty when the child did not start.
     """
 
     reconciliation_id: str
@@ -26,7 +27,7 @@ class RecordTableReconciliationUseCaseInput(UseCaseInput):
     status: str
     skip_reason: str | None
     checks: tuple[dict[str, Any], ...]
-    run_id: str | None
+    run_ids: dict[str, str] = {}
     run_start_failed: bool
     policy_id: str
     policy_name: str

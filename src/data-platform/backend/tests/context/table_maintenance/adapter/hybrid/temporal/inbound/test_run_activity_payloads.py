@@ -53,75 +53,62 @@ CREATE_REQUEST = {
     "table_uuid": "u1",
     "execution_ref": "wf-r1",
     "trigger": "manual",
-    "operations": ["rewrite_data_files", "expire_snapshots"],
+    "operation": "rewrite_data_files",
+    "priority": "P1",
+    "filters": [{"spec_id": 0, "where": "(`region` = 'eu')"}],
+    "procedure_args": {"strategy": "binpack", "options": {"min-input-files": "5"}},
     "now": NOW,
 }
 
 
 def _full_run() -> CreateTableMaintenanceRunUseCaseOutput:
-    """Return a run that sets every field: an operation with two attempts and one not started."""
+    """Return a run that sets every field: a compaction with two attempts, the first failed out of memory."""
     return CreateTableMaintenanceRunUseCaseOutput(
         run_id=RUN_1,
         table_uuid="u1",
         execution_ref="wf-r1",
         trigger="manual",
         priority="P3",
+        operation="rewrite_data_files",
         status="running",
-        operations=(
+        filters=({"spec_id": 0, "where": "(`region` = 'eu')"},),
+        procedure_args={"strategy": "binpack", "options": {"min-input-files": "5"}},
+        metrics={"rewritten_data_files_count": 4},
+        error=None,
+        skip_reason=None,
+        created_at=datetime(2026, 10, 24, 1, 2, 3, tzinfo=UTC),
+        started_at=STARTED,
+        finished_at=None,
+        attempts=(
             {
-                "operation": "rewrite_data_files",
-                "status": "running",
-                "attempts": 2,
+                "attempt": 1,
+                "size": "S",
+                "status": "failed",
+                "job_name": "app-1",
                 "started_at": STARTED,
-                "finished_at": None,
-                "job_name": "app-2",
-                "metrics": {"rewritten_data_files_count": 4},
-                "error": None,
-                "expected_files": 7,
-                "filters": [{"spec_id": 0, "where": "(`region` = 'eu')"}],
-                "attempt_history": [
-                    {
-                        "attempt": 1,
-                        "size": "S",
-                        "status": "failed",
-                        "started_at": STARTED,
-                        "finished_at": FAILED,
-                        "failure_class": "oom",
-                        "error": "java.lang.OutOfMemoryError",
-                        "event_log_finished": True,
-                        "next_step": "retry_larger",
-                        "next_size": "M",
-                    },
-                    {
-                        "attempt": 2,
-                        "size": "M",
-                        "status": "running",
-                        "started_at": RETRIED,
-                        "finished_at": None,
-                        "failure_class": None,
-                        "error": None,
-                        "event_log_finished": None,
-                        "next_step": None,
-                        "next_size": None,
-                    },
-                ],
+                "started_running_at": STARTED,
+                "finished_at": FAILED,
+                "failure_class": "oom",
+                "error": "java.lang.OutOfMemoryError",
+                "event_log_finished": True,
+                "next_step": "retry_larger",
+                "next_size": "M",
             },
             {
-                "operation": "expire_snapshots",
-                "status": "pending",
-                "attempts": 0,
-                "started_at": None,
+                "attempt": 2,
+                "size": "M",
+                "status": "running",
+                "job_name": "app-2",
+                "started_at": RETRIED,
+                "started_running_at": None,
                 "finished_at": None,
-                "job_name": None,
-                "metrics": {},
+                "failure_class": None,
                 "error": None,
-                "expected_files": None,
-                "filters": [],
-                "attempt_history": [],
+                "event_log_finished": None,
+                "next_step": None,
+                "next_size": None,
             },
         ),
-        created_at=datetime(2026, 10, 24, 1, 2, 3, tzinfo=UTC),
-        finished_at=None,
     )
 
 
@@ -137,62 +124,46 @@ def test_create_run_payload_keeps_every_field_of_a_full_run():
         "execution_ref": "wf-r1",
         "trigger": "manual",
         "priority": "P3",
+        "operation": "rewrite_data_files",
         "status": "running",
-        "operations": [
+        "filters": [{"spec_id": 0, "where": "(`region` = 'eu')"}],
+        "procedure_args": {"strategy": "binpack", "options": {"min-input-files": "5"}},
+        "metrics": {"rewritten_data_files_count": 4},
+        "error": None,
+        "skip_reason": None,
+        "created_at": "2026-10-24T01:02:03+00:00",
+        "started_at": "2026-10-24T01:05:00+00:00",
+        "finished_at": None,
+        "attempts": [
             {
-                "operation": "rewrite_data_files",
-                "status": "running",
-                "attempts": 2,
+                "attempt": 1,
+                "size": "S",
+                "status": "failed",
+                "job_name": "app-1",
                 "started_at": "2026-10-24T01:05:00+00:00",
-                "finished_at": None,
-                "job_name": "app-2",
-                "metrics": {"rewritten_data_files_count": 4},
-                "error": None,
-                "expected_files": 7,
-                "filters": [{"spec_id": 0, "where": "(`region` = 'eu')"}],
-                "attempt_history": [
-                    {
-                        "attempt": 1,
-                        "size": "S",
-                        "status": "failed",
-                        "started_at": "2026-10-24T01:05:00+00:00",
-                        "finished_at": "2026-10-24T01:20:30+00:00",
-                        "failure_class": "oom",
-                        "error": "java.lang.OutOfMemoryError",
-                        "event_log_finished": True,
-                        "next_step": "retry_larger",
-                        "next_size": "M",
-                    },
-                    {
-                        "attempt": 2,
-                        "size": "M",
-                        "status": "running",
-                        "started_at": "2026-10-24T01:22:00+00:00",
-                        "finished_at": None,
-                        "failure_class": None,
-                        "error": None,
-                        "event_log_finished": None,
-                        "next_step": None,
-                        "next_size": None,
-                    },
-                ],
+                "started_running_at": "2026-10-24T01:05:00+00:00",
+                "finished_at": "2026-10-24T01:20:30+00:00",
+                "failure_class": "oom",
+                "error": "java.lang.OutOfMemoryError",
+                "event_log_finished": True,
+                "next_step": "retry_larger",
+                "next_size": "M",
             },
             {
-                "operation": "expire_snapshots",
-                "status": "pending",
-                "attempts": 0,
-                "started_at": None,
+                "attempt": 2,
+                "size": "M",
+                "status": "running",
+                "job_name": "app-2",
+                "started_at": "2026-10-24T01:22:00+00:00",
+                "started_running_at": None,
                 "finished_at": None,
-                "job_name": None,
-                "metrics": {},
+                "failure_class": None,
                 "error": None,
-                "expected_files": None,
-                "filters": [],
-                "attempt_history": [],
+                "event_log_finished": None,
+                "next_step": None,
+                "next_size": None,
             },
         ],
-        "created_at": "2026-10-24T01:02:03+00:00",
-        "finished_at": None,
     }
     assert json.loads(json.dumps(result)) == result
 
@@ -240,8 +211,6 @@ WORKFLOW_SUBMIT_REQUEST = {
     "run_id": RUN_1,
     "operation": "rewrite_data_files",
     "attempt": 2,
-    "filters": [{"spec_id": 1, "where": "region = 'eu'"}, {"spec_id": 1, "where": "region = 'us'"}],
-    "procedure_args": {"strategy": "binpack", "options": {"min-input-files": "5"}},
     "size": "M",
     "now": NOW,
 }
@@ -298,7 +267,7 @@ WORKFLOW_RECORD_RECONCILIATION_REQUEST = {
     "status": "planned",
     "skip_reason": None,
     "checks": WORKFLOW_CHECKS,
-    "run_id": RUN_1,
+    "run_ids": {"rewrite_data_files": RUN_1},
     "run_start_failed": False,
     "policy_id": GOLD_POLICY_ID,
     "policy_name": "gold",
@@ -308,7 +277,7 @@ WORKFLOW_RECORD_RECONCILIATION_REQUEST = {
 
 
 def test_create_run_input_is_built_from_the_payload_the_maintenance_workflow_sends():
-    """The create run input reads the workflow's payload: an ISO time and a list of operations."""
+    """The create run input reads the workflow's payload: an ISO time, one operation, its filters and arguments."""
     assert CreateTableMaintenanceRunUseCaseInput.from_primitives(
         CREATE_REQUEST
     ) == CreateTableMaintenanceRunUseCaseInput(
@@ -316,20 +285,21 @@ def test_create_run_input_is_built_from_the_payload_the_maintenance_workflow_sen
         table_uuid="u1",
         execution_ref="wf-r1",
         trigger="manual",
-        operations=("rewrite_data_files", "expire_snapshots"),
+        operation="rewrite_data_files",
+        priority="P1",
+        filters=(CreateTableMaintenanceRunUseCaseInput.Filter(spec_id=0, where="(`region` = 'eu')"),),
+        procedure_args={"strategy": "binpack", "options": {"min-input-files": "5"}},
         now=NOW_DT,
     )
 
 
-def test_create_run_input_reads_the_filters_the_maintenance_workflow_sends():
-    """The create run input reads the filters per operation; a payload without them reads as none."""
-    built = CreateTableMaintenanceRunUseCaseInput.from_primitives(
-        {**CREATE_REQUEST, "filters": {"rewrite_data_files": [{"spec_id": 0, "where": "x"}]}}
-    )
-    assert built.filters == {
-        "rewrite_data_files": (CreateTableMaintenanceRunUseCaseInput.Filter(spec_id=0, where="x"),)
-    }
-    assert CreateTableMaintenanceRunUseCaseInput.from_primitives(CREATE_REQUEST).filters == {}
+def test_create_run_input_reads_a_whole_table_payload_as_no_filters():
+    """A payload whose operation holds no filters, or names none, reads as no filters and no arguments."""
+    whole_table = {**CREATE_REQUEST, "filters": [], "procedure_args": {}}
+    built = CreateTableMaintenanceRunUseCaseInput.from_primitives(whole_table)
+    assert (built.filters, built.procedure_args) == ((), {})
+    bare = {k: v for k, v in CREATE_REQUEST.items() if k not in ("filters", "procedure_args")}
+    assert CreateTableMaintenanceRunUseCaseInput.from_primitives(bare).filters == ()
 
 
 def test_create_run_activity_hands_the_use_case_the_input_built_from_the_payload():
@@ -352,11 +322,6 @@ def test_submit_input_is_built_from_the_payload_the_maintenance_workflow_sends()
         run_id=RUN_1,
         operation="rewrite_data_files",
         attempt=2,
-        filters=(
-            SubmitMaintenanceOperationUseCaseInput.Filter(spec_id=1, where="region = 'eu'"),
-            SubmitMaintenanceOperationUseCaseInput.Filter(spec_id=1, where="region = 'us'"),
-        ),
-        procedure_args={"strategy": "binpack", "options": {"min-input-files": "5"}},
         callback_base_url="http://cp:8000",
         now=NOW_DT,
         size="M",
@@ -514,7 +479,7 @@ def test_record_reconciliation_input_is_built_from_the_payload_the_reconciliatio
         status="planned",
         skip_reason=None,
         checks=tuple(WORKFLOW_CHECKS),
-        run_id=RUN_1,
+        run_ids={"rewrite_data_files": RUN_1},
         run_start_failed=False,
         policy_id=GOLD_POLICY_ID,
         policy_name="gold",

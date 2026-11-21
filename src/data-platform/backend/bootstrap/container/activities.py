@@ -38,6 +38,7 @@ class Activities:
             maintenance.get_maintenance_job_pods,
             maintenance.record_maintenance_attempt_running,
             maintenance.raise_table_maintenance_run_priority,
+            maintenance.skip_table_maintenance_run,
             maintenance.signal_parent,
             self.discovery.sync_discovered_tables,
         ]
