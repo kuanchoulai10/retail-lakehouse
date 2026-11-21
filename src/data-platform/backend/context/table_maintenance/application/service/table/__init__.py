@@ -8,6 +8,9 @@ from context.table_maintenance.application.service.table.apply_discovery_to_know
 from context.table_maintenance.application.service.table.attention_policy_names import (
     attention_policy_names,
 )
+from context.table_maintenance.application.service.table.discovery_decider import (
+    DiscoveryDecider,
+)
 from context.table_maintenance.application.service.table.get_table import (
     GetTableService,
 )
@@ -74,6 +77,7 @@ from context.table_maintenance.application.service.table.trigger_table_reconcili
 )
 
 __all__ = [
+    "DiscoveryDecider",
     "KnownTableOutcome",
     "apply_discovery_to_known_table",
     "attention_policy_names",

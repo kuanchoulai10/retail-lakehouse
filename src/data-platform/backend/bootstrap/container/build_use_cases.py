@@ -128,14 +128,15 @@ def build_use_cases(
         list_covered_catalogs=ListCoveredCatalogsService(catalog_names),
         process_table_hint=ProcessTableHintService(
             tables,
-            rules,
+            discovery_policies,
+            discovery_attachments,
             catalog,
             table_changes,
             gateways.send_discovery_request,
             clock=clock,
         ),
         sync_discovered_tables=SyncDiscoveredTablesService(
-            tables, rules, discoveries, catalog, table_changes, clock=clock
+            tables, discovery_policies, discovery_attachments, discoveries, catalog, table_changes, clock=clock
         ),
         get_table_discovery_rules=GetTableDiscoveryRulesService(rules),
         replace_table_discovery_rules=ReplaceTableDiscoveryRulesService(

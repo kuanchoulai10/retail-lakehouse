@@ -9,12 +9,12 @@ class TableManagementChange(StrEnum):
     """Enumerate what a discovery decision changed about a known table.
 
     ``MANAGED`` and ``UNMANAGED`` mean the table changed management.
-    ``RULE_CHANGED`` means a managed table stays managed but another include
-    rule now decides it, so only its matched rule changed. ``UNCHANGED`` means
-    nothing changed.
+    ``MATCH_CHANGED`` means its management stays the same, managed or not, but
+    another policy, version or rule decides it now, so only the recorded match
+    changed. ``UNCHANGED`` means nothing changed.
     """
 
     UNCHANGED = "unchanged"
     MANAGED = "managed"
     UNMANAGED = "unmanaged"
-    RULE_CHANGED = "rule_changed"
+    MATCH_CHANGED = "match_changed"

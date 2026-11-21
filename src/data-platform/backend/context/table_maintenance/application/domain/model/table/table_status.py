@@ -8,8 +8,8 @@ from enum import StrEnum
 class TableStatus(StrEnum):
     """Enumerate the lifecycle states of a table.
 
-    A managed table is one the discovery rules include; an unmanaged one is kept
-    with its history after the rules stopped including it.
+    A managed table is one its nearest discovery policy manages; an unmanaged one is
+    kept with its history, whether no policy ever managed it or its policy stopped.
     """
 
     MANAGED = "managed"

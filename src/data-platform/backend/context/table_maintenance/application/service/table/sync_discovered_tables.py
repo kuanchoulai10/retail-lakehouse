@@ -34,6 +34,7 @@ from context.table_maintenance.application.service.shared import translate_domai
 from context.table_maintenance.application.service.table.apply_discovery_to_known_table import (
     apply_discovery_to_known_table,
 )
+from context.table_maintenance.application.service.table.discovery_decider import DiscoveryDecider
 from context.table_maintenance.application.service.table.last_commit_of import last_commit_of
 from context.table_maintenance.application.service.table.register_discovered_table import (
     register_discovered_table,
@@ -45,9 +46,6 @@ from context.table_maintenance.application.service.table.registration_outcome im
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from context.table_maintenance.application.domain.model.table_discovery_rules import (
-        TableDiscoveryRules,
-    )
     from context.table_maintenance.application.port.outbound.catalog_discovery import (
         CatalogDiscoveriesRepo,
     )
@@ -57,8 +55,11 @@ if TYPE_CHECKING:
         TableMetadata,
         TablesRepo,
     )
-    from context.table_maintenance.application.port.outbound.table_discovery_rules import (
-        TableDiscoveryRulesRepo,
+    from context.table_maintenance.application.port.outbound.table_discovery_policy import (
+        TableDiscoveryPoliciesRepo,
+    )
+    from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
+        TableDiscoveryPolicyAttachmentsRepo,
     )
     from context.table_maintenance.application.service.table.known_table_outcome import (
         KnownTableOutcome,
@@ -68,12 +69,13 @@ _DROP_SCAN_STATUSES = (TableStatus.MANAGED, TableStatus.UNMANAGED)
 
 
 class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
-    """Make the registry match the tables currently in the catalog and the discovery rules."""
+    """Make the registry match the tables currently in the catalog and their nearest discovery policies."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         tables_repo: TablesRepo,
-        rules_repo: TableDiscoveryRulesRepo,
+        discovery_policies_repo: TableDiscoveryPoliciesRepo,
+        discovery_attachments_repo: TableDiscoveryPolicyAttachmentsRepo,
         discoveries_repo: CatalogDiscoveriesRepo,
         catalog_gateway: ReadTableMetadataGateway,
         table_change_gateway: SendTableChangeGateway,
@@ -82,7 +84,8 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
     ) -> None:
         """Bind the repos, the gateways and the clock."""
         self._tables_repo = tables_repo
-        self._rules_repo = rules_repo
+        self._discovery_policies_repo = discovery_policies_repo
+        self._discovery_attachments_repo = discovery_attachments_repo
         self._discoveries_repo = discoveries_repo
         self._catalog_gateway = catalog_gateway
         self._table_change_gateway = table_change_gateway
@@ -91,12 +94,13 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
     def execute(self, request: SyncDiscoveredTablesUseCaseInput) -> SyncDiscoveredTablesUseCaseOutput:
         """Register, rename, decide and drop tables within the catalog or namespace scope.
 
-        Every table listed is decided by the discovery rules: an unknown one is
-        registered, as managed when the rules include it and unmanaged otherwise, a known one is managed or unmanaged
-        as the rules now say (counted in ``managed`` / ``unmanaged``); with no
-        rules nothing is managed. Only a catalog-wide sync (no namespace) marks missing tables
-        dropped, since a namespace scan cannot tell a drop from a move, and a
-        table it does not list is never decided. A table that fails is counted in
+        Every table listed is decided by its nearest discovery policy (docs/adr/0012), from
+        the catalog's attachments read once for the whole scan: an unknown one is registered,
+        as managed or unmanaged as the decision says, a known one is managed or unmanaged as
+        it now says (counted in ``managed`` / ``unmanaged``), and each records the policy,
+        version and rule that decided it; with nothing attached the default unmanages. Only a
+        catalog-wide sync (no namespace) marks missing tables dropped, since a namespace scan
+        cannot tell a drop from a move, and a table it does not list is never decided. A table that fails is counted in
         ``skipped``. A catalog-wide sync also signal-with-starts the
         reconciliation workflow of every known managed table (counted in
         ``ensured``), so a table whose workflow was never started, or was lost,
@@ -112,7 +116,9 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         last time it was seen.
         """
         now = self._clock()
-        rules = self._rules_repo.get_rules()
+        decider = DiscoveryDecider.for_catalog(
+            request.catalog, self._discovery_attachments_repo, self._discovery_policies_repo
+        )
         seen_change = TableChange.SEEN if request.namespace is None else None
         refs = self._catalog_gateway.list_tables(ReadTableMetadataGatewayListInput(request.catalog, request.namespace))
         seen: set[str] = set()
@@ -125,7 +131,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
             seen.add(found.table_uuid)
             try:
                 with translate_domain_errors():
-                    outcome = self._sync_table(found, rules, seen_change, now)
+                    outcome = self._sync_table(found, decider, seen_change, now)
             except ConflictError, ValidationError, NotFoundError:
                 skipped += 1
                 continue
@@ -151,21 +157,22 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
     def _sync_table(
         self,
         found: TableMetadata,
-        rules: TableDiscoveryRules,
+        decider: DiscoveryDecider,
         seen_change: TableChange | None,
         now: datetime,
     ) -> RegistrationOutcome | KnownTableOutcome | None:
         """Register an unknown table, or apply the discovery to a known live one; None for neither."""
         existing = self._tables_repo.get(TableId(found.table_uuid))
-        if existing is None:
-            return register_discovered_table(found, rules, self._tables_repo, self._table_change_gateway, now)
-        if existing.status == TableStatus.DROPPED:
+        if existing is not None and existing.status == TableStatus.DROPPED:
             return None
         name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
+        decision = decider.decide(name, found.table_uuid)
+        if existing is None:
+            return register_discovered_table(found, decision, self._tables_repo, self._table_change_gateway, now)
         return apply_discovery_to_known_table(
             existing,
             name,
-            rules,
+            decision,
             self._tables_repo,
             self._table_change_gateway,
             seen_change,

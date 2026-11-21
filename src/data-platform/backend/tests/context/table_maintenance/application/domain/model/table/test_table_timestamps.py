@@ -9,9 +9,7 @@ from context.table_maintenance.application.domain.model.table import (
     TableId,
     TableName,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import (
-    TableDiscoveryRuleId,
-)
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED, UNMANAGED
 
 T0 = datetime(2026, 1, 1, tzinfo=UTC)
 T1 = T0 + timedelta(hours=1)
@@ -21,7 +19,7 @@ NAME = TableName(catalog="iceberg", namespace="inventory", table="orders")
 
 def managed(at: datetime = T0) -> Table:
     """Provide a table registered as managed at ``at``."""
-    return Table.register(TableId("u1"), NAME, TableDiscoveryRuleId.new(), at)
+    return Table.register(TableId("u1"), NAME, MANAGED, at)
 
 
 # --- last commit ---
@@ -30,7 +28,7 @@ def managed(at: datetime = T0) -> Table:
 def test_a_new_table_has_no_known_last_commit():
     """Until a commit is seen, the last commit is unknown."""
     assert managed().last_committed_at is None
-    assert Table.register_unmanaged(TableId("u1"), NAME, T0).last_committed_at is None
+    assert Table.register(TableId("u1"), NAME, UNMANAGED, T0).last_committed_at is None
 
 
 def test_recording_a_commit_sets_the_last_commit_and_leaves_updated_at():

@@ -12,9 +12,6 @@ from context.table_maintenance.application.domain.model.table import (
     TableId,
     TableName,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import (
-    TableDiscoveryRuleId,
-)
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
     TableMaintenanceRunId,
@@ -32,6 +29,7 @@ from tests.context.table_maintenance.adapter.inbound.web.web_test_support import
     StubUseCase,
     build_client,
 )
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_runs_repo import (
     InMemoryTableMaintenanceRunsRepo,
 )
@@ -51,7 +49,7 @@ def _submitted_callback_url() -> str:
         Table.register(
             TableId("u-1"),
             TableName(catalog="iceberg", namespace="sales", table="orders"),
-            TableDiscoveryRuleId.new(),
+            MANAGED,
             NOW,
         )
     )

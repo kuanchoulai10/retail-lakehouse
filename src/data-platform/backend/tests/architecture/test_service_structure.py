@@ -46,6 +46,7 @@ UTILITY_FILES = {
     "compaction_share.py",
     "table_observation_from_gateway.py",
     "register_discovered_table.py",
+    "discovery_decider.py",
     "registration_outcome.py",
     "apply_discovery_to_known_table.py",
     "known_table_outcome.py",

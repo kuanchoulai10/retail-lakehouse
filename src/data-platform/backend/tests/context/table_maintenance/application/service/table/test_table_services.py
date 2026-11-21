@@ -14,9 +14,6 @@ from context.table_maintenance.application.domain.model.table import (
     TableId,
     TableName,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import (
-    TableDiscoveryRuleId,
-)
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     MaintenancePolicyContent,
     TableMaintenancePolicy,
@@ -42,6 +39,7 @@ from context.table_maintenance.application.service.table import (
     TriggerTableMaintenanceService,
     TriggerTableReconciliationService,
 )
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED, UNMANAGED
 from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import (
     InMemoryCatalogDiscoveriesRepo,
 )
@@ -54,14 +52,14 @@ NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 
 
 def _managed(repo, now, uuid="u-1", name=NAME):
-    table = Table.register(TableId(uuid), name, TableDiscoveryRuleId(RULE_1), now)
+    table = Table.register(TableId(uuid), name, MANAGED, now)
     repo.create(table)
     return table
 
 
 def _unmanaged(repo, now, uuid="u-1", name=NAME):
     table = _managed(repo, now, uuid, name)
-    table.unmanage(now)
+    table.unmanage(UNMANAGED.match, now)
     return table
 
 

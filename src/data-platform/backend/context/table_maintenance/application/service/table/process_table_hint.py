@@ -25,6 +25,7 @@ from context.table_maintenance.application.service.shared import translate_domai
 from context.table_maintenance.application.service.table.apply_discovery_to_known_table import (
     apply_discovery_to_known_table,
 )
+from context.table_maintenance.application.service.table.discovery_decider import DiscoveryDecider
 from context.table_maintenance.application.service.table.last_commit_of import last_commit_of
 from context.table_maintenance.application.service.table.register_discovered_table import (
     register_discovered_table,
@@ -36,6 +37,9 @@ from context.table_maintenance.application.service.table.table_hint_action impor
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from context.table_maintenance.application.domain.model.table_discovery_policy import (
+        DiscoveryDecision,
+    )
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
         SendDiscoveryRequestGateway,
@@ -43,8 +47,11 @@ if TYPE_CHECKING:
         TableMetadata,
         TablesRepo,
     )
-    from context.table_maintenance.application.port.outbound.table_discovery_rules import (
-        TableDiscoveryRulesRepo,
+    from context.table_maintenance.application.port.outbound.table_discovery_policy import (
+        TableDiscoveryPoliciesRepo,
+    )
+    from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
+        TableDiscoveryPolicyAttachmentsRepo,
     )
 
 
@@ -54,7 +61,8 @@ class ProcessTableHintService(ProcessTableHintUseCase):
     def __init__(  # noqa: PLR0913
         self,
         tables_repo: TablesRepo,
-        rules_repo: TableDiscoveryRulesRepo,
+        discovery_policies_repo: TableDiscoveryPoliciesRepo,
+        discovery_attachments_repo: TableDiscoveryPolicyAttachmentsRepo,
         catalog_gateway: ReadTableMetadataGateway,
         table_change_gateway: SendTableChangeGateway,
         discovery_request_gateway: SendDiscoveryRequestGateway,
@@ -63,7 +71,8 @@ class ProcessTableHintService(ProcessTableHintUseCase):
     ) -> None:
         """Bind the repos, the gateways and the clock."""
         self._tables_repo = tables_repo
-        self._rules_repo = rules_repo
+        self._discovery_policies_repo = discovery_policies_repo
+        self._discovery_attachments_repo = discovery_attachments_repo
         self._catalog_gateway = catalog_gateway
         self._table_change_gateway = table_change_gateway
         self._discovery_request_gateway = discovery_request_gateway
@@ -74,8 +83,10 @@ class ProcessTableHintService(ProcessTableHintUseCase):
 
         A hint naming one table applies the same steps as a discovery pass to that
         table: an unknown one is registered (managed or unmanaged), a known one is
-        renamed and decided again. A table that ends up newly managed is signalled
-        ``managed``, and one already managed ``updated``.
+        renamed and decided again, by its nearest discovery policy, read from the attachments
+        on that one table's walk. A table in a catalog nothing manages is registered as the
+        default decides, unmanaged, and sent nothing. A table that ends up newly managed is
+        signalled ``managed``, and one already managed ``updated``.
         Either way the table's newest commit is read from the catalog, so a
         commit event moves its last commit.
         """
@@ -102,15 +113,18 @@ class ProcessTableHintService(ProcessTableHintUseCase):
     def _handle_found(self, found: TableMetadata) -> TableHintAction:
         now = self._clock()
         table = self._tables_repo.get(TableId(found.table_uuid))
-        if table is None:
-            return self._register(found, now)
-        if table.status == TableStatus.DROPPED:
+        if table is not None and table.status == TableStatus.DROPPED:
             return TableHintAction.IGNORED
         name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
+        decision = DiscoveryDecider.for_table(
+            name, found.table_uuid, self._discovery_attachments_repo, self._discovery_policies_repo
+        ).decide(name, found.table_uuid)
+        if table is None:
+            return self._register(found, name, decision, now)
         outcome = apply_discovery_to_known_table(
             table,
             name,
-            self._rules_repo.get_rules(),
+            decision,
             self._tables_repo,
             self._table_change_gateway,
             TableChange.UPDATED,
@@ -125,11 +139,11 @@ class ProcessTableHintService(ProcessTableHintUseCase):
             return TableHintAction.RENAMED
         return TableHintAction.SIGNALLED if outcome.signalled else TableHintAction.IGNORED
 
-    def _register(self, found: TableMetadata, now: datetime) -> TableHintAction:
-        rules = self._rules_repo.get_rules()
-        name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
+    def _register(
+        self, found: TableMetadata, name: TableName, decision: DiscoveryDecision, now: datetime
+    ) -> TableHintAction:
         stale = self._tables_repo.find_by_name(name)
-        register_discovered_table(found, rules, self._tables_repo, self._table_change_gateway, now)
+        register_discovered_table(found, decision, self._tables_repo, self._table_change_gateway, now)
         if stale is not None:
             self._discovery_request_gateway.send(SendDiscoveryRequestGatewayInput(found.catalog, None))
         return TableHintAction.REGISTERED

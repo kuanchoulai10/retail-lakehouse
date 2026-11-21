@@ -15,9 +15,9 @@ if TYPE_CHECKING:
 class KnownTableOutcome:
     """Say what discovering a known table again did to it.
 
-    ``renamed`` tells whether its name changed, ``change`` whether the rules
-    managed or unmanaged it, and ``signalled`` whether the runtime was told of a
-    table whose management did not change.
+    ``renamed`` tells whether its name changed, ``change`` whether its discovery
+    decision managed or unmanaged it or only moved its match, and ``signalled``
+    whether the runtime was told of a table whose management did not change.
     """
 
     renamed: bool

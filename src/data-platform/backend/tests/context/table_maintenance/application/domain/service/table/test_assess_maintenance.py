@@ -34,9 +34,6 @@ from context.table_maintenance.application.domain.model.table import (
     TableId,
     TableName,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import (
-    TableDiscoveryRuleId,
-)
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_ID,
     AtMost,
@@ -55,6 +52,7 @@ from context.table_maintenance.application.domain.service.table import (
     assess_maintenance,
 )
 from context.table_maintenance.application.service.table_maintenance_run import maintenance_procedure_args
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED, UNMANAGED
 from tests.context.table_maintenance.fakes.policy_with_operation import policy_with_operation
 
 NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)
@@ -72,7 +70,7 @@ def table() -> Table:
     return Table.register(
         TableId("u"),
         TableName(catalog="c", namespace="n", table="t"),
-        TableDiscoveryRuleId.new(),
+        MANAGED,
         NOW - timedelta(days=30),
     )
 
@@ -444,7 +442,7 @@ def test_failure_backoff_stops_at_the_given_cap():
 def test_assessment_ignores_status():
     """The assessment does not depend on the table status; the planner skips an unmanaged table before it."""
     t = table()
-    t.unmanage(NOW)
+    t.unmanage(UNMANAGED.match, NOW)
     o = obs(partitions=(part(10),))
     assert assess(t, o, Op.REWRITE_DATA_FILES).verdict == OperationVerdict.DUE
 

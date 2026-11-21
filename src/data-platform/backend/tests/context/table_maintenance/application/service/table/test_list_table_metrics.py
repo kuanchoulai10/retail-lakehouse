@@ -9,9 +9,9 @@ from context.table_maintenance.application.domain.model.table import (
     TableMetrics,
     TableName,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
 from context.table_maintenance.application.port.inbound.table import ListTableMetricsUseCaseInput
 from context.table_maintenance.application.service.table import ListTableMetricsService
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED, UNMANAGED
 
 RULE_1 = "dr-00000000000000000000000001"
 
@@ -20,7 +20,7 @@ def _register(tables_repo, now, uuid, table_name="orders"):
     table = Table.register(
         TableId(uuid),
         TableName(catalog="iceberg", namespace="retail", table=table_name),
-        TableDiscoveryRuleId(RULE_1),
+        MANAGED,
         now,
     )
     tables_repo.create(table)
@@ -35,7 +35,7 @@ def _metrics(uuid, now, **changes):
 def test_only_managed_tables_are_listed(tables_repo, metrics_store, now):
     """Rows of an unmanaged table, a dropped one and one the repo does not know are left out."""
     _register(tables_repo, now, "u-managed")
-    _register(tables_repo, now, "u-unmanaged", "items").unmanage(now)
+    _register(tables_repo, now, "u-unmanaged", "items").unmanage(UNMANAGED.match, now)
     _register(tables_repo, now, "u-dropped", "events").mark_dropped(now)
     for uuid in ("u-managed", "u-unmanaged", "u-dropped", "u-unknown"):
         metrics_store.save(_metrics(uuid, now))

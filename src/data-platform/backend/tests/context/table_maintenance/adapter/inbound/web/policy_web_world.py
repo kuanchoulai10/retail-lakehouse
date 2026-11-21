@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
-from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePolicyContent
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     EnsureDefaultTableMaintenancePolicyUseCaseInput,
@@ -27,6 +26,7 @@ from context.table_maintenance.application.service.table_maintenance_policy_atta
     ResolveApplicableTableMaintenancePolicyService,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import build_client
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import (
     FakeReadTableMetadataGateway,
 )
@@ -70,7 +70,7 @@ class PolicyWebWorld:
             Table.register(
                 TableId("u-1"),
                 TableName(catalog="prod", namespace="sales.eu", table="orders"),
-                TableDiscoveryRuleId.new(),
+                MANAGED,
                 NOW,
             )
         )

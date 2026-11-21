@@ -22,7 +22,6 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation as Op,
 )
 from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
-from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     FailureClass,
     NextAttempt,
@@ -39,6 +38,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
 from context.table_maintenance.application.service.table_maintenance_run import (
     CreateTableMaintenanceRunsService,
 )
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.context.table_maintenance.numbered_id import numbered_id
 
@@ -245,11 +245,7 @@ def test_a_create_of_a_plan_retried_after_it_was_stored_succeeds_on_the_sql_repo
     The idempotency lives in the use case: it reads each run id back from this repo before inserting.
     """
     tables = InMemoryTablesRepo()
-    tables.create(
-        Table.register(
-            TableId("u1"), TableName(catalog="iceberg", namespace="s", table="t"), TableDiscoveryRuleId.new(), NOW
-        )
-    )
+    tables.create(Table.register(TableId("u1"), TableName(catalog="iceberg", namespace="s", table="t"), MANAGED, NOW))
     service = CreateTableMaintenanceRunsService(repo, tables)
     request = CreateTableMaintenanceRunsUseCaseInput(
         table_uuid="u1",
@@ -275,11 +271,7 @@ def test_a_retry_whose_insert_hits_the_primary_key_of_its_first_try_succeeds_on_
     The primary key refuses the retry's insert; the use case reads the runs back and finds them stored as planned.
     """
     tables = InMemoryTablesRepo()
-    tables.create(
-        Table.register(
-            TableId("u1"), TableName(catalog="iceberg", namespace="s", table="t"), TableDiscoveryRuleId.new(), NOW
-        )
-    )
+    tables.create(Table.register(TableId("u1"), TableName(catalog="iceberg", namespace="s", table="t"), MANAGED, NOW))
     request = CreateTableMaintenanceRunsUseCaseInput(
         table_uuid="u1",
         execution_ref="wf",

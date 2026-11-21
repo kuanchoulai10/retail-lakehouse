@@ -11,9 +11,6 @@ from context.table_maintenance.application.domain.model.table import (
     TableId,
     TableName,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import (
-    TableDiscoveryRuleId,
-)
 from context.table_maintenance.application.service.table import (
     GetTableService,
     ListTablesService,
@@ -23,6 +20,7 @@ from context.table_maintenance.application.service.table import (
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import (
     build_client,
 )
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED, UNMANAGED
 from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import (
     InMemoryCatalogDiscoveriesRepo,
 )
@@ -47,7 +45,7 @@ def repo() -> InMemoryTablesRepo:
         Table.register(
             TableId("u-1"),
             TableName(catalog="iceberg", namespace="sales", table="orders"),
-            TableDiscoveryRuleId.new(),
+            MANAGED,
             NOW,
         )
     )
@@ -105,7 +103,7 @@ def test_trigger_signals_the_workflow(client, signals) -> None:
 
 def test_trigger_unmanaged_table_returns_409(client, repo, signals) -> None:
     """Triggering maintenance on an unmanaged table returns 409 and sends nothing."""
-    repo.items["u-1"].unmanage(NOW)
+    repo.items["u-1"].unmanage(UNMANAGED.match, NOW)
 
     response = client.post("/v1/tables/u-1/maintenance", json={"operations": ["rewrite_data_files"]})
 
@@ -115,7 +113,7 @@ def test_trigger_unmanaged_table_returns_409(client, repo, signals) -> None:
 
 def test_status_filter_lists_unmanaged_tables(client, repo) -> None:
     """The status filter takes the managed, unmanaged and dropped statuses."""
-    repo.items["u-1"].unmanage(NOW)
+    repo.items["u-1"].unmanage(UNMANAGED.match, NOW)
 
     assert [t["uuid"] for t in client.get("/v1/tables", params={"status": "unmanaged"}).json()] == ["u-1"]
     assert client.get("/v1/tables", params={"status": "managed"}).json() == []

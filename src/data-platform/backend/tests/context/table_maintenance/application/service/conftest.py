@@ -25,6 +25,12 @@ from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway impo
 from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import (
     InMemoryCatalogDiscoveriesRepo,
 )
+from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_repo import (
+    InMemoryTableDiscoveryPoliciesRepo,
+)
+from tests.context.table_maintenance.fakes.in_memory_table_discovery_policy_attachments_repo import (
+    InMemoryTableDiscoveryPolicyAttachmentsRepo,
+)
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_rules_repo import (
     InMemoryTableDiscoveryRulesRepo,
 )
@@ -88,6 +94,18 @@ def new_id() -> Callable[[], str]:
 def rules_repo() -> InMemoryTableDiscoveryRulesRepo:
     """Provide an in-memory discovery rules repository holding no rules."""
     return InMemoryTableDiscoveryRulesRepo()
+
+
+@pytest.fixture
+def discovery_policies() -> InMemoryTableDiscoveryPoliciesRepo:
+    """Provide an in-memory discovery policies repository holding no policy (a scan never reads the default)."""
+    return InMemoryTableDiscoveryPoliciesRepo()
+
+
+@pytest.fixture
+def discovery_attachments() -> InMemoryTableDiscoveryPolicyAttachmentsRepo:
+    """Provide an in-memory discovery policy attachments repository holding no attachment."""
+    return InMemoryTableDiscoveryPolicyAttachmentsRepo()
 
 
 @pytest.fixture

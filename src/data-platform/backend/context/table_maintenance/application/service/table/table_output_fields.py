@@ -45,6 +45,8 @@ def table_output_fields(
         "status": table.status.value,
         "priority": table.priority.value,
         "matched_rule_id": (None if table.matched_rule_id is None else table.matched_rule_id.value),
+        "matched_policy_id": table.discovered_by.policy_id.value,
+        "matched_policy_version": table.discovered_by.policy_version,
         "operation_states": {
             op.value: {
                 "last_attempt_at": state.last_attempt_at,

@@ -28,7 +28,7 @@ from context.table_maintenance.application.domain.model.table.table_status impor
     TableStatus,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
-    TableDiscoveryRuleId,
+    DiscoveryMatch,
 )
 
 if TYPE_CHECKING:
@@ -43,14 +43,19 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table.recorded_attempt import (
         RecordedAttempt,
     )
+    from context.table_maintenance.application.domain.model.table_discovery_policy import (
+        DiscoveryDecision,
+        TableDiscoveryRuleId,
+    )
 
 
 class Table(AggregateRoot[TableId]):
     """Hold the maintenance state of one Iceberg table, identified by its uuid.
 
-    The discovery rules alone decide whether a table is managed: ``manage`` and
-    ``unmanage`` apply their decision, and an unmanaged table keeps its row, so
-    its history and per-operation state survive.
+    Its nearest discovery policy alone decides whether a table is managed: ``manage`` and
+    ``unmanage`` apply that decision, and an unmanaged table keeps its row, so its history
+    and per-operation state survive. ``discovered_by`` names what decided it, managed or
+    not: the policy, its version and the deciding rule (None for the no-match outcome).
 
     ``priority`` says how urgently the table's maintenance is scheduled; it starts at P3.
 
@@ -68,7 +73,7 @@ class Table(AggregateRoot[TableId]):
     id: TableId
     name: TableName
     status: TableStatus
-    matched_rule_id: TableDiscoveryRuleId | None
+    discovered_by: DiscoveryMatch
     registered_at: datetime
     updated_at: datetime
     operation_states: dict[MaintenanceOperation, OperationState] = Field(default_factory=dict)
@@ -82,35 +87,23 @@ class Table(AggregateRoot[TableId]):
         cls,
         id: TableId,  # noqa: A002
         name: TableName,
-        rule_id: TableDiscoveryRuleId,
+        decision: DiscoveryDecision,
         now: datetime,
     ) -> Table:
-        """Register a table a discovery rule includes, as managed."""
+        """Register a discovered table, managed or unmanaged as the decision says, recording what decided it."""
         return cls(
             id=id,
             name=name,
-            status=TableStatus.MANAGED,
-            matched_rule_id=rule_id,
+            status=TableStatus.MANAGED if decision.manages else TableStatus.UNMANAGED,
+            discovered_by=decision.match,
             registered_at=now,
             updated_at=now,
         )
 
-    @classmethod
-    def register_unmanaged(
-        cls,
-        id: TableId,  # noqa: A002
-        name: TableName,
-        now: datetime,
-    ) -> Table:
-        """Register a table no discovery rule includes, as unmanaged."""
-        return cls(
-            id=id,
-            name=name,
-            status=TableStatus.UNMANAGED,
-            matched_rule_id=None,
-            registered_at=now,
-            updated_at=now,
-        )
+    @property
+    def matched_rule_id(self) -> TableDiscoveryRuleId | None:
+        """Return the rule that decided the table, or None when its policy's no-match outcome did."""
+        return self.discovered_by.rule_id
 
     @property
     def is_managed(self) -> bool:
@@ -125,19 +118,19 @@ class Table(AggregateRoot[TableId]):
         if self.status == TableStatus.DROPPED:
             raise InvalidTableTransition("table is dropped")
 
-    def manage(self, rule_id: TableDiscoveryRuleId, now: datetime) -> None:
-        """Manage the table under the include rule that decides it; idempotent for that rule."""
-        self._ensure_not_dropped()
-        if self.status == TableStatus.MANAGED and self.matched_rule_id == rule_id:
-            return
-        self._assign_together(status=TableStatus.MANAGED, matched_rule_id=rule_id, updated_at=now)
+    def manage(self, match: DiscoveryMatch, now: datetime) -> None:
+        """Manage the table under the match that decides it; idempotent for an equal match."""
+        self._decide(TableStatus.MANAGED, match, now)
 
-    def unmanage(self, now: datetime) -> None:
-        """Stop managing the table, keeping its row; idempotent."""
+    def unmanage(self, match: DiscoveryMatch, now: datetime) -> None:
+        """Stop managing the table, keeping its row, under the match that decides it; idempotent for an equal match."""
+        self._decide(TableStatus.UNMANAGED, match, now)
+
+    def _decide(self, status: TableStatus, match: DiscoveryMatch, now: datetime) -> None:
         self._ensure_not_dropped()
-        if self.status == TableStatus.UNMANAGED:
+        if self.status == status and self.discovered_by == match:
             return
-        self._assign_together(status=TableStatus.UNMANAGED, matched_rule_id=None, updated_at=now)
+        self._assign_together(status=status, discovered_by=match, updated_at=now)
 
     def set_priority(self, priority: TablePriority, now: datetime) -> None:
         """Set how urgently the table's maintenance is scheduled; idempotent."""

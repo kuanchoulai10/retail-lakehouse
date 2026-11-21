@@ -17,6 +17,8 @@ function table(overrides: Partial<TableApiResponse>): TableApiResponse {
     status: "managed",
     priority: "P3",
     matched_rule_id: "dr-01m7s6c3tqee0rhg00xn5s97gw",
+    matched_policy_id: "dp-01m7s6c3tqee0rhg00xn5s97gv",
+    matched_policy_version: 1,
     operation_states: {},
     registered_at: "2026-10-30T10:00:00Z",
     updated_at: "2026-10-31T08:00:00Z",

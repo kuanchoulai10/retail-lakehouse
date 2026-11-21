@@ -244,6 +244,8 @@ export const MAINTAINED_ORDERS: TableApiResponse = {
   status: "managed",
   priority: "P3",
   matched_rule_id: "dr-01m7s6c3tqee0rhg00xry2zqqt",
+  matched_policy_id: "dp-01m7s6c3tqee0rhg00xry2zqqv",
+  matched_policy_version: 2,
   operation_states: {},
   registered_at: "2026-11-02T10:00:00Z",
   updated_at: "2026-11-09T08:00:00Z",

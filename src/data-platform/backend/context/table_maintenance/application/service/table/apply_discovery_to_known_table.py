@@ -25,8 +25,8 @@ if TYPE_CHECKING:
         Table,
         TableName,
     )
-    from context.table_maintenance.application.domain.model.table_discovery_rules import (
-        TableDiscoveryRules,
+    from context.table_maintenance.application.domain.model.table_discovery_policy import (
+        DiscoveryDecision,
     )
     from context.table_maintenance.application.port.outbound.table import (
         SendTableChangeGateway,
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 def apply_discovery_to_known_table(  # noqa: PLR0913
     table: Table,
     name: TableName,
-    rules: TableDiscoveryRules,
+    decision: DiscoveryDecision,
     tables_repo: TablesRepo,
     table_change_gateway: SendTableChangeGateway,
     seen_change: TableChange | None,
@@ -47,22 +47,21 @@ def apply_discovery_to_known_table(  # noqa: PLR0913
 ) -> KnownTableOutcome:
     """Apply one discovery of a known, live table: rename, decide, note its last commit and tell the runtime.
 
-    The table is renamed when its name changed and decided again by the rules,
-    and its last commit moves to ``last_committed_at`` when that is newer. A
-    rename or a management change is stored in one full update (with the new
-    deciding rule and the last commit); a table whose only change is a newer
-    commit gets just that written, so this copy of the table, read before any
-    other writer's change, never puts the rest of it back. A table
-    the rules unmanage is sent ``stopped``; one they manage again is sent
-    ``managed`` as a managed table, so its workflow starts again under the same ID
-    and checks it at once. A table whose management did not change (a rule-only
-    change included) is sent ``seen_change`` only when it is managed and
-    ``seen_change`` is given.
+    The table is renamed when its name changed and decided again by ``decision``, which
+    the caller made with the table's current name and its uuid, and its last commit moves
+    to ``last_committed_at`` when that is newer. A rename, a management change or a moved
+    match is stored in one full update (with the new match and the last commit); a table
+    whose only change is a newer commit gets just that written, so this copy of the table,
+    read before any other writer's change, never puts the rest of it back. A table the
+    decision unmanages is sent ``stopped``; one it manages again is sent ``managed`` as a
+    managed table, so its workflow starts again under the same ID and checks it at once.
+    A table whose management did not change (a match-only change included) is sent
+    ``seen_change`` only when it is managed and ``seen_change`` is given.
     """
     renamed = table.name != name
     if renamed:
         table.rename(name, now)
-    change = decide_table_management(table, rules, now)
+    change = decide_table_management(table, decision, now)
     committed = table.record_last_commit(last_committed_at)
     if renamed or change != TableManagementChange.UNCHANGED:
         tables_repo.update(table)

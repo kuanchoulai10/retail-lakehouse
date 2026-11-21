@@ -20,7 +20,9 @@ from context.table_maintenance.application.domain.model.table import (
     TableName,
     TableStatus,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import (
+from context.table_maintenance.application.domain.model.table_discovery_policy import (
+    DiscoveryMatch,
+    TableDiscoveryPolicyId,
     TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
@@ -97,6 +99,8 @@ __all__ = [
     "OperationState",
     "OverTargetPartition",
     "RecordedAttempt",
+    "DiscoveryMatch",
+    "TableDiscoveryPolicyId",
     "TableDiscoveryRuleId",
     "TableId",
     "TableMaintenancePolicyId",

@@ -12,11 +12,11 @@ from context.table_maintenance.application.domain.model.table import (
     TableId,
     TableName,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table import GetTableMetricTrendsUseCaseInput
 from context.table_maintenance.application.port.outbound.table import MetricHistoryUnavailableError
 from context.table_maintenance.application.service.table import GetTableMetricTrendsService
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.scripted_read_table_metric_history_gateway import (
     ScriptedReadTableMetricHistoryGateway,
 )
@@ -37,7 +37,7 @@ def _register(tables_repo, now, uuid="u-1"):
         Table.register(
             TableId(uuid),
             TableName(catalog="iceberg", namespace="retail", table="orders"),
-            TableDiscoveryRuleId(RULE_1),
+            MANAGED,
             now,
         )
     )

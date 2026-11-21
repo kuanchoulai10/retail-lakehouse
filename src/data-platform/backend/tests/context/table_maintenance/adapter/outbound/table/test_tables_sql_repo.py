@@ -26,9 +26,13 @@ from context.table_maintenance.application.domain.model.table import (
     TableName,
     TableStatus,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import (
+from context.table_maintenance.application.domain.model.table_discovery_policy import (
+    DEFAULT_DISCOVERY_POLICY_ID,
+    DiscoveryDecision,
+    DiscoveryMatch,
+    DiscoveryOutcome,
+    TableDiscoveryPolicyId,
     TableDiscoveryRuleId,
-    TableDiscoveryRules,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     TableMaintenancePolicyId,
@@ -52,6 +56,9 @@ RUN_7 = "mr-00000000000000000000000007"
 RULE_1 = "dr-00000000000000000000000001"
 NIGHTLY = TableMaintenancePolicyId("mp-00000000000000000000000003")
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
+SALES_POLICY = TableDiscoveryPolicyId("dp-00000000000000000000000004")
+MATCH = DiscoveryMatch(policy_id=SALES_POLICY, policy_version=3, rule_id=TableDiscoveryRuleId(RULE_1))
+NO_RULE_MATCH = DiscoveryMatch(policy_id=SALES_POLICY, policy_version=3, rule_id=None)
 
 
 def _table(
@@ -64,7 +71,7 @@ def _table(
         id=TableId(uuid),
         name=name or TableName(catalog="iceberg", namespace="inventory", table="orders"),
         status=status,
-        matched_rule_id=TableDiscoveryRuleId(RULE_1),
+        discovered_by=MATCH,
         registered_at=NOW,
         updated_at=updated_at,
         operation_states={
@@ -89,7 +96,7 @@ def test_roundtrip_field_by_field(repo: TablesSqlRepo):
     assert loaded.id == original.id
     assert loaded.name == original.name
     assert loaded.status is TableStatus.MANAGED
-    assert loaded.matched_rule_id == TableDiscoveryRuleId(RULE_1)
+    assert loaded.discovered_by == MATCH
     assert loaded.registered_at == NOW
     assert loaded.registered_at.tzinfo is not None
     assert loaded.updated_at == NOW
@@ -114,16 +121,51 @@ def test_roundtrip_reads_an_equal_aggregate(repo: TablesSqlRepo):
 
 
 def test_roundtrip_of_an_unmanaged_table_without_a_rule(repo: TablesSqlRepo):
-    """An unmanaged table without a deciding rule round trips with its status and no rule."""
+    """An unmanaged table its policy's no-match outcome decided round trips with its status, policy and no rule."""
     table = _table(status=TableStatus.UNMANAGED)
-    table.matched_rule_id = None
+    table.discovered_by = NO_RULE_MATCH
     table.operation_states = {}
     repo.create(table)
     loaded = repo.get(table.id)
     assert loaded is not None
     assert loaded.status is TableStatus.UNMANAGED
-    assert loaded.matched_rule_id is None
+    assert loaded.discovered_by == NO_RULE_MATCH
     assert loaded.operation_states == {}
+
+
+def test_the_deciding_policy_and_version_are_stored_in_their_columns(repo: TablesSqlRepo, engine: Engine):
+    """The policy id and version that decided a table are columns of its row, beside its rule."""
+    repo.create(_table())
+    with engine.connect() as connection:
+        row = connection.execute(tables_table.select()).mappings().one()
+    assert (row["matched_policy_id"], row["matched_policy_version"], row["matched_rule_id"]) == (
+        SALES_POLICY.value,
+        3,
+        RULE_1,
+    )
+
+
+def test_a_table_stored_before_matches_reads_as_decided_by_the_default(tmp_path: Path):
+    """A row stored before the policy columns gains them empty and reads as decided by the default, status kept."""
+    engine = create_engine(f"sqlite:///{tmp_path / 'tables.db'}")
+    create_schema(engine)
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE tables DROP COLUMN matched_policy_id"))
+        connection.execute(text("ALTER TABLE tables DROP COLUMN matched_policy_version"))
+        connection.execute(
+            text(
+                "INSERT INTO tables (uuid, catalog, namespace, table_name, status, matched_rule_id,"
+                " registered_at, updated_at, operation_states_json)"
+                " VALUES ('u-old', 'iceberg', 'sales', 'orders', 'managed', :rule,"
+                " '2026-10-24 12:00:00.000000', '2026-10-24 12:00:00.000000', '{}')"
+            ),
+            {"rule": RULE_1},
+        )
+    create_schema(engine)
+    loaded = TablesSqlRepo(engine).get(TableId("u-old"))
+    assert loaded is not None
+    assert loaded.status is TableStatus.MANAGED
+    assert loaded.discovered_by == DiscoveryMatch(policy_id=DEFAULT_DISCOVERY_POLICY_ID, policy_version=1, rule_id=None)
 
 
 def test_tables_have_no_selection_settings_or_preset_columns(engine: Engine):
@@ -442,7 +484,7 @@ def test_recording_a_commit_writes_nothing_else(repo: TablesSqlRepo):
 def test_a_commit_only_discovery_from_an_older_read_keeps_the_operation_result(repo: TablesSqlRepo):
     """Discovery seeing only a newer commit, on a copy read before a result was recorded, keeps that result."""
     unmanaged = _table(status=TableStatus.UNMANAGED)
-    unmanaged.matched_rule_id = None
+    unmanaged.discovered_by = NO_RULE_MATCH
     repo.create(unmanaged)
     stale = repo.get(TableId("u1"))
     fresh = repo.get(TableId("u1"))
@@ -450,12 +492,12 @@ def test_a_commit_only_discovery_from_an_older_read_keeps_the_operation_result(r
     assert fresh is not None
     fresh.record_operation_result(MaintenanceOperation.REWRITE_DATA_FILES, False, NOW)
     repo.update(fresh)
-    rules = TableDiscoveryRules.empty()
+    decision = DiscoveryDecision(outcome=DiscoveryOutcome.UNMANAGE, match=NO_RULE_MATCH)
 
     apply_discovery_to_known_table(
         stale,
         stale.name,
-        rules,
+        decision,
         repo,
         RecordingSendTableChangeGateway(),
         None,

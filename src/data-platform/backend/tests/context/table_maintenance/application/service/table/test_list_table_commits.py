@@ -11,9 +11,6 @@ from context.table_maintenance.application.domain.model.table import (
     TableId,
     TableName,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import (
-    TableDiscoveryRuleId,
-)
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table import (
     ListTableCommitsUseCaseInput,
@@ -23,6 +20,7 @@ from context.table_maintenance.application.port.outbound.table import (
     TableCommitSelection,
 )
 from context.table_maintenance.application.service.table import ListTableCommitsService
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 
 KEY = ("iceberg", "sales", "orders")
 
@@ -31,9 +29,7 @@ KEY = ("iceberg", "sales", "orders")
 def service(tables_repo, catalog, now):
     """Provide the list table commits service on the fakes."""
     tables_repo.create(
-        Table.register(
-            TableId("u-1"), TableName(catalog=KEY[0], namespace=KEY[1], table=KEY[2]), TableDiscoveryRuleId.new(), now
-        )
+        Table.register(TableId("u-1"), TableName(catalog=KEY[0], namespace=KEY[1], table=KEY[2]), MANAGED, now)
     )
     return ListTableCommitsService(tables_repo, catalog)
 

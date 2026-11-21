@@ -6,7 +6,6 @@ import pytest
 
 from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation, TablePriority
 from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
-from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
     TableMaintenanceRunId,
@@ -19,6 +18,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
 from context.table_maintenance.application.service.table_maintenance_run import (
     RaiseTableMaintenanceRunPriorityService,
 )
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.track_calls import track_calls
 
 RUN_1 = "mr-00000000000000000000000001"
@@ -32,7 +32,7 @@ def table(tables_repo, now) -> Table:
     t = Table.register(
         TableId("u-1"),
         TableName(catalog="iceberg", namespace="sales", table="orders"),
-        TableDiscoveryRuleId.new(),
+        MANAGED,
         now,
     )
     t.set_priority(TablePriority.P1, now)

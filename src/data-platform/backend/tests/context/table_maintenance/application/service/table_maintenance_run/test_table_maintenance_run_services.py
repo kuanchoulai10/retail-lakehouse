@@ -20,9 +20,6 @@ from context.table_maintenance.application.domain.model.table import (
     TableId,
     TableName,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import (
-    TableDiscoveryRuleId,
-)
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_ID,
     TableMaintenancePolicyName,
@@ -57,6 +54,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
     RecordTableMaintenanceOperationResultService,
     SkipTableMaintenanceRunService,
 )
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.scripted_read_maintenance_event_log_gateway import (
     ScriptedReadMaintenanceEventLogGateway,
 )
@@ -81,7 +79,7 @@ def table(tables_repo, now):
     t = Table.register(
         TableId("u-1"),
         TableName(catalog="iceberg", namespace="sales", table="orders"),
-        TableDiscoveryRuleId.new(),
+        MANAGED,
         now,
     )
     tables_repo.create(t)

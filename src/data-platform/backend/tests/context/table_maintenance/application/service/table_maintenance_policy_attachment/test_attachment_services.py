@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 import pytest
 
 from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
-from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_ID,
     DEFAULT_POLICY_NAME,
@@ -41,6 +40,7 @@ from context.table_maintenance.application.service.table_maintenance_policy_atta
     ListTableMaintenancePolicyAttachmentsService,
     ResolveApplicableTableMaintenancePolicyService,
 )
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import (
     FakeReadTableMetadataGateway,
 )
@@ -112,7 +112,7 @@ class _World:
             Table.register(
                 TableId("u-1"),
                 TableName(catalog="prod", namespace="sales.eu", table="orders"),
-                TableDiscoveryRuleId.new(),
+                MANAGED,
                 NOW,
             )
         )

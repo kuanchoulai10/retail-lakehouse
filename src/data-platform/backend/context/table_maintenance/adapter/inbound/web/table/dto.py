@@ -19,7 +19,19 @@ class TableApiResponse(BaseModel):
     table: str
     status: str
     priority: str = Field(description="The table's maintenance priority, `P0` (urgent) to `P3` (the default).")
-    matched_rule_id: str | None
+    matched_rule_id: str | None = Field(
+        description=(
+            "The `dr-` id of the rule that decided the table, in the version `matched_policy_version` of the "
+            "discovery policy `matched_policy_id`; null when the policy's no-match outcome decided it."
+        )
+    )
+    matched_policy_id: str = Field(
+        description=(
+            "The `dp-` id of the discovery policy that decided whether the table is managed: the policy of its "
+            "nearest attachment, or the default when nothing on its walk is attached."
+        )
+    )
+    matched_policy_version: int = Field(description="The version of that discovery policy that decided the table.")
     operation_states: dict[str, dict[str, Any]]
     registered_at: datetime
     updated_at: datetime

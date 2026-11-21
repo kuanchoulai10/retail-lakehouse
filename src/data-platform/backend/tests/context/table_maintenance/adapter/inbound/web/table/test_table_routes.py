@@ -33,6 +33,8 @@ FIELDS: dict[str, Any] = {
     "status": "managed",
     "priority": "P3",
     "matched_rule_id": "dr-01h455vb4pex5vsknk084sn02q",
+    "matched_policy_id": "dp-01h455vb4pex5vsknk084sn02r",
+    "matched_policy_version": 2,
     "operation_states": {"rewrite_data_files": {"last_attempt_at": NOW, "consecutive_failures": 0}},
     "registered_at": NOW,
     "updated_at": NOW,
@@ -97,6 +99,29 @@ def test_get_table() -> None:
     assert body["table"] == "orders"
     assert body["operation_states"]["rewrite_data_files"]["consecutive_failures"] == 0
     assert stub.requests == [GetTableUseCaseInput(uuid="u-1")]
+
+
+def test_the_table_route_names_the_deciding_policy() -> None:
+    """A table answers the discovery policy and version that decided it, beside the deciding rule."""
+    client = build_client(get_table=StubUseCase(GetTableUseCaseOutput(**FIELDS)))
+
+    body = client.get("/v1/tables/u-1").json()
+
+    assert (body["matched_policy_id"], body["matched_policy_version"], body["matched_rule_id"]) == (
+        "dp-01h455vb4pex5vsknk084sn02r",
+        2,
+        "dr-01h455vb4pex5vsknk084sn02q",
+    )
+
+
+def test_a_listed_table_names_the_deciding_policy() -> None:
+    """Each listed table answers the discovery policy and version that decided it."""
+    item = ListTablesUseCaseOutput.Table(**FIELDS)
+    client = build_client(list_tables=StubUseCase(ListTablesUseCaseOutput(items=(item,))))
+
+    (body,) = client.get("/v1/tables").json()
+
+    assert (body["matched_policy_id"], body["matched_policy_version"]) == ("dp-01h455vb4pex5vsknk084sn02r", 2)
 
 
 def test_get_table_has_no_selection_settings_or_preset() -> None:

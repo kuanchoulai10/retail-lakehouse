@@ -20,9 +20,6 @@ from context.table_maintenance.application.domain.model.table import (
     TableId,
     TableName,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import (
-    TableDiscoveryRuleId,
-)
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     RunStatus,
     TableMaintenanceRun,
@@ -54,6 +51,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
     RecordTableMaintenanceOperationResultService,
     SubmitMaintenanceOperationService,
 )
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_runs_repo import (
     InMemoryTableMaintenanceRunsRepo,
 )
@@ -78,7 +76,7 @@ EU = SpecFilter(spec_id=0, where="(`region` = 'eu')")
 
 
 def _table(repo, now, settings=None, uuid="u-1", name=NAME):
-    table = Table.register(TableId(uuid), name, TableDiscoveryRuleId.new(), now)
+    table = Table.register(TableId(uuid), name, MANAGED, now)
     repo.create(table)
     return table
 

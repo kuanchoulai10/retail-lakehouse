@@ -11,11 +11,13 @@ from context.table_maintenance.application.port.outbound.table import (
     AppliedPolicyRef,
     AttentionMark,
     ComputeSize,
+    DiscoveryMatch,
     MaintenanceOperation,
     OperationState,
     OverTargetPartition,
     RecordedAttempt,
     Table,
+    TableDiscoveryPolicyId,
     TableDiscoveryRuleId,
     TableId,
     TableMaintenancePolicyId,
@@ -104,6 +106,19 @@ def _decode_state(data: dict[str, Any]) -> OperationState:
     )
 
 
+def _decode_discovered_by(row: RowMapping) -> DiscoveryMatch:
+    """Return the match a row stored, or the platform default's for a row stored before matches were."""
+    policy_id = row["matched_policy_id"]
+    if policy_id is None:
+        return DiscoveryMatch.platform_default()
+    rule_id = row["matched_rule_id"]
+    return DiscoveryMatch(
+        policy_id=TableDiscoveryPolicyId(policy_id),
+        policy_version=row["matched_policy_version"],
+        rule_id=None if rule_id is None else TableDiscoveryRuleId(rule_id),
+    )
+
+
 def encode_over_target_partitions(partitions: Sequence[OverTargetPartition]) -> list[dict[str, Any]]:
     """Return the JSON form of the over-target partitions stored in the tables row."""
     return [
@@ -137,6 +152,8 @@ class TableRowMapper:
             "table_name": table.name.table,
             "status": table.status.value,
             "matched_rule_id": (None if table.matched_rule_id is None else table.matched_rule_id.value),
+            "matched_policy_id": table.discovered_by.policy_id.value,
+            "matched_policy_version": table.discovered_by.policy_version,
             "registered_at": table.registered_at,
             "updated_at": table.updated_at,
             "operation_states_json": {op.value: _encode_state(state) for op, state in table.operation_states.items()},
@@ -148,7 +165,6 @@ class TableRowMapper:
     @staticmethod
     def to_aggregate(row: RowMapping) -> Table:
         """Rebuild the aggregate from a row without registering events."""
-        matched = row["matched_rule_id"]
         return Table(
             id=TableId(row["uuid"]),
             name=TableName(
@@ -157,7 +173,7 @@ class TableRowMapper:
                 table=row["table_name"],
             ),
             status=TableStatus(row["status"]),
-            matched_rule_id=None if matched is None else TableDiscoveryRuleId(matched),
+            discovered_by=_decode_discovered_by(row),
             registered_at=row["registered_at"],
             updated_at=row["updated_at"],
             operation_states={

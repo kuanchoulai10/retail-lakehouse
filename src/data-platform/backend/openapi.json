@@ -3761,6 +3761,16 @@
             "description": "When discovery last saw the table: for a live table its catalog's last full scan, or its registration if that came later; for a dropped table the last time before it was dropped. Null when unknown.",
             "title": "Last Discovered At"
           },
+          "matched_policy_id": {
+            "description": "The `dp-` id of the discovery policy that decided whether the table is managed: the policy of its nearest attachment, or the default when nothing on its walk is attached.",
+            "title": "Matched Policy Id",
+            "type": "string"
+          },
+          "matched_policy_version": {
+            "description": "The version of that discovery policy that decided the table.",
+            "title": "Matched Policy Version",
+            "type": "integer"
+          },
           "matched_rule_id": {
             "anyOf": [
               {
@@ -3770,6 +3780,7 @@
                 "type": "null"
               }
             ],
+            "description": "The `dr-` id of the rule that decided the table, in the version `matched_policy_version` of the discovery policy `matched_policy_id`; null when the policy's no-match outcome decided it.",
             "title": "Matched Rule Id"
           },
           "namespace": {
@@ -3820,6 +3831,8 @@
           "status",
           "priority",
           "matched_rule_id",
+          "matched_policy_id",
+          "matched_policy_version",
           "operation_states",
           "registered_at",
           "updated_at",

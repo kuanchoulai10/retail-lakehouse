@@ -12,7 +12,6 @@ from context.table_maintenance.application.domain.model.table import (
     TableId,
     TableName,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_NAME,
     MaintenancePolicyContent,
@@ -40,6 +39,7 @@ from context.table_maintenance.application.service.table_maintenance_policy_atta
     DetachTableMaintenancePolicyService,
     notify_policy_change,
 )
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED, UNMANAGED
 from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import (
     FakeReadTableMetadataGateway,
 )
@@ -77,10 +77,10 @@ class _World:
     def add_table(self, uuid: str, namespace: str, table: str, *, managed: bool = True) -> None:
         self.catalog.add_table("prod", namespace, table, uuid)
         registered = Table.register(
-            TableId(uuid), TableName(catalog="prod", namespace=namespace, table=table), TableDiscoveryRuleId.new(), NOW
+            TableId(uuid), TableName(catalog="prod", namespace=namespace, table=table), MANAGED, NOW
         )
         if not managed:
-            registered.unmanage(NOW)
+            registered.unmanage(UNMANAGED.match, NOW)
         self.tables.create(registered)
 
     def attach(self, type_: str, path: tuple[str, ...], policy: str) -> None:

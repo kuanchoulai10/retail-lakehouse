@@ -11,10 +11,10 @@ from context.table_maintenance.application.domain.model.table import (
     TableMetrics,
     TableName,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table import GetTableCurrentMetricsUseCaseInput
 from context.table_maintenance.application.service.table import GetTableCurrentMetricsService
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED, UNMANAGED
 
 RULE_1 = "dr-00000000000000000000000001"
 
@@ -23,7 +23,7 @@ def _register(tables_repo, now, uuid):
     table = Table.register(
         TableId(uuid),
         TableName(catalog="iceberg", namespace="retail", table="orders"),
-        TableDiscoveryRuleId(RULE_1),
+        MANAGED,
         now,
     )
     tables_repo.create(table)
@@ -64,7 +64,7 @@ def test_a_managed_table_with_no_row_returns_nothing(tables_repo, metrics_store,
 
 def test_an_unmanaged_table_with_a_stale_row_returns_nothing(tables_repo, metrics_store, now):
     """A row left behind by a table that left maintenance is not shown."""
-    _register(tables_repo, now, "u-1").unmanage(now)
+    _register(tables_repo, now, "u-1").unmanage(UNMANAGED.match, now)
     metrics_store.save(_metrics("u-1", now, data_files=12))
 
     output = _service(tables_repo, metrics_store).execute(GetTableCurrentMetricsUseCaseInput(uuid="u-1"))

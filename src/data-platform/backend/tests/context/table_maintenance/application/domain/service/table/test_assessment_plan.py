@@ -23,9 +23,6 @@ from context.table_maintenance.application.domain.model.table import (
     TableId,
     TableName,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rules import (
-    TableDiscoveryRuleId,
-)
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     AtMost,
     CompactionUnit,
@@ -36,6 +33,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     RewriteDataFilesTarget,
 )
 from context.table_maintenance.application.domain.service.table import assess_maintenance
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.policy_with_only_operation import policy_with_only_operation
 from tests.context.table_maintenance.fakes.policy_with_operation import policy_with_operation
 
@@ -55,7 +53,7 @@ def table() -> Table:
     return Table.register(
         TableId("u"),
         TableName(catalog="c", namespace="n", table="t"),
-        TableDiscoveryRuleId.new(),
+        MANAGED,
         NOW - timedelta(days=30),
     )
 

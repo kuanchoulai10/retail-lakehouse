@@ -74,6 +74,11 @@ def test_nothing_attached_is_the_default_v1():
     )
 
 
+def test_the_platform_default_match_is_what_nothing_attached_decides():
+    """The platform default match, which a row stored with no match reads as, is what nothing attached decides."""
+    assert decide_table_discovery(ORDERS, "u1", [], {}).match == DiscoveryMatch.platform_default()
+
+
 def test_attachments_off_the_walk_are_ignored():
     """An attachment on another catalog or another namespace never decides the table."""
     decision = decide_table_discovery(
