@@ -180,6 +180,7 @@ def test_a_fresh_attempt_is_queued_and_has_not_started_running() -> None:
     assert body["status"] == "queued"
     assert body["attempts"][0]["status"] == "queued"
     assert body["attempts"][0]["started_running_at"] is None
+    assert body["attempts"][0]["job_name"] == "job-1"
 
 
 def test_a_pending_run_has_no_start() -> None:
@@ -307,10 +308,9 @@ def test_the_callback_needs_no_operation_in_its_path() -> None:
     stub = StubUseCase(ProcessTableMaintenanceCallbackUseCaseOutput(accepted=True))
     client = build_client(process_table_maintenance_callback=stub)
 
-    response = client.post(URL, json=CALLBACK)
+    response = client.post(f"/v1/table-maintenance-runs/{RUN_ID}/result", json=CALLBACK)
 
     assert response.status_code == 202
-    assert URL == f"/v1/table-maintenance-runs/{RUN_ID}/result"
     assert stub.requests[0].operation is None
 
 
