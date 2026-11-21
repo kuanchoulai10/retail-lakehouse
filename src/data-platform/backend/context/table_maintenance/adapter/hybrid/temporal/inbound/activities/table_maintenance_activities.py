@@ -18,7 +18,6 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.transl
     translate_application_errors,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
-    CreateTableMaintenanceRunUseCaseInput,
     DeleteMaintenanceJobUseCaseInput,
     GetMaintenanceJobPodsUseCaseInput,
     GetMaintenanceJobStatusUseCaseInput,
@@ -33,7 +32,6 @@ if TYPE_CHECKING:
     from temporalio.client import Client
 
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
-        CreateTableMaintenanceRunUseCase,
         DeleteMaintenanceJobUseCase,
         GetMaintenanceJobPodsUseCase,
         GetMaintenanceJobStatusUseCase,
@@ -55,7 +53,6 @@ class TableMaintenanceActivities:
     def __init__(
         self,
         *,
-        create_run: CreateTableMaintenanceRunUseCase,
         record_result: RecordTableMaintenanceOperationResultUseCase,
         submit: SubmitMaintenanceOperationUseCase,
         status: GetMaintenanceJobStatusUseCase,
@@ -68,7 +65,6 @@ class TableMaintenanceActivities:
         callback_base_url: str,
     ) -> None:
         """Bind the use cases, the client and the base URL Spark jobs call back to."""
-        self._create_run = create_run
         self._record_result = record_result
         self._submit = submit
         self._status = status
@@ -79,13 +75,6 @@ class TableMaintenanceActivities:
         self._skip = skip
         self._client = client
         self._callback_base_url = callback_base_url
-
-    @activity.defn(name=TableMaintenanceActivity.CREATE_MAINTENANCE_RUN)
-    def create_table_maintenance_run(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Create the pending run of one planned operation, with its filters and procedure arguments."""
-        with translate_application_errors():
-            output = self._create_run.execute(CreateTableMaintenanceRunUseCaseInput.from_primitives(request))
-        return activity_payload(output)
 
     @activity.defn(name=TableMaintenanceActivity.RECORD_MAINTENANCE_OPERATION_RESULT)
     def record_table_maintenance_operation_result(self, request: dict[str, Any]) -> dict[str, Any]:

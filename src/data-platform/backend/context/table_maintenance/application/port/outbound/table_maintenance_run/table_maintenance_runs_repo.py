@@ -11,11 +11,17 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from context.table_maintenance.application.domain.model.table import TableId
 
 
 class TableMaintenanceRunsRepo(Repository[TableMaintenanceRun]):
     """Persist and query TableMaintenanceRun aggregates."""
+
+    @abstractmethod
+    def create_all(self, runs: Sequence[TableMaintenanceRun]) -> list[TableMaintenanceRun]:
+        """Insert new runs together, all or none: when one of them cannot be stored, none is."""
 
     @abstractmethod
     def update(self, run: TableMaintenanceRun) -> TableMaintenanceRun:

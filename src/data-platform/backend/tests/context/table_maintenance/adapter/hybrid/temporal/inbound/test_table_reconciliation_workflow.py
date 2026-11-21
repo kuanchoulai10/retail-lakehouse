@@ -51,6 +51,9 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_pl
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_record_activity import (
     ScriptedRecordActivity,
 )
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_runs_activities import (
+    ScriptedRunsActivities,
+)
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_stub_workflow import (
     TableMaintenanceStubWorkflow,
 )
@@ -171,6 +174,7 @@ class Harness:
     client: Client
     plans: ScriptedPlanActivity
     recorder: ScriptedRecordActivity
+    runs: ScriptedRunsActivities
     handle: WorkflowHandle | None = None
     sent: int = 0
 
@@ -365,6 +369,7 @@ def _run(
             await register_table_search_attributes(env.client)
             plans = ScriptedPlanActivity(script)
             recorder = ScriptedRecordActivity()
+            runs = ScriptedRunsActivities()
             lookups = table_reconciliation_activities_with_fakes(client=env.client)
             async with Worker(
                 env.client,
@@ -374,11 +379,12 @@ def _run(
                     plans.plan_table_maintenance,
                     recorder.record_table_reconciliation,
                     lookup or lookups.get_workflow_running,
+                    *runs.all(),
                 ],
                 workflow_runner=runner or SandboxedWorkflowRunner(),
                 max_cached_workflows=max_cached_workflows,
             ):
-                await scenario(Harness(env, env.client, plans, recorder))
+                await scenario(Harness(env, env.client, plans, recorder, runs))
 
     asyncio.run(go())
 
@@ -1710,6 +1716,174 @@ def test_run_and_reconciliation_ids_survive_replay():
     _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE), max_cached_workflows=0)
 
 
+# --- the plan's runs are created before the child starts ---
+
+START_FAILED = "the table's maintenance workflow could not be started"
+
+
+def _planned_with_parameters() -> dict[str, Any]:
+    """Return a plan of a compaction and an expiry, each carrying its own filters and procedure arguments."""
+    plan = _planned(COMPACTION, EXPIRE)
+    plan["operations"] = [
+        {
+            "operation": COMPACTION,
+            "filters": [{"spec_id": 0, "where": "region = 'eu'"}],
+            "procedure_args": {},
+            "start_size": "M",
+        },
+        {"operation": EXPIRE, "filters": [], "procedure_args": {"retain_last": 1}},
+    ]
+    return {**plan, "priority": "P1"}
+
+
+async def _commands(h: Harness) -> list[str]:
+    """Return the activities the reconciliation scheduled and the children it started, in history order."""
+    history = await h.client.get_workflow_handle(WORKFLOW_ID).fetch_history()
+    issued: list[str] = []
+    for event in history.events:
+        if event.HasField("activity_task_scheduled_event_attributes"):
+            issued.append(event.activity_task_scheduled_event_attributes.activity_type.name)
+        elif event.HasField("start_child_workflow_execution_initiated_event_attributes"):
+            issued.append("start_child")
+    return issued
+
+
+def test_the_plans_runs_are_created_at_once_before_the_child_starts():
+    """One create holds every run of the plan, in plan order with its parameters, before the child is started.
+
+    The runs share the table, the child's workflow id, the trigger, the plan's priority and one time, and the
+    record links each operation to the run created for it.
+    """
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_ids = await h.in_flight()
+        record = (await h.records(1))[0]
+        assert len(h.runs.created) == 1
+        created = h.runs.created[0]
+        assert created["runs"] == [
+            {
+                "run_id": run_ids[0],
+                "operation": COMPACTION,
+                "filters": [{"spec_id": 0, "where": "region = 'eu'"}],
+                "procedure_args": {},
+            },
+            {"run_id": run_ids[1], "operation": EXPIRE, "filters": [], "procedure_args": {"retain_last": 1}},
+        ]
+        assert (created["table_uuid"], created["execution_ref"]) == (UUID, CHILD_ID)
+        assert (created["trigger"], created["priority"]) == ("scheduled", "P1")
+        assert datetime.fromisoformat(created["now"]) >= datetime.fromisoformat(record["reconciled_at"])
+        commands = await _commands(h)
+        assert commands.index("create_maintenance_runs") < commands.index("start_child")
+        assert record["run_ids"] == {COMPACTION: run_ids[0], EXPIRE: run_ids[1]}
+        assert record["run_start_failed"] is False
+        assert h.runs.skips == []
+
+    _run(scenario, script=lambda _: _planned_with_parameters())
+
+
+def test_a_manual_plans_runs_are_created_as_manual_runs():
+    """The runs of a plan a manual trigger called for are created with the manual trigger."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start(start_signal=TableReconciliationSignal.TRIGGER_NOW)
+        await h.in_flight()
+        assert h.runs.created[0]["trigger"] == "manual"
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_a_plan_without_a_priority_creates_its_runs_at_p3():
+    """A plan that names no priority creates its runs at P3."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        await h.in_flight()
+        assert h.runs.created[0]["priority"] == "P3"
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_a_failed_create_starts_no_child_and_links_no_run():
+    """When the plan's runs cannot be created no child starts, and the record says the start failed, with no run."""
+
+    async def scenario(h: Harness) -> None:
+        h.runs.create_failures = 1
+        await h.start()
+        record = (await h.records(1))[0]
+        state = await h.settle()
+        assert record["run_ids"] == {}
+        assert record["run_start_failed"] is True
+        assert state["in_flight_run_ids"] is None
+        assert await h.started_children() == {}
+        assert h.runs.skips == []
+        assert await h.scheduled_activities() == [
+            "plan_table_maintenance",
+            "create_maintenance_runs",
+            "record_table_reconciliation",
+        ]
+
+    _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE))
+
+
+def test_a_failed_create_keeps_the_manual_trigger():
+    """A manual trigger whose runs could not be created stays pending for the next plan, as a refused start does."""
+
+    async def scenario(h: Harness) -> None:
+        h.runs.create_failures = 1
+        await h.start(start_signal=TableReconciliationSignal.TRIGGER_NOW)
+        await h.records(1)
+        assert (await h.settle())["pending_manual"] == []
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_a_child_that_cannot_start_skips_the_runs_created_for_it(monkeypatch: pytest.MonkeyPatch):
+    """Runs created for a child that is refused its start are skipped, saying why, and none is linked."""
+    import temporalio.workflow
+
+    async def failing_start(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+        raise WorkflowAlreadyStartedError(kwargs["id"], args[0])
+
+    monkeypatch.setattr(temporalio.workflow, "start_child_workflow", failing_start)
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        record = (await h.records(1))[0]
+        await h.settle()
+        created = [run["run_id"] for run in h.runs.created[0]["runs"]]
+        assert len(created) == 2
+        assert [(s["run_ids"], s["reason"]) for s in h.runs.skips] == [(created, START_FAILED)]
+        assert (record["run_ids"], record["run_start_failed"]) == ({}, True)
+        assert await h.scheduled_activities() == [
+            "plan_table_maintenance",
+            "create_maintenance_runs",
+            "skip_maintenance_runs",
+            "record_table_reconciliation",
+        ]
+
+    _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE), runner=UnsandboxedWorkflowRunner())
+
+
+def test_a_failed_skip_after_a_refused_start_is_logged_and_the_record_still_written(monkeypatch: pytest.MonkeyPatch):
+    """A skip that fails after a refused start does not stop the reconciliation from recording the failed start."""
+    import temporalio.workflow
+
+    async def failing_start(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+        raise WorkflowAlreadyStartedError(kwargs["id"], args[0])
+
+    monkeypatch.setattr(temporalio.workflow, "start_child_workflow", failing_start)
+
+    async def scenario(h: Harness) -> None:
+        h.runs.skip_failures = 1
+        await h.start()
+        record = (await h.records(1))[0]
+        assert len(h.runs.skips) == 1
+        assert (record["run_ids"], record["run_start_failed"]) == ({}, True)
+
+    _run(scenario, script=lambda _: _planned(COMPACTION), runner=UnsandboxedWorkflowRunner())
+
+
 # --- whole-table compaction, without compaction candidates ---
 
 
@@ -1738,7 +1912,12 @@ def test_unstarted_run_releases_nothing(monkeypatch: pytest.MonkeyPatch):
         record = (await h.records(1))[0]
         assert record["run_start_failed"] is True
         await h.settle()
-        assert await h.scheduled_activities() == ["plan_table_maintenance", "record_table_reconciliation"]
+        assert await h.scheduled_activities() == [
+            "plan_table_maintenance",
+            "create_maintenance_runs",
+            "skip_maintenance_runs",
+            "record_table_reconciliation",
+        ]
 
     _run(scenario, script=lambda _: _with_candidates(_planned(COMPACTION)), runner=UnsandboxedWorkflowRunner())
 

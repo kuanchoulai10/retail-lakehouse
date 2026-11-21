@@ -59,9 +59,8 @@ class TableMaintenanceWorkflow:
 
     A table runs one of these at a time, under the table's workflow id (see
     ``table_maintenance_workflow_id``). The parent names one run id per planned operation
-    (``run_ids``, in plan order). The workflow first creates every run, pending, in plan order and
-    at one time, so every run the reconciliation links exists before anything is submitted; a
-    create that fails ends the workflow before any submit. It then runs the runs in plan order: a
+    (``run_ids``, in plan order), whose runs it created, pending, in one transaction before starting
+    this workflow, so every run exists before anything is submitted. The workflow runs them in plan order: a
     run's first submit comes only after the previous run's last attempt was recorded and its Spark
     jobs deleted, which frees the executors kept for evidence before the next job queues.
 
@@ -105,8 +104,8 @@ class TableMaintenanceWorkflow:
     under the policy applying when it records. Every attempt runs with the ``filters`` and procedure
     arguments its run was created with, also after running out of memory; the submit reads them from
     the run. A failed run, a failed submit included, never stops the workflow: the next run still
-    runs. At the end, also after a cancellation or a failed create, the Spark job of every attempt
-    not yet deleted is deleted, every created run none of whose submits returned is skipped
+    runs. At the end, also after a cancellation, the Spark job of every attempt
+    not yet deleted is deleted, every run of the plan none of whose submits returned is skipped
     (``skip_maintenance_run``, which leaves a run no longer pending as it is), and the parent
     reconciliation workflow is told the runs finished and how many results could not be recorded.
 
@@ -135,8 +134,6 @@ class TableMaintenanceWorkflow:
         self._operations: list[str] = [op["operation"] for op in input.plan["operations"]]
         self._run_ids = list(input.run_ids)
         self._run_of: dict[str, str] = dict(zip(self._operations, self._run_ids, strict=True))
-        self._created: list[str] = []
-        self._create_interrupted: str | None = None
         self._submitted: set[str] = set()
         self._current: str | None = None
         self._policy = TableMaintenanceAttemptPolicy(
@@ -156,49 +153,14 @@ class TableMaintenanceWorkflow:
 
     @workflow.run
     async def run(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
-        """Create every run, run them in order, deleting each one's jobs when it ends, then clean up and report."""
+        """Run the plan's runs in order, deleting each one's jobs when it ends, then clean up and report."""
         operations: list[dict[str, Any]] = list(input.plan["operations"])
         try:
-            await self._create_runs(input, operations)
             for operation in operations:
                 await self._run_operation(operation)
                 await self._delete_jobs_of(operation["operation"])
         finally:
             await self._finish(input.parent_workflow_id)
-
-    async def _create_runs(self, input: TableMaintenanceWorkflowInput, operations: list[dict[str, Any]]) -> None:  # noqa: A002
-        """Create the pending run of each operation, in plan order and at one time, before anything is submitted.
-
-        A create that fails ends the workflow before any submit; ``_finish`` then skips the runs already
-        created. A run whose create failed does not exist, so nothing skips it. A create a cancel
-        interrupts may still have stored its run, so ``_finish`` tries to skip that run too.
-        """
-        now = _now()
-        for operation in operations:
-            name = operation["operation"]
-            try:
-                await self._activity(
-                    TableMaintenanceActivity.CREATE_MAINTENANCE_RUN,
-                    {
-                        "run_id": self._run_of[name],
-                        "table_uuid": input.table_uuid,
-                        "execution_ref": workflow.info().workflow_id,
-                        "trigger": input.trigger,
-                        "operation": name,
-                        "priority": input.plan.get("priority", "P3"),
-                        "filters": operation["filters"],
-                        "procedure_args": operation["procedure_args"],
-                        "now": now,
-                    },
-                )
-            except asyncio.CancelledError:
-                self._create_interrupted = name
-                raise
-            except ActivityError as error:
-                if is_cancelled_exception(error):
-                    self._create_interrupted = name
-                raise
-            self._created.append(name)
 
     @workflow.signal(name=TableMaintenanceSignal.OPERATION_RESULT)
     def operation_result(self, result: OperationResultSignal) -> None:
@@ -705,13 +667,12 @@ class TableMaintenanceWorkflow:
                 self._started_attempts.remove((name, attempt))
 
     async def _finish(self, parent_workflow_id: str) -> None:
-        """Delete the started jobs still left, skip every created run not started, then report to the parent.
+        """Delete the started jobs still left, skip every run of the plan not started, then report to the parent.
 
-        A run has started once one of its submits returned. A created run the workflow never reached is
-        skipped, and so is one none of whose submits returned (a submit a cancel interrupted may never
-        have left the run pending); a skip leaves a run that did leave pending as it is. The run whose
-        create a cancel interrupted is skipped too, since that create may have stored it. A failed skip,
-        a run not found included, is logged.
+        A run has started once one of its submits returned. Every run exists (the parent created them all
+        before it started this workflow), so a run the workflow never reached is skipped, and so is one none
+        of whose submits returned (a submit a cancel interrupted may never have left the run pending); a
+        skip leaves a run that did leave pending as it is. A failed skip, a run not found included, is logged.
         """
         for name, attempt in self._started_attempts:
             try:
@@ -721,11 +682,9 @@ class TableMaintenanceWorkflow:
                 )
             except ActivityError as error:
                 workflow.logger.warning("deleting the job of %s attempt %s failed: %s", name, attempt, error)
-        for name in self._created:
+        for name in self._operations:
             if name not in self._submitted:
                 await self._skip(name)
-        if self._create_interrupted is not None:
-            await self._skip(self._create_interrupted)
         try:
             await self._activity(
                 TableMaintenanceActivity.SIGNAL_PARENT,

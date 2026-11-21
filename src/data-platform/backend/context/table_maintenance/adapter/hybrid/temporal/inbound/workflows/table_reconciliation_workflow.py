@@ -66,6 +66,7 @@ _CLOSING_BOUND = TableMaintenanceActivityPolicy().worst_case()
 _CLOSING_POLL = timedelta(seconds=5)
 _RUN_ID_PREFIX = "mr"
 _RECONCILIATION_ID_PREFIX = "rc"
+_START_FAILED = "the table's maintenance workflow could not be started"
 
 
 @workflow.defn(name=TABLE_RECONCILIATION_WORKFLOW)
@@ -132,9 +133,13 @@ class TableReconciliationWorkflow:
     plan is running belong to the plan they wake next. After each plan that found
     the table, ``record_table_reconciliation`` stores the reconciliation with those
     reasons, the plan's checks and, for each operation the started child runs, the id of
-    its run (none when the start failed). The child is given the run ids the record links,
-    one per planned operation, and reports them back; a report is matched by that whole
-    list. A failed plan records nothing and drops its reasons; a
+    its run (none when the start failed). Before the child starts, every run of the plan is
+    created, pending, in one activity and one transaction (``create_maintenance_runs``), so the
+    record links only runs that exist: a create that fails starts no child and records the start
+    failed, with no run, and a child refused its start after the create skips the runs created
+    for it (``skip_maintenance_runs``) and records the same. The child is given the run ids the
+    record links, one per planned operation, and reports them back; a report is matched by that
+    whole list. A failed plan records nothing and drops its reasons; a
     failed record is logged and the loop goes on. Each run ends once, counted as
     ``previous_run_finished``: when its ``maintenance_finished`` arrives or when it
     is given up, whichever comes first (a report after the give-up is ignored). The
@@ -713,7 +718,10 @@ class TableReconciliationWorkflow:
             self._drop_unstarted_plan(manual, reconciliation_id)
             return False
         run_ids = self._mint_run_ids(plan)
-        started = await self._start_run(plan, manual is not None, run_ids)
+        created = await self._create_runs(plan, manual is not None, run_ids)
+        started = created and await self._start_run(plan, manual is not None, run_ids)
+        if created and not started:
+            await self._skip_runs(run_ids)
         if started:
             self._consume_manual(manual, None)
         elif manual is not None:
@@ -746,6 +754,58 @@ class TableReconciliationWorkflow:
     def _mint_run_ids(plan: dict[str, Any]) -> list[str]:
         """Return one new run id per planned operation, in plan order."""
         return [mint_workflow_prefixed_id(_RUN_ID_PREFIX) for _ in plan["operations"]]
+
+    async def _create_runs(self, plan: dict[str, Any], manual: bool, run_ids: list[str]) -> bool:
+        """Create every run of the plan, pending, in one activity and one transaction; False when none was created.
+
+        Each run gets its planned operation, the filters and procedure arguments the plan passes it,
+        the plan's priority, the trigger and the child's workflow id, and all share one time. The
+        create stores all of them or none, so a reconciliation links only runs that exist.
+        """
+        try:
+            await workflow.execute_activity(
+                TableReconciliationActivity.CREATE_MAINTENANCE_RUNS,
+                {
+                    "table_uuid": self._table_uuid,
+                    "execution_ref": table_maintenance_workflow_id(self._table_uuid),
+                    "trigger": _trigger(manual),
+                    "priority": plan.get("priority", "P3"),
+                    "now": workflow.now().isoformat(),
+                    "runs": [
+                        {
+                            "run_id": run_id,
+                            "operation": op["operation"],
+                            "filters": op["filters"],
+                            "procedure_args": op["procedure_args"],
+                        }
+                        for run_id, op in zip(run_ids, plan["operations"], strict=True)
+                    ],
+                },
+                start_to_close_timeout=_ACTIVITY_TIMEOUT,
+                retry_policy=_ACTIVITY_RETRY,
+            )
+        except ActivityError as error:
+            if is_cancelled_exception(error):
+                raise asyncio.CancelledError from error
+            workflow.logger.error(
+                "creating maintenance runs %s failed: %s; next plan at %s", run_ids, error, _iso(self._next_plan_at)
+            )
+            return False
+        return True
+
+    async def _skip_runs(self, run_ids: list[str]) -> None:
+        """Skip the runs created for a child that could not be started, saying why; a failure is logged."""
+        try:
+            await workflow.execute_activity(
+                TableReconciliationActivity.SKIP_MAINTENANCE_RUNS,
+                {"run_ids": run_ids, "reason": _START_FAILED, "now": workflow.now().isoformat()},
+                start_to_close_timeout=_ACTIVITY_TIMEOUT,
+                retry_policy=_ACTIVITY_RETRY,
+            )
+        except ActivityError as error:
+            if is_cancelled_exception(error):
+                raise asyncio.CancelledError from error
+            workflow.logger.error("skipping maintenance runs %s failed: %s", run_ids, error)
 
     async def _record(
         self, record: dict[str, Any], plan: dict[str, Any], *, run_ids: dict[str, str], run_start_failed: bool
@@ -818,7 +878,7 @@ class TableReconciliationWorkflow:
         self._in_flight_attempt_deadline_seconds = attempt_deadline_seconds
         self._in_flight_max_attempts = max_attempts
         self._in_flight_queue_wait_limit_seconds = queue_wait_limit_seconds
-        trigger = _TRIGGER_MANUAL if manual else _TRIGGER_SCHEDULED
+        trigger = _trigger(manual)
         operations = [op["operation"] for op in plan["operations"]]
         try:
             child = await workflow.start_child_workflow(
@@ -870,6 +930,10 @@ class TableReconciliationWorkflow:
                 SearchAttributePair(keys.MAINTENANCE_TRIGGER, trigger),
             ]
         )
+
+
+def _trigger(manual: bool) -> str:
+    return _TRIGGER_MANUAL if manual else _TRIGGER_SCHEDULED
 
 
 def _iso(value: datetime | None) -> str | None:

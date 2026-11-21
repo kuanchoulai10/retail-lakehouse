@@ -505,6 +505,9 @@ class _CopyingRunsRepo(TableMaintenanceRunsRepo):
     def create(self, entity):
         return self.inner.create(copy.deepcopy(entity))
 
+    def create_all(self, runs):
+        return self.inner.create_all([copy.deepcopy(r) for r in runs])
+
     def get(self, entity_id):
         stored = self.inner.get(entity_id)
         return None if stored is None else copy.deepcopy(stored)

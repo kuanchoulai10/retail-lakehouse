@@ -20,6 +20,10 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.transl
 from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCaseInput,
 )
+from context.table_maintenance.application.port.inbound.table_maintenance_run import (
+    CreateTableMaintenanceRunsUseCaseInput,
+    SkipTableMaintenanceRunUseCaseInput,
+)
 from context.table_maintenance.application.port.inbound.table_reconciliation import (
     RecordTableReconciliationUseCaseInput,
 )
@@ -30,13 +34,17 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.table import (
         PlanTableMaintenanceUseCase,
     )
+    from context.table_maintenance.application.port.inbound.table_maintenance_run import (
+        CreateTableMaintenanceRunsUseCase,
+        SkipTableMaintenanceRunUseCase,
+    )
     from context.table_maintenance.application.port.inbound.table_reconciliation import (
         RecordTableReconciliationUseCase,
     )
 
 
 class TableReconciliationActivities:
-    """Plan and record reconciliations and look up the maintenance run's workflow.
+    """Plan and record reconciliations, create (or skip) a plan's runs and look up the maintenance run's workflow.
 
     Each method wraps exactly one use case, except the workflow lookup, which asks
     the Temporal client. Inputs and outputs are primitive dicts; ``now`` travels as
@@ -48,6 +56,8 @@ class TableReconciliationActivities:
         *,
         plan: PlanTableMaintenanceUseCase,
         record: RecordTableReconciliationUseCase,
+        create_runs: CreateTableMaintenanceRunsUseCase,
+        skip: SkipTableMaintenanceRunUseCase,
         client: Client,
         attempt_deadline_seconds: int,
         max_attempts: int,
@@ -62,6 +72,8 @@ class TableReconciliationActivities:
         """
         self._plan = plan
         self._record = record
+        self._create_runs = create_runs
+        self._skip = skip
         self._client = client
         self._attempt_deadline_seconds = attempt_deadline_seconds
         self._max_attempts = max_attempts
@@ -85,6 +97,30 @@ class TableReconciliationActivities:
         with translate_application_errors():
             output = self._record.execute(RecordTableReconciliationUseCaseInput.from_primitives(request))
         return activity_payload(output)
+
+    @activity.defn(name=TableReconciliationActivity.CREATE_MAINTENANCE_RUNS)
+    def create_maintenance_runs(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Create every pending run of one plan, in one transaction: all of them or none."""
+        with translate_application_errors():
+            output = self._create_runs.execute(CreateTableMaintenanceRunsUseCaseInput.from_primitives(request))
+        return activity_payload(output)
+
+    @activity.defn(name=TableReconciliationActivity.SKIP_MAINTENANCE_RUNS)
+    def skip_maintenance_runs(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Skip, saying why, each run of a plan whose maintenance never started; a run no longer pending is left alone.
+
+        Each skip is its own request, safe to retry, so a retry after a partial failure skips the rest.
+        """
+        skips = []
+        with translate_application_errors():
+            for run_id in request["run_ids"]:
+                output = self._skip.execute(
+                    SkipTableMaintenanceRunUseCaseInput.from_primitives(
+                        {"run_id": run_id, "reason": request["reason"], "now": request["now"]}
+                    )
+                )
+                skips.append(activity_payload(output))
+        return {"runs": skips}
 
     @activity.defn(name=TableReconciliationActivity.GET_WORKFLOW_RUNNING)
     async def get_workflow_running(self, request: dict[str, Any]) -> dict[str, bool]:

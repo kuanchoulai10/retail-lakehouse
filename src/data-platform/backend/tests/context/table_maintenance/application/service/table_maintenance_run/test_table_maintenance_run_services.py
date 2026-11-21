@@ -42,7 +42,7 @@ from context.table_maintenance.application.exceptions import (
     ValidationError,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
-    CreateTableMaintenanceRunUseCaseInput,
+    CreateTableMaintenanceRunsUseCaseInput,
     GetTableMaintenanceRunUseCaseInput,
     ListTableMaintenanceRunsUseCaseInput,
     ProcessTableMaintenanceCallbackUseCaseInput,
@@ -50,7 +50,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     SkipTableMaintenanceRunUseCaseInput,
 )
 from context.table_maintenance.application.service.table_maintenance_run import (
-    CreateTableMaintenanceRunService,
+    CreateTableMaintenanceRunsService,
     GetTableMaintenanceRunService,
     ListTableMaintenanceRunsService,
     ProcessTableMaintenanceCallbackService,
@@ -88,68 +88,90 @@ def table(tables_repo, now):
     return t
 
 
-def _create_input(now, run_id=RUN_1, **overrides):
+def _planned_run(run_id, operation, **fields):
+    return CreateTableMaintenanceRunsUseCaseInput.Run(run_id=run_id, operation=operation, **fields)
+
+
+def _create_input(now, *, runs=None, operation="rewrite_data_files", filters=(), procedure_args=None, **overrides):
+    """Build the request to create the runs of one plan: run 1 of ``operation`` by default, or ``runs``."""
+    one = _planned_run(RUN_1, operation, filters=filters, procedure_args=procedure_args or {})
     fields: dict[str, Any] = {
-        "run_id": run_id,
         "table_uuid": "u-1",
         "trigger": "scheduled",
-        "operation": "rewrite_data_files",
         "execution_ref": "wf-run-1",
         "now": now,
+        "runs": (one,) if runs is None else runs,
     }
     fields.update(overrides)
-    return CreateTableMaintenanceRunUseCaseInput(**fields)
+    return CreateTableMaintenanceRunsUseCaseInput(**fields)
 
 
 @pytest.fixture
 def creator(runs_repo, tables_repo):
-    """Provide the create run service on the fakes."""
-    return CreateTableMaintenanceRunService(runs_repo, tables_repo)
+    """Provide the create runs service on the fakes."""
+    return CreateTableMaintenanceRunsService(runs_repo, tables_repo)
 
 
 def test_create_run_persists_a_pending_run(creator, runs_repo, table, now):
     """Creating a run stores it pending, with its operation and its execution reference."""
     out = creator.execute(_create_input(now))
-    assert (out.run_id, out.table_uuid, out.trigger) == (RUN_1, "u-1", "scheduled")
-    assert out.execution_ref == "wf-run-1"
-    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).execution_ref == "wf-run-1"
-    assert (out.operation, out.status) == ("rewrite_data_files", "pending")
-    assert (out.started_at, out.finished_at, out.attempts) == (None, None, ())
-    assert out.created_at == now
+    assert out.run_ids == (RUN_1,)
+    stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
+    assert (stored.table_uuid, stored.trigger, stored.execution_ref) == (
+        TableId("u-1"),
+        TriggerType.SCHEDULED,
+        "wf-run-1",
+    )
+    assert (stored.operation, stored.status) == (RDF, RunStatus.PENDING)
+    assert (stored.started_at, stored.finished_at, stored.attempts) == (None, None, ())
+    assert stored.created_at == now
+
+
+def test_create_stores_every_run_of_the_plan_at_one_time(creator, runs_repo, table, now):
+    """The runs of a plan are stored together, pending, each with its own operation, all created at ``now``."""
+    out = creator.execute(
+        _create_input(
+            now,
+            runs=(
+                _planned_run(RUN_1, "rewrite_data_files"),
+                _planned_run(RUN_2, "expire_snapshots", procedure_args={"retain_last": 1}),
+            ),
+        )
+    )
+    assert out.run_ids == (RUN_1, RUN_2)
+    first, second = (runs_repo.get(TableMaintenanceRunId(r)) for r in (RUN_1, RUN_2))
+    assert (first.operation, second.operation) == (RDF, OPS.EXPIRE_SNAPSHOTS)
+    assert {first.status, second.status} == {RunStatus.PENDING}
+    assert first.created_at == second.created_at == now
+    assert second.procedure_args == {"retain_last": 1}
 
 
 def test_create_saves_one_operation_with_its_parameters(creator, runs_repo, table, now):
     """A run of expire_snapshots is stored with the arguments its procedure is called with."""
-    out = creator.execute(_create_input(now, operation="expire_snapshots", procedure_args={"retain_last": 1}))
+    creator.execute(_create_input(now, operation="expire_snapshots", procedure_args={"retain_last": 1}))
     stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
     assert stored.operation is OPS.EXPIRE_SNAPSHOTS
     assert stored.procedure_args == {"retain_last": 1}
     assert stored.status is RunStatus.PENDING
-    assert out.procedure_args == {"retain_last": 1}
 
 
 def test_create_run_records_its_priority(creator, runs_repo, table, now):
-    """A run created with a priority stores it and reports it."""
-    out = creator.execute(_create_input(now, priority="P0"))
-    assert out.priority == "P0"
+    """Runs created with a priority store it."""
+    creator.execute(_create_input(now, priority="P0"))
     assert runs_repo.get(TableMaintenanceRunId(RUN_1)).priority is TablePriority.P0
 
 
 def test_create_run_without_a_priority_records_p3(creator, runs_repo, table, now):
-    """A run created without a priority records P3."""
-    out = creator.execute(_create_input(now))
-    assert out.priority == "P3"
+    """Runs created without a priority record P3."""
+    creator.execute(_create_input(now))
     assert runs_repo.get(TableMaintenanceRunId(RUN_1)).priority is TablePriority.P3
 
 
 def test_create_run_service_saves_the_filters(creator, runs_repo, table, now):
-    """The where clauses of a compaction are stored on the run and reported."""
-    out = creator.execute(
-        _create_input(now, filters=(CreateTableMaintenanceRunUseCaseInput.Filter(spec_id=0, where="x"),))
-    )
+    """The where clauses of a compaction are stored on its run."""
+    creator.execute(_create_input(now, filters=(CreateTableMaintenanceRunsUseCaseInput.Filter(spec_id=0, where="x"),)))
     stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
     assert stored.filters == (SpecFilter(spec_id=0, where="x"),)
-    assert out.filters == ({"spec_id": 0, "where": "x"},)
 
 
 def test_create_refuses_an_unknown_operation(creator, runs_repo, table, now):
@@ -166,9 +188,35 @@ def test_create_refuses_filters_on_expire(creator, runs_repo, table, now):
             _create_input(
                 now,
                 operation="expire_snapshots",
-                filters=(CreateTableMaintenanceRunUseCaseInput.Filter(spec_id=0, where="x"),),
+                filters=(CreateTableMaintenanceRunsUseCaseInput.Filter(spec_id=0, where="x"),),
             )
         )
+    assert len(runs_repo.items) == 0
+
+
+def test_create_stores_no_run_of_the_plan_when_one_is_refused(creator, runs_repo, table, now):
+    """A plan whose second run is refused stores neither run: the plan's runs are created all or none."""
+    refused = _planned_run(
+        RUN_2, "expire_snapshots", filters=(CreateTableMaintenanceRunsUseCaseInput.Filter(spec_id=0, where="x"),)
+    )
+    with pytest.raises(ConflictError):
+        creator.execute(_create_input(now, runs=(_planned_run(RUN_1, "rewrite_data_files"), refused)))
+    assert len(runs_repo.items) == 0
+
+
+def test_create_stores_the_plans_runs_in_one_batch(creator, runs_repo, table, now):
+    """The plan's runs go to the repository in one batch, so a run it cannot store leaves every run unstored."""
+    batches: list[list[str]] = []
+
+    def refuse(runs):
+        batches.append([r.id.value for r in runs])
+        raise ConflictError("the database refused the batch")
+
+    runs_repo.create_all = refuse
+    plan = (_planned_run(RUN_1, "rewrite_data_files"), _planned_run(RUN_2, "expire_snapshots"))
+    with pytest.raises(ConflictError):
+        creator.execute(_create_input(now, runs=plan))
+    assert batches == [[RUN_1, RUN_2]]
     assert len(runs_repo.items) == 0
 
 
@@ -181,29 +229,65 @@ def test_create_run_with_an_unknown_priority_is_refused(creator, runs_repo, tabl
 
 def test_create_input_without_a_priority_parses_as_p3(now):
     """A payload without a priority, filters or arguments parses, as P3 on the whole table with no arguments."""
-    parsed = CreateTableMaintenanceRunUseCaseInput.from_primitives(
+    parsed = CreateTableMaintenanceRunsUseCaseInput.from_primitives(
         {
-            "run_id": RUN_1,
             "table_uuid": "u-1",
             "execution_ref": "wf-run-1",
             "trigger": "scheduled",
-            "operation": "rewrite_data_files",
             "now": now.isoformat(),
+            "runs": [{"run_id": RUN_1, "operation": "rewrite_data_files"}],
         }
     )
-    assert (parsed.priority, parsed.filters, parsed.procedure_args) == ("P3", (), {})
+    assert (parsed.priority, parsed.runs[0].filters, parsed.runs[0].procedure_args) == ("P3", (), {})
 
 
 def test_create_run_is_idempotent_by_id(creator, runs_repo, table, now):
-    """Creating a run twice with the same id returns the existing run."""
+    """Creating the runs of a plan again returns their ids and leaves the stored runs as they are."""
     creator.execute(_create_input(now))
     run = runs_repo.get(TableMaintenanceRunId(RUN_1))
     run.start_attempt(1, "app-1", now, size=ComputeSize.S)
     again = creator.execute(_create_input(now + timedelta(hours=1), trigger="manual"))
-    assert again.trigger == "scheduled"
-    assert again.status == "queued"
-    assert again.created_at == now
+    assert again.run_ids == (RUN_1,)
+    stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
+    assert (stored.trigger, stored.status, stored.created_at) == (TriggerType.SCHEDULED, RunStatus.QUEUED, now)
     assert len(runs_repo.items) == 1
+
+
+def _two_run_plan():
+    return (_planned_run(RUN_1, "rewrite_data_files"), _planned_run(RUN_2, "expire_snapshots"))
+
+
+def test_a_create_retried_after_its_first_try_stored_the_plan_returns_the_stored_runs(creator, runs_repo, table, now):
+    """A retry of a create that already stored every run of the plan succeeds, returns their ids and stores nothing."""
+    creator.execute(_create_input(now, runs=_two_run_plan()))
+    batches: list[int] = []
+    runs_repo.create_all = lambda runs: batches.append(len(runs))
+    again = creator.execute(_create_input(now, runs=_two_run_plan()))
+    assert again.run_ids == (RUN_1, RUN_2)
+    assert batches == []
+    assert sorted(runs_repo.items) == [RUN_1, RUN_2]
+
+
+def test_a_create_whose_plan_is_only_partly_stored_is_a_conflict(creator, runs_repo, table, now):
+    """A plan with some of its run ids stored and others not is refused, and the missing runs are not stored."""
+    creator.execute(_create_input(now))
+    with pytest.raises(ConflictError):
+        creator.execute(_create_input(now, runs=_two_run_plan()))
+    assert runs_repo.get(TableMaintenanceRunId(RUN_2)) is None
+
+
+def test_a_create_whose_run_id_is_stored_for_another_operation_is_a_conflict(creator, runs_repo, table, now):
+    """A run id already stored for another operation is refused instead of being taken as this plan's run."""
+    creator.execute(_create_input(now, operation="expire_snapshots"))
+    with pytest.raises(ConflictError):
+        creator.execute(_create_input(now))
+
+
+def test_a_create_whose_run_id_is_stored_for_another_table_is_a_conflict(creator, runs_repo, tables_repo, table, now):
+    """A run id already stored for another table is refused instead of being taken as this plan's run."""
+    creator.execute(_create_input(now))
+    with pytest.raises(ConflictError):
+        creator.execute(_create_input(now, table_uuid="u-2"))
 
 
 def test_create_run_validates_input(creator, table, now):
@@ -548,6 +632,19 @@ def test_manual_run_clears_needs_attention_of_its_operation(creator, tables_repo
     creator.execute(_create_input(now, trigger="manual"))
     stored = tables_repo.get(TableId("u-1"))
     assert stored.operation_state(RDF).attention is None
+    assert stored.operation_state(OPS.REMOVE_ORPHAN_FILES).attention is not None
+
+
+def test_a_manual_plan_clears_needs_attention_of_every_planned_operation(creator, tables_repo, table, now):
+    """A manual plan of two runs lifts the needs-attention marks of both operations and leaves the others."""
+    for op in (RDF, OPS.EXPIRE_SNAPSHOTS, OPS.REMOVE_ORPHAN_FILES):
+        table.mark_needs_attention(op, _attention_mark(now), now)
+    tables_repo.update(table)
+    plan = (_planned_run(RUN_1, "rewrite_data_files"), _planned_run(RUN_2, "expire_snapshots"))
+    creator.execute(_create_input(now, runs=plan, trigger="manual"))
+    stored = tables_repo.get(TableId("u-1"))
+    assert stored.operation_state(RDF).attention is None
+    assert stored.operation_state(OPS.EXPIRE_SNAPSHOTS).attention is None
     assert stored.operation_state(OPS.REMOVE_ORPHAN_FILES).attention is not None
 
 

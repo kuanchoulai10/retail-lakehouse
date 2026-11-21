@@ -13,9 +13,9 @@ from context.table_maintenance.application.port.inbound.table import (
     SyncDiscoveredTablesUseCaseOutput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
-    CreateTableMaintenanceRunUseCase,
-    CreateTableMaintenanceRunUseCaseInput,
-    CreateTableMaintenanceRunUseCaseOutput,
+    CreateTableMaintenanceRunsUseCase,
+    CreateTableMaintenanceRunsUseCaseInput,
+    CreateTableMaintenanceRunsUseCaseOutput,
     DeleteMaintenanceJobUseCase,
     DeleteMaintenanceJobUseCaseInput,
     DeleteMaintenanceJobUseCaseOutput,
@@ -127,37 +127,17 @@ class FakeDelete(DeleteMaintenanceJobUseCase):
         )
 
 
-class FakeCreateRun(CreateTableMaintenanceRunUseCase):
-    """Create run use case fake that records its requests."""
+class FakeCreateRuns(CreateTableMaintenanceRunsUseCase):
+    """Create runs use case fake that records its requests and reports every run created."""
 
-    def __init__(self, output: CreateTableMaintenanceRunUseCaseOutput | None = None) -> None:
-        """Hold the run to return, a pending one built from the request by default, and start with no requests."""
-        self.requests: list[CreateTableMaintenanceRunUseCaseInput] = []
-        self._output = output
+    def __init__(self) -> None:
+        """Start with no recorded requests."""
+        self.requests: list[CreateTableMaintenanceRunsUseCaseInput] = []
 
-    def execute(self, request: CreateTableMaintenanceRunUseCaseInput) -> CreateTableMaintenanceRunUseCaseOutput:
-        """Record the request and return the run it holds, or a pending one."""
+    def execute(self, request: CreateTableMaintenanceRunsUseCaseInput) -> CreateTableMaintenanceRunsUseCaseOutput:
+        """Record the request and report the ids of its runs."""
         self.requests.append(request)
-        if self._output is not None:
-            return self._output
-        return CreateTableMaintenanceRunUseCaseOutput(
-            run_id=request.run_id,
-            table_uuid=request.table_uuid,
-            execution_ref=request.execution_ref,
-            trigger=request.trigger,
-            priority=request.priority,
-            operation=request.operation,
-            status="pending",
-            filters=tuple({"spec_id": f.spec_id, "where": f.where} for f in request.filters),
-            procedure_args=dict(request.procedure_args),
-            metrics={},
-            error=None,
-            skip_reason=None,
-            created_at=CREATED_AT,
-            started_at=None,
-            finished_at=None,
-            attempts=(),
-        )
+        return CreateTableMaintenanceRunsUseCaseOutput(run_ids=tuple(run.run_id for run in request.runs))
 
 
 class FakeRecordResult(RecordTableMaintenanceOperationResultUseCase):

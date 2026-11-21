@@ -44,6 +44,9 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_pl
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_record_activity import (
     ScriptedRecordActivity,
 )
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_runs_activities import (
+    ScriptedRunsActivities,
+)
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_activities_with_fakes import (  # noqa: E501
     table_maintenance_activities_with_fakes,
 )
@@ -113,6 +116,7 @@ def _run(scenario: Callable[[Any, ScriptedPlanActivity, list], Awaitable[None]])
                     plans.plan_table_maintenance,
                     recorder.record_table_reconciliation,
                     lookups.get_workflow_running,
+                    *ScriptedRunsActivities().all(),
                     *maintenance.all(),
                     signal_parent,
                 ],

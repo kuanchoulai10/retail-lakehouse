@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.application.service.table_maintenance_run.create_table_maintenance_run import (
-    CreateTableMaintenanceRunService,
+from context.table_maintenance.application.service.table_maintenance_run.create_table_maintenance_runs import (
+    CreateTableMaintenanceRunsService,
 )
 from context.table_maintenance.application.service.table_maintenance_run.delete_maintenance_job import (
     DeleteMaintenanceJobService,
@@ -52,7 +52,7 @@ from context.table_maintenance.application.service.table_maintenance_run.table_m
 )
 
 __all__ = [
-    "CreateTableMaintenanceRunService",
+    "CreateTableMaintenanceRunsService",
     "DeleteMaintenanceJobService",
     "GetMaintenanceJobPodsService",
     "GetMaintenanceJobStatusService",

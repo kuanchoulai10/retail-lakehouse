@@ -24,13 +24,14 @@ def build_activities(use_cases: UseCases, client: Client, settings: AppSettings)
         reconciliation=TableReconciliationActivities(
             plan=use_cases.plan_table_maintenance,
             record=use_cases.record_table_reconciliation,
+            create_runs=use_cases.create_table_maintenance_runs,
+            skip=use_cases.skip_table_maintenance_run,
             client=client,
             attempt_deadline_seconds=settings.maintenance_attempt_deadline_seconds,
             max_attempts=settings.maintenance_max_attempts,
             queue_wait_limit_seconds=settings.maintenance_queue_wait_limit_seconds,
         ),
         maintenance=TableMaintenanceActivities(
-            create_run=use_cases.create_table_maintenance_run,
             record_result=use_cases.record_table_maintenance_operation_result,
             submit=use_cases.submit_maintenance_operation,
             status=use_cases.get_maintenance_job_status,

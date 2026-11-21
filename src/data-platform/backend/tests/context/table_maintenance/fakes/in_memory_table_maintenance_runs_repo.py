@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
     MaintenanceOperation,
     TableMaintenanceRunsRepo,
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from datetime import datetime
 
     from base import EntityId
@@ -30,6 +32,15 @@ class InMemoryTableMaintenanceRunsRepo(TableMaintenanceRunsRepo):
         """Insert a run."""
         self.items[entity.id.value] = entity
         return entity
+
+    def create_all(self, runs: Sequence[TableMaintenanceRun]) -> list[TableMaintenanceRun]:
+        """Insert runs together, all or none: a run whose id is already used stores none."""
+        ids = [run.id.value for run in runs]
+        if len(set(ids)) != len(ids) or any(i in self.items for i in ids):
+            raise ConflictError(f"maintenance runs {ids} are not all new")
+        for run in runs:
+            self.items[run.id.value] = run
+        return list(runs)
 
     def get(self, entity_id: EntityId) -> TableMaintenanceRun | None:
         """Return the run or None."""

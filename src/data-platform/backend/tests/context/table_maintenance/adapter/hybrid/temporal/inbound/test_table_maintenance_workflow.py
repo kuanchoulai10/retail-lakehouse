@@ -133,8 +133,15 @@ class Harness:
         queue_wait_limit_seconds: int = QUEUE_WAIT_LIMIT_SECONDS,
         start_size: str | None = None,
         plan: dict | None = None,
+        raise_at_start: RaisePrioritySignal | None = None,
     ) -> WorkflowHandle:
-        """Start the maintenance workflow for the operations, or for ``plan``, and return its handle."""
+        """Start the maintenance workflow for the operations, or for ``plan``, and return its handle.
+
+        ``raise_at_start``, when set, is sent with the start, so the workflow holds it before its first command.
+        """
+        signal: dict = {}
+        if raise_at_start is not None:
+            signal = {"start_signal": TableMaintenanceSignal.RAISE_PRIORITY, "start_signal_args": [raise_at_start]}
         return await self.client.start_workflow(
             TABLE_MAINTENANCE_WORKFLOW,
             TableMaintenanceWorkflowInput(
@@ -149,6 +156,7 @@ class Harness:
             ),
             id=WORKFLOW_ID,
             task_queue=self.queue,
+            **signal,
         )
 
     def recorded(self) -> list[tuple[str, int, bool, str | None]]:
@@ -208,53 +216,6 @@ def _run(scenario: Callable[[Harness], Awaitable[None]]) -> None:
     asyncio.run(go())
 
 
-def test_the_run_is_created_with_the_priority_of_the_plan():
-    """The create-run activity gets the priority the plan carries."""
-
-    async def scenario(h: Harness) -> None:
-        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
-        await h.run_maintenance(EXPIRE, plan={**_plan(EXPIRE), "priority": "P1"})
-        assert h.fakes.created[0]["priority"] == "P1"
-
-    _run(scenario)
-
-
-def test_the_workflow_creates_the_run_with_the_plans_filters():
-    """The create-run activity gets the compaction's filters and procedure arguments from the plan."""
-
-    async def scenario(h: Harness) -> None:
-        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
-        await h.run_maintenance(COMPACTION)
-        assert h.fakes.created[0]["filters"] == [{"spec_id": 0, "where": f"{COMPACTION} = 1"}]
-        assert h.fakes.created[0]["procedure_args"] == {"op": COMPACTION}
-
-    _run(scenario)
-
-
-def test_the_workflow_sends_no_filters_for_a_whole_table_plan():
-    """A plan whose operations hold no filters creates its run with none."""
-
-    async def scenario(h: Harness) -> None:
-        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
-        plan = _plan(COMPACTION)
-        plan["operations"][0] = {**plan["operations"][0], "filters": []}
-        await h.run_maintenance(plan=plan)
-        assert h.fakes.created[0]["filters"] == []
-
-    _run(scenario)
-
-
-def test_the_run_is_created_at_p3_when_the_plan_has_no_priority():
-    """A plan without a priority creates its run at P3."""
-
-    async def scenario(h: Harness) -> None:
-        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
-        await h.run_maintenance(EXPIRE)
-        assert h.fakes.created[0]["priority"] == "P3"
-
-    _run(scenario)
-
-
 def test_operations_run_in_order_and_parent_signalled():
     """The operations run in order, each result is recorded and the parent is told when the run finishes."""
 
@@ -265,12 +226,7 @@ def test_operations_run_in_order_and_parent_signalled():
         }
         await h.run_maintenance(COMPACTION, EXPIRE)
 
-        assert [c["run_id"] for c in h.fakes.created] == list(RUN_IDS[:2])
-        assert {c["table_uuid"] for c in h.fakes.created} == {"u1"}
-        assert {c["trigger"] for c in h.fakes.created} == {"scheduled"}
-        assert [c["operation"] for c in h.fakes.created] == [COMPACTION, EXPIRE]
-        assert {c["execution_ref"] for c in h.fakes.created} == {WORKFLOW_ID}
-        assert len({c["now"] for c in h.fakes.created}) == 1
+        assert [s["run_id"] for s in h.fakes.submits] == list(RUN_IDS[:2])
         assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [
             (COMPACTION, 1),
             (EXPIRE, 1),
@@ -1161,7 +1117,7 @@ PLANNED_FILTERS = [{"spec_id": 0, "where": "region IN ('eu', 'us', 'ap', 'sa')"}
 
 
 def test_oom_retry_keeps_the_planned_filters():
-    """The run holds the operation's filters, and no attempt, also after running out of memory, sends its own."""
+    """No attempt, also after running out of memory, sends filters of its own: the submit reads the run's."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, a): [(a, False, OOM_ERROR)] for a in (1, 2)}
@@ -1175,22 +1131,21 @@ def test_oom_retry_keeps_the_planned_filters():
             "filters": PLANNED_FILTERS,
         }
         await h.run_maintenance(plan=plan)
-        assert h.fakes.created[0]["filters"] == PLANNED_FILTERS
         assert len(h.fakes.submits) == 3
         assert not [s for s in h.fakes.submits if "filters" in s or "procedure_args" in s]
 
     _run(scenario)
 
 
-def test_attempt_submits_right_after_the_run_is_created():
-    """An attempt is submitted right after the run is created and nothing is signalled before it."""
+def test_the_first_command_is_the_first_submit():
+    """The workflow creates no run: its first command is the first submit, and nothing is signalled before it."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
         await h.run_maintenance(COMPACTION)
 
         names = _names(await h.commands())
-        assert names[:2] == ["create_maintenance_run", "submit_maintenance_operation"]
+        assert names[0] == "submit_maintenance_operation"
         assert not [name for name in names if name.startswith("signal:")]
 
     _run(scenario)
@@ -1551,15 +1506,11 @@ def test_next_operation_after_a_raise_submits_after_the_record():
 
 
 def test_raise_before_the_first_submit_is_recorded_before_it():
-    """A raise that arrives while the run is being created is recorded before the first submit."""
+    """A raise that arrives with the workflow's start is recorded before the first submit."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
-        gate = h.fakes.create_gate = asyncio.Event()
-        handle = await h.start_maintenance(COMPACTION)
-        await eventually(lambda: _value(len(h.fakes.created)), lambda n: n == 1)
-        await handle.signal(TableMaintenanceSignal.RAISE_PRIORITY, RaisePrioritySignal(None))
-        gate.set()
+        handle = await h.start_maintenance(COMPACTION, raise_at_start=RaisePrioritySignal(None))
         await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
 
         names = _names(await h.commands())
@@ -1943,23 +1894,13 @@ def _app(run: int, operation: str, attempt: int = 1) -> str:
     return ScriptedMaintenanceActivities.app_name(RUN_IDS[run], operation, attempt)
 
 
-def test_each_operation_gets_its_own_run_created_before_the_first_submit():
-    """Every planned operation gets its own run, created with its filters and arguments before anything is submitted."""
+def test_each_operation_runs_as_its_own_run():
+    """Every planned operation runs as the run the parent named for it, its submit carrying no parameters of its own."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)], (EXPIRE, 1): [(1, True, None)]}
         await h.run_maintenance(COMPACTION, EXPIRE)
-        assert [(c["run_id"], c["operation"]) for c in h.fakes.created] == [
-            (RUN_IDS[0], COMPACTION),
-            (RUN_IDS[1], EXPIRE),
-        ]
-        assert h.fakes.created[0]["filters"] == [{"spec_id": 0, "where": f"{COMPACTION} = 1"}]
-        assert h.fakes.created[1]["procedure_args"] == {"op": EXPIRE}
         assert "filters" not in h.fakes.submits[0] and "procedure_args" not in h.fakes.submits[0]
-        names = [name for name, _ in await h.commands()]
-        assert names.index("submit_maintenance_operation") > max(
-            i for i, n in enumerate(names) if n == "create_maintenance_run"
-        )
         assert [(s["run_id"], s["operation"]) for s in h.fakes.submits] == [
             (RUN_IDS[0], COMPACTION),
             (RUN_IDS[1], EXPIRE),
@@ -2040,24 +1981,6 @@ def test_runs_never_reached_are_skipped_when_the_workflow_is_cancelled():
         assert {s["reason"] for s in h.fakes.skips} == {STOPPED_BEFORE_IT_STARTED}
         names = _names(await h.commands())
         assert max(i for i, n in enumerate(names) if n == "skip_maintenance_run") < names.index("signal_parent")
-
-    _run(scenario)
-
-
-def test_a_create_failure_submits_nothing_and_skips_the_runs_created():
-    """A run whose create fails stops the workflow before any submit; only the runs already created are skipped."""
-
-    async def scenario(h: Harness) -> None:
-        h.fakes.create_errors = {RUN_IDS[1]}
-        handle = await h.start_maintenance(COMPACTION, EXPIRE, ORPHANS)
-        with pytest.raises(WorkflowFailureError):
-            await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
-
-        assert [c["run_id"] for c in h.fakes.created] == [RUN_IDS[0], RUN_IDS[1]]
-        assert h.fakes.submits == []
-        assert [s["run_id"] for s in h.fakes.skips] == [RUN_IDS[0]]
-        assert h.fakes.skips[0]["reason"] == STOPPED_BEFORE_IT_STARTED
-        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:3]))]
 
     _run(scenario)
 
@@ -2257,14 +2180,14 @@ def test_an_early_result_for_a_later_run_is_dropped():
     _run(scenario)
 
 
-def test_a_create_interrupted_by_a_cancel_is_skipped():
-    """A cancel while run 2's create is in flight skips run 1 and run 2, whose create may have landed."""
+def test_a_cancel_before_any_submit_returned_skips_every_run_of_the_plan():
+    """A cancel while the first submit is in flight skips every run of the plan: the parent created them all."""
 
     async def scenario(h: Harness) -> None:
-        gate = h.fakes.create_gates[RUN_IDS[1]] = asyncio.Event()
+        gate = h.fakes.submit_gate = asyncio.Event()
         handle = await h.start_maintenance(COMPACTION, EXPIRE, ORPHANS)
         try:
-            await eventually(lambda: _value(len(h.fakes.created)), lambda n: n == 2)
+            await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
             await handle.cancel()
             with pytest.raises(WorkflowFailureError) as caught:
                 await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
@@ -2272,23 +2195,22 @@ def test_a_create_interrupted_by_a_cancel_is_skipped():
             gate.set()
 
         assert isinstance(caught.value.cause, CancelledError)
-        assert [c["run_id"] for c in h.fakes.created] == list(RUN_IDS[:2])
-        assert h.fakes.submits == []
-        assert [s["run_id"] for s in h.fakes.skips] == list(RUN_IDS[:2])
+        assert [s["run_id"] for s in h.fakes.skips] == list(RUN_IDS[:3])
+        assert {s["reason"] for s in h.fakes.skips} == {STOPPED_BEFORE_IT_STARTED}
         assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:3]))]
 
     _run(scenario)
 
 
-def test_a_create_interrupted_by_a_cancel_whose_run_is_not_found_is_only_logged():
-    """A skip of the interrupted create's run that finds no run is logged, and the parent still gets the report."""
+def test_a_skip_that_finds_no_run_is_only_logged():
+    """A skip at the end that fails, a run not found included, is logged, and the parent still gets the report."""
 
     async def scenario(h: Harness) -> None:
-        gate = h.fakes.create_gates[RUN_IDS[0]] = asyncio.Event()
+        gate = h.fakes.submit_gate = asyncio.Event()
         h.fakes.skip_errors = {RUN_IDS[0]}
         handle = await h.start_maintenance(COMPACTION, EXPIRE)
         try:
-            await eventually(lambda: _value(len(h.fakes.created)), lambda n: n == 1)
+            await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
             await handle.cancel()
             with pytest.raises(WorkflowFailureError) as caught:
                 await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
@@ -2296,7 +2218,7 @@ def test_a_create_interrupted_by_a_cancel_whose_run_is_not_found_is_only_logged(
             gate.set()
 
         assert isinstance(caught.value.cause, CancelledError)
-        assert [s["run_id"] for s in h.fakes.skips] == [RUN_IDS[0]]
+        assert [s["run_id"] for s in h.fakes.skips] == list(RUN_IDS[:2])
         assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
 
     _run(scenario)

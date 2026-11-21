@@ -15,7 +15,6 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.runs_repo_w
     runs_repo_with_one_run,
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fakes import (
-    FakeCreateRun,
     FakeDelete,
     FakeRaisePriority,
     FakeRecordResult,
@@ -32,7 +31,6 @@ if TYPE_CHECKING:
     from temporalio.client import Client
 
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
-        CreateTableMaintenanceRunUseCase,
         DeleteMaintenanceJobUseCase,
         GetMaintenanceJobPodsUseCase,
         GetMaintenanceJobStatusUseCase,
@@ -46,7 +44,6 @@ if TYPE_CHECKING:
 
 def table_maintenance_activities_with_fakes(  # noqa: PLR0913
     *,
-    create_run: CreateTableMaintenanceRunUseCase | None = None,
     record_result: RecordTableMaintenanceOperationResultUseCase | None = None,
     submit: SubmitMaintenanceOperationUseCase | None = None,
     status: GetMaintenanceJobStatusUseCase | None = None,
@@ -63,7 +60,6 @@ def table_maintenance_activities_with_fakes(  # noqa: PLR0913
     The pods use case defaults to the real service over a stored compaction run with no live pods.
     """
     return TableMaintenanceActivities(
-        create_run=create_run or FakeCreateRun(),
         record_result=record_result or FakeRecordResult(),
         submit=submit or FakeSubmit(),
         status=status or FakeStatus(),

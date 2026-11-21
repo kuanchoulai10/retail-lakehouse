@@ -44,9 +44,8 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_recon
     table_reconciliation_activities_with_fakes,
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fakes import (
-    CREATED_AT,
     GOLD_POLICY_ID,
-    FakeCreateRun,
+    FakeCreateRuns,
     FakeDelete,
     FakePlan,
     FakeRaisePriority,
@@ -702,55 +701,90 @@ def test_get_maintenance_job_pods_activity_returns_live_pod_names():
     ]
 
 
-def test_create_run_passes_fields_and_returns_iso_dict():
-    """The create run activity passes its fields to the use case and returns ISO formatted timestamps."""
-    create, record = FakeCreateRun(), FakeRecordResult()
-    activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
-    result = activities.create_table_maintenance_run(
+def test_create_runs_activity_hands_the_use_case_the_plans_runs_and_returns_their_ids():
+    """The create runs activity builds its input from the payload, every run in order, and returns the run ids."""
+    create = FakeCreateRuns()
+    activities = table_reconciliation_activities_with_fakes(create_runs=create)
+    result = activities.create_maintenance_runs(
         {
-            "run_id": RUN_1,
             "table_uuid": "u1",
-            "trigger": "scheduled",
-            "operation": "expire_snapshots",
-            "procedure_args": {"retain_last": 3},
             "execution_ref": "wf-r1",
+            "trigger": "scheduled",
+            "priority": "P1",
             "now": NOW,
+            "runs": [
+                {"run_id": RUN_1, "operation": "rewrite_data_files", "filters": [{"spec_id": 0, "where": "x"}]},
+                {"run_id": RUN_9, "operation": "expire_snapshots", "procedure_args": {"retain_last": 3}},
+            ],
         }
     )
     request = create.requests[0]
-    assert request.run_id == RUN_1
-    assert request.execution_ref == "wf-r1"
-    assert request.table_uuid == "u1"
-    assert request.trigger == "scheduled"
-    assert request.operation == "expire_snapshots"
-    assert request.procedure_args == {"retain_last": 3}
-    assert request.now == NOW_DT
-    assert result["run_id"] == RUN_1
-    assert result["status"] == "pending"
-    assert result["created_at"] == CREATED_AT.isoformat()
+    assert (request.table_uuid, request.execution_ref, request.trigger, request.priority, request.now) == (
+        "u1",
+        "wf-r1",
+        "scheduled",
+        "P1",
+        NOW_DT,
+    )
+    assert [(r.run_id, r.operation) for r in request.runs] == [
+        (RUN_1, "rewrite_data_files"),
+        (RUN_9, "expire_snapshots"),
+    ]
+    assert request.runs[0].filters[0].where == "x"
+    assert request.runs[1].procedure_args == {"retain_last": 3}
+    assert result == {"run_ids": [RUN_1, RUN_9]}
 
 
-def test_create_run_passes_the_priority_and_defaults_to_p3():
-    """The create run activity hands the use case the priority of its payload, P3 when it names none."""
-    create, record = FakeCreateRun(), FakeRecordResult()
-    activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
-    payload = {
-        "run_id": RUN_1,
-        "table_uuid": "u1",
-        "trigger": "scheduled",
-        "operation": "expire_snapshots",
-        "execution_ref": "wf-r1",
-        "now": NOW,
+def test_create_runs_activity_defaults_the_priority_to_p3():
+    """A create payload that names no priority creates its runs at P3."""
+    create = FakeCreateRuns()
+    activities = table_reconciliation_activities_with_fakes(create_runs=create)
+    activities.create_maintenance_runs(
+        {
+            "table_uuid": "u1",
+            "execution_ref": "wf-r1",
+            "trigger": "scheduled",
+            "now": NOW,
+            "runs": [{"run_id": RUN_1, "operation": "expire_snapshots"}],
+        }
+    )
+    assert create.requests[0].priority == "P3"
+
+
+def test_skip_runs_activity_skips_each_run_with_the_reason_and_time():
+    """The reconciliation's skip activity skips every run it names, one request each, and returns each reply."""
+    skip = FakeSkip()
+    activities = table_reconciliation_activities_with_fakes(skip=skip)
+
+    result = activities.skip_maintenance_runs({"run_ids": [RUN_1, RUN_9], "reason": "not started", "now": NOW})
+
+    assert skip.requests == [
+        SkipTableMaintenanceRunUseCaseInput(run_id=RUN_1, reason="not started", now=NOW_DT),
+        SkipTableMaintenanceRunUseCaseInput(run_id=RUN_9, reason="not started", now=NOW_DT),
+    ]
+    assert result == {
+        "runs": [
+            {"run_id": RUN_1, "status": "skipped", "skipped": True},
+            {"run_id": RUN_9, "status": "skipped", "skipped": True},
+        ]
     }
-    activities.create_table_maintenance_run({**payload, "priority": "P1"})
-    activities.create_table_maintenance_run(payload)
-    assert [r.priority for r in create.requests] == ["P1", "P3"]
+
+
+def test_skip_runs_activity_refuses_an_unknown_run_without_retry():
+    """A skip of a run that does not exist fails the reconciliation's skip activity at once, as not found."""
+    activities = table_reconciliation_activities_with_fakes(skip=FakeSkip(error=NotFoundError("no run")))
+
+    with pytest.raises(ApplicationError) as caught:
+        activities.skip_maintenance_runs({"run_ids": [RUN_1], "reason": "not started", "now": NOW})
+
+    assert caught.value.non_retryable
+    assert caught.value.type == "NotFoundError"
 
 
 def test_record_result_passes_fields():
     """The record result activity passes the run, attempt, outcome and metrics to the use case."""
-    create, record = FakeCreateRun(), FakeRecordResult()
-    activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
+    record = FakeRecordResult()
+    activities = table_maintenance_activities_with_fakes(record_result=record)
     result = activities.record_table_maintenance_operation_result(
         {
             "run_id": RUN_1,
@@ -777,8 +811,8 @@ def test_record_result_passes_fields():
 
 def test_record_activity_passes_ending_and_attempt_limit():
     """The record activity passes what ended the attempt, whether its job may still run and the attempt limit."""
-    create, record = FakeCreateRun(), FakeRecordResult()
-    activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
+    record = FakeRecordResult()
+    activities = table_maintenance_activities_with_fakes(record_result=record)
     activities.record_table_maintenance_operation_result(
         {
             "run_id": RUN_1,
@@ -799,8 +833,8 @@ def test_record_activity_passes_ending_and_attempt_limit():
 
 def test_record_activity_defaults_keys_of_old_requests():
     """A record request from before failure classes reads as a reported result of a finished job, of three attempts."""
-    create, record = FakeCreateRun(), FakeRecordResult()
-    activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
+    record = FakeRecordResult()
+    activities = table_maintenance_activities_with_fakes(record_result=record)
     activities.record_table_maintenance_operation_result(
         {
             "run_id": RUN_1,
@@ -819,8 +853,8 @@ def test_record_activity_defaults_keys_of_old_requests():
 
 def test_record_activity_passes_the_planned_policy():
     """The record activity passes the policy the run was planned under."""
-    create, record = FakeCreateRun(), FakeRecordResult()
-    activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
+    record = FakeRecordResult()
+    activities = table_maintenance_activities_with_fakes(record_result=record)
     target = {"type": "namespace", "path": ["iceberg", "sales"]}
     activities.record_table_maintenance_operation_result(
         {

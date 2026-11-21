@@ -21,7 +21,8 @@ from context.table_maintenance.application.domain.model.shared import (
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation as Op,
 )
-from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
+from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     FailureClass,
     NextAttempt,
@@ -32,6 +33,13 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     TriggerType,
 )
 from context.table_maintenance.application.exceptions import ConflictError
+from context.table_maintenance.application.port.inbound.table_maintenance_run import (
+    CreateTableMaintenanceRunsUseCaseInput,
+)
+from context.table_maintenance.application.service.table_maintenance_run import (
+    CreateTableMaintenanceRunsService,
+)
+from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.context.table_maintenance.numbered_id import numbered_id
 
 if TYPE_CHECKING:
@@ -212,6 +220,51 @@ def test_create_duplicate_primary_key_raises_conflict(
     repo.create(_run(R1))
     with pytest.raises(ConflictError):
         repo.create(_run(R1))
+
+
+def test_create_all_stores_every_run(repo: TableMaintenanceRunsSqlRepo):
+    """The runs of one plan are stored together and read back."""
+    ops = [Op.REWRITE_DATA_FILES, Op.EXPIRE_SNAPSHOTS]
+    runs = [_run(numbered_id("mr", n), operation=op) for n, op in enumerate(ops, start=1)]
+    assert repo.create_all(runs) == runs
+    assert [repo.get(r.id) for r in runs] == runs
+
+
+def test_create_all_stores_none_when_one_cannot_be_stored(repo: TableMaintenanceRunsSqlRepo):
+    """A run that cannot be stored refuses the whole batch with ConflictError: the runs before it are not stored."""
+    repo.create(_run(OTHER))
+    with pytest.raises(ConflictError):
+        repo.create_all([_run(R1, operation=Op.REWRITE_DATA_FILES), _run(OTHER)])
+    assert repo.get(TableMaintenanceRunId(R1)) is None
+    assert [r.id.value for r in repo.list_all()] == [OTHER]
+
+
+def test_a_create_of_a_plan_retried_after_it_was_stored_succeeds_on_the_sql_repo(repo: TableMaintenanceRunsSqlRepo):
+    """The create use case, retried after its first try committed the plan's runs here, returns the stored runs.
+
+    The idempotency lives in the use case: it reads each run id back from this repo before inserting.
+    """
+    tables = InMemoryTablesRepo()
+    tables.create(
+        Table.register(
+            TableId("u1"), TableName(catalog="iceberg", namespace="s", table="t"), TableDiscoveryRuleId.new(), NOW
+        )
+    )
+    service = CreateTableMaintenanceRunsService(repo, tables)
+    request = CreateTableMaintenanceRunsUseCaseInput(
+        table_uuid="u1",
+        execution_ref="wf",
+        trigger="scheduled",
+        now=NOW,
+        runs=(
+            CreateTableMaintenanceRunsUseCaseInput.Run(run_id=R1, operation="rewrite_data_files"),
+            CreateTableMaintenanceRunsUseCaseInput.Run(run_id=OTHER, operation="expire_snapshots"),
+        ),
+    )
+    first = service.execute(request)
+    again = service.execute(request)
+    assert again.run_ids == first.run_ids == (R1, OTHER)
+    assert sorted(r.id.value for r in repo.list_all()) == sorted([R1, OTHER])
 
 
 def test_attempts_round_trip(repo: TableMaintenanceRunsSqlRepo):

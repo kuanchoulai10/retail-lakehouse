@@ -20,6 +20,8 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from sqlalchemy import Engine
 
     from base import EntityId
@@ -54,6 +56,18 @@ class TableMaintenanceRunsSqlRepo(TableMaintenanceRunsRepo):
         except IntegrityError as exc:
             raise ConflictError(str(exc.orig)) from exc
         return entity
+
+    def create_all(self, runs: Sequence[TableMaintenanceRun]) -> list[TableMaintenanceRun]:
+        """Insert new runs in one transaction; a run that cannot be stored rolls back every one."""
+        stored = list(runs)
+        if not stored:
+            return stored
+        try:
+            with self._engine.begin() as conn:
+                conn.execute(insert(t), [TableMaintenanceRunRowMapper.to_values(run) for run in stored])
+        except IntegrityError as exc:
+            raise ConflictError(str(exc.orig)) from exc
+        return stored
 
     def get(self, entity_id: EntityId) -> TableMaintenanceRun | None:
         """Return the run with the given id, or None."""

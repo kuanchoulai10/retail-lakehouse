@@ -44,7 +44,7 @@ from context.table_maintenance.application.service.table_maintenance_policy_atta
     ResolveApplicableTableMaintenancePolicyService,
 )
 from context.table_maintenance.application.service.table_maintenance_run import (
-    CreateTableMaintenanceRunService,
+    CreateTableMaintenanceRunsService,
     DeleteMaintenanceJobService,
     GetMaintenanceJobPodsService,
     GetMaintenanceJobStatusService,
@@ -153,7 +153,7 @@ def build_use_cases(
         set_table_priority=SetTablePriorityService(tables, clock=clock),
         trigger_table_maintenance=TriggerTableMaintenanceService(tables, table_changes),
         trigger_table_reconciliation=TriggerTableReconciliationService(tables, table_changes),
-        create_table_maintenance_run=CreateTableMaintenanceRunService(runs, tables),
+        create_table_maintenance_runs=CreateTableMaintenanceRunsService(runs, tables),
         get_table_maintenance_run=GetTableMaintenanceRunService(runs),
         list_table_maintenance_runs=ListTableMaintenanceRunsService(runs),
         process_table_maintenance_callback=ProcessTableMaintenanceCallbackService(

@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.application.port.inbound.table_maintenance_run.create_table_maintenance_run.input import (  # noqa: E501
-    CreateTableMaintenanceRunUseCaseInput,
+from context.table_maintenance.application.port.inbound.table_maintenance_run.create_table_maintenance_runs.input import (  # noqa: E501
+    CreateTableMaintenanceRunsUseCaseInput,
 )
-from context.table_maintenance.application.port.inbound.table_maintenance_run.create_table_maintenance_run.output import (  # noqa: E501
-    CreateTableMaintenanceRunUseCaseOutput,
+from context.table_maintenance.application.port.inbound.table_maintenance_run.create_table_maintenance_runs.output import (  # noqa: E501
+    CreateTableMaintenanceRunsUseCaseOutput,
 )
-from context.table_maintenance.application.port.inbound.table_maintenance_run.create_table_maintenance_run.use_case import (  # noqa: E501
-    CreateTableMaintenanceRunUseCase,
+from context.table_maintenance.application.port.inbound.table_maintenance_run.create_table_maintenance_runs.use_case import (  # noqa: E501
+    CreateTableMaintenanceRunsUseCase,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run.delete_maintenance_job.input import (
     DeleteMaintenanceJobUseCaseInput,
@@ -117,9 +117,9 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run.su
 )
 
 __all__ = [
-    "CreateTableMaintenanceRunUseCase",
-    "CreateTableMaintenanceRunUseCaseInput",
-    "CreateTableMaintenanceRunUseCaseOutput",
+    "CreateTableMaintenanceRunsUseCase",
+    "CreateTableMaintenanceRunsUseCaseInput",
+    "CreateTableMaintenanceRunsUseCaseOutput",
     "DeleteMaintenanceJobUseCase",
     "DeleteMaintenanceJobUseCaseInput",
     "DeleteMaintenanceJobUseCaseOutput",

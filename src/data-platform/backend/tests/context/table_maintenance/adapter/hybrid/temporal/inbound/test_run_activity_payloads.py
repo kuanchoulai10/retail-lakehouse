@@ -12,8 +12,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     DEFAULT_MAX_ATTEMPTS,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
-    CreateTableMaintenanceRunUseCaseInput,
-    CreateTableMaintenanceRunUseCaseOutput,
+    CreateTableMaintenanceRunsUseCaseInput,
     DeleteMaintenanceJobUseCaseInput,
     GetMaintenanceJobPodsUseCaseInput,
     GetMaintenanceJobStatusUseCaseInput,
@@ -32,7 +31,7 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_recon
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fakes import (
     GOLD_POLICY_ID,
-    FakeCreateRun,
+    FakeCreateRuns,
     FakeDelete,
     FakeRecordReconciliation,
     FakeRecordResult,
@@ -44,127 +43,30 @@ RUN_1 = "mr-00000000000000000000000001"
 REC_1 = "rc-00000000000000000000000001"
 
 NOW = "2026-10-24T01:02:03+00:00"
-STARTED = datetime(2026, 10, 24, 1, 5, tzinfo=UTC)
-FAILED = datetime(2026, 10, 24, 1, 20, 30, tzinfo=UTC)
-RETRIED = datetime(2026, 10, 24, 1, 22, tzinfo=UTC)
 
-CREATE_REQUEST = {
+CREATE_RUN = {
     "run_id": RUN_1,
+    "operation": "rewrite_data_files",
+    "filters": [{"spec_id": 0, "where": "(`region` = 'eu')"}],
+    "procedure_args": {"strategy": "binpack", "options": {"min-input-files": "5"}},
+}
+CREATE_REQUEST = {
     "table_uuid": "u1",
     "execution_ref": "wf-r1",
     "trigger": "manual",
-    "operation": "rewrite_data_files",
     "priority": "P1",
-    "filters": [{"spec_id": 0, "where": "(`region` = 'eu')"}],
-    "procedure_args": {"strategy": "binpack", "options": {"min-input-files": "5"}},
     "now": NOW,
+    "runs": [CREATE_RUN],
 }
 
 
-def _full_run() -> CreateTableMaintenanceRunUseCaseOutput:
-    """Return a run that sets every field: a compaction with two attempts, the first failed out of memory."""
-    return CreateTableMaintenanceRunUseCaseOutput(
-        run_id=RUN_1,
-        table_uuid="u1",
-        execution_ref="wf-r1",
-        trigger="manual",
-        priority="P3",
-        operation="rewrite_data_files",
-        status="running",
-        filters=({"spec_id": 0, "where": "(`region` = 'eu')"},),
-        procedure_args={"strategy": "binpack", "options": {"min-input-files": "5"}},
-        metrics={"rewritten_data_files_count": 4},
-        error=None,
-        skip_reason=None,
-        created_at=datetime(2026, 10, 24, 1, 2, 3, tzinfo=UTC),
-        started_at=STARTED,
-        finished_at=None,
-        attempts=(
-            {
-                "attempt": 1,
-                "size": "S",
-                "status": "failed",
-                "job_name": "app-1",
-                "started_at": STARTED,
-                "started_running_at": STARTED,
-                "finished_at": FAILED,
-                "failure_class": "oom",
-                "error": "java.lang.OutOfMemoryError",
-                "event_log_finished": True,
-                "next_step": "retry_larger",
-                "next_size": "M",
-            },
-            {
-                "attempt": 2,
-                "size": "M",
-                "status": "running",
-                "job_name": "app-2",
-                "started_at": RETRIED,
-                "started_running_at": None,
-                "finished_at": None,
-                "failure_class": None,
-                "error": None,
-                "event_log_finished": None,
-                "next_step": None,
-                "next_size": None,
-            },
-        ),
-    )
+def test_create_runs_payload_is_the_run_ids_the_workflow_reads():
+    """The create runs activity returns the ids of the plan's runs, as a JSON list."""
+    activities = table_reconciliation_activities_with_fakes()
 
+    result = activities.create_maintenance_runs(dict(CREATE_REQUEST))
 
-def test_create_run_payload_keeps_every_field_of_a_full_run():
-    """The create run activity returns the run as primitives: lists, nested dicts and ISO times, None kept."""
-    activities = table_maintenance_activities_with_fakes(create_run=FakeCreateRun(_full_run()))
-
-    result = activities.create_table_maintenance_run(dict(CREATE_REQUEST))
-
-    assert result == {
-        "run_id": RUN_1,
-        "table_uuid": "u1",
-        "execution_ref": "wf-r1",
-        "trigger": "manual",
-        "priority": "P3",
-        "operation": "rewrite_data_files",
-        "status": "running",
-        "filters": [{"spec_id": 0, "where": "(`region` = 'eu')"}],
-        "procedure_args": {"strategy": "binpack", "options": {"min-input-files": "5"}},
-        "metrics": {"rewritten_data_files_count": 4},
-        "error": None,
-        "skip_reason": None,
-        "created_at": "2026-10-24T01:02:03+00:00",
-        "started_at": "2026-10-24T01:05:00+00:00",
-        "finished_at": None,
-        "attempts": [
-            {
-                "attempt": 1,
-                "size": "S",
-                "status": "failed",
-                "job_name": "app-1",
-                "started_at": "2026-10-24T01:05:00+00:00",
-                "started_running_at": "2026-10-24T01:05:00+00:00",
-                "finished_at": "2026-10-24T01:20:30+00:00",
-                "failure_class": "oom",
-                "error": "java.lang.OutOfMemoryError",
-                "event_log_finished": True,
-                "next_step": "retry_larger",
-                "next_size": "M",
-            },
-            {
-                "attempt": 2,
-                "size": "M",
-                "status": "running",
-                "job_name": "app-2",
-                "started_at": "2026-10-24T01:22:00+00:00",
-                "started_running_at": None,
-                "finished_at": None,
-                "failure_class": None,
-                "error": None,
-                "event_log_finished": None,
-                "next_step": None,
-                "next_size": None,
-            },
-        ],
-    }
+    assert result == {"run_ids": [RUN_1]}
     assert json.loads(json.dumps(result)) == result
 
 
@@ -276,40 +178,44 @@ WORKFLOW_RECORD_RECONCILIATION_REQUEST = {
 }
 
 
-def test_create_run_input_is_built_from_the_payload_the_maintenance_workflow_sends():
-    """The create run input reads the workflow's payload: an ISO time, one operation, its filters and arguments."""
-    assert CreateTableMaintenanceRunUseCaseInput.from_primitives(
+def test_create_runs_input_is_built_from_the_payload_the_reconciliation_workflow_sends():
+    """The create runs input reads the workflow's payload: an ISO time, each run with its filters and arguments."""
+    assert CreateTableMaintenanceRunsUseCaseInput.from_primitives(
         CREATE_REQUEST
-    ) == CreateTableMaintenanceRunUseCaseInput(
-        run_id=RUN_1,
+    ) == CreateTableMaintenanceRunsUseCaseInput(
         table_uuid="u1",
         execution_ref="wf-r1",
         trigger="manual",
-        operation="rewrite_data_files",
         priority="P1",
-        filters=(CreateTableMaintenanceRunUseCaseInput.Filter(spec_id=0, where="(`region` = 'eu')"),),
-        procedure_args={"strategy": "binpack", "options": {"min-input-files": "5"}},
         now=NOW_DT,
+        runs=(
+            CreateTableMaintenanceRunsUseCaseInput.Run(
+                run_id=RUN_1,
+                operation="rewrite_data_files",
+                filters=(CreateTableMaintenanceRunsUseCaseInput.Filter(spec_id=0, where="(`region` = 'eu')"),),
+                procedure_args={"strategy": "binpack", "options": {"min-input-files": "5"}},
+            ),
+        ),
     )
 
 
-def test_create_run_input_reads_a_whole_table_payload_as_no_filters():
-    """A payload whose operation holds no filters, or names none, reads as no filters and no arguments."""
-    whole_table = {**CREATE_REQUEST, "filters": [], "procedure_args": {}}
-    built = CreateTableMaintenanceRunUseCaseInput.from_primitives(whole_table)
+def test_create_runs_input_reads_a_whole_table_payload_as_no_filters():
+    """A run whose operation holds no filters, or names none, reads as no filters and no arguments."""
+    whole_table = {**CREATE_REQUEST, "runs": [{**CREATE_RUN, "filters": [], "procedure_args": {}}]}
+    built = CreateTableMaintenanceRunsUseCaseInput.from_primitives(whole_table).runs[0]
     assert (built.filters, built.procedure_args) == ((), {})
-    bare = {k: v for k, v in CREATE_REQUEST.items() if k not in ("filters", "procedure_args")}
-    assert CreateTableMaintenanceRunUseCaseInput.from_primitives(bare).filters == ()
+    bare = {**CREATE_REQUEST, "runs": [{"run_id": RUN_1, "operation": "rewrite_data_files"}]}
+    assert CreateTableMaintenanceRunsUseCaseInput.from_primitives(bare).runs[0].filters == ()
 
 
-def test_create_run_activity_hands_the_use_case_the_input_built_from_the_payload():
-    """The create run activity builds its input with from_primitives."""
-    create = FakeCreateRun()
-    activities = table_maintenance_activities_with_fakes(create_run=create)
+def test_create_runs_activity_hands_the_use_case_the_input_built_from_the_payload():
+    """The create runs activity builds its input with from_primitives."""
+    create = FakeCreateRuns()
+    activities = table_reconciliation_activities_with_fakes(create_runs=create)
 
-    activities.create_table_maintenance_run(dict(CREATE_REQUEST))
+    activities.create_maintenance_runs(dict(CREATE_REQUEST))
 
-    assert create.requests == [CreateTableMaintenanceRunUseCaseInput.from_primitives(CREATE_REQUEST)]
+    assert create.requests == [CreateTableMaintenanceRunsUseCaseInput.from_primitives(CREATE_REQUEST)]
 
 
 def test_submit_input_is_built_from_the_payload_the_maintenance_workflow_sends():

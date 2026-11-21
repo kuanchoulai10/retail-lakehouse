@@ -40,7 +40,7 @@ if TYPE_CHECKING:
         ResolveApplicableTableMaintenancePolicyUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
-        CreateTableMaintenanceRunUseCase,
+        CreateTableMaintenanceRunsUseCase,
         DeleteMaintenanceJobUseCase,
         GetMaintenanceJobPodsUseCase,
         GetMaintenanceJobStatusUseCase,
@@ -89,7 +89,7 @@ class UseCases:
     set_table_priority: SetTablePriorityUseCase
     trigger_table_maintenance: TriggerTableMaintenanceUseCase
     trigger_table_reconciliation: TriggerTableReconciliationUseCase
-    create_table_maintenance_run: CreateTableMaintenanceRunUseCase
+    create_table_maintenance_runs: CreateTableMaintenanceRunsUseCase
     get_table_maintenance_run: GetTableMaintenanceRunUseCase
     list_table_maintenance_runs: ListTableMaintenanceRunsUseCase
     process_table_maintenance_callback: ProcessTableMaintenanceCallbackUseCase
