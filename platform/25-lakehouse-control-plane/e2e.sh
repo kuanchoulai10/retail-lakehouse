@@ -744,8 +744,15 @@ else
   DISCOVERY_POLICY_BODY="$(jq -c '.body' <<<"${DISCOVERY_POLICY_REPLY}")"
 fi
 DISCOVERY_POLICY_ID="$(jq -r '.id' <<<"${DISCOVERY_POLICY_BODY}")"
-RULE_ID="$(jq -r '.rules[0].id' <<<"${DISCOVERY_POLICY_BODY}")"
-progress "discovery policy ${DISCOVERY_POLICY_ID} v$(jq -r '.version' <<<"${DISCOVERY_POLICY_BODY}"), first rule ${RULE_ID}"
+RULE_ID="$(jq -r 'first(.rules[] | select(.outcome == "manage"
+  and .conditions == [{attribute: "table_name", operator: "glob", values: ["tm_e2e_*"]}]) | .id) // empty' \
+  <<<"${DISCOVERY_POLICY_BODY}")"
+[[ -n "${RULE_ID}" ]] || {
+  echo "the discovery policy ${DISCOVERY_POLICY} has no manage rule on table_name glob tm_e2e_*;" \
+    "delete or fix the tm-e2e discovery policy: $(jq -c '.rules' <<<"${DISCOVERY_POLICY_BODY}")" >&2
+  exit 1
+}
+progress "discovery policy ${DISCOVERY_POLICY_ID} v$(jq -r '.version' <<<"${DISCOVERY_POLICY_BODY}"), manage rule ${RULE_ID}"
 
 progress "creating ${CATALOG}.${SCHEMA}.${ORDERS} and ${CATALOG}.${SCHEMA}.${REGIONS}"
 trino_sql "CREATE SCHEMA IF NOT EXISTS ${CATALOG}.${SCHEMA};

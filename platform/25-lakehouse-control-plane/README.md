@@ -51,7 +51,7 @@ open http://localhost:8591/console/
 
 ## Ordering
 
-The `migrate` Job is a regular Job named with the Helm release revision, so each upgrade runs it again. A pre-install hook would run before the PostgreSQL Deployment exists. The Job waits for `pg_isready`. The api, worker and event-consumer pods have an init container that waits until the `default` maintenance policy exists, which means the migration finished.
+The `migrate` Job is a regular Job named with the Helm release revision, so each upgrade runs it again. A pre-install hook would run before the PostgreSQL Deployment exists. The Job waits for `pg_isready`. The api, worker and event-consumer pods have an init container that waits until the `default` maintenance policy and the `default` discovery policy (`dp-00000000000000000000000000`) both exist, which means the migration finished.
 
 ## Configuration
 
