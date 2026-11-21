@@ -655,6 +655,18 @@ def test_catalog_exists_is_false_when_the_live_read_finds_no_catalog() -> None:
     assert ReadTableMetadataPyIcebergGateway(lambda name: stub).catalog_exists(CATALOG) is False
 
 
+def test_catalog_wide_listing_whose_top_level_read_finds_no_catalog_raises_catalog_not_found() -> None:
+    """A catalog deleted since it was opened reads as not found, as catalog_exists reads it; a namespace stays empty."""
+    stub = MagicMock(spec=Catalog)
+    stub.list_namespaces.side_effect = NoSuchNamespaceError("catalog gone")
+    stub.list_tables.side_effect = NoSuchNamespaceError("catalog gone")
+    gateway = ReadTableMetadataPyIcebergGateway(lambda name: stub)
+
+    with pytest.raises(CatalogNotFoundError, match=f"{CATALOG}"):
+        gateway.list_tables(ReadTableMetadataGatewayListInput(CATALOG))
+    assert gateway.list_tables(ReadTableMetadataGatewayListInput(CATALOG, "db")) == []
+
+
 @pytest.mark.parametrize("refusal", [ForbiddenError, UnauthorizedError])
 def test_catalog_exists_is_access_denied_when_the_live_read_is_refused(refusal: type[RESTError]) -> None:
     """A catalog that opens but refuses the credential its top-level listing raises CatalogAccessDeniedError."""

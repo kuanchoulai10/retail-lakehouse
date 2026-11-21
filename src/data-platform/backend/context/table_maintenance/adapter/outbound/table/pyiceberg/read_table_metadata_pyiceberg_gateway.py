@@ -41,7 +41,9 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
     Only "table or namespace does not exist" is mapped to None or an empty
     list. A catalog that cannot be opened because the server rejects its name
     (a bare RESTError, such as Polaris answering 404 for an unknown
-    warehouse) raises CatalogNotFoundError. A refusal of the credential
+    warehouse), or whose top-level namespace listing answers "no such
+    namespace" because it was deleted since it was opened, raises
+    CatalogNotFoundError. A refusal of the credential
     (ForbiddenError or UnauthorizedError) while opening, listing or loading
     raises CatalogAccessDeniedError. Every other failure, including server
     and availability errors, propagates, so a failing catalog can never look
@@ -86,7 +88,10 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
             if input.namespace is not None:
                 return self._tables_of(catalog, input.catalog, tuple(input.namespace.split(".")))
             refs: list[TableMetadataRef] = []
-            pending: list[tuple[str, ...]] = [tuple(n) for n in catalog.list_namespaces()]
+            try:
+                pending: list[tuple[str, ...]] = [tuple(n) for n in catalog.list_namespaces()]
+            except NoSuchNamespaceError as exc:
+                raise CatalogNotFoundError(input.catalog) from exc
             while pending:
                 namespace = pending.pop(0)
                 refs.extend(self._tables_of(catalog, input.catalog, namespace))

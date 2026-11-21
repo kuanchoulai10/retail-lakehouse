@@ -424,6 +424,23 @@ def test_a_catalog_no_policy_can_manage_unmanages_a_managed_table_it_cannot_load
     assert sorted(_calls(signals)) == [("u-listed", "stopped", False), ("u-refused", "stopped", False)]
 
 
+def test_a_fully_read_catalog_no_policy_can_manage_drops_a_missing_managed_table_without_unmanaging_it(
+    sync, world, signals, now
+):
+    """A managed table missing from a fully read catalog that is no longer scanned is dropped, not unmanaged first."""
+    world.attach_to_catalog(UNMANAGE_ALL)
+    gone = _row(world.tables, now, "u-gone", _name("gone"))
+    decided_by = gone.discovered_by
+
+    out = sync.execute(_catalog_wide())
+
+    assert (out.dropped, out.unmanaged) == (1, 0)
+    table = world.tables.get(TableId("u-gone"))
+    assert table.status == TableStatus.DROPPED
+    assert table.discovered_by == decided_by
+    assert _calls(signals) == [("u-gone", "stopped", False)]
+
+
 def test_a_namespace_scan_of_a_catalog_no_policy_can_manage_decides_only_what_it_lists(sync, world, signals, now):
     """Only a catalog-wide scan unmanages from the stored rows; a namespace scan still decides only what it lists."""
     world.attach_to_catalog(UNMANAGE_ALL)

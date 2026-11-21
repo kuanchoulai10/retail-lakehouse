@@ -76,3 +76,19 @@ def test_create_schema_creates_the_table_metrics_table(tmp_path: Path) -> None:
     engine = create_engine(f"sqlite:///{tmp_path / 'db.sqlite'}")
     create_schema(engine)
     assert "table_metrics" in inspect(engine).get_table_names()
+
+
+def test_create_schema_leaves_the_legacy_discovery_rule_tables_in_place(tmp_path: Path) -> None:
+    """The discovery rules tables an older release created are never dropped; the discovery policy tables join them."""
+    engine = create_engine(f"sqlite:///{tmp_path / 'db.sqlite'}")
+    with engine.begin() as connection:
+        connection.execute(text("CREATE TABLE table_discovery_rules (id VARCHAR PRIMARY KEY)"))
+        connection.execute(text("CREATE TABLE table_discovery_rule_items (id VARCHAR PRIMARY KEY)"))
+    create_schema(engine)
+    assert {
+        "table_discovery_rules",
+        "table_discovery_rule_items",
+        "table_discovery_policies",
+        "table_discovery_policy_versions",
+        "table_discovery_policy_attachments",
+    } <= set(inspect(engine).get_table_names())

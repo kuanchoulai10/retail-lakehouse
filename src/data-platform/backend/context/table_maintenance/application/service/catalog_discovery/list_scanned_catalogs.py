@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.service.table_discovery_policy_attachment import (
-    scanned_catalogs,
-)
 from context.table_maintenance.application.port.inbound.catalog_discovery import (
     ListScannedCatalogsUseCase,
     ListScannedCatalogsUseCaseInput,
     ListScannedCatalogsUseCaseOutput,
+)
+from context.table_maintenance.application.service.table_discovery_policy_attachment import (
+    read_scanned_catalogs,
 )
 
 if TYPE_CHECKING:
@@ -46,15 +46,10 @@ class ListScannedCatalogsService(ListScannedCatalogsUseCase):
         A catalog not yet scanned has neither. A catalog's record outlives its scanning: a catalog
         no managing policy is attached in any more is not listed, whatever it recorded.
         """
-        attachments = self._attachments_repo.list_all()
-        policy_ids = list({a.policy_id for a in attachments})
-        policies = {p.id: p for p in self._policies_repo.get_many(policy_ids)}
+        scanned = read_scanned_catalogs(self._policies_repo, self._attachments_repo)
         discoveries = {d.catalog: d for d in self._discoveries_repo.list_all()}
         return ListScannedCatalogsUseCaseOutput(
-            catalogs=tuple(
-                _scanned_catalog(catalog, discoveries.get(catalog))
-                for catalog in scanned_catalogs(attachments, policies)
-            )
+            catalogs=tuple(_scanned_catalog(catalog, discoveries.get(catalog)) for catalog in scanned)
         )
 
 
