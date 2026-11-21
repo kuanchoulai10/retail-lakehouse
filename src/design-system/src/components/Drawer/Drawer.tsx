@@ -63,7 +63,7 @@ export function Drawer({
     }
   };
   const onOpenAutoFocus = (event: Event) => {
-    if (!modal) {
+    if (!isModal) {
       event.preventDefault();
       headingRef.current?.focus();
     }
@@ -81,7 +81,7 @@ export function Drawer({
           className={cn(
             "fixed inset-y-0 z-50 flex w-full flex-col bg-surface text-on-surface",
             modal ? "max-w-sm" : "md:max-w-sm",
-            !modal && (side === "right" ? "border-l border-outline" : "border-r border-outline"),
+            !modal && (side === "right" ? "md:border-l md:border-outline" : "md:border-r md:border-outline"),
             side === "right" ? "right-0" : "left-0",
           )}
         >

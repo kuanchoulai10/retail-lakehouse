@@ -207,6 +207,48 @@ export const SidePanelSwitch: Story = {
   },
 };
 
+function SidePanelNextHarness() {
+  const [record, setRecord] = useState<string | null>(null);
+  return (
+    <div className="flex items-center gap-2 p-4">
+      <Button onClick={() => setRecord("A")}>Row A</Button>
+      <Drawer
+        title={`Record ${record ?? ""}`}
+        contentKey={record ?? undefined}
+        isOpen={record !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setRecord(null);
+          }
+        }}
+        modal={false}
+      >
+        <Button styleType="outlined" onClick={() => setRecord("B")}>
+          Next record
+        </Button>
+      </Drawer>
+    </div>
+  );
+}
+
+export const SidePanelSwitchFromInside: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  render: () => <SidePanelNextHarness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    const first = await portalQueries(canvasElement).findByRole("heading", { name: "Record A" });
+    await waitFor(() => expect(first).toHaveFocus());
+    await userEvent.click(portalQueries(canvasElement).getByRole("button", { name: "Next record" }));
+    const second = await portalQueries(canvasElement).findByRole("heading", { name: "Record B" });
+    await waitFor(() => expect(second).toHaveFocus());
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(portalQueries(canvasElement).queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Row A" })).toHaveFocus());
+  },
+};
+
 export const SidePanelPhone: Story = {
   globals: { viewport: { value: "phone", isRotated: false } },
   render: () => <SidePanelHarness startOpen />,
@@ -215,6 +257,7 @@ export const SidePanelPhone: Story = {
     await expect(dialog.getBoundingClientRect().width).toBe(window.innerWidth);
     await expect(document.body.querySelector(".bg-scrim")).not.toBeNull();
     const controls = within(dialog).getAllByRole("button");
+    await waitFor(() => expect(controls[0]).toHaveFocus());
     controls.at(-1)?.focus();
     await userEvent.tab();
     await expect(controls[0]).toHaveFocus();
