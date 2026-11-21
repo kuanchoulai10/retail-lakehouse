@@ -8,6 +8,10 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.application.domain.model.table import (
     InvalidTableTransition,
 )
+from context.table_maintenance.application.domain.model.table_discovery_policy import (
+    DefaultDiscoveryPolicyIsFixed,
+    StaleDiscoveryPolicyVersion,
+)
 from context.table_maintenance.application.domain.model.table_discovery_rules import (
     StaleDiscoveryRulesVersion,
 )
@@ -31,8 +35,9 @@ if TYPE_CHECKING:
 def translate_domain_errors() -> Iterator[None]:
     """Translate domain and repo errors into application exceptions.
 
-    InvalidTableTransition, InvalidRunTransition, StalePolicyVersion and
-    StaleDiscoveryRulesVersion become ConflictError, any other ValueError (which
+    InvalidTableTransition, InvalidRunTransition, StalePolicyVersion,
+    StaleDiscoveryRulesVersion, StaleDiscoveryPolicyVersion and
+    DefaultDiscoveryPolicyIsFixed become ConflictError, any other ValueError (which
     covers a broken invariant, an InvariantViolation whose text is one line)
     becomes ValidationError with its message, and a repo LookupError becomes
     NotFoundError. Application exceptions pass through.
@@ -44,6 +49,8 @@ def translate_domain_errors() -> Iterator[None]:
         InvalidRunTransition,
         StalePolicyVersion,
         StaleDiscoveryRulesVersion,
+        StaleDiscoveryPolicyVersion,
+        DefaultDiscoveryPolicyIsFixed,
     ) as exc:
         raise ConflictError(str(exc)) from exc
     except ValueError as exc:

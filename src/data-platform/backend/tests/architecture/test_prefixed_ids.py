@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
 EXPECTED_PREFIXES: dict[str, str] = {
-    "TableDiscoveryRulesId": "dp",
+    "TableDiscoveryPolicyId": "dp",
     "TableDiscoveryRuleId": "dr",
     "TableMaintenanceRunId": "mr",
     "TableReconciliationId": "rc",

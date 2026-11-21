@@ -6,14 +6,12 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from base import Entity
+from context.table_maintenance.application.domain.model.table_discovery_policy import TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table_discovery_rules.glob_list import (
     GlobList,
 )
 from context.table_maintenance.application.domain.model.table_discovery_rules.rule_action import (
     RuleAction,
-)
-from context.table_maintenance.application.domain.model.table_discovery_rules.table_discovery_rule_id import (
-    TableDiscoveryRuleId,
 )
 
 if TYPE_CHECKING:

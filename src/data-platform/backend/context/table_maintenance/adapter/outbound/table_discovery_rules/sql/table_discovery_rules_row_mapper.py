@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING, Any
 from context.table_maintenance.application.port.outbound.table_discovery_rules import (
     GlobList,
     RuleAction,
+    TableDiscoveryPolicyId,
     TableDiscoveryRule,
     TableDiscoveryRuleId,
     TableDiscoveryRules,
-    TableDiscoveryRulesId,
 )
 
 if TYPE_CHECKING:
@@ -50,7 +50,7 @@ class TableDiscoveryRulesRowMapper:
     def to_aggregate(list_row: RowMapping, rule_rows: Sequence[RowMapping]) -> TableDiscoveryRules:
         """Rebuild the aggregate from its list row and its rule rows in priority order."""
         return TableDiscoveryRules(
-            id=TableDiscoveryRulesId(list_row["id"]),
+            id=TableDiscoveryPolicyId(list_row["id"]),
             version=list_row["version"],
             rules=tuple(
                 TableDiscoveryRule(

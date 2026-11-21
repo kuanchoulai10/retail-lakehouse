@@ -8,18 +8,16 @@ from typing import TYPE_CHECKING, Self
 from pydantic import NonNegativeInt, model_validator
 
 from base import AggregateRoot
+from context.table_maintenance.application.domain.model.table_discovery_policy import (
+    DEFAULT_DISCOVERY_POLICY_ID,
+    TableDiscoveryPolicyId,
+    UnknownDiscoveryRuleId,
+)
 from context.table_maintenance.application.domain.model.table_discovery_rules.stale_discovery_rules_version import (
     StaleDiscoveryRulesVersion,
 )
 from context.table_maintenance.application.domain.model.table_discovery_rules.table_discovery_rule import (
     TableDiscoveryRule,
-)
-from context.table_maintenance.application.domain.model.table_discovery_rules.table_discovery_rules_id import (
-    GLOBAL_TABLE_DISCOVERY_RULES_ID,
-    TableDiscoveryRulesId,
-)
-from context.table_maintenance.application.domain.model.table_discovery_rules.unknown_discovery_rule_id import (
-    UnknownDiscoveryRuleId,
 )
 
 if TYPE_CHECKING:
@@ -27,12 +25,10 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from context.table_maintenance.application.domain.model.table import TableName
-    from context.table_maintenance.application.domain.model.table_discovery_rules.table_discovery_rule_id import (
-        TableDiscoveryRuleId,
-    )
+    from context.table_maintenance.application.domain.model.table_discovery_policy import TableDiscoveryRuleId
 
 
-class TableDiscoveryRules(AggregateRoot[TableDiscoveryRulesId]):
+class TableDiscoveryRules(AggregateRoot[TableDiscoveryPolicyId]):
     """The ordered discovery rules of the platform, versioned and replaced as a whole.
 
     Priorities are unique, so the first enabled rule that matches a table, in
@@ -40,7 +36,7 @@ class TableDiscoveryRules(AggregateRoot[TableDiscoveryRulesId]):
     ever replaced whole, from the version it was read at.
     """
 
-    id: TableDiscoveryRulesId
+    id: TableDiscoveryPolicyId
     rules: tuple[TableDiscoveryRule, ...]
     version: NonNegativeInt
 
@@ -60,7 +56,7 @@ class TableDiscoveryRules(AggregateRoot[TableDiscoveryRulesId]):
     @classmethod
     def empty(cls) -> TableDiscoveryRules:
         """Return the platform's rules before any were saved: none, at version 0."""
-        return cls(id=GLOBAL_TABLE_DISCOVERY_RULES_ID, rules=(), version=0)
+        return cls(id=DEFAULT_DISCOVERY_POLICY_ID, rules=(), version=0)
 
     def replace(
         self,

@@ -7,10 +7,15 @@ from datetime import timedelta
 import pytest
 
 from base import UseCaseOutput
+from context.table_maintenance.application.domain.model.table_discovery_policy import (
+    DefaultDiscoveryPolicyIsFixed,
+    StaleDiscoveryPolicyVersion,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     RemoveOrphanFilesTarget,
 )
 from context.table_maintenance.application.exceptions import (
+    ConflictError,
     NotFoundError,
     ValidationError,
 )
@@ -37,6 +42,13 @@ def test_a_plain_value_error_keeps_its_message() -> None:
     """Any other ValueError becomes a ValidationError with the same message."""
     with pytest.raises(ValidationError, match="^bad value$"), translate_domain_errors():
         raise ValueError("bad value")
+
+
+@pytest.mark.parametrize("error", [StaleDiscoveryPolicyVersion, DefaultDiscoveryPolicyIsFixed])
+def test_a_discovery_policy_conflict_becomes_a_conflict_error(error: type[ValueError]) -> None:
+    """A stale discovery policy version and a change to the default discovery policy are conflicts."""
+    with pytest.raises(ConflictError, match="^refused$"), translate_domain_errors():
+        raise error("refused")
 
 
 def test_a_lookup_error_becomes_not_found() -> None:
