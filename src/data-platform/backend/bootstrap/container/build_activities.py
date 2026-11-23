@@ -26,6 +26,8 @@ def build_activities(use_cases: UseCases, client: Client, settings: AppSettings)
             record=use_cases.record_table_reconciliation,
             create_runs=use_cases.create_table_maintenance_runs,
             skip=use_cases.skip_table_maintenance_run,
+            issue_reconciliation_id=use_cases.issue_table_reconciliation_id,
+            issue_run_ids=use_cases.issue_table_maintenance_run_ids,
             client=client,
             attempt_deadline_seconds=settings.maintenance_attempt_deadline_seconds,
             max_attempts=settings.maintenance_max_attempts,

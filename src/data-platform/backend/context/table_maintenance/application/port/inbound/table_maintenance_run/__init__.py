@@ -52,6 +52,11 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run.ge
 from context.table_maintenance.application.port.inbound.table_maintenance_run.get_table_maintenance_run.use_case import (  # noqa: E501
     GetTableMaintenanceRunUseCase,
 )
+from context.table_maintenance.application.port.inbound.table_maintenance_run.issue_table_maintenance_run_ids import (  # noqa: E501
+    IssueTableMaintenanceRunIdsUseCase,
+    IssueTableMaintenanceRunIdsUseCaseInput,
+    IssueTableMaintenanceRunIdsUseCaseOutput,
+)
 from context.table_maintenance.application.port.inbound.table_maintenance_run.list_table_maintenance_runs.input import (
     ListTableMaintenanceRunsUseCaseInput,
 )
@@ -135,6 +140,9 @@ __all__ = [
     "GetTableMaintenanceRunUseCase",
     "GetTableMaintenanceRunUseCaseInput",
     "GetTableMaintenanceRunUseCaseOutput",
+    "IssueTableMaintenanceRunIdsUseCase",
+    "IssueTableMaintenanceRunIdsUseCaseInput",
+    "IssueTableMaintenanceRunIdsUseCaseOutput",
     "ListTableMaintenanceRunsUseCase",
     "ListTableMaintenanceRunsUseCaseInput",
     "ListTableMaintenanceRunsUseCaseOutput",

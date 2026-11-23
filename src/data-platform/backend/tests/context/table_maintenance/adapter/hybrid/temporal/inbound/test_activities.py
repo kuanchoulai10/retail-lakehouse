@@ -980,3 +980,23 @@ def test_skip_activity_refuses_an_unknown_run_without_retry():
 
     assert caught.value.non_retryable
     assert caught.value.type == "NotFoundError"
+
+
+def test_issue_reconciliation_id_returns_the_issued_id():
+    """The activity returns the id the use case issued, as a primitive dict."""
+    activities = table_reconciliation_activities_with_fakes()
+
+    issued = activities.issue_reconciliation_id({})
+
+    assert issued["reconciliation_id"].startswith("rc-")
+    assert set(issued) == {"reconciliation_id"}
+
+
+def test_issue_run_ids_returns_one_id_per_requested_run():
+    """The activity returns as many run ids as the request counts, as a list in a primitive dict."""
+    activities = table_reconciliation_activities_with_fakes()
+
+    issued = activities.issue_run_ids({"count": 3})
+
+    assert len(issued["run_ids"]) == 3
+    assert all(run_id.startswith("mr-") for run_id in issued["run_ids"])

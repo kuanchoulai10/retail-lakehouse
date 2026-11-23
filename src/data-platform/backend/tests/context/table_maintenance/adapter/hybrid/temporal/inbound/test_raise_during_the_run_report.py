@@ -35,6 +35,7 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.eventually 
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.register_table_search_attributes import (
     register_table_search_attributes,
 )
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_id_activities import ScriptedIdActivities
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_maintenance_activities import (
     ScriptedMaintenanceActivities,
 )
@@ -121,6 +122,7 @@ def _run(scenario: Callable[[Any, ScriptedPlanActivity, list], Awaitable[None]])
                     recorder.record_table_reconciliation,
                     lookups.get_workflow_running,
                     *ScriptedRunsActivities().all(),
+                    *ScriptedIdActivities().all(),
                     *maintenance.all(),
                     signal_parent,
                 ],

@@ -20,6 +20,9 @@ from context.table_maintenance.application.service.table_maintenance_run.get_pla
 from context.table_maintenance.application.service.table_maintenance_run.get_table_maintenance_run import (
     GetTableMaintenanceRunService,
 )
+from context.table_maintenance.application.service.table_maintenance_run.issue_table_maintenance_run_ids import (  # noqa: E501
+    IssueTableMaintenanceRunIdsService,
+)
 from context.table_maintenance.application.service.table_maintenance_run.list_table_maintenance_runs import (
     ListTableMaintenanceRunsService,
 )
@@ -58,6 +61,7 @@ __all__ = [
     "GetMaintenanceJobStatusService",
     "GetPlatformSettingsService",
     "GetTableMaintenanceRunService",
+    "IssueTableMaintenanceRunIdsService",
     "ListTableMaintenanceRunsService",
     "ProcessTableMaintenanceCallbackService",
     "RaiseTableMaintenanceRunPriorityService",

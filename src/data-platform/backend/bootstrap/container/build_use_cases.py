@@ -61,6 +61,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
     GetMaintenanceJobStatusService,
     GetPlatformSettingsService,
     GetTableMaintenanceRunService,
+    IssueTableMaintenanceRunIdsService,
     ListTableMaintenanceRunsService,
     ProcessTableMaintenanceCallbackService,
     RaiseTableMaintenanceRunPriorityService,
@@ -71,6 +72,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
 )
 from context.table_maintenance.application.service.table_reconciliation import (
     GetTableReconciliationService,
+    IssueTableReconciliationIdService,
     ListTableReconciliationsService,
     RecordTableReconciliationService,
 )
@@ -219,5 +221,7 @@ def build_use_cases(
         list_table_reconciliations=ListTableReconciliationsService(reconciliations, policies),
         record_table_reconciliation=RecordTableReconciliationService(reconciliations),
         skip_table_maintenance_run=SkipTableMaintenanceRunService(runs),
+        issue_table_maintenance_run_ids=IssueTableMaintenanceRunIdsService(),
+        issue_table_reconciliation_id=IssueTableReconciliationIdService(),
         submit_maintenance_operation=SubmitMaintenanceOperationService(runs, tables, gateways.submit_maintenance_job),
     )

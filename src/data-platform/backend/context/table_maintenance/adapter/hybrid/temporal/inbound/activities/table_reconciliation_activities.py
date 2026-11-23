@@ -22,9 +22,11 @@ from context.table_maintenance.application.port.inbound.table import (
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     CreateTableMaintenanceRunsUseCaseInput,
+    IssueTableMaintenanceRunIdsUseCaseInput,
     SkipTableMaintenanceRunUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_reconciliation import (
+    IssueTableReconciliationIdUseCaseInput,
     RecordTableReconciliationUseCaseInput,
 )
 
@@ -36,15 +38,17 @@ if TYPE_CHECKING:
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
         CreateTableMaintenanceRunsUseCase,
+        IssueTableMaintenanceRunIdsUseCase,
         SkipTableMaintenanceRunUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_reconciliation import (
+        IssueTableReconciliationIdUseCase,
         RecordTableReconciliationUseCase,
     )
 
 
 class TableReconciliationActivities:
-    """Plan and record reconciliations, create (or skip) a plan's runs and look up the maintenance run's workflow.
+    """Issue ids, plan and record reconciliations, create (or skip) a plan's runs and look up the run's workflow.
 
     Each method wraps exactly one use case, except the workflow lookup, which asks
     the Temporal client. Inputs and outputs are primitive dicts; ``now`` travels as
@@ -58,6 +62,8 @@ class TableReconciliationActivities:
         record: RecordTableReconciliationUseCase,
         create_runs: CreateTableMaintenanceRunsUseCase,
         skip: SkipTableMaintenanceRunUseCase,
+        issue_reconciliation_id: IssueTableReconciliationIdUseCase,
+        issue_run_ids: IssueTableMaintenanceRunIdsUseCase,
         client: Client,
         attempt_deadline_seconds: int,
         max_attempts: int,
@@ -74,10 +80,25 @@ class TableReconciliationActivities:
         self._record = record
         self._create_runs = create_runs
         self._skip = skip
+        self._issue_reconciliation_id = issue_reconciliation_id
+        self._issue_run_ids = issue_run_ids
         self._client = client
         self._attempt_deadline_seconds = attempt_deadline_seconds
         self._max_attempts = max_attempts
         self._queue_wait_limit_seconds = queue_wait_limit_seconds
+
+    @activity.defn(name=TableReconciliationActivity.ISSUE_RECONCILIATION_ID)
+    def issue_reconciliation_id(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Issue the id of a new reconciliation; the workflow runs it as a local activity, so replay reads it back."""
+        output = self._issue_reconciliation_id.execute(IssueTableReconciliationIdUseCaseInput.from_primitives(request))
+        return activity_payload(output)
+
+    @activity.defn(name=TableReconciliationActivity.ISSUE_RUN_IDS)
+    def issue_run_ids(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Issue ``count`` run ids for a plan's runs, as a local activity whose result replay reads back."""
+        with translate_application_errors():
+            output = self._issue_run_ids.execute(IssueTableMaintenanceRunIdsUseCaseInput.from_primitives(request))
+        return activity_payload(output)
 
     @activity.defn(name=TableReconciliationActivity.PLAN_TABLE_MAINTENANCE)
     def plan_table_maintenance(self, request: dict[str, Any]) -> dict[str, Any]:

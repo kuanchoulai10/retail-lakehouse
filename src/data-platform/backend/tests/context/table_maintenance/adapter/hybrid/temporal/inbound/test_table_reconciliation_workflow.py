@@ -38,13 +38,13 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import 
     TableMaintenanceAttemptPolicy,
     TableReconciliationWorkflow,
 )
-from shared_kernel import prefixed_id_pattern
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.eventually import (
     eventually,
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.register_table_search_attributes import (
     register_table_search_attributes,
 )
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_id_activities import ScriptedIdActivities
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_plan_activity import (
     ScriptedPlanActivity,
 )
@@ -88,8 +88,6 @@ TABLE_UUID_KEY = SearchAttributeKey.for_keyword("TableUuid")
 TABLE_NAME_KEY = SearchAttributeKey.for_keyword("TableName")
 OPERATIONS_KEY = SearchAttributeKey.for_keyword_list("MaintenanceOperations")
 TRIGGER_KEY = SearchAttributeKey.for_keyword("MaintenanceTrigger")
-RUN_ID_SHAPE = prefixed_id_pattern("mr")
-RECONCILIATION_ID_SHAPE = prefixed_id_pattern("rc")
 CLOSING_BOUND = TableMaintenanceActivityPolicy().worst_case()
 
 
@@ -167,6 +165,7 @@ class Harness:
     recorder: ScriptedRecordActivity
     runs: ScriptedRunsActivities
     unsignalled: dict[str, bool]
+    ids: ScriptedIdActivities
     handle: WorkflowHandle | None = None
     sent: int = 0
 
@@ -371,6 +370,7 @@ def _run(
             plans = ScriptedPlanActivity(script)
             recorder = ScriptedRecordActivity()
             runs = ScriptedRunsActivities()
+            ids = ScriptedIdActivities()
             lookups = table_reconciliation_activities_with_fakes(client=env.client)
             unsignalled = {"running": True}
 
@@ -389,11 +389,12 @@ def _run(
                     recorder.record_table_reconciliation,
                     lookup or look_up,
                     *runs.all(),
+                    *ids.all(),
                 ],
                 workflow_runner=runner or SandboxedWorkflowRunner(),
                 max_cached_workflows=max_cached_workflows,
             ):
-                await scenario(Harness(env, env.client, plans, recorder, runs, unsignalled))
+                await scenario(Harness(env, env.client, plans, recorder, runs, unsignalled, ids))
 
     asyncio.run(go())
 
@@ -1634,21 +1635,21 @@ def test_continue_as_new_carries_the_in_flight_queue_wait_limit():
 
 
 def test_run_and_reconciliation_ids_survive_replay():
-    """The run and reconciliation ids are minted deterministically: every workflow task replays the history.
+    """The run and reconciliation ids are the ones the application issued, and every workflow task replays them.
 
     With no workflow cached, the worker rebuilds the workflow from its history on
     every task, so the plan, the child start and the record (each in a later task
-    than the minting) see the ids minted again on replay; they agree, they have
-    the ``mr-`` and ``rc-`` shapes, and the history replays cleanly under the sandbox.
+    than the issue) read the issued ids back from the recorded local activities:
+    each was issued once, they agree, and the history replays cleanly under the sandbox.
     """
 
     async def scenario(h: Harness) -> None:
         await h.start()
         run_ids = await h.in_flight()
         record = (await h.records(1))[0]
-        assert [bool(RUN_ID_SHAPE.fullmatch(r)) for r in run_ids] == [True, True]
+        assert h.ids.run_ids == [run_ids]
         assert len(set(run_ids)) == 2
-        assert RECONCILIATION_ID_SHAPE.fullmatch(record["reconciliation_id"])
+        assert h.ids.reconciliation_ids == [record["reconciliation_id"]]
         assert record["run_ids"] == dict(zip((COMPACTION, EXPIRE), run_ids, strict=True))
         assert (await h.child(run_ids))["run_ids"] == run_ids
         history = await h.client.get_workflow_handle(WORKFLOW_ID).fetch_history()
@@ -2645,7 +2646,7 @@ def test_a_plan_of_three_operations_starts_one_child_with_three_runs():
         run_ids = await h.in_flight()
         assert len(run_ids) == 3
         assert len(set(run_ids)) == 3
-        assert all(RUN_ID_SHAPE.fullmatch(r) for r in run_ids)
+        assert run_ids == h.ids.run_ids[0]
         assert (await h.child(run_ids))["run_ids"] == run_ids
         [record] = await h.records(1)
         assert record["run_ids"] == dict(zip((COMPACTION, EXPIRE, ORPHANS), run_ids, strict=True))

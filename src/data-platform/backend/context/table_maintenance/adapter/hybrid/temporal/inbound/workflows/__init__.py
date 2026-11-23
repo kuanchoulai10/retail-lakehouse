@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.mint_workflow_prefixed_id import (
-    mint_workflow_prefixed_id,
-)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_discovery_workflow import (
     TableDiscoveryWorkflow,
 )
@@ -35,5 +32,4 @@ __all__ = [
     "TableMaintenanceWorkflow",
     "TableReconciliationWorkflow",
     "TableSearchAttributeKeys",
-    "mint_workflow_prefixed_id",
 ]

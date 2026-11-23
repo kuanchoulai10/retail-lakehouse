@@ -32,6 +32,8 @@ class Activities:
             reconciliation.get_workflow_running,
             reconciliation.create_maintenance_runs,
             reconciliation.skip_maintenance_runs,
+            reconciliation.issue_reconciliation_id,
+            reconciliation.issue_run_ids,
             maintenance.record_table_maintenance_operation_result,
             maintenance.submit_maintenance_operation,
             maintenance.get_maintenance_job_status,

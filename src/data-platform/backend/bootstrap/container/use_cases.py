@@ -57,6 +57,7 @@ if TYPE_CHECKING:
         GetMaintenanceJobStatusUseCase,
         GetPlatformSettingsUseCase,
         GetTableMaintenanceRunUseCase,
+        IssueTableMaintenanceRunIdsUseCase,
         ListTableMaintenanceRunsUseCase,
         ProcessTableMaintenanceCallbackUseCase,
         RaiseTableMaintenanceRunPriorityUseCase,
@@ -67,6 +68,7 @@ if TYPE_CHECKING:
     )
     from context.table_maintenance.application.port.inbound.table_reconciliation import (
         GetTableReconciliationUseCase,
+        IssueTableReconciliationIdUseCase,
         ListTableReconciliationsUseCase,
         RecordTableReconciliationUseCase,
     )
@@ -121,8 +123,10 @@ class UseCases:
     raise_table_maintenance_run_priority: RaiseTableMaintenanceRunPriorityUseCase
     plan_table_maintenance: PlanTableMaintenanceUseCase
     skip_table_maintenance_run: SkipTableMaintenanceRunUseCase
+    issue_table_maintenance_run_ids: IssueTableMaintenanceRunIdsUseCase
     submit_maintenance_operation: SubmitMaintenanceOperationUseCase
     get_table_reconciliation: GetTableReconciliationUseCase
     list_table_reconciliations: ListTableReconciliationsUseCase
     record_table_reconciliation: RecordTableReconciliationUseCase
+    issue_table_reconciliation_id: IssueTableReconciliationIdUseCase
     get_platform_settings: GetPlatformSettingsUseCase

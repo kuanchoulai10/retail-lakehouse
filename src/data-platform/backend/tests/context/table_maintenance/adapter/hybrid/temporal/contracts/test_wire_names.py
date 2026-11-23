@@ -88,6 +88,8 @@ def test_table_reconciliation_activities():
         "GET_WORKFLOW_RUNNING": "get_workflow_running",
         "CREATE_MAINTENANCE_RUNS": "create_maintenance_runs",
         "SKIP_MAINTENANCE_RUNS": "skip_maintenance_runs",
+        "ISSUE_RECONCILIATION_ID": "issue_reconciliation_id",
+        "ISSUE_RUN_IDS": "issue_run_ids",
     }
 
 

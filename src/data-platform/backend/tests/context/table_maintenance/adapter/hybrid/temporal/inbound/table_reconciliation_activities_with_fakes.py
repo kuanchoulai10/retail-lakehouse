@@ -8,6 +8,8 @@ from unittest.mock import MagicMock
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
     TableReconciliationActivities,
 )
+from context.table_maintenance.application.service.table_maintenance_run import IssueTableMaintenanceRunIdsService
+from context.table_maintenance.application.service.table_reconciliation import IssueTableReconciliationIdService
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fakes import (
     FakeCreateRuns,
     FakePlan,
@@ -41,12 +43,14 @@ def table_reconciliation_activities_with_fakes(
     max_attempts: int = 3,
     queue_wait_limit_seconds: int = 86400,
 ) -> TableReconciliationActivities:
-    """Build the reconciliation activities, a recording fake for every use case and a mock client not given."""
+    """Build the reconciliation activities with the real id services and a fake for each other use case not given."""
     return TableReconciliationActivities(
         plan=plan or FakePlan(),
         record=record or FakeRecordReconciliation(),
         create_runs=create_runs or FakeCreateRuns(),
         skip=skip or FakeSkip(),
+        issue_reconciliation_id=IssueTableReconciliationIdService(),
+        issue_run_ids=IssueTableMaintenanceRunIdsService(),
         client=client or MagicMock(),
         attempt_deadline_seconds=attempt_deadline_seconds,
         max_attempts=max_attempts,

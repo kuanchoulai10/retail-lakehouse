@@ -7,6 +7,11 @@ from context.table_maintenance.application.port.inbound.table_reconciliation.get
     GetTableReconciliationUseCaseInput,
     GetTableReconciliationUseCaseOutput,
 )
+from context.table_maintenance.application.port.inbound.table_reconciliation.issue_table_reconciliation_id import (  # noqa: E501
+    IssueTableReconciliationIdUseCase,
+    IssueTableReconciliationIdUseCaseInput,
+    IssueTableReconciliationIdUseCaseOutput,
+)
 from context.table_maintenance.application.port.inbound.table_reconciliation.list_table_reconciliations import (
     ListTableReconciliationsUseCase,
     ListTableReconciliationsUseCaseInput,
@@ -26,6 +31,9 @@ __all__ = [
     "GetTableReconciliationUseCase",
     "GetTableReconciliationUseCaseInput",
     "GetTableReconciliationUseCaseOutput",
+    "IssueTableReconciliationIdUseCase",
+    "IssueTableReconciliationIdUseCaseInput",
+    "IssueTableReconciliationIdUseCaseOutput",
     "ListTableReconciliationsUseCase",
     "ListTableReconciliationsUseCaseInput",
     "ListTableReconciliationsUseCaseOutput",

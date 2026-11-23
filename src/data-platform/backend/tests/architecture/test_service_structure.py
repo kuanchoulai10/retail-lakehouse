@@ -117,6 +117,7 @@ KNOWN_VERBS = {
     # Control plane
     "Register",
     "Include",
+    "Issue",
     "Exclude",
     "Reset",
     "Rename",

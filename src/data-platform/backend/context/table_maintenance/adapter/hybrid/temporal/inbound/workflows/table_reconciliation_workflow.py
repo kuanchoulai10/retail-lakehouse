@@ -31,9 +31,6 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationSignal,
     TableReconciliationWorkflowInput,
 )
-from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.mint_workflow_prefixed_id import (
-    mint_workflow_prefixed_id,
-)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_maintenance_activity_policy import (
     TableMaintenanceActivityPolicy,
 )
@@ -46,6 +43,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_s
 
 _ACTIVITY_TIMEOUT = timedelta(minutes=2)
 _ACTIVITY_RETRY = RetryPolicy(maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0)
+_ID_ISSUE_TIMEOUT = timedelta(seconds=10)
 _IN_FLIGHT_MARGIN = timedelta(hours=1)
 _CANCEL_GRACE = timedelta(minutes=15)
 _ENDING_REASONS = frozenset({"dropped", "unmanaged"})
@@ -60,8 +58,6 @@ _REASON_RECONCILE_NOW = "reconcile_now"
 _REASON_PREVIOUS_RUN_FINISHED = "previous_run_finished"
 _CLOSING_BOUND = TableMaintenanceActivityPolicy().worst_case()
 _CLOSING_POLL = timedelta(seconds=5)
-_RUN_ID_PREFIX = "mr"
-_RECONCILIATION_ID_PREFIX = "rc"
 _START_FAILED = "the table's maintenance workflow could not be started"
 _STOPPED_BEFORE_START = "the reconciliation stopped before the table's maintenance workflow started"
 
@@ -165,9 +161,9 @@ class TableReconciliationWorkflow:
     recorded, like one planned while stopping. A manual trigger is consumed only
     by a run that started, so a refused start keeps it pending for the next plan.
 
-    Each pass mints its reconciliation id (``rc-``) before planning and, after a plan with
-    operations, one run id (``mr-``) per planned operation, from the workflow's clock and random
-    source.
+    Each pass asks the application for its reconciliation id (``rc-``) before planning and, after a
+    plan with operations, for one run id (``mr-``) per planned operation, through local activities
+    whose recorded results a replay reads back.
     """
 
     @workflow.init
@@ -641,7 +637,7 @@ class TableReconciliationWorkflow:
     async def _plan_and_start_once(self) -> bool:
         manual = self._pending_manual
         manual_priority = self._pending_manual_priority
-        reconciliation_id = self._mint_reconciliation_id()
+        reconciliation_id = await self._issue_reconciliation_id()
         now = workflow.now()
         if manual is None:
             self._take_commit_window()
@@ -700,7 +696,7 @@ class TableReconciliationWorkflow:
         Runs are linked only when the create succeeded and the child started. A stop that arrived
         during the create skips the runs and drops the plan unrecorded, as a stop before it does.
         """
-        run_ids = self._mint_run_ids(plan)
+        run_ids = await self._issue_run_ids(plan)
         created = await self._create_runs(plan, manual is not None, run_ids)
         if created and self._stopping:
             await self._skip_runs(run_ids, _STOPPED_BEFORE_START)
@@ -730,14 +726,31 @@ class TableReconciliationWorkflow:
             self._pending_commits = 0
 
     @staticmethod
-    def _mint_reconciliation_id() -> str:
-        """Return a new reconciliation id."""
-        return mint_workflow_prefixed_id(_RECONCILIATION_ID_PREFIX)
+    async def _issue_reconciliation_id() -> str:
+        """Ask the application for a new reconciliation id.
+
+        A local activity: its result is recorded in the history, so a replay reads the same id back. It retries
+        until it succeeds, since issuing an id has no failure to give up on.
+        """
+        issued = await workflow.execute_local_activity(
+            TableReconciliationActivity.ISSUE_RECONCILIATION_ID, {}, start_to_close_timeout=_ID_ISSUE_TIMEOUT
+        )
+        return issued["reconciliation_id"]
 
     @staticmethod
-    def _mint_run_ids(plan: dict[str, Any]) -> list[str]:
-        """Return one new run id per planned operation, in plan order."""
-        return [mint_workflow_prefixed_id(_RUN_ID_PREFIX) for _ in plan["operations"]]
+    async def _issue_run_ids(plan: dict[str, Any]) -> list[str]:
+        """Ask the application for one new run id per planned operation, in plan order.
+
+        A local activity of its own, apart from the create: a create that stored the runs but failed to report
+        would otherwise issue new ids on its retry and duplicate the runs. A retry of this one before its result
+        is recorded only issues ids no run ever used.
+        """
+        issued = await workflow.execute_local_activity(
+            TableReconciliationActivity.ISSUE_RUN_IDS,
+            {"count": len(plan["operations"])},
+            start_to_close_timeout=_ID_ISSUE_TIMEOUT,
+        )
+        return list(issued["run_ids"])
 
     async def _create_runs(self, plan: dict[str, Any], manual: bool, run_ids: list[str]) -> bool:
         """Create every run of the plan, pending, in one activity and one transaction; False when none was created.
