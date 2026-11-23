@@ -2,7 +2,7 @@
 
 Date: 2026-10-24
 
-Status: Accepted
+Status: Accepted. The placement of the rendering in the domain is superseded by ADR 0016: the k8s Spark adapter now renders `where` clauses; the escaping rule stands.
 
 ## Context
 
