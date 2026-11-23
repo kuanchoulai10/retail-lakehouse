@@ -53,13 +53,13 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
         CreateTableMaintenanceRunsUseCase,
         DeleteMaintenanceJobUseCase,
-        GetMaintenanceJobPodsUseCase,
+        ForwardTableMaintenanceResultUseCase,
+        GetMaintenanceJobProcessesUseCase,
         GetMaintenanceJobStatusUseCase,
         GetPlatformSettingsUseCase,
         GetTableMaintenanceRunUseCase,
         IssueTableMaintenanceRunIdsUseCase,
         ListTableMaintenanceRunsUseCase,
-        ProcessTableMaintenanceCallbackUseCase,
         RaiseTableMaintenanceRunPriorityUseCase,
         RecordMaintenanceAttemptRunningUseCase,
         RecordTableMaintenanceOperationResultUseCase,
@@ -114,11 +114,11 @@ class UseCases:
     create_table_maintenance_runs: CreateTableMaintenanceRunsUseCase
     get_table_maintenance_run: GetTableMaintenanceRunUseCase
     list_table_maintenance_runs: ListTableMaintenanceRunsUseCase
-    process_table_maintenance_callback: ProcessTableMaintenanceCallbackUseCase
+    forward_table_maintenance_result: ForwardTableMaintenanceResultUseCase
     record_table_maintenance_operation_result: RecordTableMaintenanceOperationResultUseCase
     delete_maintenance_job: DeleteMaintenanceJobUseCase
     get_maintenance_job_status: GetMaintenanceJobStatusUseCase
-    get_maintenance_job_pods: GetMaintenanceJobPodsUseCase
+    get_maintenance_job_processes: GetMaintenanceJobProcessesUseCase
     record_maintenance_attempt_running: RecordMaintenanceAttemptRunningUseCase
     raise_table_maintenance_run_priority: RaiseTableMaintenanceRunPriorityUseCase
     plan_table_maintenance: PlanTableMaintenanceUseCase

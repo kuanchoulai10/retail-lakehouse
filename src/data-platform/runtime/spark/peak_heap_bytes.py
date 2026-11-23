@@ -14,8 +14,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-PEAK_DRIVER_HEAP_BYTES = "peak_driver_heap_bytes"
-PEAK_EXECUTOR_HEAP_BYTES = "peak_executor_heap_bytes"
+# The control plane names the driver's and the busiest executor's peak heap by the job's coordinator and workers.
+PEAK_DRIVER_HEAP_BYTES = "peak_coordinator_memory_bytes"
+PEAK_EXECUTOR_HEAP_BYTES = "peak_worker_memory_bytes"
 DRIVER_ID = "driver"
 DEFAULT_UI_PORT = "4040"
 FETCH_TIMEOUT_SECONDS = 5

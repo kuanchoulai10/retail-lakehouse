@@ -12,7 +12,7 @@ from base import InvariantViolation
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     CreateTableMaintenanceRunsUseCaseInput,
     DeleteMaintenanceJobUseCaseInput,
-    GetMaintenanceJobPodsUseCaseInput,
+    GetMaintenanceJobProcessesUseCaseInput,
     GetMaintenanceJobStatusUseCaseInput,
     RecordTableMaintenanceOperationResultUseCaseInput,
     RecordTableMaintenanceOperationResultUseCaseOutput,
@@ -102,9 +102,11 @@ def test_pods_payload_is_an_empty_list_once_every_pod_is_gone():
     """The pods activity returns an empty list, which the workflow reads as the pods being gone."""
     activities = table_maintenance_activities_with_fakes()
 
-    result = activities.get_maintenance_job_pods({"run_id": RUN_1, "operation": "rewrite_data_files", "attempt": 1})
+    result = activities.get_maintenance_job_processes(
+        {"run_id": RUN_1, "operation": "rewrite_data_files", "attempt": 1}
+    )
 
-    assert result == {"live_pods": []}
+    assert result == {"live_processes": []}
 
 
 NOW_DT = datetime(2026, 10, 24, 1, 2, 3, tzinfo=UTC)
@@ -221,14 +223,14 @@ def test_create_runs_activity_hands_the_use_case_the_input_built_from_the_payloa
 def test_submit_input_is_built_from_the_payload_the_maintenance_workflow_sends():
     """The submit input reads the workflow's payload with the worker's callback base URL added."""
     built = SubmitMaintenanceOperationUseCaseInput.from_primitives(
-        {**WORKFLOW_SUBMIT_REQUEST, "callback_base_url": "http://cp:8000"}
+        {**WORKFLOW_SUBMIT_REQUEST, "result_report_base_url": "http://cp:8000"}
     )
 
     assert built == SubmitMaintenanceOperationUseCaseInput(
         run_id=RUN_1,
         operation="rewrite_data_files",
         attempt=2,
-        callback_base_url="http://cp:8000",
+        result_report_base_url="http://cp:8000",
         now=NOW_DT,
         size="M",
     )
@@ -243,7 +245,7 @@ def test_submit_activity_hands_the_use_case_the_input_built_from_the_payload():
 
     assert submit.requests == [
         SubmitMaintenanceOperationUseCaseInput.from_primitives(
-            {**WORKFLOW_SUBMIT_REQUEST, "callback_base_url": "http://cp:8000"}
+            {**WORKFLOW_SUBMIT_REQUEST, "result_report_base_url": "http://cp:8000"}
         )
     ]
 
@@ -253,9 +255,9 @@ def test_submit_activity_keeps_its_own_callback_base_url():
     submit = FakeSubmit()
     activities = table_maintenance_activities_with_fakes(submit=submit)
 
-    activities.submit_maintenance_operation({**WORKFLOW_SUBMIT_REQUEST, "callback_base_url": "http://elsewhere"})
+    activities.submit_maintenance_operation({**WORKFLOW_SUBMIT_REQUEST, "result_report_base_url": "http://elsewhere"})
 
-    assert submit.requests[0].callback_base_url == "http://cp:8000"
+    assert submit.requests[0].result_report_base_url == "http://cp:8000"
 
 
 def test_submit_activity_refuses_a_mistyped_payload_without_retry():
@@ -295,9 +297,9 @@ def test_job_activities_hand_the_use_case_the_input_built_from_the_payload(activ
 
 def test_pods_input_is_built_from_the_payload_the_maintenance_workflow_sends():
     """The pods input reads the workflow's attempt triple."""
-    assert GetMaintenanceJobPodsUseCaseInput.from_primitives(
+    assert GetMaintenanceJobProcessesUseCaseInput.from_primitives(
         WORKFLOW_ATTEMPT_REQUEST
-    ) == GetMaintenanceJobPodsUseCaseInput(run_id=RUN_1, operation="rewrite_data_files", attempt=2)
+    ) == GetMaintenanceJobProcessesUseCaseInput(run_id=RUN_1, operation="rewrite_data_files", attempt=2)
 
 
 def test_pods_activity_refuses_a_payload_without_an_attempt_without_retry():
@@ -305,7 +307,7 @@ def test_pods_activity_refuses_a_payload_without_an_attempt_without_retry():
     activities = table_maintenance_activities_with_fakes()
 
     with pytest.raises(ApplicationError) as caught:
-        activities.get_maintenance_job_pods({"run_id": RUN_1, "operation": "rewrite_data_files"})
+        activities.get_maintenance_job_processes({"run_id": RUN_1, "operation": "rewrite_data_files"})
 
     assert caught.value.non_retryable
     assert caught.value.type == "InvariantViolation"

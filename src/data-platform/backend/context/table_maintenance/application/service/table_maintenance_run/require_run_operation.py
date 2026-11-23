@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 def require_run_operation(run: TableMaintenanceRun, operation: MaintenanceOperation) -> None:
     """Refuse, as a conflict, a request about ``run`` that names an operation other than the run's own.
 
-    A run does one operation; its Spark jobs and pods are named by ``(run_id, operation, attempt)``, so a
+    A run does one operation; its jobs and their processes are named by ``(run_id, operation, attempt)``, so a
     request naming another operation would reach jobs the run never had.
     """
     if operation is not run.operation:

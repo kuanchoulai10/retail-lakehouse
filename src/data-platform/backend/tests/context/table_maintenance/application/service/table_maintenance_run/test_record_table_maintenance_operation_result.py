@@ -52,9 +52,9 @@ NIGHTLY = TableMaintenancePolicyId("mp-00000000000000000000000001")
 RDF = MaintenanceOperation.REWRITE_DATA_FILES
 MIB = 1024 * 1024
 SIZE_MEMORY = {
-    ComputeSize.S: SizeMemory(driver_bytes=768 * MIB, executor_bytes=768 * MIB),
-    ComputeSize.M: SizeMemory(driver_bytes=1024 * MIB, executor_bytes=1536 * MIB),
-    ComputeSize.L: SizeMemory(driver_bytes=1536 * MIB, executor_bytes=2048 * MIB),
+    ComputeSize.S: SizeMemory(coordinator_bytes=768 * MIB, worker_bytes=768 * MIB),
+    ComputeSize.M: SizeMemory(coordinator_bytes=1024 * MIB, worker_bytes=1536 * MIB),
+    ComputeSize.L: SizeMemory(coordinator_bytes=1536 * MIB, worker_bytes=2048 * MIB),
 }
 APP_ID = "spark-0001"
 OOM = "Py4JJavaError: An error occurred. java.lang.OutOfMemoryError: Java heap space"
@@ -141,7 +141,7 @@ def test_oom_text_is_classified_and_retried_at_the_next_size(recorder, runs_repo
 def test_executor_oom_kill_is_read_from_the_job_evidence(recorder, runs_repo, table, evidence, now):
     """An executor killed for memory makes an otherwise vague failure an OOM."""
     _run(runs_repo, table, now, ComputeSize.S)
-    killed = JobContainerExit(role="executor", reason="OOMKilled", exit_code=137, message=None)
+    killed = JobContainerExit(role="worker", reason="OOMKilled", exit_code=137, message=None)
     evidence.set_evidence(RUN_1, "rewrite_data_files", 1, _evidence(APP_ID, None, killed))
     out = _record(recorder, now, error="RuntimeError: rewrite_data_files failed: no file group was committed")
     assert out.failure_class == "oom"
@@ -150,7 +150,7 @@ def test_executor_oom_kill_is_read_from_the_job_evidence(recorder, runs_repo, ta
 def test_a_driver_termination_message_is_read_as_text(recorder, runs_repo, table, evidence, now):
     """A driver that left an OutOfMemoryError in its termination message failed of OOM."""
     _run(runs_repo, table, now, ComputeSize.S)
-    driver = JobContainerExit(role="driver", reason="Error", exit_code=1, message="java.lang.OutOfMemoryError")
+    driver = JobContainerExit(role="coordinator", reason="Error", exit_code=1, message="java.lang.OutOfMemoryError")
     evidence.set_evidence(RUN_1, "rewrite_data_files", 1, _evidence(APP_ID, "driver failed", driver))
     assert _record(recorder, now, error="spark job failed", ended_by="job_failed").failure_class == "oom"
 
@@ -286,8 +286,8 @@ def _fitting_successes(tables_repo, now, count: int) -> None:
 def _peaks(driver_mib: int, executor_mib: int) -> dict[str, int]:
     return {
         "rewritten_data_files_count": 1,
-        "peak_driver_heap_bytes": driver_mib * MIB,
-        "peak_executor_heap_bytes": executor_mib * MIB,
+        "peak_coordinator_memory_bytes": driver_mib * MIB,
+        "peak_worker_memory_bytes": executor_mib * MIB,
     }
 
 
@@ -391,7 +391,9 @@ def test_a_result_takes_the_driver_start_from_the_evidence(recorder, runs_repo, 
         RUN_1,
         "rewrite_data_files",
         1,
-        ReadMaintenanceJobEvidenceGatewayOutput(execution_id=APP_ID, error=None, driver_started_at=started.isoformat()),
+        ReadMaintenanceJobEvidenceGatewayOutput(
+            execution_id=APP_ID, error=None, started_running_at=started.isoformat()
+        ),
     )
     _record(recorder, now + timedelta(hours=1), succeeded=True, error=None)
     assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(1).started_running_at == started
@@ -405,7 +407,9 @@ def test_a_failure_takes_the_driver_start_from_the_evidence(recorder, runs_repo,
         RUN_1,
         "rewrite_data_files",
         1,
-        ReadMaintenanceJobEvidenceGatewayOutput(execution_id=APP_ID, error=None, driver_started_at=started.isoformat()),
+        ReadMaintenanceJobEvidenceGatewayOutput(
+            execution_id=APP_ID, error=None, started_running_at=started.isoformat()
+        ),
     )
     _record(recorder, now + timedelta(hours=1), ended_by="job_failed")
     assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(1).started_running_at == started

@@ -19,7 +19,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.transl
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     DeleteMaintenanceJobUseCaseInput,
-    GetMaintenanceJobPodsUseCaseInput,
+    GetMaintenanceJobProcessesUseCaseInput,
     GetMaintenanceJobStatusUseCaseInput,
     RaiseTableMaintenanceRunPriorityUseCaseInput,
     RecordMaintenanceAttemptRunningUseCaseInput,
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
         DeleteMaintenanceJobUseCase,
-        GetMaintenanceJobPodsUseCase,
+        GetMaintenanceJobProcessesUseCase,
         GetMaintenanceJobStatusUseCase,
         RaiseTableMaintenanceRunPriorityUseCase,
         RecordMaintenanceAttemptRunningUseCase,
@@ -57,7 +57,7 @@ class TableMaintenanceActivities:
         submit: SubmitMaintenanceOperationUseCase,
         status: GetMaintenanceJobStatusUseCase,
         delete: DeleteMaintenanceJobUseCase,
-        pods: GetMaintenanceJobPodsUseCase,
+        pods: GetMaintenanceJobProcessesUseCase,
         record_running: RecordMaintenanceAttemptRunningUseCase,
         raise_priority: RaiseTableMaintenanceRunPriorityUseCase,
         skip: SkipTableMaintenanceRunUseCase,
@@ -91,7 +91,7 @@ class TableMaintenanceActivities:
         with translate_application_errors():
             output = self._submit.execute(
                 SubmitMaintenanceOperationUseCaseInput.from_primitives(
-                    {**request, "callback_base_url": self._callback_base_url}
+                    {**request, "result_report_base_url": self._callback_base_url}
                 )
             )
         return activity_payload(output)
@@ -110,11 +110,11 @@ class TableMaintenanceActivities:
             output = self._delete.execute(DeleteMaintenanceJobUseCaseInput.from_primitives(request))
         return activity_payload(output)
 
-    @activity.defn(name=TableMaintenanceActivity.GET_MAINTENANCE_JOB_PODS)
-    def get_maintenance_job_pods(self, request: dict[str, Any]) -> dict[str, Any]:
+    @activity.defn(name=TableMaintenanceActivity.GET_MAINTENANCE_JOB_PROCESSES)
+    def get_maintenance_job_processes(self, request: dict[str, Any]) -> dict[str, Any]:
         """Report the live pods of the Spark job of one ``(run_id, operation, attempt)``."""
         with translate_application_errors():
-            output = self._pods.execute(GetMaintenanceJobPodsUseCaseInput.from_primitives(request))
+            output = self._pods.execute(GetMaintenanceJobProcessesUseCaseInput.from_primitives(request))
         return activity_payload(output)
 
     @activity.defn(name=TableMaintenanceActivity.RECORD_MAINTENANCE_ATTEMPT_RUNNING)

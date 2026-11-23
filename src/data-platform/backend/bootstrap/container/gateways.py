@@ -20,7 +20,7 @@ if TYPE_CHECKING:
         ReadMaintenanceEventLogGateway,
         ReadMaintenanceJobEvidenceGateway,
         ReadMaintenanceJobGateway,
-        ReadMaintenanceJobPodsGateway,
+        ReadMaintenanceJobProcessesGateway,
         SendMaintenanceResultGateway,
         SubmitMaintenanceJobGateway,
     )
@@ -38,7 +38,7 @@ class Gateways:
     submit_maintenance_job: SubmitMaintenanceJobGateway
     read_maintenance_job: ReadMaintenanceJobGateway
     delete_maintenance_job: DeleteMaintenanceJobGateway
-    read_maintenance_job_pods: ReadMaintenanceJobPodsGateway
+    read_maintenance_job_processes: ReadMaintenanceJobProcessesGateway
     read_maintenance_job_evidence: ReadMaintenanceJobEvidenceGateway
     read_maintenance_event_log: ReadMaintenanceEventLogGateway
     read_table_metric_history: ReadTableMetricHistoryGateway

@@ -4,15 +4,15 @@
  * Data Platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { ProcessTableMaintenanceCallbackApiRequestMetrics } from './processTableMaintenanceCallbackApiRequestMetrics';
+import type { ForwardTableMaintenanceResultApiRequestMetrics } from './forwardTableMaintenanceResultApiRequestMetrics';
 
 /**
  * Carry the result a Spark job reports for one operation attempt.
  */
-export interface ProcessTableMaintenanceCallbackApiRequest {
+export interface ForwardTableMaintenanceResultApiRequest {
   attempt: number;
   error?: string | null;
-  metrics?: ProcessTableMaintenanceCallbackApiRequestMetrics;
+  metrics?: ForwardTableMaintenanceResultApiRequestMetrics;
   operation?: string | null;
   run_id?: string | null;
   succeeded: boolean;

@@ -8,8 +8,11 @@ from context.table_maintenance.application.service.table_maintenance_run.create_
 from context.table_maintenance.application.service.table_maintenance_run.delete_maintenance_job import (
     DeleteMaintenanceJobService,
 )
-from context.table_maintenance.application.service.table_maintenance_run.get_maintenance_job_pods import (
-    GetMaintenanceJobPodsService,
+from context.table_maintenance.application.service.table_maintenance_run.forward_table_maintenance_result import (
+    ForwardTableMaintenanceResultService,
+)
+from context.table_maintenance.application.service.table_maintenance_run.get_maintenance_job_processes import (
+    GetMaintenanceJobProcessesService,
 )
 from context.table_maintenance.application.service.table_maintenance_run.get_maintenance_job_status import (
     GetMaintenanceJobStatusService,
@@ -28,9 +31,6 @@ from context.table_maintenance.application.service.table_maintenance_run.list_ta
 )
 from context.table_maintenance.application.service.table_maintenance_run.maintenance_procedure_args import (
     maintenance_procedure_args,
-)
-from context.table_maintenance.application.service.table_maintenance_run.process_table_maintenance_callback import (
-    ProcessTableMaintenanceCallbackService,
 )
 from context.table_maintenance.application.service.table_maintenance_run.raise_table_maintenance_run_priority import (  # noqa: E501
     RaiseTableMaintenanceRunPriorityService,
@@ -57,13 +57,13 @@ from context.table_maintenance.application.service.table_maintenance_run.table_m
 __all__ = [
     "CreateTableMaintenanceRunsService",
     "DeleteMaintenanceJobService",
-    "GetMaintenanceJobPodsService",
+    "GetMaintenanceJobProcessesService",
     "GetMaintenanceJobStatusService",
     "GetPlatformSettingsService",
     "GetTableMaintenanceRunService",
     "IssueTableMaintenanceRunIdsService",
     "ListTableMaintenanceRunsService",
-    "ProcessTableMaintenanceCallbackService",
+    "ForwardTableMaintenanceResultService",
     "RaiseTableMaintenanceRunPriorityService",
     "RecordMaintenanceAttemptRunningService",
     "RecordTableMaintenanceOperationResultService",

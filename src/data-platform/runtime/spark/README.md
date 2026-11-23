@@ -9,7 +9,7 @@ Environment variables:
 
 | Variable | Meaning |
 |---|---|
-| `GLAC_REQUEST` | JSON of the submit gateway input: `app_name`, `run_id`, `operation`, `attempt`, `catalog`, `namespace`, `table`, `where` (list of filters), `procedure_args`, `callback_url` |
+| `GLAC_REQUEST` | JSON of the submit gateway input: `app_name`, `run_id`, `operation`, `attempt`, `catalog`, `namespace`, `table`, `where` (list of filters), `procedure_args`, `result_report_url` |
 | `POLARIS_CREDENTIAL` | Polaris client credential, injected from a Secret; set as `spark.sql.catalog.{catalog}.credential` when present |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` | S3 access for the Iceberg `S3FileIO` |
 
@@ -37,7 +37,7 @@ Integer result columns are summed by name across the CALLs and reported as `metr
 ## Callback
 
 After the CALLs finish, the runtime stops the Spark session and then POSTs JSON to
-`callback_url` (3 tries, 5 s apart). The session stops first because the control plane
+`result_report_url` (3 tries, 5 s apart). The session stops first because the control plane
 deletes the SparkApplication once the callback of a run's last operation arrives; stopping
 first lets Spark close its event log and rename `appstatus_<appId>.inprogress` before the
 driver can be killed. The body:

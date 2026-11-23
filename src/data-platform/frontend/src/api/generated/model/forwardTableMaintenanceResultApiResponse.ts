@@ -8,6 +8,6 @@
 /**
  * Tell whether the callback was accepted.
  */
-export interface ProcessTableMaintenanceCallbackApiResponse {
+export interface ForwardTableMaintenanceResultApiResponse {
   accepted: boolean;
 }

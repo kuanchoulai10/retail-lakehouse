@@ -38,7 +38,7 @@ def build_activities(use_cases: UseCases, client: Client, settings: AppSettings)
             submit=use_cases.submit_maintenance_operation,
             status=use_cases.get_maintenance_job_status,
             delete=use_cases.delete_maintenance_job,
-            pods=use_cases.get_maintenance_job_pods,
+            pods=use_cases.get_maintenance_job_processes,
             record_running=use_cases.record_maintenance_attempt_running,
             raise_priority=use_cases.raise_table_maintenance_run_priority,
             skip=use_cases.skip_table_maintenance_run,

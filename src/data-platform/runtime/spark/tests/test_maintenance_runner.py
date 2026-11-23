@@ -191,7 +191,7 @@ def test_stop_raising_still_posts_the_result(make_request):
 def test_success_reports_peak_heap_use_before_stop(make_request):
     calls = []
     posted = []
-    peaks = {"peak_driver_heap_bytes": 100, "peak_executor_heap_bytes": 200}
+    peaks = {"peak_coordinator_memory_bytes": 100, "peak_worker_memory_bytes": 200}
     run_maintenance(
         make_request(),
         lambda _sql: _Result([_Row(rewritten_data_files_count=1)]),
@@ -202,8 +202,8 @@ def test_success_reports_peak_heap_use_before_stop(make_request):
     assert calls == ["measure", "stop", "post"]
     assert posted[0]["metrics"] == {
         "rewritten_data_files_count": 1,
-        "peak_driver_heap_bytes": 100,
-        "peak_executor_heap_bytes": 200,
+        "peak_coordinator_memory_bytes": 100,
+        "peak_worker_memory_bytes": 200,
     }
 
 
@@ -217,7 +217,7 @@ def test_failure_reports_no_peak(make_request):
     run_maintenance(
         make_request(),
         boom,
-        measure=lambda: measured.append(1) or {"peak_driver_heap_bytes": 1},
+        measure=lambda: measured.append(1) or {"peak_coordinator_memory_bytes": 1},
         post=lambda url, body: posted.append(body) or True,
     )
     assert measured == []

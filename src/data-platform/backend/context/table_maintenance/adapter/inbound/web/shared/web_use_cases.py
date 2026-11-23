@@ -46,10 +46,10 @@ if TYPE_CHECKING:
         ListTableMaintenancePolicyAttachmentsUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
+        ForwardTableMaintenanceResultUseCase,
         GetPlatformSettingsUseCase,
         GetTableMaintenanceRunUseCase,
         ListTableMaintenanceRunsUseCase,
-        ProcessTableMaintenanceCallbackUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_reconciliation import (
         GetTableReconciliationUseCase,
@@ -92,7 +92,7 @@ class WebUseCases:
     trigger_table_reconciliation: TriggerTableReconciliationUseCase
     list_table_maintenance_runs: ListTableMaintenanceRunsUseCase
     get_table_maintenance_run: GetTableMaintenanceRunUseCase
-    process_table_maintenance_callback: ProcessTableMaintenanceCallbackUseCase
+    forward_table_maintenance_result: ForwardTableMaintenanceResultUseCase
     get_table_reconciliation: GetTableReconciliationUseCase
     list_table_reconciliations: ListTableReconciliationsUseCase
     get_platform_settings: GetPlatformSettingsUseCase

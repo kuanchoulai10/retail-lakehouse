@@ -1,4 +1,4 @@
-"""Define the ProcessTableMaintenanceCallbackService."""
+"""Define the ForwardTableMaintenanceResultService."""
 
 from __future__ import annotations
 
@@ -13,9 +13,9 @@ from context.table_maintenance.application.exceptions import (
     ValidationError,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
-    ProcessTableMaintenanceCallbackUseCase,
-    ProcessTableMaintenanceCallbackUseCaseInput,
-    ProcessTableMaintenanceCallbackUseCaseOutput,
+    ForwardTableMaintenanceResultUseCase,
+    ForwardTableMaintenanceResultUseCaseInput,
+    ForwardTableMaintenanceResultUseCaseOutput,
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
     SendMaintenanceResultGatewayInput,
@@ -28,8 +28,8 @@ if TYPE_CHECKING:
     )
 
 
-class ProcessTableMaintenanceCallbackService(ProcessTableMaintenanceCallbackUseCase):
-    """Forward a Spark job callback to the table maintenance workflow."""
+class ForwardTableMaintenanceResultService(ForwardTableMaintenanceResultUseCase):
+    """Forward the result a maintenance job reports to the table maintenance workflow."""
 
     def __init__(
         self,
@@ -40,12 +40,10 @@ class ProcessTableMaintenanceCallbackService(ProcessTableMaintenanceCallbackUseC
         self._runs_repo = runs_repo
         self._result_gateway = result_gateway
 
-    def execute(
-        self, request: ProcessTableMaintenanceCallbackUseCaseInput
-    ) -> ProcessTableMaintenanceCallbackUseCaseOutput:
+    def execute(self, request: ForwardTableMaintenanceResultUseCaseInput) -> ForwardTableMaintenanceResultUseCaseOutput:
         """Forward the result of a known run, as a result of the run's operation; the workflow decides staleness.
 
-        A callback that names an operation other than the run's is invalid and forwards nothing.
+        A report that names an operation other than the run's is invalid and forwards nothing.
         """
         try:
             named = None if request.operation is None else MaintenanceOperation(request.operation)
@@ -67,4 +65,4 @@ class ProcessTableMaintenanceCallbackService(ProcessTableMaintenanceCallbackUseC
                 error=request.error,
             )
         )
-        return ProcessTableMaintenanceCallbackUseCaseOutput(accepted=True)
+        return ForwardTableMaintenanceResultUseCaseOutput(accepted=True)

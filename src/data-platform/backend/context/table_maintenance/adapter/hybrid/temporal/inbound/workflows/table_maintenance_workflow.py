@@ -305,7 +305,7 @@ class TableMaintenanceWorkflow:
             status = await self._job_status(name, attempt)
             if status is None:
                 continue
-            driver_started_at = status.get("driver_started_at")
+            driver_started_at = status.get("started_running_at")
             if driver_started_at is None and at_the_limit and status["state"] in _STARTED_STATES:
                 driver_started_at = workflow.now().isoformat()
             if running_since is None and driver_started_at:
@@ -606,14 +606,14 @@ class TableMaintenanceWorkflow:
     async def _pods_gone(self, name: str, attempt: int) -> bool:
         try:
             pods = await self._activity(
-                TableMaintenanceActivity.GET_MAINTENANCE_JOB_PODS,
+                TableMaintenanceActivity.GET_MAINTENANCE_JOB_PROCESSES,
                 {"run_id": self._run_of[name], "operation": name, "attempt": attempt},
             )
         except ActivityError as error:
             _raise_if_cancelled(error)
             workflow.logger.warning("pods of %s attempt %s unknown: %s", name, attempt, error)
             return False
-        return not pods["live_pods"]
+        return not pods["live_processes"]
 
     async def _job_status(self, name: str, attempt: int) -> dict[str, Any] | None:
         try:

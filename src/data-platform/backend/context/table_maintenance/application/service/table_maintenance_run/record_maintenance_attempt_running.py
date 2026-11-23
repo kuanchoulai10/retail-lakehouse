@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class RecordMaintenanceAttemptRunningService(RecordMaintenanceAttemptRunningUseCase):
-    """Record that the driver of a run's attempt started running, so its queued time ends."""
+    """Record that the coordinator of a run's attempt started running, so its queued time ends."""
 
     def __init__(self, runs_repo: TableMaintenanceRunsRepo) -> None:
         """Bind the runs repo."""
@@ -30,7 +30,7 @@ class RecordMaintenanceAttemptRunningService(RecordMaintenanceAttemptRunningUseC
     def execute(
         self, request: RecordMaintenanceAttemptRunningUseCaseInput
     ) -> RecordMaintenanceAttemptRunningUseCaseOutput:
-        """Record the driver's start on the run and return the run's status and the attempt's running time.
+        """Record the coordinator's start on the run and return the run's status and the attempt's running time.
 
         Repeating the report, or reporting an earlier attempt, changes nothing. A report naming an operation
         other than the run's is a conflict.

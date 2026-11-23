@@ -45,7 +45,7 @@ def build_platform_settings(settings: AppSettings) -> PlatformSettings:
 def _compute_size(size: ComputeSize, resources: SparkSizeSettings) -> PlatformComputeSize:
     return PlatformComputeSize(
         size=size,
-        driver_memory=resources.driver_memory,
-        executor_memory=resources.executor_memory,
-        executor_instances=resources.executor_instances,
+        coordinator_memory=resources.driver_memory,
+        worker_memory=resources.executor_memory,
+        worker_count=resources.executor_instances,
     )

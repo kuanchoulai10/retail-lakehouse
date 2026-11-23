@@ -57,13 +57,13 @@ from context.table_maintenance.application.service.table_maintenance_policy_atta
 from context.table_maintenance.application.service.table_maintenance_run import (
     CreateTableMaintenanceRunsService,
     DeleteMaintenanceJobService,
-    GetMaintenanceJobPodsService,
+    ForwardTableMaintenanceResultService,
+    GetMaintenanceJobProcessesService,
     GetMaintenanceJobStatusService,
     GetPlatformSettingsService,
     GetTableMaintenanceRunService,
     IssueTableMaintenanceRunIdsService,
     ListTableMaintenanceRunsService,
-    ProcessTableMaintenanceCallbackService,
     RaiseTableMaintenanceRunPriorityService,
     RecordMaintenanceAttemptRunningService,
     RecordTableMaintenanceOperationResultService,
@@ -191,9 +191,7 @@ def build_use_cases(
         create_table_maintenance_runs=CreateTableMaintenanceRunsService(runs, tables),
         get_table_maintenance_run=GetTableMaintenanceRunService(runs),
         list_table_maintenance_runs=ListTableMaintenanceRunsService(runs),
-        process_table_maintenance_callback=ProcessTableMaintenanceCallbackService(
-            runs, gateways.send_maintenance_result
-        ),
+        forward_table_maintenance_result=ForwardTableMaintenanceResultService(runs, gateways.send_maintenance_result),
         record_table_maintenance_operation_result=RecordTableMaintenanceOperationResultService(
             runs,
             tables,
@@ -203,9 +201,9 @@ def build_use_cases(
         ),
         delete_maintenance_job=DeleteMaintenanceJobService(runs, gateways.delete_maintenance_job),
         get_maintenance_job_status=GetMaintenanceJobStatusService(
-            runs, gateways.read_maintenance_job, gateways.read_maintenance_job_pods
+            runs, gateways.read_maintenance_job, gateways.read_maintenance_job_processes
         ),
-        get_maintenance_job_pods=GetMaintenanceJobPodsService(runs, gateways.read_maintenance_job_pods),
+        get_maintenance_job_processes=GetMaintenanceJobProcessesService(runs, gateways.read_maintenance_job_processes),
         record_maintenance_attempt_running=RecordMaintenanceAttemptRunningService(runs),
         raise_table_maintenance_run_priority=RaiseTableMaintenanceRunPriorityService(runs, tables),
         plan_table_maintenance=PlanTableMaintenanceService(

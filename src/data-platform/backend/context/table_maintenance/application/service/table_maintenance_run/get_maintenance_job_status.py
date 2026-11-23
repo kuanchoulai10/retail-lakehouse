@@ -18,7 +18,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
     ReadMaintenanceJobGatewayInput,
-    ReadMaintenanceJobPodsGatewayInput,
+    ReadMaintenanceJobProcessesGatewayInput,
 )
 from context.table_maintenance.application.service.table_maintenance_run.require_run_operation import (
     require_run_operation,
@@ -27,7 +27,7 @@ from context.table_maintenance.application.service.table_maintenance_run.require
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         ReadMaintenanceJobGateway,
-        ReadMaintenanceJobPodsGateway,
+        ReadMaintenanceJobProcessesGateway,
         TableMaintenanceRunsRepo,
     )
 
@@ -38,24 +38,24 @@ _NOT_FOUND = "NOT_FOUND"
 
 
 class GetMaintenanceJobStatusService(GetMaintenanceJobStatusUseCase):
-    """Report the state of the job of one attempt of a run and when its driver started."""
+    """Report the state of the job of one attempt of a run and when its coordinator started."""
 
     def __init__(
         self,
         runs_repo: TableMaintenanceRunsRepo,
         read_gateway: ReadMaintenanceJobGateway,
-        pods_gateway: ReadMaintenanceJobPodsGateway,
+        processes_gateway: ReadMaintenanceJobProcessesGateway,
     ) -> None:
-        """Bind the runs repo, the job read gateway and the pods read gateway."""
+        """Bind the runs repo, the job read gateway and the processes read gateway."""
         self._runs_repo = runs_repo
         self._read_gateway = read_gateway
-        self._pods_gateway = pods_gateway
+        self._processes_gateway = processes_gateway
 
     def execute(self, request: GetMaintenanceJobStatusUseCaseInput) -> GetMaintenanceJobStatusUseCaseOutput:
-        """Return the gateway's state and error and the driver's start, rejecting an unknown state.
+        """Return the gateway's state and error and the coordinator's start, rejecting an unknown state.
 
-        A job that is gone reads no pods. Pods that cannot be read, or a driver start that is not a
-        time, leave the driver start out (logged) and the state still answers. An unknown run is not
+        A job that is gone reads no processes. Processes that cannot be read, or a coordinator start that is not a
+        time, leave the coordinator start out (logged) and the state still answers. An unknown run is not
         found, and an operation other than the run's is a conflict; neither reads anything.
         """
         try:
@@ -77,24 +77,26 @@ class GetMaintenanceJobStatusService(GetMaintenanceJobStatusUseCase):
         )
         if result.state not in _KNOWN_STATES:
             raise ValidationError(f"unknown maintenance job state {result.state!r}")
-        driver_started_at = None if result.state == _NOT_FOUND else self._driver_started_at(request, operation)
+        started_running_at = None if result.state == _NOT_FOUND else self._started_running_at(request, operation)
         return GetMaintenanceJobStatusUseCaseOutput(
-            state=result.state, error=result.error, driver_started_at=driver_started_at
+            state=result.state, error=result.error, started_running_at=started_running_at
         )
 
-    def _driver_started_at(
+    def _started_running_at(
         self, request: GetMaintenanceJobStatusUseCaseInput, operation: MaintenanceOperation
     ) -> datetime | None:
         try:
-            pods = self._pods_gateway.read(
-                ReadMaintenanceJobPodsGatewayInput(
+            processes = self._processes_gateway.read(
+                ReadMaintenanceJobProcessesGatewayInput(
                     run_id=request.run_id, operation=operation.value, attempt=request.attempt
                 )
             )
-            started = None if pods.driver_started_at is None else datetime.fromisoformat(pods.driver_started_at)
+            started = (
+                None if processes.started_running_at is None else datetime.fromisoformat(processes.started_running_at)
+            )
         except Exception:
             logger.exception(
-                "cannot read the pods of attempt %s of %s in run %s; its driver start stays unknown",
+                "cannot read the processes of attempt %s of %s in run %s; its coordinator start stays unknown",
                 request.attempt,
                 operation.value,
                 request.run_id,

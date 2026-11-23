@@ -192,7 +192,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
     ) -> None:
         """Mark an attempt as queued at ``size`` with its job and add it to the attempts.
 
-        The attempt stays queued until ``record_attempt_running`` says its driver runs. Starting the
+        The attempt stays queued until ``record_attempt_running`` says its coordinator runs. Starting the
         attempt that is already queued or running is a no-op, except that a given ``job_name`` is
         attached when none is recorded yet. A new attempt clears the previous attempt's outcome from the
         run.
@@ -233,7 +233,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         return next((a for a in self.attempts if a.attempt == attempt), None)
 
     def record_attempt_running(self, attempt: int, started_running_at: datetime, now: datetime) -> None:
-        """Record that the driver of an attempt started running at ``started_running_at``.
+        """Record that the coordinator of an attempt started running at ``started_running_at``.
 
         The time is clamped into the attempt's submit time and ``now``. A queued attempt becomes
         running; a running one is left alone; a finished attempt that has no running time only gets

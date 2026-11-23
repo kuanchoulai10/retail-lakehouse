@@ -21,6 +21,6 @@ class SubmitMaintenanceJobGatewayInput:
     table: str
     where: list[str]
     procedure_args: dict[str, Any]
-    callback_url: str
+    result_report_url: str
     size: str = "S"
     priority: str = "P3"

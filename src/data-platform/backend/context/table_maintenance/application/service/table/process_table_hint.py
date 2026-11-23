@@ -86,7 +86,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         renamed and decided again, by its nearest discovery policy, read from the attachments
         on that one table's walk. A table in a catalog nothing manages is registered as the
         default decides, unmanaged, and sent nothing. A table that ends up newly managed is
-        signalled ``managed``, and one already managed ``updated``.
+        notified ``managed``, and one already managed ``updated``.
         Either way the table's newest commit is read from the catalog, so a
         commit event moves its last commit.
         """
@@ -137,7 +137,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
             return TableHintAction.UNMANAGED
         if outcome.renamed:
             return TableHintAction.RENAMED
-        return TableHintAction.SIGNALLED if outcome.signalled else TableHintAction.IGNORED
+        return TableHintAction.NOTIFIED if outcome.notified else TableHintAction.IGNORED
 
     def _register(
         self, found: TableMetadata, name: TableName, decision: DiscoveryDecision, now: datetime

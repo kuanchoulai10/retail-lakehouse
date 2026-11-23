@@ -9,7 +9,7 @@ class TableHintAction(StrEnum):
     """Enumerate what processing a table hint ended up doing."""
 
     DISCOVERY_REQUESTED = "discovery_requested"
-    SIGNALLED = "signalled"
+    NOTIFIED = "notified"
     RENAMED = "renamed"
     REGISTERED = "registered"
     MANAGED = "managed"

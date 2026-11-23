@@ -25,7 +25,7 @@ class JobRequest:
     catalog: str
     namespace: str
     table: str
-    callback_url: str
+    result_report_url: str
     where: list[str] = field(default_factory=list)
     procedure_args: dict[str, Any] = field(default_factory=dict)
 
@@ -41,7 +41,7 @@ class JobRequest:
             catalog=data["catalog"],
             namespace=data["namespace"],
             table=data["table"],
-            callback_url=data["callback_url"],
+            result_report_url=data["result_report_url"],
             where=list(data.get("where") or []),
             procedure_args=dict(data.get("procedure_args") or {}),
         )

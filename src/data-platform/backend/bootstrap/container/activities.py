@@ -38,7 +38,7 @@ class Activities:
             maintenance.submit_maintenance_operation,
             maintenance.get_maintenance_job_status,
             maintenance.delete_maintenance_job,
-            maintenance.get_maintenance_job_pods,
+            maintenance.get_maintenance_job_processes,
             maintenance.record_maintenance_attempt_running,
             maintenance.raise_table_maintenance_run_priority,
             maintenance.skip_table_maintenance_run,

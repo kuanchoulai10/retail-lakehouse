@@ -28,7 +28,7 @@ from context.table_maintenance.application.port.inbound.table_reconciliation imp
     RecordTableReconciliationUseCaseInput,
 )
 from context.table_maintenance.application.service.table_maintenance_run import (
-    GetMaintenanceJobPodsService,
+    GetMaintenanceJobProcessesService,
 )
 from context.table_maintenance.application.service.table_reconciliation import (
     ListTableReconciliationsService,
@@ -63,8 +63,8 @@ from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_
 from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo import (
     InMemoryTableReconciliationsRepo,
 )
-from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_pods_gateway import (
-    ScriptedReadMaintenanceJobPodsGateway,
+from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_processes_gateway import (
+    ScriptedReadMaintenanceJobProcessesGateway,
 )
 from tests.context.table_maintenance.planned_record_fields import PLANNED_RECORD_FIELDS
 
@@ -101,7 +101,7 @@ def _maintain(submit: FakeSubmit | None = None) -> tuple[TableMaintenanceActivit
         "submit": submit or FakeSubmit(),
         "status": FakeStatus(),
         "delete": FakeDelete(),
-        "pods_gateway": ScriptedReadMaintenanceJobPodsGateway(),
+        "pods_gateway": ScriptedReadMaintenanceJobProcessesGateway(),
         "record_running": FakeRecordRunning(),
         "raise_priority": FakeRaisePriority(),
     }
@@ -109,7 +109,7 @@ def _maintain(submit: FakeSubmit | None = None) -> tuple[TableMaintenanceActivit
         submit=fakes["submit"],
         status=fakes["status"],
         delete=fakes["delete"],
-        pods=GetMaintenanceJobPodsService(runs_repo_with_one_run(RUN_1), fakes["pods_gateway"]),
+        pods=GetMaintenanceJobProcessesService(runs_repo_with_one_run(RUN_1), fakes["pods_gateway"]),
         record_running=fakes["record_running"],
         raise_priority=fakes["raise_priority"],
         callback_base_url="http://cp:8000",
@@ -572,7 +572,7 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
     assert result == {"recorded": True}
 
 
-def test_submit_injects_callback_base_url():
+def test_submit_injects_the_result_report_base_url():
     """The submit activity adds the callback base URL; the where clauses and arguments come from the run."""
     activities, fakes = _maintain()
     result = activities.submit_maintenance_operation(
@@ -588,7 +588,7 @@ def test_submit_injects_callback_base_url():
     assert request.run_id == RUN_1
     assert request.operation == "rewrite_data_files"
     assert request.attempt == 2
-    assert request.callback_base_url == "http://cp:8000"
+    assert request.result_report_base_url == "http://cp:8000"
     assert request.now == NOW_DT
     assert result == {"job_name": "app-1"}
 
@@ -664,7 +664,7 @@ def test_status_passes_the_attempt_triple():
     assert activities.get_maintenance_job_status(request) == {
         "state": "FAILED",
         "error": "oom",
-        "driver_started_at": None,
+        "started_running_at": None,
     }
     status_request = fakes["status"].requests[0]
     assert (
@@ -695,14 +695,16 @@ def test_delete_passes_the_attempt_triple():
     }
 
 
-def test_get_maintenance_job_pods_activity_returns_live_pod_names():
+def test_get_maintenance_job_processes_activity_returns_live_pod_names():
     """The pods activity passes the attempt triple through and returns the names of its live pods."""
     activities, fakes = _maintain()
-    fakes["pods_gateway"].set_live_pods(RUN_1, "rewrite_data_files", 2, "driver", "exec-1")
+    fakes["pods_gateway"].set_live_processes(RUN_1, "rewrite_data_files", 2, "driver", "exec-1")
 
-    result = activities.get_maintenance_job_pods({"run_id": RUN_1, "operation": "rewrite_data_files", "attempt": 2})
+    result = activities.get_maintenance_job_processes(
+        {"run_id": RUN_1, "operation": "rewrite_data_files", "attempt": 2}
+    )
 
-    assert result == {"live_pods": ["driver", "exec-1"]}
+    assert result == {"live_processes": ["driver", "exec-1"]}
     assert [(c.run_id, c.operation, c.attempt) for c in fakes["pods_gateway"].calls] == [
         (RUN_1, "rewrite_data_files", 2)
     ]

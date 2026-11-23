@@ -50,7 +50,7 @@ def test_defaults_are_the_values_the_platform_ran_with_before_they_had_names():
         settings.compaction_quiet_seconds,
         settings.compaction_max_quiet_wait_seconds,
     ) == (10, 120, 3600)
-    assert [(s.size, s.driver_memory, s.executor_memory, s.executor_instances) for s in settings.compute_sizes] == [
+    assert [(s.size, s.coordinator_memory, s.worker_memory, s.worker_count) for s in settings.compute_sizes] == [
         (ComputeSize.S, "768m", "768m", 1),
         (ComputeSize.M, "1g", "1536m", 1),
         (ComputeSize.L, "1536m", "2g", 1),
@@ -83,7 +83,7 @@ def test_values_follow_the_application_settings():
         settings.expire_snapshots_cooldown_seconds,
         settings.remove_orphan_files_interval_seconds,
     ) == (60, 120, 180, 240)
-    assert settings.compute_sizes[1].executor_instances == 3
+    assert settings.compute_sizes[1].worker_count == 3
 
 
 def test_build_platform_settings_copies_the_partition_selection():

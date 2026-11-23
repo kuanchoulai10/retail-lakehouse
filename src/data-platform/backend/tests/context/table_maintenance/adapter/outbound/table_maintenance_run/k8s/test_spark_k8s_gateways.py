@@ -52,7 +52,7 @@ def _input(**overrides) -> SubmitMaintenanceJobGatewayInput:
         "table": "orders",
         "where": ["region = 'eu'"],
         "procedure_args": {"min-input-files": 2},
-        "callback_url": "http://cp/callback",
+        "result_report_url": "http://cp/callback",
     }
     data.update(overrides)
     return SubmitMaintenanceJobGatewayInput(**data)
@@ -107,7 +107,7 @@ def test_manifest_driver_and_executor_env():
     request = json.loads(env["GLAC_REQUEST"]["value"])
     assert request["app_name"] == NAME
     assert request["where"] == ["region = 'eu'"]
-    assert request["callback_url"] == "http://cp/callback"
+    assert request["result_report_url"] == "http://cp/callback"
     assert env["POLARIS_CREDENTIAL"]["valueFrom"]["secretKeyRef"] == {
         "name": "polaris-spark-credential",
         "key": "credential",

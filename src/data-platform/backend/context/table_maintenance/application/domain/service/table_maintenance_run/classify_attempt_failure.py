@@ -20,8 +20,8 @@ PERMANENT_TEXTS = ("NoSuchTableException", "ForbiddenException", "NotAuthorizedE
 COMMIT_CONFLICT_TEXTS = ("CommitFailedException",)
 OOM_KILLED_REASON = "OOMKilled"
 KILLED_EXIT_CODE = 137
-EXECUTOR_OOM_EXIT_CODE = 52
-EXECUTOR_ROLE = "executor"
+WORKER_OUT_OF_MEMORY_EXIT_CODE = 52
+WORKER_ROLE = "worker"
 ENDINGS_WITH_TRUSTED_EXITS = frozenset({AttemptEnding.RESULT, AttemptEnding.JOB_FAILED})
 PLATFORM_ENDINGS = {
     AttemptEnding.TIMED_OUT: FailureClass.TIMEOUT,
@@ -34,7 +34,7 @@ def classify_attempt_failure(evidence: FailureEvidence) -> FailureClass:
     """Return why a maintenance attempt failed, from the first rule its evidence meets.
 
     An attempt the platform itself ended (a timeout, a queue timeout, a cancel) is classified by that
-    ending alone. The platform's own kill (a timeout, a cancel, a vanished job) deletes the pods, which then
+    ending alone. The platform's own kill (a timeout, a cancel, a vanished job) deletes the job's processes, which then
     exit with 137 as an OOM kill would; container exits therefore count only when Spark itself
     reported the failure.
     """
@@ -54,7 +54,7 @@ def classify_attempt_failure(evidence: FailureEvidence) -> FailureClass:
 def _is_oom_exit(container: ContainerExit) -> bool:
     if container.reason == OOM_KILLED_REASON or container.exit_code == KILLED_EXIT_CODE:
         return True
-    return container.role == EXECUTOR_ROLE and container.exit_code == EXECUTOR_OOM_EXIT_CODE
+    return container.role == WORKER_ROLE and container.exit_code == WORKER_OUT_OF_MEMORY_EXIT_CODE
 
 
 def _any_holds(texts: tuple[str, ...], patterns: tuple[str, ...]) -> bool:

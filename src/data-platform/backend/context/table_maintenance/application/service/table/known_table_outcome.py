@@ -16,10 +16,10 @@ class KnownTableOutcome:
     """Say what discovering a known table again did to it.
 
     ``renamed`` tells whether its name changed, ``change`` whether its discovery
-    decision managed or unmanaged it or only moved its match, and ``signalled``
+    decision managed or unmanaged it or only moved its match, and ``notified``
     whether the runtime was told of a table whose management did not change.
     """
 
     renamed: bool
     change: TableManagementChange
-    signalled: bool
+    notified: bool

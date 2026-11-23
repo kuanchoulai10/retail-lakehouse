@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from context.table_maintenance.adapter.inbound.web.table_maintenance_run.dto import (
+    ForwardTableMaintenanceResultApiRequest,
+    ForwardTableMaintenanceResultApiResponse,
     PlatformSettingApiResponse,
     PlatformSettingsApiResponse,
     PlatformSettingsGroupApiResponse,
-    ProcessTableMaintenanceCallbackApiRequest,
-    ProcessTableMaintenanceCallbackApiResponse,
     TableMaintenanceRunApiResponse,
     TableMaintenanceRunAttemptApiResponse,
     TableMaintenanceRunFilterApiResponse,
@@ -23,8 +23,8 @@ __all__ = [
     "PlatformSettingApiResponse",
     "PlatformSettingsApiResponse",
     "PlatformSettingsGroupApiResponse",
-    "ProcessTableMaintenanceCallbackApiRequest",
-    "ProcessTableMaintenanceCallbackApiResponse",
+    "ForwardTableMaintenanceResultApiRequest",
+    "ForwardTableMaintenanceResultApiResponse",
     "TableMaintenanceRunApiResponse",
     "TableMaintenanceRunAttemptApiResponse",
     "TableMaintenanceRunFilterApiResponse",

@@ -9,7 +9,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import
     TableMaintenanceActivities,
 )
 from context.table_maintenance.application.service.table_maintenance_run import (
-    GetMaintenanceJobPodsService,
+    GetMaintenanceJobProcessesService,
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.runs_repo_with_one_run import (
     runs_repo_with_one_run,
@@ -23,8 +23,8 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fa
     FakeStatus,
     FakeSubmit,
 )
-from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_pods_gateway import (
-    ScriptedReadMaintenanceJobPodsGateway,
+from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_processes_gateway import (
+    ScriptedReadMaintenanceJobProcessesGateway,
 )
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
         DeleteMaintenanceJobUseCase,
-        GetMaintenanceJobPodsUseCase,
+        GetMaintenanceJobProcessesUseCase,
         GetMaintenanceJobStatusUseCase,
         RaiseTableMaintenanceRunPriorityUseCase,
         RecordMaintenanceAttemptRunningUseCase,
@@ -48,7 +48,7 @@ def table_maintenance_activities_with_fakes(  # noqa: PLR0913
     submit: SubmitMaintenanceOperationUseCase | None = None,
     status: GetMaintenanceJobStatusUseCase | None = None,
     delete: DeleteMaintenanceJobUseCase | None = None,
-    pods: GetMaintenanceJobPodsUseCase | None = None,
+    pods: GetMaintenanceJobProcessesUseCase | None = None,
     record_running: RecordMaintenanceAttemptRunningUseCase | None = None,
     raise_priority: RaiseTableMaintenanceRunPriorityUseCase | None = None,
     skip: SkipTableMaintenanceRunUseCase | None = None,
@@ -64,7 +64,8 @@ def table_maintenance_activities_with_fakes(  # noqa: PLR0913
         submit=submit or FakeSubmit(),
         status=status or FakeStatus(),
         delete=delete or FakeDelete(),
-        pods=pods or GetMaintenanceJobPodsService(runs_repo_with_one_run(), ScriptedReadMaintenanceJobPodsGateway()),
+        pods=pods
+        or GetMaintenanceJobProcessesService(runs_repo_with_one_run(), ScriptedReadMaintenanceJobProcessesGateway()),
         record_running=record_running or FakeRecordRunning(),
         raise_priority=raise_priority or FakeRaisePriority(),
         skip=skip or FakeSkip(),

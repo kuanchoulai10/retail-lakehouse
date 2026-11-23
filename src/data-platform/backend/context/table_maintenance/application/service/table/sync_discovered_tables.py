@@ -193,7 +193,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
             renamed=sum(o.renamed for o in known),
             dropped=dropped,
             skipped=skipped,
-            ensured=sum(o.signalled for o in known),
+            ensured=sum(o.notified for o in known),
             managed=sum(o.change == TableManagementChange.MANAGED for o in known),
             unmanaged=retired_unmanaged + sum(o.change == TableManagementChange.UNMANAGED for o in known),
         )

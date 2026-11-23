@@ -16,10 +16,10 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run.re
 class RecordMaintenanceAttemptRunningUseCase(
     UseCase[RecordMaintenanceAttemptRunningUseCaseInput, RecordMaintenanceAttemptRunningUseCaseOutput]
 ):
-    """Record when the driver of a maintenance operation attempt started running."""
+    """Record when the coordinator of a maintenance operation attempt started running."""
 
     @abstractmethod
     def execute(
         self, request: RecordMaintenanceAttemptRunningUseCaseInput
     ) -> RecordMaintenanceAttemptRunningUseCaseOutput:
-        """Record when the driver of a maintenance operation attempt started running."""
+        """Record when the coordinator of a maintenance operation attempt started running."""

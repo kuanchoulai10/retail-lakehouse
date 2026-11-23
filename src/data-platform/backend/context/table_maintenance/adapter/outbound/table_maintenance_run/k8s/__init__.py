@@ -19,8 +19,8 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.read_m
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.read_maintenance_job_k8s_gateway import (
     ReadMaintenanceJobK8sGateway,
 )
-from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.read_maintenance_job_pods_k8s_gateway import (  # noqa: E501
-    ReadMaintenanceJobPodsK8sGateway,
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.read_maintenance_job_processes_k8s_gateway import (  # noqa: E501
+    ReadMaintenanceJobProcessesK8sGateway,
 )
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.spark_application_manifest import (
     AWS_SDK_MAVEN,
@@ -65,7 +65,7 @@ __all__ = [
     "REDACTION_REGEX",
     "ReadMaintenanceJobEvidenceK8sGateway",
     "ReadMaintenanceJobK8sGateway",
-    "ReadMaintenanceJobPodsK8sGateway",
+    "ReadMaintenanceJobProcessesK8sGateway",
     "SparkK8sConfig",
     "SparkSizeResources",
     "SubmitMaintenanceJobK8sGateway",

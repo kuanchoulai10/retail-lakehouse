@@ -32,8 +32,8 @@ from context.table_maintenance.application.domain.model.table.operation_state im
 from context.table_maintenance.application.domain.model.table.partition_selection_settings import (
     PartitionSelectionSettings,
 )
-from context.table_maintenance.application.domain.model.table.peak_heap_use import (
-    PeakHeapUse,
+from context.table_maintenance.application.domain.model.table.peak_memory_use import (
+    PeakMemoryUse,
 )
 from context.table_maintenance.application.domain.model.table.recorded_attempt import (
     RecordedAttempt,
@@ -68,7 +68,7 @@ __all__ = [
     "OperationCooldowns",
     "OperationState",
     "PartitionSelectionSettings",
-    "PeakHeapUse",
+    "PeakMemoryUse",
     "RecordedAttempt",
     "Table",
     "TableChange",

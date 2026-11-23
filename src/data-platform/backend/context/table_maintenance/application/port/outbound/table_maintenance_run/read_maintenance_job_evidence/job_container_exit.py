@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class JobContainerExit:
-    """Describe how one container of a job terminated; ``role`` is ``driver`` or ``executor``."""
+    """Describe how one container of a job terminated; ``role`` is ``coordinator``, ``worker`` or empty when unknown."""
 
     role: str
     reason: str | None

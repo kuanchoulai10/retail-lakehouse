@@ -31,7 +31,7 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
     DeleteMaintenanceJobK8sGateway,
     ReadMaintenanceJobEvidenceK8sGateway,
     ReadMaintenanceJobK8sGateway,
-    ReadMaintenanceJobPodsK8sGateway,
+    ReadMaintenanceJobProcessesK8sGateway,
     SubmitMaintenanceJobK8sGateway,
 )
 from context.table_maintenance.adapter.outbound.table_maintenance_run.s3 import (
@@ -78,7 +78,7 @@ def build_gateways(
         submit_maintenance_job=SubmitMaintenanceJobK8sGateway(k8s_api, spark_config),
         read_maintenance_job=ReadMaintenanceJobK8sGateway(k8s_api, spark_config),
         delete_maintenance_job=DeleteMaintenanceJobK8sGateway(k8s_api, spark_config),
-        read_maintenance_job_pods=ReadMaintenanceJobPodsK8sGateway(k8s_core_api, spark_config),
+        read_maintenance_job_processes=ReadMaintenanceJobProcessesK8sGateway(k8s_core_api, spark_config),
         read_maintenance_job_evidence=ReadMaintenanceJobEvidenceK8sGateway(k8s_api, k8s_core_api, spark_config),
         read_table_metric_history=ReadTableMetricHistoryPrometheusGateway(
             settings.metrics.prometheus_url,

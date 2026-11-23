@@ -644,7 +644,7 @@ def test_unmanaged_table_is_managed_again_when_a_policy_manages_it(sync, tables_
 def test_unmanaged_table_still_unmanaged_by_the_same_match_is_left_alone(
     sync, tables_repo, world, catalog, signals, log, now
 ):
-    """An unmanaged table the same policy, version and rule still unmanage is neither updated nor signalled."""
+    """An unmanaged table the same policy, version and rule still unmanage is neither updated nor notified."""
     world.attach_to_catalog(UNMANAGE_ALL)
     _row(tables_repo, now, "u-1", _name("orders"), by=UNMANAGE_ALL)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
@@ -973,7 +973,7 @@ def test_table_hint_for_managed_table_signals_table_updated(hint, tables_repo, w
     _row(tables_repo, now, "u-1", _name("orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     out = hint.execute(_hint())
-    assert out.action == "signalled"
+    assert out.action == "notified"
     assert _calls(signals) == [("u-1", "updated", True)]
     assert [c.table_name for c in signals.calls] == ["iceberg.sales.orders"]
 
@@ -1044,7 +1044,7 @@ def test_table_hint_for_managed_table_signals_but_cooldown_blocks_replan(
     for uuid, name in (("u-1", "orders"), ("u-2", "fresh")):
         catalog.add_table("iceberg", "sales", name, uuid)
         catalog.observations[("iceberg", "sales", name)] = _busy_observation(uuid)
-    assert hint.execute(_hint()).action == "signalled"
+    assert hint.execute(_hint()).action == "notified"
     assert _calls(signals) == [("u-1", "updated", True)]
     planner = plan_service_on_fakes(tables_repo, catalog, resolve_applicable_policy)
     blocked = planner.execute(PlanTableMaintenanceUseCaseInput(table_uuid="u-1", now=now))
@@ -1135,7 +1135,7 @@ def test_table_hint_retry_after_failed_start_still_starts_workflow(
     with pytest.raises(RuntimeError):
         hint.execute(_hint())
     assert tables_repo.get(TableId("u-1")) is not None
-    assert hint.execute(_hint()).action == "signalled"
+    assert hint.execute(_hint()).action == "notified"
     assert _calls(signals) == [("u-1", "updated", True)]
 
 

@@ -41,8 +41,8 @@ def _output() -> GetPlatformSettingsUseCaseOutput:
                         description="How many times an operation is tried.",
                     ),
                     GetPlatformSettingsUseCaseOutput.Setting(
-                        key="compute_size_s_driver_memory",
-                        label="S driver memory",
+                        key="compute_size_s_coordinator_memory",
+                        label="S coordinator memory",
                         value="768m",
                         unit=None,
                         description="The memory of the driver.",
@@ -74,8 +74,8 @@ def test_serves_the_platform_settings_grouped():
                         "description": "How many times an operation is tried.",
                     },
                     {
-                        "key": "compute_size_s_driver_memory",
-                        "label": "S driver memory",
+                        "key": "compute_size_s_coordinator_memory",
+                        "label": "S coordinator memory",
                         "value": "768m",
                         "unit": None,
                         "description": "The memory of the driver.",
@@ -128,7 +128,7 @@ def test_platform_settings_route_lists_partition_selection():
         max_attempts=3,
         queue_wait_limit_seconds=86400,
         compute_sizes=(
-            PlatformComputeSize(size=ComputeSize.S, driver_memory="768m", executor_memory="768m", executor_instances=1),
+            PlatformComputeSize(size=ComputeSize.S, coordinator_memory="768m", worker_memory="768m", worker_count=1),
         ),
         rewrite_data_files_cooldown_seconds=3600,
         rewrite_manifests_cooldown_seconds=21600,

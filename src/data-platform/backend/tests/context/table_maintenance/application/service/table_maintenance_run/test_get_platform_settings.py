@@ -28,9 +28,9 @@ def _settings(**changes: Any) -> PlatformSettings:  # noqa: ANN401
         "max_attempts": 3,
         "queue_wait_limit_seconds": 86400,
         "compute_sizes": (
-            PlatformComputeSize(size=ComputeSize.S, driver_memory="768m", executor_memory="768m", executor_instances=1),
-            PlatformComputeSize(size=ComputeSize.M, driver_memory="1g", executor_memory="1536m", executor_instances=1),
-            PlatformComputeSize(size=ComputeSize.L, driver_memory="1536m", executor_memory="2g", executor_instances=2),
+            PlatformComputeSize(size=ComputeSize.S, coordinator_memory="768m", worker_memory="768m", worker_count=1),
+            PlatformComputeSize(size=ComputeSize.M, coordinator_memory="1g", worker_memory="1536m", worker_count=1),
+            PlatformComputeSize(size=ComputeSize.L, coordinator_memory="1536m", worker_memory="2g", worker_count=2),
         ),
         "rewrite_data_files_cooldown_seconds": 3600,
         "rewrite_manifests_cooldown_seconds": 21600,
@@ -82,15 +82,15 @@ def test_compute_sizes_list_memory_and_executors_of_each_size():
     group = _output().groups[1]
 
     assert [(i.key, i.value, i.unit) for i in group.items] == [
-        ("compute_size_s_driver_memory", "768m", None),
-        ("compute_size_s_executor_memory", "768m", None),
-        ("compute_size_s_executor_instances", 1, "executors"),
-        ("compute_size_m_driver_memory", "1g", None),
-        ("compute_size_m_executor_memory", "1536m", None),
-        ("compute_size_m_executor_instances", 1, "executors"),
-        ("compute_size_l_driver_memory", "1536m", None),
-        ("compute_size_l_executor_memory", "2g", None),
-        ("compute_size_l_executor_instances", 2, "executors"),
+        ("compute_size_s_coordinator_memory", "768m", None),
+        ("compute_size_s_worker_memory", "768m", None),
+        ("compute_size_s_worker_count", 1, "workers"),
+        ("compute_size_m_coordinator_memory", "1g", None),
+        ("compute_size_m_worker_memory", "1536m", None),
+        ("compute_size_m_worker_count", 1, "workers"),
+        ("compute_size_l_coordinator_memory", "1536m", None),
+        ("compute_size_l_worker_memory", "2g", None),
+        ("compute_size_l_worker_count", 2, "workers"),
     ]
 
 

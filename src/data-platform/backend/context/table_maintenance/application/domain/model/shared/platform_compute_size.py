@@ -7,9 +7,9 @@ from context.table_maintenance.application.domain.model.shared.compute_size impo
 
 
 class PlatformComputeSize(ValueObject):
-    """The Spark resources one compute size runs with: driver and executor memory as Spark writes it, and executors."""
+    """The resources of one compute size: coordinator and worker memory as the engine writes it, and the workers."""
 
     size: ComputeSize
-    driver_memory: str
-    executor_memory: str
-    executor_instances: int
+    coordinator_memory: str
+    worker_memory: str
+    worker_count: int

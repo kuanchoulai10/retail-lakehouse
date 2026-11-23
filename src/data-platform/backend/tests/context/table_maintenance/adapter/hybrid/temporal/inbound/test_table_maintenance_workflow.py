@@ -632,7 +632,7 @@ def test_timed_out_attempt_deletes_the_job_before_the_next_attempt():
         commands = await h.commands()
         names = _names(commands)
         delete = names.index("delete_maintenance_job")
-        pods = _first_after(commands, "get_maintenance_job_pods", delete)
+        pods = _first_after(commands, "get_maintenance_job_processes", delete)
         second_submit = _first_after(commands, "submit_maintenance_operation", pods)
         assert names.index("submit_maintenance_operation") < delete < pods < second_submit
         assert h.recorded() == [(COMPACTION, 1, False, "spark job timed out"), (COMPACTION, 2, True, None)]
@@ -1404,7 +1404,7 @@ def test_raise_requeues_a_queued_attempt():
             "get_maintenance_job_status",
             "delete_maintenance_job",
             "get_maintenance_job_status",
-            "get_maintenance_job_pods",
+            "get_maintenance_job_processes",
             "submit_maintenance_operation",
         ]
 
@@ -1662,7 +1662,7 @@ def test_requeue_waits_for_the_next_poll_when_the_status_is_unknown():
             "get_maintenance_job_status",
             "delete_maintenance_job",
             "get_maintenance_job_status",
-            "get_maintenance_job_pods",
+            "get_maintenance_job_processes",
             "submit_maintenance_operation",
         ]
         unknown_at, next_poll_at = commands[raised + 1][1], commands[raised + 2][1]

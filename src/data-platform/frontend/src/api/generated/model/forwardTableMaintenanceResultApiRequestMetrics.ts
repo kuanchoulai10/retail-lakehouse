@@ -5,4 +5,4 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ProcessTableMaintenanceCallbackApiRequestMetrics = {[key: string]: number};
+export type ForwardTableMaintenanceResultApiRequestMetrics = {[key: string]: number};

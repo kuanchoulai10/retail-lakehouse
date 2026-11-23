@@ -12,7 +12,7 @@ from context.table_maintenance.application.domain.model.shared import (
 from context.table_maintenance.application.domain.model.table import Table, TableName
 from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRun, TriggerType
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
-    ProcessTableMaintenanceCallbackUseCaseOutput,
+    ForwardTableMaintenanceResultUseCaseOutput,
     SubmitMaintenanceOperationUseCaseInput,
 )
 from context.table_maintenance.application.service.table_maintenance_run import (
@@ -64,13 +64,13 @@ def _submitted_callback_url() -> str:
             run_id=RUN_1,
             operation="expire_snapshots",
             attempt=1,
-            callback_base_url="http://api.example:8000/",
+            result_report_base_url="http://api.example:8000/",
             now=NOW,
             size="S",
         )
     )
     (call,) = gateway.calls
-    return call.callback_url
+    return call.result_report_url
 
 
 def test_callback_url_is_served_by_the_result_route():
@@ -79,8 +79,8 @@ def test_callback_url_is_served_by_the_result_route():
     The path names no operation and neither does the body, so the service is asked with none and uses the run's.
     """
     url = urlsplit(_submitted_callback_url())
-    callback = StubUseCase(ProcessTableMaintenanceCallbackUseCaseOutput(accepted=True))
-    client = build_client(process_table_maintenance_callback=callback)
+    callback = StubUseCase(ForwardTableMaintenanceResultUseCaseOutput(accepted=True))
+    client = build_client(forward_table_maintenance_result=callback)
 
     response = client.post(url.path, json={"attempt": 1, "succeeded": True})
 

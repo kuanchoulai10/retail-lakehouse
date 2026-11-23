@@ -38,11 +38,11 @@ const SETTINGS: PlatformSettingsApiResponse = {
       title: "Spark sizes",
       items: [
         {
-          key: "compute_size_s_driver_memory",
-          label: "S driver memory",
+          key: "compute_size_s_coordinator_memory",
+          label: "S coordinator memory",
           value: "768m",
           unit: null,
-          description: "The memory of the Spark driver when an operation runs at size S.",
+          description: "The memory of the coordinator process (the Spark driver) when an operation runs at size S.",
         },
       ],
     },

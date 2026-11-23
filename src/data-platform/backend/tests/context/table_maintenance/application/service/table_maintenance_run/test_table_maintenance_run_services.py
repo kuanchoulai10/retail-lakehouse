@@ -36,17 +36,17 @@ from context.table_maintenance.application.exceptions import (
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     CreateTableMaintenanceRunsUseCaseInput,
+    ForwardTableMaintenanceResultUseCaseInput,
     GetTableMaintenanceRunUseCaseInput,
     ListTableMaintenanceRunsUseCaseInput,
-    ProcessTableMaintenanceCallbackUseCaseInput,
     RecordTableMaintenanceOperationResultUseCaseInput,
     SkipTableMaintenanceRunUseCaseInput,
 )
 from context.table_maintenance.application.service.table_maintenance_run import (
     CreateTableMaintenanceRunsService,
+    ForwardTableMaintenanceResultService,
     GetTableMaintenanceRunService,
     ListTableMaintenanceRunsService,
-    ProcessTableMaintenanceCallbackService,
     RecordTableMaintenanceOperationResultService,
     SkipTableMaintenanceRunService,
 )
@@ -486,7 +486,7 @@ def test_recording_an_attempt_of_a_run_still_pending_changes_nothing(recorder, r
 # --- callback ---
 
 
-def _callback(**overrides) -> ProcessTableMaintenanceCallbackUseCaseInput:
+def _callback(**overrides) -> ForwardTableMaintenanceResultUseCaseInput:
     fields: dict[str, Any] = {
         "run_id": RUN_1,
         "operation": "rewrite_data_files",
@@ -496,12 +496,12 @@ def _callback(**overrides) -> ProcessTableMaintenanceCallbackUseCaseInput:
         "error": "OOM",
     }
     fields.update(overrides)
-    return ProcessTableMaintenanceCallbackUseCaseInput(**fields)
+    return ForwardTableMaintenanceResultUseCaseInput(**fields)
 
 
 def test_callback_forwards_result_to_the_workflow(runs_repo, started_run, results):
     """The callback forwards the result to the workflow and accepts it."""
-    service = ProcessTableMaintenanceCallbackService(runs_repo, results)
+    service = ForwardTableMaintenanceResultService(runs_repo, results)
     out = service.execute(_callback())
     assert out.accepted is True
     (call,) = results.calls
@@ -516,7 +516,7 @@ def test_callback_forwards_result_to_the_workflow(runs_repo, started_run, result
 
 def test_callback_unknown_run_not_found(runs_repo, results):
     """A callback for an unknown run raises NotFoundError and forwards nothing."""
-    service = ProcessTableMaintenanceCallbackService(runs_repo, results)
+    service = ForwardTableMaintenanceResultService(runs_repo, results)
     with pytest.raises(NotFoundError):
         service.execute(_callback(run_id=UNKNOWN_RUN))
     assert results.calls == []
@@ -524,7 +524,7 @@ def test_callback_unknown_run_not_found(runs_repo, results):
 
 def test_callback_rejects_unknown_operation(runs_repo, started_run, results):
     """A callback with an unknown operation raises a ValidationError."""
-    service = ProcessTableMaintenanceCallbackService(runs_repo, results)
+    service = ForwardTableMaintenanceResultService(runs_repo, results)
     with pytest.raises(ValidationError):
         service.execute(_callback(operation="x"))
     assert results.calls == []

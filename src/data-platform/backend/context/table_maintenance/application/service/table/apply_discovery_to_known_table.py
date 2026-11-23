@@ -67,15 +67,15 @@ def apply_discovery_to_known_table(  # noqa: PLR0913
         tables_repo.update(table)
     elif committed and last_committed_at is not None:
         tables_repo.record_last_commit(table.id, last_committed_at)
-    signalled = False
+    notified = False
     if change == TableManagementChange.UNMANAGED:
         _send(table_change_gateway, table, TableChange.STOPPED)
     elif change == TableManagementChange.MANAGED:
         _send(table_change_gateway, table, TableChange.MANAGED)
     elif table.is_managed and seen_change is not None:
         _send(table_change_gateway, table, seen_change)
-        signalled = True
-    return KnownTableOutcome(renamed=renamed, change=change, signalled=signalled)
+        notified = True
+    return KnownTableOutcome(renamed=renamed, change=change, notified=notified)
 
 
 def _send(gateway: SendTableChangeGateway, table: Table, change: TableChange) -> None:

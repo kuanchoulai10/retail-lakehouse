@@ -15,17 +15,17 @@ from context.table_maintenance.application.domain.model.shared import (
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRun, TriggerType
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
+    ForwardTableMaintenanceResultUseCaseInput,
+    ForwardTableMaintenanceResultUseCaseOutput,
     GetTableMaintenanceRunUseCaseInput,
     GetTableMaintenanceRunUseCaseOutput,
     ListTableMaintenanceRunsUseCaseInput,
     ListTableMaintenanceRunsUseCaseOutput,
-    ProcessTableMaintenanceCallbackUseCaseInput,
-    ProcessTableMaintenanceCallbackUseCaseOutput,
 )
 from context.table_maintenance.application.service.table_maintenance_run import (
+    ForwardTableMaintenanceResultService,
     GetTableMaintenanceRunService,
     ListTableMaintenanceRunsService,
-    ProcessTableMaintenanceCallbackService,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import (
     NOW,
@@ -285,15 +285,15 @@ def test_run_schema_types_its_filters_and_attempts() -> None:
 
 def test_callback_returns_202_and_maps_the_body() -> None:
     """The callback returns 202 and maps its body to the record result input."""
-    stub = StubUseCase(ProcessTableMaintenanceCallbackUseCaseOutput(accepted=True))
-    client = build_client(process_table_maintenance_callback=stub)
+    stub = StubUseCase(ForwardTableMaintenanceResultUseCaseOutput(accepted=True))
+    client = build_client(forward_table_maintenance_result=stub)
 
     response = client.post(URL, json=CALLBACK)
 
     assert response.status_code == 202
     assert response.json() == {"accepted": True}
     assert stub.requests == [
-        ProcessTableMaintenanceCallbackUseCaseInput(
+        ForwardTableMaintenanceResultUseCaseInput(
             run_id=RUN_ID,
             operation=None,
             attempt=1,
@@ -306,8 +306,8 @@ def test_callback_returns_202_and_maps_the_body() -> None:
 
 def test_the_callback_needs_no_operation_in_its_path() -> None:
     """The result route is the run's own: its path names the run and the body may leave the operation out."""
-    stub = StubUseCase(ProcessTableMaintenanceCallbackUseCaseOutput(accepted=True))
-    client = build_client(process_table_maintenance_callback=stub)
+    stub = StubUseCase(ForwardTableMaintenanceResultUseCaseOutput(accepted=True))
+    client = build_client(forward_table_maintenance_result=stub)
 
     response = client.post(f"/v1/table-maintenance-runs/{RUN_ID}/result", json=CALLBACK)
 
@@ -317,8 +317,8 @@ def test_the_callback_needs_no_operation_in_its_path() -> None:
 
 def test_callback_accepts_the_runtime_body_with_matching_ids() -> None:
     """The callback accepts the body the Spark runtime sends when its ids match the path."""
-    stub = StubUseCase(ProcessTableMaintenanceCallbackUseCaseOutput(accepted=True))
-    client = build_client(process_table_maintenance_callback=stub)
+    stub = StubUseCase(ForwardTableMaintenanceResultUseCaseOutput(accepted=True))
+    client = build_client(forward_table_maintenance_result=stub)
     body = {
         **CALLBACK,
         "run_id": RUN_ID,
@@ -333,8 +333,8 @@ def test_callback_accepts_the_runtime_body_with_matching_ids() -> None:
 
 def test_callback_body_run_id_mismatching_the_path_returns_422() -> None:
     """A callback body whose run id differs from the path is rejected with 422 and not recorded."""
-    stub = StubUseCase(ProcessTableMaintenanceCallbackUseCaseOutput(accepted=True))
-    client = build_client(process_table_maintenance_callback=stub)
+    stub = StubUseCase(ForwardTableMaintenanceResultUseCaseOutput(accepted=True))
+    client = build_client(forward_table_maintenance_result=stub)
 
     response = client.post(URL, json={**CALLBACK, "run_id": "other"})
 
@@ -342,9 +342,9 @@ def test_callback_body_run_id_mismatching_the_path_returns_422() -> None:
     assert stub.requests == []
 
 
-def _callback_service(runs: InMemoryTableMaintenanceRunsRepo) -> tuple[ProcessTableMaintenanceCallbackService, Any]:
+def _callback_service(runs: InMemoryTableMaintenanceRunsRepo) -> tuple[ForwardTableMaintenanceResultService, Any]:
     results = RecordingSendMaintenanceResultGateway()
-    return ProcessTableMaintenanceCallbackService(runs, results), results
+    return ForwardTableMaintenanceResultService(runs, results), results
 
 
 def test_the_callback_refuses_another_operation() -> None:
@@ -352,7 +352,7 @@ def test_the_callback_refuses_another_operation() -> None:
     runs = InMemoryTableMaintenanceRunsRepo()
     _stored_run(runs, with_filters=False)
     service, results = _callback_service(runs)
-    client = build_client(process_table_maintenance_callback=service)
+    client = build_client(forward_table_maintenance_result=service)
 
     response = client.post(URL, json={**CALLBACK, "operation": "expire_snapshots"})
 
@@ -365,7 +365,7 @@ def test_the_callback_of_the_runs_own_operation_is_forwarded() -> None:
     runs = InMemoryTableMaintenanceRunsRepo()
     _stored_run(runs, with_filters=False)
     service, results = _callback_service(runs)
-    client = build_client(process_table_maintenance_callback=service)
+    client = build_client(forward_table_maintenance_result=service)
 
     named = client.post(URL, json={**CALLBACK, "operation": "rewrite_data_files"})
     unnamed = client.post(URL, json=CALLBACK)
@@ -377,7 +377,7 @@ def test_the_callback_of_the_runs_own_operation_is_forwarded() -> None:
 def test_callback_for_unknown_run_returns_404() -> None:
     """A callback for an unknown run returns 404."""
     service, _ = _callback_service(InMemoryTableMaintenanceRunsRepo())
-    client = build_client(process_table_maintenance_callback=service)
+    client = build_client(forward_table_maintenance_result=service)
 
     response = client.post(URL, json=CALLBACK)
 
@@ -389,7 +389,7 @@ def test_callback_with_unknown_operation_returns_422() -> None:
     runs = InMemoryTableMaintenanceRunsRepo()
     _stored_run(runs, with_filters=False)
     service, results = _callback_service(runs)
-    client = build_client(process_table_maintenance_callback=service)
+    client = build_client(forward_table_maintenance_result=service)
 
     response = client.post(URL, json={**CALLBACK, "operation": "defragment"})
 
@@ -429,8 +429,8 @@ def test_get_run_with_an_old_uuid_is_422() -> None:
 def test_callback_with_an_old_uuid_is_422() -> None:
     """A callback naming a run id of the old UUID shape answers 422 naming the mr- shape and sends nothing."""
     results = RecordingSendMaintenanceResultGateway()
-    service = ProcessTableMaintenanceCallbackService(InMemoryTableMaintenanceRunsRepo(), results)
-    client = build_client(process_table_maintenance_callback=service)
+    service = ForwardTableMaintenanceResultService(InMemoryTableMaintenanceRunsRepo(), results)
+    client = build_client(forward_table_maintenance_result=service)
 
     response = client.post(f"/v1/table-maintenance-runs/{OLD_UUID_RUN_ID}/result", json=CALLBACK)
 

@@ -68,7 +68,7 @@ class ReadMaintenanceJobEvidenceK8sGateway(ReadMaintenanceJobEvidenceGateway):
         )
         containers = tuple(exit_ for exit_ in (_container_exit(pod) for pod in pods) if exit_ is not None)
         return ReadMaintenanceJobEvidenceGatewayOutput(
-            execution_id=execution_id, error=error, containers=containers, driver_started_at=driver_started_at(pods)
+            execution_id=execution_id, error=error, containers=containers, started_running_at=driver_started_at(pods)
         )
 
     def _application_status(self, input: ReadMaintenanceJobEvidenceGatewayInput) -> tuple[str | None, str | None]:  # noqa: A002
@@ -94,6 +94,10 @@ def _spark_status(pod: V1Pod) -> V1ContainerStatus | None:
     return next((s for s in statuses if s.name in SPARK_CONTAINERS), statuses[0] if statuses else None)
 
 
+# The Spark role of a pod, as the job's coordinator or one of its workers.
+_ROLES = {"driver": "coordinator", "executor": "worker"}
+
+
 def _container_exit(pod: V1Pod) -> JobContainerExit | None:
     """Return how the pod's Spark container terminated, or None while it has not."""
     status = _spark_status(pod)
@@ -105,7 +109,7 @@ def _container_exit(pod: V1Pod) -> JobContainerExit | None:
     if terminated is None:
         return None
     return JobContainerExit(
-        role=(pod.metadata.labels or {}).get(SPARK_ROLE_LABEL, ""),
+        role=_ROLES.get((pod.metadata.labels or {}).get(SPARK_ROLE_LABEL, ""), ""),
         reason=terminated.reason,
         exit_code=terminated.exit_code,
         message=terminated.message,

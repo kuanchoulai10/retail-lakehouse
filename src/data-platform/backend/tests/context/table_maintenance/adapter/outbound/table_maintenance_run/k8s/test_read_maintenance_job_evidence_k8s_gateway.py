@@ -115,7 +115,7 @@ def test_evidence_of_a_deleted_application_is_empty_but_lists_pods():
     gateway, _, _ = _gateway(ApiException(status=404), _pod("exec-1", "executor", state=_terminated("OOMKilled", 137)))
     out = gateway.read(INPUT)
     assert (out.execution_id, out.error) == (None, None)
-    assert out.containers == (JobContainerExit(role="executor", reason="OOMKilled", exit_code=137, message=None),)
+    assert out.containers == (JobContainerExit(role="worker", reason="OOMKilled", exit_code=137, message=None),)
 
 
 def test_other_api_errors_propagate():
@@ -136,9 +136,9 @@ def test_evidence_lists_terminated_driver_and_executor_containers():
     )
     assert gateway.read(INPUT).containers == (
         JobContainerExit(
-            role="driver", reason="Error", exit_code=1, message="java.lang.OutOfMemoryError: Java heap space"
+            role="coordinator", reason="Error", exit_code=1, message="java.lang.OutOfMemoryError: Java heap space"
         ),
-        JobContainerExit(role="executor", reason="OOMKilled", exit_code=137, message=None),
+        JobContainerExit(role="worker", reason="OOMKilled", exit_code=137, message=None),
     )
 
 
@@ -147,7 +147,7 @@ def test_evidence_reads_last_state_of_a_restarted_container():
     running = V1ContainerState(running=V1ContainerStateRunning())
     gateway, _, _ = _gateway(FAILED_APP, _pod("exec-1", "executor", state=running, last_state=_terminated("Error", 52)))
     assert gateway.read(INPUT).containers == (
-        JobContainerExit(role="executor", reason="Error", exit_code=52, message=None),
+        JobContainerExit(role="worker", reason="Error", exit_code=52, message=None),
     )
 
 
@@ -158,7 +158,7 @@ def test_a_pod_without_a_spark_container_name_reads_its_first_container():
     pod.status.container_statuses = pod.status.container_statuses[1:]
     gateway, _, _ = _gateway(FAILED_APP, pod)
     assert gateway.read(INPUT).containers == (
-        JobContainerExit(role="executor", reason="Error", exit_code=52, message=None),
+        JobContainerExit(role="worker", reason="Error", exit_code=52, message=None),
     )
 
 
@@ -170,11 +170,11 @@ def test_evidence_reports_when_the_driver_started():
         FAILED_APP, _pod("driver", "driver", state=ended), _pod("exec-1", "executor", state=_terminated("Error", 52))
     )
 
-    assert gateway.read(INPUT).driver_started_at == started.isoformat()
+    assert gateway.read(INPUT).started_running_at == started.isoformat()
 
 
 def test_evidence_without_a_started_driver_has_no_driver_start():
     """An attempt whose driver never started leaves the driver start out."""
     gateway, _, _ = _gateway(FAILED_APP, _pod("exec-1", "executor", state=_terminated("Error", 52)))
 
-    assert gateway.read(INPUT).driver_started_at is None
+    assert gateway.read(INPUT).started_running_at is None

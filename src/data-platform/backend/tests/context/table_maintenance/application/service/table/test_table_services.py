@@ -256,7 +256,7 @@ def test_trigger_on_unmanaged_table_conflicts(tables_repo, signals, now):
 
 @pytest.mark.parametrize("operations", [(), ("defrag",)])
 def test_trigger_invalid_operations(tables_repo, signals, now, operations):
-    """Invalid operations are rejected and nothing is signalled."""
+    """Invalid operations are rejected and nothing is notified."""
     _managed(tables_repo, now)
     with pytest.raises(ValidationError):
         TriggerTableMaintenanceService(tables_repo, signals).execute(

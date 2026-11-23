@@ -166,14 +166,14 @@ class ScriptedMaintenanceActivities:
         if self.status_hook is not None:
             await self.status_hook(app_name, activity.info().scheduled_time)
         if self._vanished(app_name, activity.info().scheduled_time):
-            return {"state": "NOT_FOUND", "error": None, "driver_started_at": None}
+            return {"state": "NOT_FOUND", "error": None, "started_running_at": None}
         driver_started_at = self._driver_started_at(app_name, activity.info().scheduled_time)
         unscripted = {"state": "RUNNING" if driver_started_at else "PENDING", "error": None}
         state = self.states.get(app_name, unscripted)
         if isinstance(state, list):
             calls = self.status_calls.count(app_name)
             state = state[min(calls, len(state)) - 1]
-        return {"driver_started_at": driver_started_at, **state}
+        return {"started_running_at": driver_started_at, **state}
 
     def _vanished(self, app_name: str, polled_at: datetime) -> bool:
         deleted_at = self._deleted_since_last_submit(app_name)
@@ -246,8 +246,8 @@ class ScriptedMaintenanceActivities:
             "attempt": request["attempt"],
         }
 
-    @activity.defn(name=TableMaintenanceActivity.GET_MAINTENANCE_JOB_PODS)
-    async def get_maintenance_job_pods(self, request: dict) -> dict:
+    @activity.defn(name=TableMaintenanceActivity.GET_MAINTENANCE_JOB_PROCESSES)
+    async def get_maintenance_job_processes(self, request: dict) -> dict:
         """Report the scripted live pods of the attempt and record the poll."""
         app_name = self.app_name(request["run_id"], request["operation"], request["attempt"])
         scheduled = activity.info().scheduled_time
@@ -259,7 +259,7 @@ class ScriptedMaintenanceActivities:
         deleted_at = self.delete_times.get(app_name)
         if app_name in self.pods_live_for and deleted_at is not None:
             live = live or scheduled - deleted_at < self.pods_live_for[app_name]
-        return {"live_pods": [f"{app_name}-driver"] if live else []}
+        return {"live_processes": [f"{app_name}-driver"] if live else []}
 
     def all(self) -> list:
         """Return every scripted activity for worker registration."""
@@ -268,7 +268,7 @@ class ScriptedMaintenanceActivities:
             self.get_maintenance_job_status,
             self.record_table_maintenance_operation_result,
             self.delete_maintenance_job,
-            self.get_maintenance_job_pods,
+            self.get_maintenance_job_processes,
             self.record_maintenance_attempt_running,
             self.raise_table_maintenance_run_priority,
             self.skip_maintenance_run,

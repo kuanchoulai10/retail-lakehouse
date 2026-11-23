@@ -18,8 +18,8 @@ import type {
 } from 'msw';
 
 import type {
-  ProcessTableMaintenanceCallbackApiRequest,
-  ProcessTableMaintenanceCallbackApiResponse,
+  ForwardTableMaintenanceResultApiRequest,
+  ForwardTableMaintenanceResultApiResponse,
   TableMaintenanceRunApiResponse
 } from '../model';
 
@@ -28,7 +28,7 @@ export const getGetTableMaintenanceRunResponseMock = (overrideResponse: Partial<
         [faker.string.alphanumeric(5)]: faker.number.int()
       }, operation: faker.string.alpha({length: {min: 10, max: 20}}), priority: faker.string.alpha({length: {min: 10, max: 20}}), procedure_args: {}, run_id: faker.string.alpha({length: {min: 10, max: 20}}), skip_reason: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), started_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table_uuid: faker.string.alpha({length: {min: 10, max: 20}}), trigger: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
-export const getProcessTableMaintenanceCallbackResponseMock = (overrideResponse: Partial<Extract<ProcessTableMaintenanceCallbackApiResponse, object>> = {}): ProcessTableMaintenanceCallbackApiResponse => ({accepted: faker.datatype.boolean(), ...overrideResponse})
+export const getForwardTableMaintenanceResultResponseMock = (overrideResponse: Partial<Extract<ForwardTableMaintenanceResultApiResponse, object>> = {}): ForwardTableMaintenanceResultApiResponse => ({accepted: faker.datatype.boolean(), ...overrideResponse})
 
 export const getListTableMaintenanceRunsResponseMock = (): TableMaintenanceRunApiResponse[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({attempts: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({attempt: faker.number.int(), error: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), event_log_finished: faker.helpers.arrayElement([faker.datatype.boolean(),null,]), failure_class: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), finished_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), job_name: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), next_size: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), next_step: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), size: faker.string.alpha({length: {min: 10, max: 20}}), started_at: faker.date.past().toISOString().slice(0, 19) + 'Z', started_running_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), status: faker.string.alpha({length: {min: 10, max: 20}})})), created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', error: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), execution_ref: faker.string.alpha({length: {min: 10, max: 20}}), filters: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({spec_id: faker.number.int(), where: faker.string.alpha({length: {min: 10, max: 20}})})), finished_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), metrics: {
         [faker.string.alphanumeric(5)]: faker.number.int()
@@ -47,13 +47,13 @@ export const getGetTableMaintenanceRunMockHandler = (overrideResponse?: TableMai
   }, options)
 }
 
-export const getProcessTableMaintenanceCallbackMockHandler = (overrideResponse?: ProcessTableMaintenanceCallbackApiResponse | ((info: Parameters<HttpResponseResolver<{ runId: string }, ProcessTableMaintenanceCallbackApiRequest>>[0]) => Promise<ProcessTableMaintenanceCallbackApiResponse> | ProcessTableMaintenanceCallbackApiResponse), options?: RequestHandlerOptions) => {
-  return http.post<{ runId: string }, ProcessTableMaintenanceCallbackApiRequest>('*/v1/table-maintenance-runs/:runId/result', async (info: Parameters<HttpResponseResolver<{ runId: string }, ProcessTableMaintenanceCallbackApiRequest>>[0]) => {
+export const getForwardTableMaintenanceResultMockHandler = (overrideResponse?: ForwardTableMaintenanceResultApiResponse | ((info: Parameters<HttpResponseResolver<{ runId: string }, ForwardTableMaintenanceResultApiRequest>>[0]) => Promise<ForwardTableMaintenanceResultApiResponse> | ForwardTableMaintenanceResultApiResponse), options?: RequestHandlerOptions) => {
+  return http.post<{ runId: string }, ForwardTableMaintenanceResultApiRequest>('*/v1/table-maintenance-runs/:runId/result', async (info: Parameters<HttpResponseResolver<{ runId: string }, ForwardTableMaintenanceResultApiRequest>>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getProcessTableMaintenanceCallbackResponseMock(),
+    : getForwardTableMaintenanceResultResponseMock(),
       { status: 202
       })
   }, options)
@@ -72,6 +72,6 @@ export const getListTableMaintenanceRunsMockHandler = (overrideResponse?: TableM
 }
 export const getTableMaintenanceRunsMock = () => [
   getGetTableMaintenanceRunMockHandler(),
-  getProcessTableMaintenanceCallbackMockHandler(),
+  getForwardTableMaintenanceResultMockHandler(),
   getListTableMaintenanceRunsMockHandler()
 ]

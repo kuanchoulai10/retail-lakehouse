@@ -13,11 +13,17 @@ from tests.architecture.contexts import BACKEND, context_dir, context_names
 if TYPE_CHECKING:
     from pathlib import Path
 
+# A term matches whole tokens only, so each plural or inflected form a name could take is listed too.
 BANNED = {
     "temporal",
     "workflow",
+    "workflows",
     "signal",
+    "signals",
+    "signalled",
+    "signaled",
     "activity",
+    "activities",
     "spark",
     "k8s",
     "kubernetes",
@@ -26,6 +32,16 @@ BANNED = {
     "iceberg_rest",
     "kafka",
     "polaris",
+    "pod",
+    "pods",
+    "driver",
+    "drivers",
+    "executor",
+    "executors",
+    "heap",
+    "heaps",
+    "callback",
+    "callbacks",
 }
 
 
@@ -148,6 +164,22 @@ def test_banned_term_detector_catches_camel_and_snake():
     assert banned_terms("py_iceberg_catalog") == {"pyiceberg"}
     assert banned_terms("iceberg_py") == set()
     assert banned_terms("PyTable") == set()
+
+
+def test_banned_term_detector_catches_runtime_process_words_and_their_plurals():
+    """Pod, driver, executor, heap and callback words are caught in any form a name gives them."""
+    assert banned_terms("live_pods") == {"pods"}
+    assert banned_terms("GetMaintenanceJobPods") == {"pods"}
+    assert banned_terms("driver_started_at") == {"driver"}
+    assert banned_terms("executor_instances") == {"executor"}
+    assert banned_terms("executors") == {"executors"}
+    assert banned_terms("PeakHeapUse") == {"heap"}
+    assert banned_terms("ProcessTableMaintenanceCallback") == {"callback"}
+    assert banned_terms("SIGNALLED") == {"signalled"}
+    assert banned_terms("running_workflows") == {"workflows"}
+    assert banned_terms("activities") == {"activities"}
+    assert banned_terms("podium_seat") == set()
+    assert banned_terms("screwdriver") == set()
 
 
 def test_identifier_strings_are_scanned_but_docstrings_and_prose_are_not():

@@ -18,12 +18,12 @@ from kubernetes.client import (
 from kubernetes.client.exceptions import ApiException
 
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
-    ReadMaintenanceJobPodsK8sGateway,
+    ReadMaintenanceJobProcessesK8sGateway,
     SparkK8sConfig,
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
-    ReadMaintenanceJobPodsGatewayInput,
-    ReadMaintenanceJobPodsGatewayOutput,
+    ReadMaintenanceJobProcessesGatewayInput,
+    ReadMaintenanceJobProcessesGatewayOutput,
 )
 
 CONFIG = SparkK8sConfig(
@@ -36,7 +36,7 @@ CONFIG = SparkK8sConfig(
 )
 RUN_ID = "mr-01kaa4zc9qf3v8d2m6xk0w7b1n"
 RUN_ID_SUFFIX = "01kaa4zc9qf3v8d2m6xk0w7b1n"
-INPUT = ReadMaintenanceJobPodsGatewayInput(run_id=RUN_ID, operation="rewrite_data_files", attempt=2)
+INPUT = ReadMaintenanceJobProcessesGatewayInput(run_id=RUN_ID, operation="rewrite_data_files", attempt=2)
 
 
 def _pod(name: str, phase: str | None, *, deleting: bool = False) -> V1Pod:
@@ -52,10 +52,10 @@ OUR_SELECTOR = (
 )
 
 
-def _gateway(*pods: V1Pod) -> tuple[ReadMaintenanceJobPodsK8sGateway, MagicMock]:
+def _gateway(*pods: V1Pod) -> tuple[ReadMaintenanceJobProcessesK8sGateway, MagicMock]:
     api = MagicMock(name="core-v1-api")
     api.list_namespaced_pod.return_value = V1PodList(items=list(pods))
-    return ReadMaintenanceJobPodsK8sGateway(api, CONFIG), api
+    return ReadMaintenanceJobProcessesK8sGateway(api, CONFIG), api
 
 
 def test_read_pods_selects_the_attempt_by_its_labels():
@@ -79,28 +79,30 @@ def test_read_pods_counts_pending_running_and_unknown_as_live():
         _pod("exec-4", "Failed"),
     )
 
-    assert gateway.read(INPUT) == ReadMaintenanceJobPodsGatewayOutput(live_pods=("driver", "exec-1", "exec-2"))
+    assert gateway.read(INPUT) == ReadMaintenanceJobProcessesGatewayOutput(
+        live_processes=("driver", "exec-1", "exec-2")
+    )
 
 
 def test_read_pods_counts_a_terminating_running_pod_as_live():
     """A running pod that is being deleted can still write, so it is live."""
     gateway, _ = _gateway(_pod("driver", "Running", deleting=True))
 
-    assert gateway.read(INPUT).live_pods == ("driver",)
+    assert gateway.read(INPUT).live_processes == ("driver",)
 
 
 def test_read_pods_counts_a_pod_without_a_phase_as_live():
     """A pod whose phase is not reported yet is live."""
     gateway, _ = _gateway(_pod("driver", None))
 
-    assert gateway.read(INPUT).live_pods == ("driver",)
+    assert gateway.read(INPUT).live_processes == ("driver",)
 
 
 def test_read_pods_with_no_pod_is_empty():
     """No pod with the attempt's labels means no live pod."""
     gateway, _ = _gateway()
 
-    assert gateway.read(INPUT).live_pods == ()
+    assert gateway.read(INPUT).live_processes == ()
 
 
 def test_read_pods_propagates_api_errors():
@@ -109,7 +111,7 @@ def test_read_pods_propagates_api_errors():
     api.list_namespaced_pod.side_effect = ApiException(status=500)
 
     with pytest.raises(ApiException):
-        ReadMaintenanceJobPodsK8sGateway(api, CONFIG).read(INPUT)
+        ReadMaintenanceJobProcessesK8sGateway(api, CONFIG).read(INPUT)
 
 
 def test_read_pods_reports_when_the_driver_started():
@@ -133,11 +135,11 @@ def test_read_pods_reports_when_the_driver_started():
     )
     gateway, _ = _gateway(driver)
 
-    assert gateway.read(INPUT).driver_started_at == started.isoformat()
+    assert gateway.read(INPUT).started_running_at == started.isoformat()
 
 
 def test_read_pods_without_a_started_driver_has_no_driver_start():
     """A driver that has not started leaves the driver start out."""
     gateway, _ = _gateway(_pod("driver", "Pending"))
 
-    assert gateway.read(INPUT).driver_started_at is None
+    assert gateway.read(INPUT).started_running_at is None

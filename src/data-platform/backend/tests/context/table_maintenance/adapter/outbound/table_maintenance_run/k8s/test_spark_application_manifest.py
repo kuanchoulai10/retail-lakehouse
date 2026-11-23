@@ -44,7 +44,7 @@ INPUT = SubmitMaintenanceJobGatewayInput(
     table="orders",
     where=[],
     procedure_args={},
-    callback_url="http://cp/callback",
+    result_report_url="http://cp/callback",
 )
 
 HADOOP_MAVEN = "https://repo1.maven.org/maven2/org/apache/hadoop"

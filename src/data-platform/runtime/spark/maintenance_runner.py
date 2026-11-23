@@ -103,7 +103,7 @@ def run_maintenance(
         except Exception:
             logger.exception("Stopping the Spark session failed")
     try:
-        delivered = post(request.callback_url, body)
+        delivered = post(request.result_report_url, body)
     except Exception:
         logger.exception("Result callback raised")
         delivered = False

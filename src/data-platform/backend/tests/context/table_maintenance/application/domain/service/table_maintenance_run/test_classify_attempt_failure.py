@@ -15,12 +15,12 @@ from context.table_maintenance.application.domain.service.table_maintenance_run 
 
 def executor(reason: str | None, exit_code: int | None) -> ContainerExit:
     """Build a terminated executor container."""
-    return ContainerExit(role="executor", reason=reason, exit_code=exit_code, message=None)
+    return ContainerExit(role="worker", reason=reason, exit_code=exit_code, message=None)
 
 
 def driver(reason: str | None, exit_code: int | None, message: str | None = None) -> ContainerExit:
     """Build a terminated driver container."""
-    return ContainerExit(role="driver", reason=reason, exit_code=exit_code, message=message)
+    return ContainerExit(role="coordinator", reason=reason, exit_code=exit_code, message=message)
 
 
 def classify(ended_by: AttemptEnding, *texts: str, containers: tuple[ContainerExit, ...] = ()) -> FailureClass:

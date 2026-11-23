@@ -12,7 +12,7 @@ class TableMaintenanceActivity(StrEnum):
     GET_MAINTENANCE_JOB_STATUS = "get_maintenance_job_status"
     RECORD_MAINTENANCE_OPERATION_RESULT = "record_maintenance_operation_result"
     DELETE_MAINTENANCE_JOB = "delete_maintenance_job"
-    GET_MAINTENANCE_JOB_PODS = "get_maintenance_job_pods"
+    GET_MAINTENANCE_JOB_PROCESSES = "get_maintenance_job_processes"
     RECORD_MAINTENANCE_ATTEMPT_RUNNING = "record_maintenance_attempt_running"
     RAISE_MAINTENANCE_RUN_PRIORITY = "raise_maintenance_run_priority"
     SKIP_MAINTENANCE_RUN = "skip_maintenance_run"

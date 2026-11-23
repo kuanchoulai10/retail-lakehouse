@@ -38,8 +38,8 @@ from tests.context.table_maintenance.fakes.scripted_read_maintenance_event_log_g
 from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_evidence_gateway import (
     ScriptedReadMaintenanceJobEvidenceGateway,
 )
-from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_pods_gateway import (
-    ScriptedReadMaintenanceJobPodsGateway,
+from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_processes_gateway import (
+    ScriptedReadMaintenanceJobProcessesGateway,
 )
 from tests.context.table_maintenance.fakes.scripted_read_table_metric_history_gateway import (
     ScriptedReadTableMetricHistoryGateway,
@@ -81,7 +81,7 @@ def fake_gateways() -> Gateways:
         submit_maintenance_job=RecordingSubmitMaintenanceJobGateway(),
         read_maintenance_job=FakeReadMaintenanceJobGateway(),
         delete_maintenance_job=RecordingDeleteMaintenanceJobGateway(),
-        read_maintenance_job_pods=ScriptedReadMaintenanceJobPodsGateway(),
+        read_maintenance_job_processes=ScriptedReadMaintenanceJobProcessesGateway(),
         read_maintenance_job_evidence=ScriptedReadMaintenanceJobEvidenceGateway(),
         read_maintenance_event_log=ScriptedReadMaintenanceEventLogGateway(),
         read_table_metric_history=ScriptedReadTableMetricHistoryGateway(),

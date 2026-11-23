@@ -24,7 +24,7 @@ _ATTEMPT_STATUSES = frozenset({RunStatus.QUEUED, RunStatus.RUNNING, RunStatus.SU
 class OperationAttempt(ValueObject):
     """Record one attempt of a run's maintenance operation: its job, size, how it ended and what followed.
 
-    ``started_at`` is when the attempt was submitted; ``started_running_at`` is when its driver started
+    ``started_at`` is when the attempt was submitted; ``started_running_at`` is when its coordinator started
     running, None while the attempt waits in its queue. ``job_name`` names the attempt's own Spark job,
     None until it is known. ``size`` is the size the attempt runs at. ``event_log_finished`` is
     None when the attempt's event log could not be read.

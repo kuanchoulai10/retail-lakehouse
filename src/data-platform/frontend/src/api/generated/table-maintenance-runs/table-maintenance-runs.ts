@@ -24,10 +24,10 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ForwardTableMaintenanceResultApiRequest,
+  ForwardTableMaintenanceResultApiResponse,
   HTTPValidationError,
   ListTableMaintenanceRunsParams,
-  ProcessTableMaintenanceCallbackApiRequest,
-  ProcessTableMaintenanceCallbackApiResponse,
   TableMaintenanceRunApiResponse
 } from '../model';
 
@@ -154,7 +154,7 @@ export function useGetTableMaintenanceRun<TData = Awaited<ReturnType<typeof getT
 
 
 
-export const getProcessTableMaintenanceCallbackUrl = (runId: string,) => {
+export const getForwardTableMaintenanceResultUrl = (runId: string,) => {
 
 
 
@@ -166,10 +166,10 @@ export const getProcessTableMaintenanceCallbackUrl = (runId: string,) => {
  * Accept the result a Spark job reports for one attempt of the run.
  *
  * The run names its operation. A body that names another one is refused with 422.
- * @summary Process Table Maintenance Callback
+ * @summary Forward Table Maintenance Result
  */
-export const processTableMaintenanceCallback = async (runId: string,
-    processTableMaintenanceCallbackApiRequest: ProcessTableMaintenanceCallbackApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<ProcessTableMaintenanceCallbackApiResponse> => {
+export const forwardTableMaintenanceResult = async (runId: string,
+    forwardTableMaintenanceResultApiRequest: ForwardTableMaintenanceResultApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<ForwardTableMaintenanceResultApiResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -185,12 +185,12 @@ export const processTableMaintenanceCallback = async (runId: string,
     }
     return headers;
   };
-return apiFetch<ProcessTableMaintenanceCallbackApiResponse>(getProcessTableMaintenanceCallbackUrl(runId),
+return apiFetch<ForwardTableMaintenanceResultApiResponse>(getForwardTableMaintenanceResultUrl(runId),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(processTableMaintenanceCallbackApiRequest)
+    body: JSON.stringify(forwardTableMaintenanceResultApiRequest)
   }
 );}
 
@@ -198,13 +198,13 @@ return apiFetch<ProcessTableMaintenanceCallbackApiResponse>(getProcessTableMaint
 
 
 
-export const getProcessTableMaintenanceCallbackMutationKey = () => ['processTableMaintenanceCallback'] as const;
+export const getForwardTableMaintenanceResultMutationKey = () => ['forwardTableMaintenanceResult'] as const;
 
-export const getProcessTableMaintenanceCallbackMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof processTableMaintenanceCallback>>, TError,ProcessTableMaintenanceCallbackMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof processTableMaintenanceCallback>>, TError,ProcessTableMaintenanceCallbackMutationVariables, TContext> => {
+export const getForwardTableMaintenanceResultMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof forwardTableMaintenanceResult>>, TError,ForwardTableMaintenanceResultMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof forwardTableMaintenanceResult>>, TError,ForwardTableMaintenanceResultMutationVariables, TContext> => {
 
-const mutationKey = getProcessTableMaintenanceCallbackMutationKey();
+const mutationKey = getForwardTableMaintenanceResultMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -214,10 +214,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof processTableMaintenanceCallback>>, ProcessTableMaintenanceCallbackMutationVariables> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof forwardTableMaintenanceResult>>, ForwardTableMaintenanceResultMutationVariables> = (props) => {
           const {runId,data} = props ?? {};
 
-          return  processTableMaintenanceCallback(runId,data,requestOptions)
+          return  forwardTableMaintenanceResult(runId,data,requestOptions)
         }
 
 
@@ -227,23 +227,23 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type ProcessTableMaintenanceCallbackMutationResult = NonNullable<Awaited<ReturnType<typeof processTableMaintenanceCallback>>>
-    export type ProcessTableMaintenanceCallbackMutationBody = ProcessTableMaintenanceCallbackApiRequest
-    export type ProcessTableMaintenanceCallbackMutationError = HTTPValidationError
-    export type ProcessTableMaintenanceCallbackMutationVariables = {runId: string;data: ProcessTableMaintenanceCallbackApiRequest}
+    export type ForwardTableMaintenanceResultMutationResult = NonNullable<Awaited<ReturnType<typeof forwardTableMaintenanceResult>>>
+    export type ForwardTableMaintenanceResultMutationBody = ForwardTableMaintenanceResultApiRequest
+    export type ForwardTableMaintenanceResultMutationError = HTTPValidationError
+    export type ForwardTableMaintenanceResultMutationVariables = {runId: string;data: ForwardTableMaintenanceResultApiRequest}
 
     /**
- * @summary Process Table Maintenance Callback
+ * @summary Forward Table Maintenance Result
  */
-export const useProcessTableMaintenanceCallback = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof processTableMaintenanceCallback>>, TError,ProcessTableMaintenanceCallbackMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+export const useForwardTableMaintenanceResult = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof forwardTableMaintenanceResult>>, TError,ForwardTableMaintenanceResultMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof processTableMaintenanceCallback>>,
+        Awaited<ReturnType<typeof forwardTableMaintenanceResult>>,
         TError,
-        ProcessTableMaintenanceCallbackMutationVariables,
+        ForwardTableMaintenanceResultMutationVariables,
         TContext
       > => {
-      return useMutation(getProcessTableMaintenanceCallbackMutationOptions(options), queryClient);
+      return useMutation(getForwardTableMaintenanceResultMutationOptions(options), queryClient);
     }
     export const getListTableMaintenanceRunsUrl = (tableUuid: string,
     params?: ListTableMaintenanceRunsParams,) => {

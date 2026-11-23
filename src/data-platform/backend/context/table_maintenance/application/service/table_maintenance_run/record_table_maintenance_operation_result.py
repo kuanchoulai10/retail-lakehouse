@@ -15,7 +15,7 @@ from context.table_maintenance.application.domain.model.shared import (
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
     AttentionMark,
-    PeakHeapUse,
+    PeakMemoryUse,
     RecordedAttempt,
     TableStatus,
 )
@@ -72,8 +72,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _UNKNOWN_ERROR = "unknown error"
-_PEAK_DRIVER_HEAP_BYTES = "peak_driver_heap_bytes"
-_PEAK_EXECUTOR_HEAP_BYTES = "peak_executor_heap_bytes"
+_PEAK_COORDINATOR_MEMORY_BYTES = "peak_coordinator_memory_bytes"
+_PEAK_WORKER_MEMORY_BYTES = "peak_worker_memory_bytes"
 _ENDINGS_WITH_EVIDENCE = frozenset({AttemptEnding.RESULT, AttemptEnding.JOB_FAILED})
 _NEEDS_ATTENTION_REASON = "out of memory at size L"
 
@@ -141,7 +141,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
                     request.attempt,
                     request.metrics,
                     request.now,
-                    started_running_at=_driver_started_at(evidence),
+                    started_running_at=_started_running_at(evidence),
                     event_log_finished=event_log_finished,
                 )
             else:
@@ -174,7 +174,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
             error,
             request.now,
             failure_class=failure_class,
-            started_running_at=_driver_started_at(evidence),
+            started_running_at=_started_running_at(evidence),
             event_log_finished=event_log_finished,
             next_attempt=next_attempt,
         )
@@ -233,9 +233,9 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
             return
         if request.succeeded:
             ran_at = _started_attempt(run, request.attempt).size
-            peak = PeakHeapUse(
-                driver_bytes=_measured(request.metrics.get(_PEAK_DRIVER_HEAP_BYTES)),
-                executor_bytes=_measured(request.metrics.get(_PEAK_EXECUTOR_HEAP_BYTES)),
+            peak = PeakMemoryUse(
+                coordinator_bytes=_measured(request.metrics.get(_PEAK_COORDINATOR_MEMORY_BYTES)),
+                worker_bytes=_measured(request.metrics.get(_PEAK_WORKER_MEMORY_BYTES)),
             )
             table.record_operation_result(
                 operation,
@@ -275,11 +275,11 @@ def _planned_policy(request: RecordTableMaintenanceOperationResultUseCaseInput) 
     )
 
 
-def _driver_started_at(evidence: ReadMaintenanceJobEvidenceGatewayOutput | None) -> datetime | None:
-    """Return when the attempt's driver started as the evidence reports it, or None when it does not."""
-    if evidence is None or evidence.driver_started_at is None:
+def _started_running_at(evidence: ReadMaintenanceJobEvidenceGatewayOutput | None) -> datetime | None:
+    """Return when the attempt's coordinator started as the evidence reports it, or None when it does not."""
+    if evidence is None or evidence.started_running_at is None:
         return None
-    return datetime.fromisoformat(evidence.driver_started_at)
+    return datetime.fromisoformat(evidence.started_running_at)
 
 
 def _measured(value: int | None) -> int | None:

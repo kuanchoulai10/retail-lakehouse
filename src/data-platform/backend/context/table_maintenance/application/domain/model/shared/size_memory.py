@@ -8,7 +8,7 @@ from base import ValueObject
 
 
 class SizeMemory(ValueObject):
-    """The JVM heap one compute size gives its driver and each executor, in bytes."""
+    """The JVM heap one compute size gives its coordinator and each worker, in bytes."""
 
-    driver_bytes: PositiveInt
-    executor_bytes: PositiveInt
+    coordinator_bytes: PositiveInt
+    worker_bytes: PositiveInt

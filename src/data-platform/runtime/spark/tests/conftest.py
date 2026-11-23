@@ -26,7 +26,7 @@ def make_request():
                     "partial-progress.enabled": True,
                 },
             },
-            "callback_url": "http://cb/result",
+            "result_report_url": "http://cb/result",
         }
         data.update(overrides)
         return JobRequest.from_json(json.dumps(data))

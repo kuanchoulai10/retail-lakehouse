@@ -93,7 +93,7 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
                 table=table.name.table,
                 where=[] if not all(wheres) else wheres,
                 procedure_args=dict(run.procedure_args),
-                callback_url=f"{request.callback_base_url.rstrip('/')}/v1/table-maintenance-runs/{request.run_id}/result",
+                result_report_url=f"{request.result_report_base_url.rstrip('/')}/v1/table-maintenance-runs/{request.run_id}/result",
                 size=size.value,
                 priority=run.priority.value,
             )

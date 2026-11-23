@@ -1517,6 +1517,79 @@
         "title": "ExpireSnapshotsTargetApiRequest",
         "type": "object"
       },
+      "ForwardTableMaintenanceResultApiRequest": {
+        "description": "Carry the result a Spark job reports for one operation attempt.",
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "metrics": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Metrics",
+            "type": "object"
+          },
+          "operation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operation"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "succeeded": {
+            "title": "Succeeded",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "attempt",
+          "succeeded"
+        ],
+        "title": "ForwardTableMaintenanceResultApiRequest",
+        "type": "object"
+      },
+      "ForwardTableMaintenanceResultApiResponse": {
+        "description": "Tell whether the callback was accepted.",
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted"
+        ],
+        "title": "ForwardTableMaintenanceResultApiResponse",
+        "type": "object"
+      },
       "GenericTableApiResponse": {
         "description": "Describe a generic table: format, base location, doc and properties; it has no schema or snapshots.",
         "properties": {
@@ -2418,79 +2491,6 @@
           "table_uuid"
         ],
         "title": "PolicyTargetApiResponse",
-        "type": "object"
-      },
-      "ProcessTableMaintenanceCallbackApiRequest": {
-        "description": "Carry the result a Spark job reports for one operation attempt.",
-        "properties": {
-          "attempt": {
-            "title": "Attempt",
-            "type": "integer"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          },
-          "metrics": {
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "title": "Metrics",
-            "type": "object"
-          },
-          "operation": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Operation"
-          },
-          "run_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Run Id"
-          },
-          "succeeded": {
-            "title": "Succeeded",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "attempt",
-          "succeeded"
-        ],
-        "title": "ProcessTableMaintenanceCallbackApiRequest",
-        "type": "object"
-      },
-      "ProcessTableMaintenanceCallbackApiResponse": {
-        "description": "Tell whether the callback was accepted.",
-        "properties": {
-          "accepted": {
-            "title": "Accepted",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "accepted"
-        ],
-        "title": "ProcessTableMaintenanceCallbackApiResponse",
         "type": "object"
       },
       "ReconciliationMeasurementApiResponse": {
@@ -8262,7 +8262,7 @@
     "/v1/table-maintenance-runs/{run_id}/result": {
       "post": {
         "description": "Accept the result a Spark job reports for one attempt of the run.\n\nThe run names its operation. A body that names another one is refused with 422.",
-        "operationId": "process_table_maintenance_callback",
+        "operationId": "forward_table_maintenance_result",
         "parameters": [
           {
             "description": "An `mr-` id (prefix, dash, 26 lowercase Crockford base32 characters; ADR 0011).",
@@ -8280,7 +8280,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ProcessTableMaintenanceCallbackApiRequest"
+                "$ref": "#/components/schemas/ForwardTableMaintenanceResultApiRequest"
               }
             }
           },
@@ -8291,7 +8291,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProcessTableMaintenanceCallbackApiResponse"
+                  "$ref": "#/components/schemas/ForwardTableMaintenanceResultApiResponse"
                 }
               }
             },
@@ -8308,7 +8308,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Process Table Maintenance Callback",
+        "summary": "Forward Table Maintenance Result",
         "tags": [
           "table-maintenance-runs"
         ]

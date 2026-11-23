@@ -184,24 +184,24 @@ def _compute_size(size: PlatformComputeSize) -> tuple[GetPlatformSettingsUseCase
     prefix = f"compute_size_{name.lower()}"
     return (
         _item(
-            f"{prefix}_driver_memory",
-            f"{name} driver memory",
-            size.driver_memory,
+            f"{prefix}_coordinator_memory",
+            f"{name} coordinator memory",
+            size.coordinator_memory,
             None,
-            f"The memory of the Spark driver when an operation runs at size {name}.",
+            f"The memory of the coordinator process (the Spark driver) when an operation runs at size {name}.",
         ),
         _item(
-            f"{prefix}_executor_memory",
-            f"{name} executor memory",
-            size.executor_memory,
+            f"{prefix}_worker_memory",
+            f"{name} worker memory",
+            size.worker_memory,
             None,
-            f"The memory of each Spark executor when an operation runs at size {name}.",
+            f"The memory of each worker process (a Spark executor) when an operation runs at size {name}.",
         ),
         _item(
-            f"{prefix}_executor_instances",
-            f"{name} executors",
-            size.executor_instances,
-            "executors",
-            f"How many Spark executors an operation gets when it runs at size {name}.",
+            f"{prefix}_worker_count",
+            f"{name} workers",
+            size.worker_count,
+            "workers",
+            f"How many worker processes (Spark executors) an operation gets when it runs at size {name}.",
         ),
     )

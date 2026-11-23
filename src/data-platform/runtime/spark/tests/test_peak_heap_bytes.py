@@ -44,8 +44,8 @@ def test_peaks_are_the_driver_and_the_largest_executor_in_bytes():
         PEAK_DRIVER_HEAP_BYTES: 384 * MIB,
         PEAK_EXECUTOR_HEAP_BYTES: 900 * MIB,
     }
-    assert PEAK_DRIVER_HEAP_BYTES == "peak_driver_heap_bytes"
-    assert PEAK_EXECUTOR_HEAP_BYTES == "peak_executor_heap_bytes"
+    assert PEAK_DRIVER_HEAP_BYTES == "peak_coordinator_memory_bytes"
+    assert PEAK_EXECUTOR_HEAP_BYTES == "peak_worker_memory_bytes"
 
 
 def test_the_ui_is_read_on_localhost_at_its_port():

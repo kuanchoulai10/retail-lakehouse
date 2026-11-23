@@ -17,6 +17,6 @@ class SubmitMaintenanceOperationUseCaseInput(UseCaseInput):
     run_id: str
     operation: str
     attempt: int
-    callback_base_url: str
+    result_report_base_url: str
     now: datetime
     size: str

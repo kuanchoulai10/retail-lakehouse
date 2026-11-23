@@ -19,6 +19,6 @@ def build_size_memory(settings: SparkSettings) -> dict[ComputeSize, SizeMemory]:
 
 def _memory(resources: SparkSizeSettings) -> SizeMemory:
     return SizeMemory(
-        driver_bytes=spark_memory_bytes(resources.driver_memory),
-        executor_bytes=spark_memory_bytes(resources.executor_memory),
+        coordinator_bytes=spark_memory_bytes(resources.driver_memory),
+        worker_bytes=spark_memory_bytes(resources.executor_memory),
     )

@@ -20,14 +20,23 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run.de
 from context.table_maintenance.application.port.inbound.table_maintenance_run.delete_maintenance_job.use_case import (
     DeleteMaintenanceJobUseCase,
 )
-from context.table_maintenance.application.port.inbound.table_maintenance_run.get_maintenance_job_pods.input import (
-    GetMaintenanceJobPodsUseCaseInput,
+from context.table_maintenance.application.port.inbound.table_maintenance_run.forward_table_maintenance_result.input import (  # noqa: E501
+    ForwardTableMaintenanceResultUseCaseInput,
 )
-from context.table_maintenance.application.port.inbound.table_maintenance_run.get_maintenance_job_pods.output import (
-    GetMaintenanceJobPodsUseCaseOutput,
+from context.table_maintenance.application.port.inbound.table_maintenance_run.forward_table_maintenance_result.output import (  # noqa: E501
+    ForwardTableMaintenanceResultUseCaseOutput,
 )
-from context.table_maintenance.application.port.inbound.table_maintenance_run.get_maintenance_job_pods.use_case import (
-    GetMaintenanceJobPodsUseCase,
+from context.table_maintenance.application.port.inbound.table_maintenance_run.forward_table_maintenance_result.use_case import (  # noqa: E501
+    ForwardTableMaintenanceResultUseCase,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_run.get_maintenance_job_processes.input import (  # noqa: E501
+    GetMaintenanceJobProcessesUseCaseInput,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_run.get_maintenance_job_processes.output import (  # noqa: E501
+    GetMaintenanceJobProcessesUseCaseOutput,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_run.get_maintenance_job_processes.use_case import (  # noqa: E501
+    GetMaintenanceJobProcessesUseCase,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run.get_maintenance_job_status.input import (
     GetMaintenanceJobStatusUseCaseInput,
@@ -65,15 +74,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run.li
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run.list_table_maintenance_runs.use_case import (  # noqa: E501
     ListTableMaintenanceRunsUseCase,
-)
-from context.table_maintenance.application.port.inbound.table_maintenance_run.process_table_maintenance_callback.input import (  # noqa: E501
-    ProcessTableMaintenanceCallbackUseCaseInput,
-)
-from context.table_maintenance.application.port.inbound.table_maintenance_run.process_table_maintenance_callback.output import (  # noqa: E501
-    ProcessTableMaintenanceCallbackUseCaseOutput,
-)
-from context.table_maintenance.application.port.inbound.table_maintenance_run.process_table_maintenance_callback.use_case import (  # noqa: E501
-    ProcessTableMaintenanceCallbackUseCase,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run.raise_table_maintenance_run_priority.input import (  # noqa: E501
     RaiseTableMaintenanceRunPriorityUseCaseInput,
@@ -128,9 +128,9 @@ __all__ = [
     "DeleteMaintenanceJobUseCase",
     "DeleteMaintenanceJobUseCaseInput",
     "DeleteMaintenanceJobUseCaseOutput",
-    "GetMaintenanceJobPodsUseCase",
-    "GetMaintenanceJobPodsUseCaseInput",
-    "GetMaintenanceJobPodsUseCaseOutput",
+    "GetMaintenanceJobProcessesUseCase",
+    "GetMaintenanceJobProcessesUseCaseInput",
+    "GetMaintenanceJobProcessesUseCaseOutput",
     "GetMaintenanceJobStatusUseCase",
     "GetMaintenanceJobStatusUseCaseInput",
     "GetMaintenanceJobStatusUseCaseOutput",
@@ -146,9 +146,9 @@ __all__ = [
     "ListTableMaintenanceRunsUseCase",
     "ListTableMaintenanceRunsUseCaseInput",
     "ListTableMaintenanceRunsUseCaseOutput",
-    "ProcessTableMaintenanceCallbackUseCase",
-    "ProcessTableMaintenanceCallbackUseCaseInput",
-    "ProcessTableMaintenanceCallbackUseCaseOutput",
+    "ForwardTableMaintenanceResultUseCase",
+    "ForwardTableMaintenanceResultUseCaseInput",
+    "ForwardTableMaintenanceResultUseCaseOutput",
     "RaiseTableMaintenanceRunPriorityUseCase",
     "RaiseTableMaintenanceRunPriorityUseCaseInput",
     "RaiseTableMaintenanceRunPriorityUseCaseOutput",

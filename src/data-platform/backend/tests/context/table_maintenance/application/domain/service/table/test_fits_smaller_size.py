@@ -5,21 +5,21 @@ from __future__ import annotations
 import pytest
 
 from context.table_maintenance.application.domain.model.shared import ComputeSize, SizeMemory
-from context.table_maintenance.application.domain.model.table import PeakHeapUse
+from context.table_maintenance.application.domain.model.table import PeakMemoryUse
 from context.table_maintenance.application.domain.service.table import fits_smaller_size
 
 MIB = 1024 * 1024
 MEMORY = {
-    ComputeSize.S: SizeMemory(driver_bytes=768 * MIB, executor_bytes=768 * MIB),
-    ComputeSize.M: SizeMemory(driver_bytes=1024 * MIB, executor_bytes=1536 * MIB),
-    ComputeSize.L: SizeMemory(driver_bytes=1536 * MIB, executor_bytes=2048 * MIB),
+    ComputeSize.S: SizeMemory(coordinator_bytes=768 * MIB, worker_bytes=768 * MIB),
+    ComputeSize.M: SizeMemory(coordinator_bytes=1024 * MIB, worker_bytes=1536 * MIB),
+    ComputeSize.L: SizeMemory(coordinator_bytes=1536 * MIB, worker_bytes=2048 * MIB),
 }
 
 
-def _peak(driver_mib: int | None, executor_mib: int | None) -> PeakHeapUse:
-    return PeakHeapUse(
-        driver_bytes=None if driver_mib is None else driver_mib * MIB,
-        executor_bytes=None if executor_mib is None else executor_mib * MIB,
+def _peak(driver_mib: int | None, executor_mib: int | None) -> PeakMemoryUse:
+    return PeakMemoryUse(
+        coordinator_bytes=None if driver_mib is None else driver_mib * MIB,
+        worker_bytes=None if executor_mib is None else executor_mib * MIB,
     )
 
 
@@ -43,8 +43,8 @@ def test_every_role_must_fit():
 def test_the_margin_is_seventy_percent_of_the_smaller_size():
     """A peak at 70 % of the smaller size fits; just above it does not."""
     at = int(768 * MIB * 0.7)
-    assert fits_smaller_size(ComputeSize.M, PeakHeapUse(driver_bytes=at, executor_bytes=at), MEMORY) is True
-    over = PeakHeapUse(driver_bytes=at, executor_bytes=at + MIB)
+    assert fits_smaller_size(ComputeSize.M, PeakMemoryUse(coordinator_bytes=at, worker_bytes=at), MEMORY) is True
+    over = PeakMemoryUse(coordinator_bytes=at, worker_bytes=at + MIB)
     assert fits_smaller_size(ComputeSize.M, over, MEMORY) is False
 
 

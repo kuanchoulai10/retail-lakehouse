@@ -68,7 +68,7 @@ class TableMaintenanceRunApiResponse(BaseModel):
     attempts: list[TableMaintenanceRunAttemptApiResponse] = Field(description="Every attempt, oldest first.")
 
 
-class ProcessTableMaintenanceCallbackApiRequest(BaseModel):
+class ForwardTableMaintenanceResultApiRequest(BaseModel):
     """Carry the result a Spark job reports for one operation attempt."""
 
     model_config = ConfigDict(extra="ignore")
@@ -81,7 +81,7 @@ class ProcessTableMaintenanceCallbackApiRequest(BaseModel):
     error: str | None = None
 
 
-class ProcessTableMaintenanceCallbackApiResponse(BaseModel):
+class ForwardTableMaintenanceResultApiResponse(BaseModel):
     """Tell whether the callback was accepted."""
 
     model_config = ConfigDict(from_attributes=True)
