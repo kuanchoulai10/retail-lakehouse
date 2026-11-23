@@ -94,6 +94,7 @@ class OperationState(ValueObject):
         """Return whether the operation was marked as needing attention under ``policy``.
 
         A mark holds only under the applicable policy it was set under; once another policy (or
-        another version, or the same policy attached elsewhere) applies, the next plan lifts it.
+        another version, or the same policy attached elsewhere) applies, the next plan lifts it. A
+        renamed or moved table keeps a mark set under an attachment to the table itself.
         """
-        return self.attention is not None and self.attention.policy == policy
+        return self.attention is not None and self.attention.policy.names_the_same_application_as(policy)

@@ -18,3 +18,19 @@ class AppliedPolicyRef(ValueObject):
     policy_id: TableMaintenancePolicyId
     version: int
     target: PolicyTarget | None = None
+
+    def names_the_same_application_as(self, other: AppliedPolicyRef) -> bool:
+        """Return whether ``other`` is the same policy version attached at the same target.
+
+        Targets compare by their key, so a table target is its uuid: the same attachment read
+        under a renamed or moved table's new path is the same application.
+        """
+        return (
+            self.policy_id == other.policy_id
+            and self.version == other.version
+            and _key(self.target) == _key(other.target)
+        )
+
+
+def _key(target: PolicyTarget | None) -> str | None:
+    return None if target is None else target.key()

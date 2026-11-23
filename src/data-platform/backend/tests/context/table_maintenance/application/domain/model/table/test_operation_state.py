@@ -90,6 +90,15 @@ def test_a_mark_holds_under_the_same_target_spelled_differently():
     assert state.needs_attention_under(AppliedPolicyRef(policy_id=NIGHTLY, version=1, target=spelled_long))
 
 
+def test_a_mark_under_a_table_attachment_holds_after_the_table_is_renamed():
+    """The table is its uuid, so the same attachment under the table's new name keeps the mark."""
+    renamed = PolicyTarget(type=PolicyTargetType.TABLE, path=("iceberg", "sales", "orders_v2"), table_uuid="u1")
+    state = OperationState().with_attention(MARK)
+    assert state.needs_attention_under(AppliedPolicyRef(policy_id=NIGHTLY, version=1, target=renamed))
+    another_table = TARGET.with_changes(table_uuid="u2")
+    assert not state.needs_attention_under(AppliedPolicyRef(policy_id=NIGHTLY, version=1, target=another_table))
+
+
 def test_a_mark_under_the_platform_default_holds_only_under_it():
     """A mark set under the default policy (no target) holds under the default and not under an attachment."""
     default = AppliedPolicyRef(policy_id=NIGHTLY, version=1)
