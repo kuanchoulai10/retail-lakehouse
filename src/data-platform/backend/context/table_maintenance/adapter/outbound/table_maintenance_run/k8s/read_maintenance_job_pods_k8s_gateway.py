@@ -29,13 +29,7 @@ STOPPED_PHASES = frozenset({"Succeeded", "Failed"})
 
 
 class ReadMaintenanceJobPodsK8sGateway(ReadMaintenanceJobPodsGateway):
-    """List the driver and executor pods of one attempt by its labels and by its SparkApplication.
-
-    The attempt labels are set on the pods by the manifest; the Spark operator
-    also labels every pod it launches with the name of its SparkApplication.
-    Both are listed and joined, so the pods of an attempt submitted before the
-    attempt labels existed are found too.
-    """
+    """List the driver and executor pods of one attempt by the attempt labels the manifest sets on them."""
 
     def __init__(self, api: CoreV1Api, config: SparkK8sConfig) -> None:
         """Keep the injected Kubernetes core client and configuration."""

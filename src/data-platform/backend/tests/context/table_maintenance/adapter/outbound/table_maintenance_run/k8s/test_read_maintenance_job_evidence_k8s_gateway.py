@@ -40,7 +40,6 @@ CONFIG = SparkK8sConfig(
 RUN_ID = "mr-01kaa4zc9qf3v8d2m6xk0w7b1n"
 RUN_ID_SUFFIX = "01kaa4zc9qf3v8d2m6xk0w7b1n"
 INPUT = ReadMaintenanceJobEvidenceGatewayInput(run_id=RUN_ID, operation="rewrite_data_files", attempt=2)
-OPERATOR_SELECTOR = f"sparkoperator.k8s.io/app-name=tm-rdf-{RUN_ID_SUFFIX}-a2"
 
 
 def _terminated(reason: str, exit_code: int, message: str | None = None) -> V1ContainerState:
@@ -82,7 +81,6 @@ def _pod(
 def _gateway(
     application: dict | Exception,
     *pods: V1Pod,
-    by_operator: tuple[V1Pod, ...] = (),
 ) -> tuple[ReadMaintenanceJobEvidenceK8sGateway, MagicMock, MagicMock]:
     custom = MagicMock(name="custom-objects-api")
     if isinstance(application, Exception):
@@ -90,11 +88,7 @@ def _gateway(
     else:
         custom.get_namespaced_custom_object.return_value = application
     core = MagicMock(name="core-v1-api")
-
-    def list_pods(namespace: str, label_selector: str) -> V1PodList:
-        return V1PodList(items=list(by_operator if label_selector == OPERATOR_SELECTOR else pods))
-
-    core.list_namespaced_pod.side_effect = list_pods
+    core.list_namespaced_pod.return_value = V1PodList(items=list(pods))
     return ReadMaintenanceJobEvidenceK8sGateway(custom, core, CONFIG), custom, core
 
 
@@ -166,17 +160,6 @@ def test_a_pod_without_a_spark_container_name_reads_its_first_container():
     assert gateway.read(INPUT).containers == (
         JobContainerExit(role="executor", reason="Error", exit_code=52, message=None),
     )
-
-
-def test_pods_found_by_either_selector_are_listed_once():
-    """A pod found by both the attempt labels and the operator label is listed once."""
-    driver = _pod("driver", "driver", state=_terminated("Error", 1))
-    gateway, _, core = _gateway(
-        FAILED_APP, driver, by_operator=(driver, _pod("exec-1", "executor", state=_terminated("Error", 52)))
-    )
-    out = gateway.read(INPUT)
-    assert [c.role for c in out.containers] == ["driver", "executor"]
-    assert core.list_namespaced_pod.call_count == 2
 
 
 def test_evidence_reports_when_the_driver_started():

@@ -50,36 +50,23 @@ def _pod(name: str, phase: str | None, *, deleting: bool = False) -> V1Pod:
 OUR_SELECTOR = (
     f"table-maintenance/run-id={RUN_ID},table-maintenance/operation=rewrite_data_files,table-maintenance/attempt=2"
 )
-OPERATOR_SELECTOR = f"sparkoperator.k8s.io/app-name=tm-rdf-{RUN_ID_SUFFIX}-a2"
 
 
-def _gateway(*pods: V1Pod, by_operator: tuple[V1Pod, ...] = ()) -> tuple[ReadMaintenanceJobPodsK8sGateway, MagicMock]:
+def _gateway(*pods: V1Pod) -> tuple[ReadMaintenanceJobPodsK8sGateway, MagicMock]:
     api = MagicMock(name="core-v1-api")
-
-    def list_pods(namespace: str, label_selector: str) -> V1PodList:
-        return V1PodList(items=list(by_operator if label_selector == OPERATOR_SELECTOR else pods))
-
-    api.list_namespaced_pod.side_effect = list_pods
+    api.list_namespaced_pod.return_value = V1PodList(items=list(pods))
     return ReadMaintenanceJobPodsK8sGateway(api, CONFIG), api
 
 
-def test_read_pods_selects_the_attempt_by_its_labels_and_by_its_application():
-    """The pods are listed in the Spark namespace by the attempt labels and by the operator's application label."""
+def test_read_pods_selects_the_attempt_by_its_labels():
+    """The pods are listed once in the Spark namespace, by the attempt labels the manifest puts on them."""
     gateway, api = _gateway()
 
     gateway.read(INPUT)
 
     assert api.list_namespaced_pod.call_args_list == [
         call(namespace="lakehouse-maintenance-operations", label_selector=OUR_SELECTOR),
-        call(namespace="lakehouse-maintenance-operations", label_selector=OPERATOR_SELECTOR),
     ]
-
-
-def test_read_pods_finds_pods_that_carry_only_the_operator_label():
-    """A pod of an attempt submitted before the attempt labels existed is found by its application label."""
-    gateway, _ = _gateway(_pod("driver", "Running"), by_operator=(_pod("driver", "Running"), _pod("exec-1", "Pending")))
-
-    assert gateway.read(INPUT).live_pods == ("driver", "exec-1")
 
 
 def test_read_pods_counts_pending_running_and_unknown_as_live():
