@@ -22,7 +22,7 @@ That arrangement left the `mr-` prefix written in four places: the run id type, 
 
 - A new id kind is one class with a `PREFIX` in its context's shared domain model; nothing else copies its prefix, and tests check shapes by building the id type.
 - Workflows can no longer mint ids at all: they import neither `base` nor the domain, so an id a workflow needs comes from an activity.
-- A reconciliation pass makes two more local-activity calls. They add marker events to the history and need no round trip to the Temporal server.
+- A reconciliation pass makes two more local-activity calls. They add marker events to the history and, unless one retries for long, run without a round trip to the Temporal server.
 - Workflows that started before the change cannot replay under the new code, which calls activities the old histories do not hold. During development no compatibility path is kept (KCL-110); the cluster is rebuilt instead.
 
 ## References
