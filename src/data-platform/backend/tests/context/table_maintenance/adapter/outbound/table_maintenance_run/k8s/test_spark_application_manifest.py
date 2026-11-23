@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
+from datetime import UTC, datetime
 
 import pytest
 
@@ -12,6 +13,13 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
     SparkSizeResources,
     VolcanoSettings,
     build_spark_application,
+)
+from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
+from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    TableMaintenanceRun,
+    TableMaintenanceRunId,
+    TriggerType,
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
     SubmitMaintenanceJobGatewayInput,
@@ -267,3 +275,20 @@ def test_only_the_pod_group_carries_the_priority_class(priority: str, priority_c
     assert spec["batchSchedulerOptions"]["priorityClassName"] == priority_class
     assert "priorityClassName" not in spec["driver"]
     assert "priorityClassName" not in spec["executor"]
+
+
+def test_a_runs_nested_procedure_args_reach_the_request():
+    """A compaction run's nested options, held read-only by the run, are encoded into the job request."""
+    run = TableMaintenanceRun.create(
+        TableMaintenanceRunId(RUN_1),
+        TableId("4504b45d-bea7-4a04-a5a3-08d369e83441"),
+        TriggerType.SCHEDULED,
+        MaintenanceOperation.REWRITE_DATA_FILES,
+        datetime(2026, 11, 24, tzinfo=UTC),
+        execution_ref="wf-1",
+        procedure_args={"options": {"min-input-files": "2"}},
+    )
+    spec = build_spark_application(CONFIG, replace(INPUT, procedure_args=dict(run.procedure_args)), "app")["spec"]
+
+    env = {e["name"]: e.get("value") for e in spec["driver"]["env"]}
+    assert json.loads(env["GLAC_REQUEST"])["procedure_args"] == {"options": {"min-input-files": "2"}}

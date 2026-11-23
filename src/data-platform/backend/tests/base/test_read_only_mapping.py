@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import collections
 import copy
+import dataclasses
 import json
 import pickle
 from collections.abc import Mapping
@@ -186,3 +188,43 @@ def test_a_deep_model_copy_keeps_the_mapping() -> None:
     counts = _box().model_copy(deep=True).counts
     assert counts == {"a": 1}
     _refused(lambda: counts.__setitem__("b", 2))  # ty: ignore[unresolved-attribute]
+
+
+def test_it_is_rebuilt_like_a_dict() -> None:
+    """Code that rebuilds a dict by its type (``dataclasses.asdict``, ``type(m)(pairs)``) gets a read-only copy."""
+    data = cast("Any", _frozen({"a": {"b": 1}}))
+
+    @dataclasses.dataclass
+    class _Request:
+        args: Mapping[str, Any]
+
+    assert json.dumps(dataclasses.asdict(_Request(args=dict(data)))) == '{"args": {"a": {"b": 1}}}'
+    rebuilt = type(data)(data.items())
+    assert rebuilt == {"a": {"b": 1}}
+    assert type(data)(c=1) == {"c": 1}
+    _refused(lambda: rebuilt.__setitem__("c", 1))
+
+
+def test_calling_init_again_changes_nothing() -> None:
+    """Re-running ``__init__`` on a held mapping leaves its items as they were."""
+    data = cast("Any", _frozen({"a": 1}))
+    data.__init__({"b": 2})
+    assert data == {"a": 1}
+
+
+def test_a_set_value_is_frozen_and_other_mutable_values_are_refused() -> None:
+    """A set inside the values becomes a frozenset; a bytearray or another mutable collection is refused."""
+    data = cast("Any", _Bag(data={"s": {1, 2}, "t": [{3}]}).data)
+    assert data == {"s": {1, 2}, "t": ({3},)}
+    assert type(data["s"]) is frozenset
+    assert type(data["t"][0]) is frozenset
+    for value in (bytearray(b"x"), collections.deque([1]), collections.UserDict(a=1)):
+        with pytest.raises(InvariantViolation, match="ReadOnlyMapping cannot hold"):
+            _Bag(data={"v": value})
+
+
+def test_it_equals_the_json_it_was_built_from() -> None:
+    """Lists frozen into tuples still compare equal to the lists they came from."""
+    assert _frozen({"a": [1, {"b": [2]}]}) == {"a": [1, {"b": [2]}]}
+    assert _frozen({"a": [1]}) != {"a": [2]}
+    assert _Bag(data={"a": [1]}) == _Bag(data={"a": (1,)})
