@@ -58,10 +58,6 @@ _REASON_POLICY_CHANGED = "policy_changed"
 _REASON_MANUAL_RUN = "manual_run"
 _REASON_RECONCILE_NOW = "reconcile_now"
 _REASON_PREVIOUS_RUN_FINISHED = "previous_run_finished"
-_SEARCH_ATTRIBUTES_PATCH = "table-search-attributes"
-_FENCED_BOUND_PATCH = "fencing-in-flight-bound"
-_AWAIT_CLOSE_PATCH = "await-cancelled-run-close"
-_PREFIXED_IDS_PATCH = "prefixed-run-and-reconciliation-ids"
 _CLOSING_BOUND = TableMaintenanceActivityPolicy().worst_case()
 _CLOSING_POLL = timedelta(seconds=5)
 _RUN_ID_PREFIX = "mr"
@@ -153,9 +149,7 @@ class TableReconciliationWorkflow:
     The workflow tags itself with its table UUID when it starts, and with the
     table name each plan reports when that name changed, and starts each run
     tagged with the table, its planned operations and its trigger, so a table's
-    workflows can be found by search attribute. A run that started before these
-    tags existed (patch ``table-search-attributes``) carries none until its next
-    continue-as-new.
+    workflows can be found by search attribute.
 
     The next plan always comes one schedule interval after the last. A plan
     names no run: it claims nothing for the run it starts, and a run that is not
@@ -174,8 +168,7 @@ class TableReconciliationWorkflow:
 
     Each pass mints its reconciliation id (``rc-``) before planning and, after a plan with
     operations, one run id (``mr-``) per planned operation, from the workflow's clock and random
-    source (patch ``prefixed-run-and-reconciliation-ids`` on the reconciliation id; a history from
-    before prefixed ids replays with the UUID it minted then).
+    source.
     """
 
     @workflow.init
@@ -223,8 +216,7 @@ class TableReconciliationWorkflow:
         """Wait, plan and start runs until the table leaves maintenance."""
         if self._next_plan_at is None:
             self._next_plan_at = workflow.now() + self._interval
-        if self._tags_table():
-            workflow.upsert_search_attributes([TableSearchAttributeKeys.TABLE_UUID.value_set(self._table_uuid)])
+        workflow.upsert_search_attributes([TableSearchAttributeKeys.TABLE_UUID.value_set(self._table_uuid)])
         iterations = 0
         while True:
             if self._stopping and self._in_flight_run_ids is None:
@@ -349,13 +341,9 @@ class TableReconciliationWorkflow:
             "signals_handled": self._signals_handled,
         }
 
-    def _tags_table(self) -> bool:
-        """Tell whether this run tags its workflows with the table search attributes."""
-        return workflow.patched(_SEARCH_ATTRIBUTES_PATCH)
-
     def _tag_table_name(self, table_name: str | None) -> None:
         """Upsert the table name a plan reports when it differs from the one the workflow carries."""
-        if not table_name or not self._tags_table():
+        if not table_name:
             return
         if workflow.info().typed_search_attributes.get(TableSearchAttributeKeys.TABLE_NAME) == table_name:
             return
@@ -453,9 +441,7 @@ class TableReconciliationWorkflow:
     def _in_flight_per_operation(self) -> timedelta:
         """Return how long one operation of the run in flight may take: its worst case plus 1 h.
 
-        The worst case counts the queue wait and the fencing of every attempt; a history from before
-        fencing (patch ``fencing-in-flight-bound``) keeps the unfenced bound it gave
-        runs up on.
+        The worst case counts the queue wait and the fencing of every attempt.
         """
         attempt_deadline = timedelta(seconds=self._in_flight_attempt_deadline_seconds)
         policy = TableMaintenanceAttemptPolicy(
@@ -463,9 +449,7 @@ class TableReconciliationWorkflow:
             attempt_deadline=attempt_deadline,
             queue_wait_limit=timedelta(seconds=self._in_flight_queue_wait_limit_seconds),
         )
-        if workflow.patched(_FENCED_BOUND_PATCH):
-            return policy.operation_worst_case() + _IN_FLIGHT_MARGIN
-        return policy.unfenced_operation_worst_case() + _IN_FLIGHT_MARGIN
+        return policy.operation_worst_case() + _IN_FLIGHT_MARGIN
 
     async def _give_up_stuck_run(self) -> None:
         """Cancel a run past its budget, await its report, then forget it.
@@ -476,9 +460,7 @@ class TableReconciliationWorkflow:
         cancelled child fences its live attempt before it reports, which can
         take as long as its pods do, so no new run starts until it reported or
         closed: every 15 minutes without a report the child is looked up, and
-        only a child that is no longer running is forgotten. A history from
-        before this (patch ``await-cancelled-run-close``) forgets the run after
-        one 15 minute grace. The cancel stopped the run's work, so the manual
+        only a child that is no longer running is forgotten. The cancel stopped the run's work, so the manual
         trigger a raise of it consumed is given back whether it reports or not.
         """
         deadline = self._in_flight_deadline()
@@ -490,7 +472,6 @@ class TableReconciliationWorkflow:
         self._given_up_run_ids = run_ids
         self._cancel_failed = False
         self._cancel_task = asyncio.create_task(self._cancel_child(run_ids, workflow_id))
-        awaits_close = workflow.patched(_AWAIT_CLOSE_PATCH)
         while True:
             try:
                 await workflow.wait_condition(
@@ -499,7 +480,7 @@ class TableReconciliationWorkflow:
                 )
                 break
             except TimeoutError:
-                if not awaits_close or workflow_id is None or not await self._still_running(workflow_id):
+                if workflow_id is None or not await self._still_running(workflow_id):
                     workflow.logger.warning("cancelled runs %s did not report back; no longer waiting", run_ids)
                     break
                 workflow.logger.warning("cancelled runs %s are still running; waiting for them", run_ids)
@@ -760,9 +741,7 @@ class TableReconciliationWorkflow:
 
     @staticmethod
     def _mint_reconciliation_id() -> str:
-        """Return a new reconciliation id; a history from before prefixed ids replays its UUID."""
-        if not workflow.patched(_PREFIXED_IDS_PATCH):
-            return str(workflow.uuid4())
+        """Return a new reconciliation id."""
         return mint_workflow_prefixed_id(_RECONCILIATION_ID_PREFIX)
 
     @staticmethod
@@ -930,12 +909,8 @@ class TableReconciliationWorkflow:
             return False
         return True
 
-    def _run_search_attributes(
-        self, table_name: str, operations: list[str], trigger: str
-    ) -> TypedSearchAttributes | None:
-        """Return the tags a new run starts with; none in a run from before the tags existed."""
-        if not self._tags_table():
-            return None
+    def _run_search_attributes(self, table_name: str, operations: list[str], trigger: str) -> TypedSearchAttributes:
+        """Return the tags a new run starts with."""
         keys = TableSearchAttributeKeys
         return TypedSearchAttributes(
             [

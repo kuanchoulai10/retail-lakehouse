@@ -164,3 +164,47 @@ def test_checker_accepts_minting_a_prefixed_id_from_workflow_parts():
         "x = prefixed_id_from_parts('cr', int(workflow.now().timestamp() * 1000), workflow.random().getrandbits(74))\n"
     )
     assert violations(source) == []
+
+
+_PATCH_CALLS = ("patched", "deprecate_patch")
+
+
+def patch_calls(source: str) -> list[str]:
+    """Return each ``workflow.patched`` or ``workflow.deprecate_patch`` call in ``source``.
+
+    Histories are not replayed across a change (the cluster is rebuilt instead), so a workflow keeps no
+    branch for a history an older program wrote.
+    """
+    return [
+        f"{_rightmost_name(node.func.value)}.{node.func.attr}"
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in _PATCH_CALLS
+    ]
+
+
+@pytest.mark.parametrize(
+    "path",
+    [path for context in context_names() for path in _workflow_modules(context_dir(context))],
+    ids=lambda p: f"{p.parents[5].name}/{p.name}",
+)
+def test_no_workflow_calls_patched(path: Path):
+    """A workflow module keeps no patch branch for an older history."""
+    assert patch_calls(path.read_text()) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from temporalio import workflow\nif workflow.patched('p'):\n    pass",
+        "from temporalio import workflow\nx = workflow.patched('p') and True",
+        "from temporalio import workflow\nworkflow.deprecate_patch('p')",
+    ],
+)
+def test_patch_checker_flags_patch_calls(source: str):
+    """The patch checker reports a ``patched`` or ``deprecate_patch`` call wherever it stands."""
+    assert patch_calls(source) != []
+
+
+def test_patch_checker_accepts_other_workflow_calls():
+    """The patch checker leaves other workflow calls and a name merely spelled ``patched`` alone."""
+    assert patch_calls("from temporalio import workflow\npatched = True\nworkflow.now()\n") == []

@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import itertools
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from temporalio.client import WorkflowFailureError, WorkflowHistory
+from temporalio.client import WorkflowFailureError
 from temporalio.exceptions import ApplicationError, CancelledError
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Replayer, UnsandboxedWorkflowRunner, Worker
@@ -191,8 +191,11 @@ class Harness:
         return issued
 
 
-def _run(scenario: Callable[[Harness], Awaitable[None]]) -> None:
-    """Run ``scenario`` against the workflow on a time-skipping server, with the real parent signal activity."""
+def _run(scenario: Callable[[Harness], Awaitable[None]], *, max_cached_workflows: int = 1000) -> None:
+    """Run ``scenario`` against the workflow on a time-skipping server, with the real parent signal activity.
+
+    ``max_cached_workflows=0`` makes the worker replay the history on every workflow task.
+    """
 
     async def go() -> None:
         async with await WorkflowEnvironment.start_time_skipping() as env:
@@ -205,6 +208,7 @@ def _run(scenario: Callable[[Harness], Awaitable[None]]) -> None:
                     task_queue=queue,
                     workflows=[TableMaintenanceWorkflow],
                     activities=[*fakes.all(), signals.signal_parent],
+                    max_cached_workflows=max_cached_workflows,
                 ),
                 Worker(
                     env.client,
@@ -2330,20 +2334,60 @@ def test_a_cancelled_workflow_reports_only_once_every_job_of_its_run_is_gone():
     _run(scenario)
 
 
-FIXTURES = Path(__file__).parent / "fixtures"
+async def _oom_then_a_larger_size(h: Harness) -> WorkflowHandle:
+    h.fakes.callbacks = {(COMPACTION, 1): [(1, False, OOM_ERROR)], (COMPACTION, 2): [(2, True, None)]}
+    h.fakes.record_replies = {
+        (COMPACTION, 1): {"failure_class": "oom", "next_step": "retry_larger", "next_size": "M"},
+    }
+    return await h.start_maintenance(COMPACTION)
 
 
-def test_history_from_before_waiting_for_jobs_gone_replays():
-    """A plan recorded before runs waited for their jobs to be gone replays on the new code without non-determinism.
+async def _a_timed_out_attempt(h: Harness) -> WorkflowHandle:
+    h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
+    return await h.start_maintenance(COMPACTION, attempt_deadline_seconds=FENCE_DEADLINE_SECONDS)
 
-    Its first run succeeded; its second failed once and was cancelled during attempt 2. So the history holds both
-    the delete after a run and the deletes at the end, which the code before issued without waiting.
+
+async def _a_missing_job(h: Harness) -> WorkflowHandle:
+    h.fakes.states[FIRST] = {"state": "NOT_FOUND", "error": None}
+    h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
+    return await h.start_maintenance(COMPACTION)
+
+
+async def _two_runs_waiting_for_jobs_gone(h: Harness) -> WorkflowHandle:
+    h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)], (EXPIRE, 1): [(1, True, None)]}
+    h.fakes.vanish_after_delete[FIRST_APP] = JOB_STAYS
+    h.fakes.pods_live_for[FIRST_APP] = PODS_STAY
+    return await h.start_maintenance(COMPACTION, EXPIRE)
+
+
+async def _a_cancel_during_an_attempt(h: Harness) -> WorkflowHandle:
+    _cancel_on_the_first_status_poll(h, [])
+    return await h.start_maintenance(COMPACTION, EXPIRE)
+
+
+@pytest.mark.parametrize(
+    "start",
+    [
+        _oom_then_a_larger_size,
+        _a_timed_out_attempt,
+        _a_missing_job,
+        _two_runs_waiting_for_jobs_gone,
+        _a_cancel_during_an_attempt,
+    ],
+    ids=["oom-retry-larger", "timed-out", "missing-job", "jobs-gone-between-runs", "cancelled"],
+)
+def test_current_histories_replay(start: Callable[[Harness], Awaitable[WorkflowHandle]]):
+    """A history the current workflow writes replays on it without non-determinism.
+
+    The worker keeps no workflow in its cache, so every workflow task already replays the history so far;
+    the finished history is then replayed once more on its own.
     """
 
-    async def go() -> None:
-        history = WorkflowHistory.from_json(
-            WORKFLOW_ID, (FIXTURES / "maintenance_runs_before_waiting_for_jobs_gone.json").read_text()
-        )
+    async def scenario(h: Harness) -> None:
+        handle = await start(h)
+        with contextlib.suppress(WorkflowFailureError):
+            await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+        history = await handle.fetch_history()
         await Replayer(workflows=[TableMaintenanceWorkflow]).replay_workflow(history)
 
-    asyncio.run(go())
+    _run(scenario, max_cached_workflows=0)

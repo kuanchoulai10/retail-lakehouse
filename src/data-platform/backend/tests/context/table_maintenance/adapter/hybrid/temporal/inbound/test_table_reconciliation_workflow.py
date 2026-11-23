@@ -1695,8 +1695,7 @@ def test_run_and_reconciliation_ids_survive_replay():
     With no workflow cached, the worker rebuilds the workflow from its history on
     every task, so the plan, the child start and the record (each in a later task
     than the minting) see the ids minted again on replay; they agree, they have
-    the ``mr-`` and ``rc-`` shapes, the history carries the patch marker that
-    keeps older histories on their UUIDs, and it replays cleanly under the sandbox.
+    the ``mr-`` and ``rc-`` shapes, and the history replays cleanly under the sandbox.
     """
 
     async def scenario(h: Harness) -> None:
@@ -1709,8 +1708,6 @@ def test_run_and_reconciliation_ids_survive_replay():
         assert record["run_ids"] == dict(zip((COMPACTION, EXPIRE), run_ids, strict=True))
         assert (await h.child(run_ids))["run_ids"] == run_ids
         history = await h.client.get_workflow_handle(WORKFLOW_ID).fetch_history()
-        markers = [e.SerializeToString() for e in history.events if e.HasField("marker_recorded_event_attributes")]
-        assert any(b"prefixed-run-and-reconciliation-ids" in m for m in markers)
         await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
 
     _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE), max_cached_workflows=0)

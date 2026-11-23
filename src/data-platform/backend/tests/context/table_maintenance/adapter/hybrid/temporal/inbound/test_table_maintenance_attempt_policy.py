@@ -52,11 +52,6 @@ def test_default_fencing_polls_and_bounds_the_wait():
     assert TableMaintenanceAttemptPolicy().fencing == fencing
 
 
-def test_unfenced_worst_case_is_the_bound_from_before_fencing():
-    """The unfenced worst case is every attempt hitting its deadline plus the backoffs, as before fencing existed."""
-    assert TableMaintenanceAttemptPolicy().unfenced_operation_worst_case() == timedelta(seconds=3 * 21600 + 180)
-
-
 def test_backoff_beyond_the_listed_ones_repeats_the_last():
     """With more attempts than listed backoffs, every later failed attempt sleeps the last backoff."""
     policy = TableMaintenanceAttemptPolicy(max_attempts=5)
@@ -69,6 +64,3 @@ def test_worst_case_counts_one_backoff_between_each_pair_of_attempts():
         seconds=60 + 120 + 120 + 120
     )
     assert TableMaintenanceAttemptPolicy(max_attempts=1).operation_worst_case() == DEFAULT_PER_ATTEMPT
-    assert TableMaintenanceAttemptPolicy(max_attempts=5).unfenced_operation_worst_case() == timedelta(
-        seconds=5 * 21600 + 60 + 120 + 120 + 120
-    )

@@ -43,12 +43,7 @@ _TIMED_OUT = "spark job timed out"
 _MISSING = "spark job missing"
 _QUEUE_TIMED_OUT = "spark job waited in the queue longer than the queue wait limit"
 _NOT_REPLACED = "queued job could not be replaced"
-_FENCE_PATCH = "fence-timed-out-attempt"
-_FENCE_MISSING_PATCH = "fence-missing-job"
-_FENCE_CANCELLED_PATCH = "fence-cancelled-attempt"
 _CANCELLED = "cancelled"
-_DECISION_PATCH = "classify-attempt-failure"
-_JOBS_GONE_PATCH = "wait-until-run-jobs-are-gone"
 _STARTED_STATES = frozenset({"RUNNING", "COMPLETED"})
 _PLANNED_POLICY_KEYS = ("policy_id", "policy_name", "policy_version", "policy_target")
 _NOT_REACHED = "the table's maintenance stopped before this run started"
@@ -67,8 +62,7 @@ class TableMaintenanceWorkflow:
     jobs are gone, so a table has one Spark job at a time and the executors kept for evidence are freed
     before the next job queues. Each job of the ended run is deleted and polled, as a fence polls,
     until it reads ``NOT_FOUND`` and has no live pods, however long that takes; nothing is recorded,
-    since the run already ended. Histories from before this wait only ask for the deletes (patch
-    ``wait-until-run-jobs-are-gone``).
+    since the run already ended.
 
     Each run gets up to ``max_attempts`` attempts (input, 3 by default). An attempt is submitted
     straight to Spark, whose scheduler queues it, and ends with the job's ``operation_result``
@@ -92,20 +86,16 @@ class TableMaintenanceWorkflow:
     ``TableMaintenanceFencingPolicy``); pods still live after the confirm bound fail
     the run without a further attempt, and the next run waits until they are
     gone. An attempt whose job went missing is fenced the same way, since its
-    pods can outlive the SparkApplication. Histories from before fencing replay
-    unfenced (patches ``fence-timed-out-attempt`` and ``fence-missing-job``). A
+    pods can outlive the SparkApplication. A
     cancellation (a manual cancel, or the reconciliation giving the run up) fences
     the attempt it interrupts the same way, without a bound and even if another
-    cancel arrives meanwhile, before the run reports (patch
-    ``fence-cancelled-attempt``). The first attempt runs at the plan's start size (S when the plan
-    names none). Recording a failed attempt names how it ended and returns what follows it: an
+    cancel arrives meanwhile, before the run reports. The first attempt runs at the plan's start size
+    (S when the plan names none). Recording a failed attempt names how it ended and returns what follows it: an
     out-of-memory failure is retried at the next size, other failures at the same size, and a
-    failure that needs a person, is not retried or may still be running ends the run at once
-    (patch ``classify-attempt-failure``; a record reply without a decision, as before failure
-    classes, retries at the same size). Every record names the policy the run was planned under,
-    by its id and its name then, from the plan, so a needs-attention mark is set under it and keeps
-    the name for display; this changes only the record
-    activity's input, not the workflow's commands, so it needs no patch. A plan from before policies
+    failure that needs a person, is not retried or may still be running ends the run at once; a
+    record that failed, and so answers no decision, retries at the same size. Every record names the
+    policy the run was planned under, by its id and its name then, from the plan, so a needs-attention
+    mark is set under it and keeps the name for display. A plan from before policies
     had ids carries no ``policy_id``; its records then leave the policy to the recorder, which marks
     under the policy applying when it records. Every attempt runs with the ``filters`` and procedure
     arguments its run was created with, also after running out of memory; the submit reads them from
@@ -115,8 +105,8 @@ class TableMaintenanceWorkflow:
     failure, and a run whose submit was refused that way is skipped with the refusal (``submit
     failed: ...``) as its reason and submitted no more. At the end, also after a cancellation, the
     Spark job of every attempt not yet gone is deleted and waited for in the same way, even if another
-    cancel arrives meanwhile, so the workflow never closes with a job still deleting (the same patch;
-    older histories only ask for the deletes). Then every run of the plan none of whose
+    cancel arrives meanwhile, so the workflow never closes with a job still deleting. Then every run of
+    the plan none of whose
     submits returned is skipped
     (``skip_maintenance_run``, which leaves a run no longer pending as it is), and the parent
     reconciliation workflow is told the runs finished and how many results could not be recorded.
@@ -215,7 +205,7 @@ class TableMaintenanceWorkflow:
                 await self._skip(outcome.operation, outcome.error or _NOT_REACHED)
                 return
             step = decision.get("next_step")
-            if step not in (None, MaintenanceNextStep.RETRY_SAME) and workflow.patched(_DECISION_PATCH):
+            if step not in (None, MaintenanceNextStep.RETRY_SAME):
                 if step != MaintenanceNextStep.RETRY_LARGER:
                     return
                 size = decision.get("next_size") or size
@@ -229,7 +219,7 @@ class TableMaintenanceWorkflow:
         except asyncio.CancelledError:
             if (name, attempt) not in self._settled_attempts:
                 await self._record(self._failure(name, attempt, _CANCELLED, MaintenanceAttemptEnding.CANCELLED))
-            if (name, attempt) in self._started_attempts and workflow.patched(_FENCE_CANCELLED_PATCH):
+            if (name, attempt) in self._started_attempts:
                 await _to_the_end(
                     self._fence(
                         name,
@@ -513,18 +503,14 @@ class TableMaintenanceWorkflow:
         )
 
     async def _timed_out(self, name: str, attempt: int) -> OperationResultSignal:
-        """Fence the timed-out attempt; a history from before fencing replays its immediate failure."""
-        if workflow.patched(_FENCE_PATCH):
-            return await self._fence(name, attempt, _TIMED_OUT, MaintenanceAttemptEnding.TIMED_OUT, since="the timeout")
-        return self._failure(name, attempt, _TIMED_OUT, MaintenanceAttemptEnding.TIMED_OUT)
+        """Fence the timed-out attempt."""
+        return await self._fence(name, attempt, _TIMED_OUT, MaintenanceAttemptEnding.TIMED_OUT, since="the timeout")
 
     async def _missing(self, name: str, attempt: int) -> OperationResultSignal:
-        """Fence an attempt whose job went missing, as its pods may outlive it; older histories fail it at once."""
-        if workflow.patched(_FENCE_MISSING_PATCH):
-            return await self._fence(
-                name, attempt, _MISSING, MaintenanceAttemptEnding.MISSING, since="the job went missing"
-            )
-        return self._failure(name, attempt, _MISSING, MaintenanceAttemptEnding.MISSING)
+        """Fence an attempt whose job went missing, as its pods may outlive it."""
+        return await self._fence(
+            name, attempt, _MISSING, MaintenanceAttemptEnding.MISSING, since="the job went missing"
+        )
 
     async def _fence(  # noqa: PLR0913
         self,
@@ -677,16 +663,9 @@ class TableMaintenanceWorkflow:
         """Delete the job of every attempt of the run of ``name``, once that run ended, and wait until all are gone.
 
         This keeps one Spark job of the table at a time and frees the executors kept for evidence
-        before the next run's job queues (see ``_await_jobs_gone``). A history from before this wait
-        only asks for the deletes; a delete that fails there is logged and left for ``_finish`` to try again.
+        before the next run's job queues (see ``_await_jobs_gone``).
         """
-        attempts = [(n, a) for n, a in self._started_attempts if n == name]
-        if workflow.patched(_JOBS_GONE_PATCH):
-            await self._await_jobs_gone(attempts)
-            return
-        for _, attempt in attempts:
-            if await self._delete_job(name, attempt):
-                self._started_attempts.remove((name, attempt))
+        await self._await_jobs_gone([(n, a) for n, a in self._started_attempts if n == name])
 
     async def _await_jobs_gone(self, attempts: list[tuple[str, int]]) -> None:
         """Delete each attempt's job and wait until it reads ``NOT_FOUND`` with no live pods, recording nothing.
@@ -702,23 +681,14 @@ class TableMaintenanceWorkflow:
         """Free the started jobs still left, skip every run of the plan not started, then report to the parent.
 
         The jobs still left (those of a run a cancel interrupted) are waited for until gone, as after a run,
-        even if another cancel arrives meanwhile; a history from before that wait only asks for their deletes.
+        even if another cancel arrives meanwhile.
         A run has started once one of its submits returned. Every run exists (the parent created them all
         before it started this workflow), so a run the workflow never reached is skipped, and so is one none
         of whose submits returned (a submit a cancel interrupted may never have left the run pending); a
         skip leaves a run that did leave pending as it is. A failed skip, a run not found included, is logged.
         """
-        if self._started_attempts and workflow.patched(_JOBS_GONE_PATCH):
+        if self._started_attempts:
             await _to_the_end(self._await_jobs_gone(list(self._started_attempts)))
-        else:
-            for name, attempt in self._started_attempts:
-                try:
-                    await self._activity(
-                        TableMaintenanceActivity.DELETE_MAINTENANCE_JOB,
-                        {"run_id": self._run_of[name], "operation": name, "attempt": attempt},
-                    )
-                except ActivityError as error:
-                    workflow.logger.warning("deleting the job of %s attempt %s failed: %s", name, attempt, error)
         for name in self._operations:
             if name not in self._submitted and name not in self._skipped:
                 await self._skip(name)
