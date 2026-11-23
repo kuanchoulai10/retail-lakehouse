@@ -23,6 +23,7 @@ ALLOWED = {
     "AggregateRoot",
     "DomainEvent",
     "InvariantViolation",
+    "ReadOnlyMapping",
     "Specification",
     "Repository",
     "Store",

@@ -14,6 +14,8 @@ built on Pydantic v2:
 - AggregateRoot: an Entity that acts as the entry point and consistency
   boundary for a cluster of related objects, and collects DomainEvents.
 - DomainEvent: a frozen record of something that happened, timestamped.
+- ReadOnlyMapping: the mapping a domain model field holds instead of a dict;
+  no one can edit it in place, so a model changes it only by assigning a new one.
 - InvariantViolation: the ValueError every model base except UseCaseOutput
   raises for refused data, its string one line naming the first problem; construction,
   ``from_primitives``, ``model_validate`` / ``model_validate_json``,
@@ -49,6 +51,7 @@ from base.event_dispatcher import EventDispatcher
 from base.event_handler import EventHandler
 from base.gateway import Gateway
 from base.invariant_violation import InvariantViolation
+from base.read_only_mapping import ReadOnlyMapping
 from base.repository import Repository
 from base.store import Store
 from base.use_case import UseCase
@@ -65,6 +68,7 @@ __all__ = [
     "EventHandler",
     "Gateway",
     "InvariantViolation",
+    "ReadOnlyMapping",
     "Repository",
     "Store",
     "UseCase",
