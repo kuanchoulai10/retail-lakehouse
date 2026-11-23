@@ -32,3 +32,11 @@ tasks:
     desc: "Build the backend image once, tagged by commit"
     cmds:
       - cmd: echo "TODO:// docker build table-maintenance-backend with the build.sh source tag and push it to the registry"
+
+  mutation-test:
+    desc: "Run mutmut over the mutants whose names match MUTANTS (a module glob) and list the survivors"
+    requires:
+      vars: [MUTANTS]
+    cmds:
+      - uv run mutmut run "{{.MUTANTS}}"
+      - uv run mutmut results | grep -E "survived|timeout|suspicious|segfault" || true

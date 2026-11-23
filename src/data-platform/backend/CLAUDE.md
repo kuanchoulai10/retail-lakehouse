@@ -114,6 +114,10 @@ Today there are two contexts. `table_maintenance` schedules Iceberg maintenance 
 - **Single image, four components**: `GLAC_COMPONENT=api` (default), `worker`, `event_consumer`, or `migrate` via `entrypoint.py`.
 - **Unified settings**: All configuration via `GLAC_` prefixed env vars (pydantic-settings). Nested with `__` delimiter: `GLAC_MAINTENANCE_MAX_ATTEMPTS`, `GLAC_TEMPORAL__ADDRESS`.
 
+## Mutation testing
+
+`task -d src/data-platform/backend mutation-test MUTANTS='<glob>'` runs mutmut over the mutants whose names match the glob (module paths, for example `MUTANTS='context.table_maintenance.application.domain.model.table.*'` or `'base.entity*'`) and lists the survivors; `uv run mutmut show <name>` prints one mutant's diff. Run it over the modules a change touches, then kill each survivor with a test or say why it is equivalent. mutmut copies `base`, `context` and `shared_kernel` into `mutants/` (git-ignored, throwaway) and rewrites every function behind a trampoline, so the architecture tests, which read the source tree, are left out of its runs (`[tool.mutmut]` in `pyproject.toml`). The mutated modules import `mutmut`, and the active mutant lives in that module, so `tests/conftest.py` passes `mutmut` through Temporal's workflow sandbox when mutmut runs the tests. It is in no gate yet: a run over the whole backend takes hours.
+
 ## DDD Base Types (`base/`)
 
 Shared kernel on Pydantic v2 (stdlib, `pydantic`, `pydantic_core`, `annotated_types`, and `shared_kernel` from the project). Import everything from `base`.
