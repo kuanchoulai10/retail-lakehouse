@@ -88,7 +88,7 @@ def test_table_statuses_are_managed_unmanaged_and_dropped():
 def test_unmanage_keeps_the_row_and_records_the_unmanaging_match():
     """Unmanaging keeps the table and its state, and records the match that unmanaged it."""
     t = managed()
-    t.record_operation_result(OP, True, T0)
+    t.record_operation_result(OP, True, T0, size=ComputeSize.S)
     t.unmanage(UNMANAGED.match, T1)
     assert t.status == TableStatus.UNMANAGED
     assert not t.is_managed
@@ -160,7 +160,7 @@ def test_dropped_is_terminal():
         lambda: t.manage(MATCH, T1),
         lambda: t.unmanage(UNMANAGED.match, T1),
         lambda: t.rename(NAME, T1),
-        lambda: t.record_operation_result(OP, True, T1),
+        lambda: t.record_operation_result(OP, True, T1, size=ComputeSize.S),
     ]
     for command in commands:
         with pytest.raises(InvalidTableTransition):
@@ -176,7 +176,7 @@ def test_backoff_doubles_and_caps():
     assert OperationState(consecutive_failures=2).effective_cooldown(timedelta(hours=30)) == timedelta(hours=30)
     failed = OperationState().after_failure(T0).after_failure(T1)
     assert failed.consecutive_failures == 2 and failed.last_attempt_at == T1
-    ok = failed.after_success(T1)
+    ok = failed.after_success(T1, ComputeSize.S)
     assert ok.consecutive_failures == 0 and ok.last_attempt_at == T1
 
 
@@ -187,7 +187,7 @@ def test_record_operation_result():
     t.record_operation_result(OP, False, T1)
     assert t.operation_state(OP).consecutive_failures == 1
     t.unmanage(UNMANAGED.match, T1)
-    t.record_operation_result(OP, True, T1)
+    t.record_operation_result(OP, True, T1, size=ComputeSize.S)
     assert t.operation_state(OP).consecutive_failures == 0
     assert t.updated_at == T1
 
@@ -408,3 +408,20 @@ def test_a_dropped_table_records_nothing():
     table = managed()
     table.mark_dropped(T0 + timedelta(days=1))
     assert (table.record_over_target_partitions((EU,)), table.over_target_partitions) == (False, ())
+
+
+def test_a_success_needs_the_size_it_ran_at():
+    """A success is recorded with the size it ran at; one without is refused and changes nothing."""
+    t = managed()
+    with pytest.raises(ValueError, match="size"):
+        t.record_operation_result(OP, True, T0)
+    assert t.operation_state(OP) == OperationState()
+
+
+def test_a_success_that_names_no_fit_does_not_count_towards_a_smaller_size():
+    """A success recorded without saying it would have fit a smaller size counts as not fitting one."""
+    t = managed()
+    for _ in range(OperationState.LOW_USE_RUNS):
+        t.record_operation_result(OP, True, T0, size=ComputeSize.M)
+    assert t.operation_state(OP).last_successful_size is ComputeSize.M
+    assert t.operation_state(OP).low_use_successes == 0

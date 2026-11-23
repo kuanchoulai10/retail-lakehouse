@@ -17,7 +17,7 @@ export interface TableMaintenanceRunAttemptApiResponse {
   job_name: string | null;
   next_size: string | null;
   next_step: string | null;
-  size: string | null;
+  size: string;
   started_at: string;
   /** When the attempt's Spark driver started running; null while the attempt waits in its queue. */
   started_running_at: string | null;

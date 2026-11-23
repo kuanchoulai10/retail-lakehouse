@@ -49,23 +49,19 @@ class OperationState(ValueObject):
         """Return the size the next run starts at: the last successful one, else S."""
         return self.last_successful_size or ComputeSize.S
 
-    def after_success(
-        self, at: datetime, size: ComputeSize | None = None, *, fits_smaller: bool = False
-    ) -> OperationState:
-        """Return the state after a successful attempt, remembering its size when known and lifting attention.
+    def after_success(self, at: datetime, size: ComputeSize, *, fits_smaller: bool = False) -> OperationState:
+        """Return the state after a successful attempt at ``size``, remembering that size and lifting attention.
 
         A success whose measured use would have fit the next smaller size (``fits_smaller``) adds to
         the low-use count when it ran at the remembered size, and starts a new count at another
         size; any other success resets it. The ``LOW_USE_RUNS``-th such success in a row steps the
         remembered size down one (never below S) and resets the count.
         """
-        ran_at = size or self.last_successful_size
-        low_use = fits_smaller
-        same_size = ran_at == self.last_successful_size
-        streak = (self.low_use_successes + 1 if same_size else 1) if low_use else 0
-        remembered = ran_at
+        same_size = size == self.last_successful_size
+        streak = (self.low_use_successes + 1 if same_size else 1) if fits_smaller else 0
+        remembered = size
         if streak >= self.LOW_USE_RUNS:
-            remembered = (ran_at.smaller() if ran_at else None) or ran_at
+            remembered = size.smaller() or size
             streak = 0
         return self.with_changes(
             last_attempt_at=at,

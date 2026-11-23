@@ -119,7 +119,7 @@ export function MaintenanceRunPanel({ run, now }: { run: TableMaintenanceRunApiR
                 marker={isInFlightStatus(attempt.status) ? "filled" : "outlined"}
                 title={
                   <span className="flex flex-wrap items-center gap-2">
-                    <span>{attempt.size === null ? `Attempt ${attempt.attempt}` : `Attempt ${attempt.attempt} · ${attempt.size}`}</span>
+                    <span>{`Attempt ${attempt.attempt} · ${attempt.size}`}</span>
                     <RunStatusBadge status={attempt.status} />
                   </span>
                 }

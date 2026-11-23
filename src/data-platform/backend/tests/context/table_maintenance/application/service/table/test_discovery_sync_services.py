@@ -13,7 +13,7 @@ from context.table_maintenance.application.domain.model.catalog_discovery import
     CatalogScanFailure,
     CatalogScanFailureReason,
 )
-from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
+from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation
 from context.table_maintenance.application.domain.model.table import (
     Table,
     TableId,
@@ -1040,7 +1040,7 @@ def test_table_hint_for_managed_table_signals_but_cooldown_blocks_replan(
     world.attach_to_catalog(MANAGE_ALL)
     cooling = _row(tables_repo, now, "u-1", _name("orders"))
     for op in MaintenanceOperation.ordered():
-        cooling.record_operation_result(op, True, now - timedelta(minutes=1))
+        cooling.record_operation_result(op, True, now - timedelta(minutes=1), size=ComputeSize.S)
     _row(tables_repo, now, "u-2", _name("fresh"))
     for uuid, name in (("u-1", "orders"), ("u-2", "fresh")):
         catalog.add_table("iceberg", "sales", name, uuid)

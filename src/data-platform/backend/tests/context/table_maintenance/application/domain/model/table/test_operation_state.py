@@ -43,12 +43,6 @@ def test_success_remembers_its_size():
     assert OperationState().after_success(T0, ComputeSize.M).start_size() is ComputeSize.M
 
 
-def test_success_without_a_size_keeps_the_remembered_one():
-    """A success without a known size keeps the remembered size."""
-    state = OperationState(last_successful_size=ComputeSize.L)
-    assert state.after_success(T0).last_successful_size is ComputeSize.L
-
-
 def test_failure_keeps_the_remembered_size():
     """A failure changes neither the remembered size nor the start size."""
     state = OperationState(last_successful_size=ComputeSize.M).after_failure(T0)

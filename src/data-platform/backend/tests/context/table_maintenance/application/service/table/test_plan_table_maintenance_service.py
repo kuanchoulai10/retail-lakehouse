@@ -608,7 +608,7 @@ def test_scheduled_plan_respects_cooldown(planner, tables_repo, catalog, now):
     """A scheduled plan respects the cooldown."""
     table = _table(tables_repo, now)
     for op in OPS.ordered():
-        table.record_operation_result(op, True, now - timedelta(minutes=1))
+        table.record_operation_result(op, True, now - timedelta(minutes=1), size=ComputeSize.S)
     _observe(catalog, now)
     plan = _plan(planner, now)
     assert (plan.status, plan.operations) == ("planned", ())
@@ -620,7 +620,7 @@ def test_scheduled_plan_respects_cooldown(planner, tables_repo, catalog, now):
 def test_plan_uses_the_injected_cooldowns(tables_repo, catalog, resolve_applicable_policy, metrics_store, now):
     """With no compaction cooldown a table is due again right after an attempt, as the injected cooldowns say."""
     table = _table(tables_repo, now)
-    table.record_operation_result(OPS.REWRITE_DATA_FILES, True, now)
+    table.record_operation_result(OPS.REWRITE_DATA_FILES, True, now, size=ComputeSize.S)
     _observe(catalog, now)
     held = PlanTableMaintenanceService(tables_repo, catalog, resolve_applicable_policy, metrics_store=metrics_store)
     free = PlanTableMaintenanceService(
@@ -638,7 +638,7 @@ def test_manual_plan_ignores_disabled_and_cooldown(planner, tables_repo, catalog
     """A manual plan ignores both an operation the policy leaves out and the cooldown."""
     _use_policy(policies, now, policy_with_operation(DEFAULT, OPS.REWRITE_DATA_FILES, None))
     table = _table(tables_repo, now)
-    table.record_operation_result(OPS.REMOVE_ORPHAN_FILES, True, now)
+    table.record_operation_result(OPS.REMOVE_ORPHAN_FILES, True, now, size=ComputeSize.S)
     _observe(catalog, now)
     plan = _plan(planner, now, ["remove_orphan_files", "rewrite_data_files"])
     assert plan.status == "planned"
@@ -773,7 +773,7 @@ def test_scheduled_plan_reports_a_check_per_operation(planner, tables_repo, cata
     """A scheduled plan reports one check per operation with its verdict and measurements."""
     _use_policy(policies, now, policy_with_operation(DEFAULT, OPS.REWRITE_MANIFESTS, None))
     table = _table(tables_repo, now)
-    table.record_operation_result(OPS.EXPIRE_SNAPSHOTS, True, now - timedelta(minutes=1))
+    table.record_operation_result(OPS.EXPIRE_SNAPSHOTS, True, now - timedelta(minutes=1), size=ComputeSize.S)
     _observe(catalog, now)
     plan = _plan(planner, now)
     checks = _checks(plan)
@@ -1043,7 +1043,7 @@ def test_scheduled_plan_checks_can_be_recorded(planner, tables_repo, catalog, po
     """The checks of a scheduled plan (due, off, cooling down, not needed) are accepted by the record service."""
     _use_policy(policies, now, policy_with_operation(DEFAULT, OPS.REWRITE_MANIFESTS, None))
     table = _table(tables_repo, now)
-    table.record_operation_result(OPS.EXPIRE_SNAPSHOTS, True, now - timedelta(minutes=1))
+    table.record_operation_result(OPS.EXPIRE_SNAPSHOTS, True, now - timedelta(minutes=1), size=ComputeSize.S)
     _observe(catalog, now)
     plan = _plan(planner, now)
     record = _record(plan, now)

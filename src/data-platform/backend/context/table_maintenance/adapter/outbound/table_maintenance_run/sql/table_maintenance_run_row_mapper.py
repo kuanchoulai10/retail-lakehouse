@@ -33,7 +33,7 @@ def _value(member: StrEnum | None) -> str | None:
 def _encode_attempt(attempt: OperationAttempt) -> dict[str, Any]:
     return {
         "attempt": attempt.attempt,
-        "size": _value(attempt.size),
+        "size": attempt.size.value,
         "status": attempt.status.value,
         "job_name": attempt.job_name,
         "started_at": IsoDatetimeCodec.encode(attempt.started_at),
@@ -48,27 +48,22 @@ def _encode_attempt(attempt: OperationAttempt) -> dict[str, Any]:
 
 
 def _decode_attempt(data: dict[str, Any]) -> OperationAttempt:
-    size, failure_class, next_step, next_size = (
-        data.get("size"),
-        data.get("failure_class"),
-        data.get("next_step"),
-        data.get("next_size"),
-    )
+    failure_class, next_step, next_size = data["failure_class"], data["next_step"], data["next_size"]
     started_at = IsoDatetimeCodec.decode(data["started_at"])
     if started_at is None:
         msg = f"attempt {data['attempt']} has no start time"
         raise ValueError(msg)
     return OperationAttempt(
         attempt=data["attempt"],
-        size=ComputeSize(size) if size is not None else None,
+        size=ComputeSize(data["size"]),
         status=RunStatus(data["status"]),
         started_at=started_at,
-        job_name=data.get("job_name"),
-        started_running_at=IsoDatetimeCodec.decode(data.get("started_running_at")),
-        finished_at=IsoDatetimeCodec.decode(data.get("finished_at")),
+        job_name=data["job_name"],
+        started_running_at=IsoDatetimeCodec.decode(data["started_running_at"]),
+        finished_at=IsoDatetimeCodec.decode(data["finished_at"]),
         failure_class=FailureClass(failure_class) if failure_class is not None else None,
-        error=data.get("error"),
-        event_log_finished=data.get("event_log_finished"),
+        error=data["error"],
+        event_log_finished=data["event_log_finished"],
         next_step=NextStep(next_step) if next_step is not None else None,
         next_size=ComputeSize(next_size) if next_size is not None else None,
     )

@@ -14,7 +14,7 @@ class TableMaintenanceRunAttemptApiResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     attempt: int
-    size: str | None
+    size: str
     status: str
     job_name: str | None
     started_at: datetime

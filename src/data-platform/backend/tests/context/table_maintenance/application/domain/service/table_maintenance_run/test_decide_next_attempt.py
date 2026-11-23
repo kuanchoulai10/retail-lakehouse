@@ -71,16 +71,6 @@ def test_still_running_stops_whatever_the_class(failure_class: FailureClass) -> 
     )
 
 
-def test_attempt_without_a_size_counts_as_s() -> None:
-    """An attempt started before sizes existed counts as S."""
-    assert decide_next_attempt(FailureClass.OOM, None, 1, 3) == NextAttempt(
-        step=NextStep.RETRY_LARGER, size=ComputeSize.M
-    )
-    assert decide_next_attempt(FailureClass.OTHER, None, 1, 3) == NextAttempt(
-        step=NextStep.RETRY_SAME, size=ComputeSize.S
-    )
-
-
 def test_a_retry_carries_a_size_and_a_stop_carries_none() -> None:
     """A next attempt holds a size exactly when it retries."""
     with pytest.raises(ValueError, match="size"):

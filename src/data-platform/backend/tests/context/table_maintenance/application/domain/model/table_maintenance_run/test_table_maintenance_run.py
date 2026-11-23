@@ -929,3 +929,9 @@ def test_the_current_attempt_is_the_latest_attempts_number():
     run.fail(1, "boom", _now(2), next_attempt=_retry())
     run.start_attempt(2, None, _now(3), size=ComputeSize.S)
     assert run.current_attempt == 2
+
+
+def test_an_attempt_needs_a_size():
+    """An attempt always runs at a size; one without is refused."""
+    with pytest.raises(InvariantViolation, match="size"):
+        OperationAttempt(attempt=1, size=None, status=RunStatus.QUEUED, started_at=_now())  # ty: ignore[invalid-argument-type]

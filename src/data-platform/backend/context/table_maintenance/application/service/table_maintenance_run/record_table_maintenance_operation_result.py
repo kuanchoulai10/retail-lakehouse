@@ -25,6 +25,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     AttemptEnding,
     ContainerExit,
     FailureEvidence,
+    InvalidRunTransition,
     NextStep,
     RunStatus,
     TableMaintenanceRunId,
@@ -134,8 +135,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
             if _already_recorded(run, request):
                 self._record_on_table(run, operation, run.attempt_record(request.attempt), request)
                 return _output(run, run.attempt_record(request.attempt))
-            record = run.attempt_record(request.attempt)
-            size = record.size if record else None
+            size = _started_attempt(run, request.attempt).size
             evidence = self._read_evidence(request, ending)
             event_log_finished = self._read_event_log(evidence)
             if request.succeeded:
@@ -156,7 +156,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         self,
         run: TableMaintenanceRun,
         ending: AttemptEnding,
-        size: ComputeSize | None,
+        size: ComputeSize,
         request: RecordTableMaintenanceOperationResultUseCaseInput,
         evidence: ReadMaintenanceJobEvidenceGatewayOutput | None,
         event_log_finished: bool | None,
@@ -233,9 +233,8 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         attempt = RecordedAttempt(run_id=request.run_id, attempt=request.attempt)
         if table.has_recorded(operation, attempt):
             return
-        size = record.size if record else None
         if request.succeeded:
-            ran_at = size or ComputeSize.S
+            ran_at = _started_attempt(run, request.attempt).size
             peak = PeakHeapUse(
                 driver_bytes=_measured(request.metrics.get(_PEAK_DRIVER_HEAP_BYTES)),
                 executor_bytes=_measured(request.metrics.get(_PEAK_EXECUTOR_HEAP_BYTES)),
@@ -288,6 +287,15 @@ def _driver_started_at(evidence: ReadMaintenanceJobEvidenceGatewayOutput | None)
 def _measured(value: int | None) -> int | None:
     """Return a measured byte count, or None when the job did not measure it or reported nonsense."""
     return value if value is not None and value >= 0 else None
+
+
+def _started_attempt(run: TableMaintenanceRun, attempt: int) -> OperationAttempt:
+    """Return the run's attempt by number, refusing one the run never started."""
+    record = run.attempt_record(attempt)
+    if record is None:
+        msg = f"attempt {attempt} of run {run.id} was never started"
+        raise InvalidRunTransition(msg)
+    return record
 
 
 def _already_recorded(run: TableMaintenanceRun, request: RecordTableMaintenanceOperationResultUseCaseInput) -> bool:

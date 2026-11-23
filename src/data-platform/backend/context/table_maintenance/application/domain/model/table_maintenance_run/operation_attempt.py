@@ -26,12 +26,12 @@ class OperationAttempt(ValueObject):
 
     ``started_at`` is when the attempt was submitted; ``started_running_at`` is when its driver started
     running, None while the attempt waits in its queue. ``job_name`` names the attempt's own Spark job,
-    None until it is known. ``size`` is None for an attempt started without one. ``event_log_finished`` is
+    None until it is known. ``size`` is the size the attempt runs at. ``event_log_finished`` is
     None when the attempt's event log could not be read.
     """
 
     attempt: int
-    size: ComputeSize | None
+    size: ComputeSize
     status: RunStatus
     started_at: datetime
     job_name: str | None = None

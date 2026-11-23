@@ -321,8 +321,24 @@ def test_attempts_round_trip(repo: TableMaintenanceRunsSqlRepo):
     assert loaded.attempts[0].started_running_at is None
 
 
+_STORED_ATTEMPT = {
+    "attempt": 1,
+    "size": "S",
+    "status": "queued",
+    "job_name": None,
+    "started_at": NOW.isoformat(),
+    "started_running_at": None,
+    "finished_at": None,
+    "failure_class": None,
+    "error": None,
+    "event_log_finished": None,
+    "next_step": None,
+    "next_size": None,
+}
+
+
 def test_attempt_without_a_running_time_decodes_to_none():
-    """An attempt recorded without the started_running_at or job_name key decodes with neither."""
+    """An attempt stored with no running time or job name decodes with neither."""
     row = {
         "id": R1,
         "table_uuid": "u1",
@@ -337,7 +353,7 @@ def test_attempt_without_a_running_time_decodes_to_none():
         "procedure_args_json": {},
         "metrics_json": {},
         "attempts_json": [
-            {"attempt": 1, "size": "S", "status": "running", "started_at": NOW.isoformat()},
+            {**_STORED_ATTEMPT, "status": "running"},
         ],
         "created_at": NOW,
         "finished_at": None,
@@ -345,6 +361,54 @@ def test_attempt_without_a_running_time_decodes_to_none():
     run = TableMaintenanceRunRowMapper.to_aggregate(cast("RowMapping", row))
     assert run.attempts[0].started_running_at is None
     assert run.attempts[0].job_name is None
+
+
+def test_a_stored_attempt_without_its_start_time_is_refused_naming_it():
+    """An attempt stored with no start time is refused with a message naming the attempt."""
+    row = {
+        "id": R1,
+        "table_uuid": "u1",
+        "execution_ref": f"wf-{R1}",
+        "trigger": "scheduled",
+        "operation": "rewrite_data_files",
+        "priority": "P3",
+        "status": "queued",
+        "error": None,
+        "skip_reason": None,
+        "filters_json": [],
+        "procedure_args_json": {},
+        "metrics_json": {},
+        "attempts_json": [{**_STORED_ATTEMPT, "attempt": 2, "started_at": None}],
+        "created_at": NOW,
+        "finished_at": None,
+    }
+    with pytest.raises(ValueError, match="^attempt 2 has no start time$"):
+        TableMaintenanceRunRowMapper.to_aggregate(cast("RowMapping", row))
+
+
+@pytest.mark.parametrize("key", sorted(set(_STORED_ATTEMPT) - {"attempt", "started_at"}))
+def test_a_stored_attempt_without_one_of_its_keys_is_refused(key: str):
+    """An attempt is read back from every key the mapper writes; one stored without a key is not read as None."""
+    attempt = {k: v for k, v in _STORED_ATTEMPT.items() if k != key}
+    row = {
+        "id": R1,
+        "table_uuid": "u1",
+        "execution_ref": f"wf-{R1}",
+        "trigger": "scheduled",
+        "operation": "rewrite_data_files",
+        "priority": "P3",
+        "status": "queued",
+        "error": None,
+        "skip_reason": None,
+        "filters_json": [],
+        "procedure_args_json": {},
+        "metrics_json": {},
+        "attempts_json": [attempt],
+        "created_at": NOW,
+        "finished_at": None,
+    }
+    with pytest.raises(KeyError, match=key):
+        TableMaintenanceRunRowMapper.to_aggregate(cast("RowMapping", row))
 
 
 def test_among_runs_created_together_the_operation_outranks_the_id(repo: TableMaintenanceRunsSqlRepo):
@@ -371,7 +435,7 @@ def test_a_status_that_disagrees_with_the_attempts_is_refused_on_load():
         "procedure_args_json": {},
         "metrics_json": {},
         "attempts_json": [
-            {"attempt": 1, "size": "S", "status": "queued", "started_at": NOW.isoformat()},
+            dict(_STORED_ATTEMPT),
         ],
         "created_at": NOW,
         "finished_at": NOW,

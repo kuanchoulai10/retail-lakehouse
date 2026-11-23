@@ -4809,15 +4809,8 @@
             "title": "Next Step"
           },
           "size": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Size"
+            "title": "Size",
+            "type": "string"
           },
           "started_at": {
             "format": "date-time",

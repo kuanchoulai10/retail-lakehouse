@@ -20,7 +20,7 @@ def _value(member: StrEnum | None) -> str | None:
 def _attempt_fields(attempt: OperationAttempt) -> dict[str, Any]:
     return {
         "attempt": attempt.attempt,
-        "size": _value(attempt.size),
+        "size": attempt.size.value,
         "status": attempt.status.value,
         "job_name": attempt.job_name,
         "started_at": attempt.started_at,

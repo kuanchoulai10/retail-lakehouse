@@ -7,9 +7,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from context.table_maintenance.application.domain.model.shared import (
-    MaintenanceOperation as Op,
-)
-from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
     ManifestStats,
     Measurement,
     MeasurementComparison,
@@ -23,6 +21,9 @@ from context.table_maintenance.application.domain.model.shared import (
     SizeSource,
     SnapshotInfo,
     TableObservation,
+)
+from context.table_maintenance.application.domain.model.shared import (
+    MaintenanceOperation as Op,
 )
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
@@ -592,7 +593,7 @@ def test_a_partition_over_target_for_an_hour_runs_while_written():
 def test_waiting_and_cooldown_reads_cooldown():
     """A compaction that waits and is in cooldown says it is cooling down."""
     t = table()
-    t.record_operation_result(Op.REWRITE_DATA_FILES, True, NOW - timedelta(minutes=10))
+    t.record_operation_result(Op.REWRITE_DATA_FILES, True, NOW - timedelta(minutes=10), size=ComputeSize.S)
     o = obs(partitions=(written(part(9), NOW - timedelta(seconds=30)),))
     a = _compaction_of(assess_maintenance(t, compaction(), o, NOW))
     assert (a.verdict, a.next_eligible_at) == (
@@ -624,7 +625,7 @@ def test_the_assessment_returns_the_tracked_partitions():
 def test_tracking_continues_during_cooldown():
     """A cooldown does not hide the over-target partitions, so their since is not restarted."""
     t = table()
-    t.record_operation_result(Op.REWRITE_DATA_FILES, True, NOW - timedelta(minutes=10))
+    t.record_operation_result(Op.REWRITE_DATA_FILES, True, NOW - timedelta(minutes=10), size=ComputeSize.S)
     result = assess_maintenance(t, compaction(), obs(partitions=(part(9),)), NOW)
     assert _compaction_of(result).verdict == OperationVerdict.COOLDOWN
     assert len(result.over_target_partitions) == 1
