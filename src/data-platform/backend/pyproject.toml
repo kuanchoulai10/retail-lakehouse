@@ -32,7 +32,7 @@ dev = [
 extend = "../../../ruff.toml"
 
 [tool.ruff.lint.isort]
-known-first-party = ["base", "bootstrap", "context", "shared_kernel", "tests"]
+known-first-party = ["base", "bootstrap", "context", "tests"]
 
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = [
@@ -62,7 +62,7 @@ runtime-evaluated-decorators = [
 ]
 
 [tool.mutmut]
-source_paths = ["base", "context", "shared_kernel"]
+source_paths = ["base", "context"]
 also_copy = ["bootstrap", "entrypoint.py", "openapi.json", ".importlinter"]
 pytest_add_cli_args = ["-q", "-p", "no:cacheprovider", "--ignore=tests/architecture"]
 do_not_mutate = ["*/inbound/workflows/*_workflow.py"]

@@ -51,7 +51,7 @@ from base import (
 from tests.architecture.contexts import context_dir, context_names
 
 BACKEND = Path(__file__).resolve().parents[2]
-SOURCE_PACKAGES = ("base", "context", "bootstrap", "shared_kernel")
+SOURCE_PACKAGES = ("base", "context", "bootstrap")
 
 
 def _import_all_modules() -> None:

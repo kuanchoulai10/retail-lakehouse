@@ -12,7 +12,6 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
-from shared_kernel import prefixed_id_from_parts
 
 DNS_LABEL = re.compile(r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
 RUN_ID = "mr-01kaa4zc9qf3v8d2m6xk0w7b1n"
@@ -59,9 +58,11 @@ def test_every_operation_has_a_distinct_code():
 
 
 def test_spark_application_name_differs_for_runs_in_one_millisecond():
-    """Two runs minted in the same millisecond get different names, each a DNS label of at most 63 characters."""
-    unix_ms = 1_795_000_000_000
-    first, second = (prefixed_id_from_parts("mr", unix_ms, bits) for bits in (1, 2))
+    """Two runs minted in the same millisecond get different names, each a DNS label of at most 63 characters.
+
+    The two ids share their first ten suffix characters, the 48-bit millisecond, and differ only in random bits.
+    """
+    first, second = "mr-01kaa4zc9qf3v8d2m6xk0w7b1n", "mr-01kaa4zc9qf3v8d2m6xk0w7b1p"
 
     names = {spark_application_name(run_id, op.value, 1) for run_id in (first, second) for op in MaintenanceOperation}
 

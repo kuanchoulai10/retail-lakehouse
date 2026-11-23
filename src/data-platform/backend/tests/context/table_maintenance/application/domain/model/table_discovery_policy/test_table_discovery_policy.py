@@ -24,7 +24,7 @@ from context.table_maintenance.application.domain.model.table_discovery_policy i
     TableDiscoveryPolicyVersion,
     UnknownDiscoveryRuleId,
 )
-from shared_kernel import prefixed_id_pattern
+from tests.context.table_maintenance.id_shape import IdShape
 
 R1, R2 = "dr-00000000000000000000000001", "dr-00000000000000000000000002"
 RID1, RID2 = TableDiscoveryRuleId(R1), TableDiscoveryRuleId(R2)
@@ -54,7 +54,7 @@ def test_create_starts_at_version_one_under_a_new_dp_id():
     first = TableDiscoveryPolicy.create(NAME, _content(), T0)
     second = TableDiscoveryPolicy.create(NAME, _content(), T0)
 
-    assert prefixed_id_pattern("dp").fullmatch(first.id.value)
+    assert IdShape(TableDiscoveryPolicyId).fullmatch(first.id.value)
     assert first.id != second.id
     assert (first.name, first.version, first.created_at, first.updated_at) == (NAME, 1, T0, T0)
     assert not first.is_default

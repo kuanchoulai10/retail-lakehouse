@@ -7,12 +7,13 @@ from datetime import UTC, datetime
 from context.table_maintenance.application.domain.model.shared import (
     PolicyTarget,
     PolicyTargetType,
+    TableDiscoveryPolicyAttachmentId,
     TableDiscoveryPolicyId,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,
 )
-from shared_kernel import prefixed_id_pattern
+from tests.context.table_maintenance.id_shape import IdShape
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
 LATER = datetime(2026, 11, 2, tzinfo=UTC)
@@ -25,7 +26,7 @@ def test_attach_issues_a_new_da_id():
     first = TableDiscoveryPolicyAttachment.attach(CATALOG, policy_id, NOW)
     second = TableDiscoveryPolicyAttachment.attach(CATALOG, policy_id, NOW)
 
-    assert prefixed_id_pattern("da").fullmatch(first.id.value)
+    assert IdShape(TableDiscoveryPolicyAttachmentId).fullmatch(first.id.value)
     assert first.id != second.id
     assert (first.target, first.policy_id, first.attached_at) == (CATALOG, policy_id, NOW)
 

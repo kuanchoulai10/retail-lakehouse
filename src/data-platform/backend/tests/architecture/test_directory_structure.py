@@ -10,7 +10,7 @@ from tests.architecture.contexts import context_dir, context_names
 
 BACKEND = Path(__file__).resolve().parents[2]
 
-EXPECTED_TOP_LEVEL = {"context", "base", "bootstrap", "shared_kernel"}
+EXPECTED_TOP_LEVEL = {"context", "base", "bootstrap"}
 EXPECTED_CONTEXT_LAYERS = {"application", "adapter"}
 REQUIRED_ADAPTER_SUBDIRECTORIES = (
     "adapter/inbound/web",

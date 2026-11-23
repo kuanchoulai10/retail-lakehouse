@@ -25,7 +25,6 @@ REQUIRED_CONTRACTS = {
     "adapters-no-bootstrap",
     "configs-leaf",
     "base-isolation",
-    "shared-kernel-stdlib-only",
     "application-exceptions-leaf",
 }
 
@@ -52,10 +51,10 @@ def test_required_contracts_present():
     assert not missing, f"missing import-linter contracts: {sorted(missing)}"
 
 
-def test_root_packages_are_base_bootstrap_context_shared_kernel():
-    """The import-linter root packages are base, bootstrap, context and shared_kernel."""
+def test_root_packages_are_base_bootstrap_context():
+    """The import-linter root packages are base, bootstrap and context."""
     roots = set(_config().get("importlinter", "root_packages").split())
-    assert roots == {"base", "bootstrap", "context", "shared_kernel"}
+    assert roots == {"base", "bootstrap", "context"}
 
 
 def test_contracts_name_no_single_context():
@@ -72,11 +71,11 @@ def test_contracts_name_no_single_context():
     assert offenders == [], "\n".join(offenders)
 
 
-def test_base_may_import_only_the_shared_kernel():
-    """Contract ``base-isolation`` forbids ``base`` every project root package but ``shared_kernel``."""
+def test_base_imports_no_project_package():
+    """Contract ``base-isolation`` forbids ``base`` every other project root package."""
     parser = _config()
     section = f"{CONTRACT_PREFIX}base-isolation"
     roots = set(parser.get("importlinter", "root_packages").split())
     assert parser.get(section, "source_modules").split() == ["base"]
-    assert set(parser.get(section, "forbidden_modules").split()) == roots - {"base", "shared_kernel"}
-    assert "except the shared kernel" in parser.get(section, "name")
+    assert set(parser.get(section, "forbidden_modules").split()) == roots - {"base"}
+    assert parser.get(section, "name").endswith("depends on nothing project-internal")

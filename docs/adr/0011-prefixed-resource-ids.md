@@ -2,7 +2,7 @@
 
 Date: 2026-11-19
 
-Status: Accepted.
+Status: Accepted. The `shared_kernel` paragraph is superseded by ADR 0015 (2026-11-24): the format now lives in `base.EntityId` and workflows take their ids from the application.
 
 ## Context
 
@@ -32,7 +32,7 @@ For where the encoder lives:
 - **Prefixes (table maintenance only).** `mp-` TableMaintenancePolicyId (new), `dp-` TableDiscoveryPolicyId (TableDiscoveryRulesId until KCL-71, 2026-11-21), `dr-` TableDiscoveryRuleId, `da-` TableDiscoveryPolicyAttachmentId (new 2026-11-21, KCL-71), `pa-` TableMaintenancePolicyAttachmentId, `mr-` TableMaintenanceRunId, `rc-` TableReconciliationId. `cr-` (CompactionRoundId) and `cc-` (CompactionCandidateId) were retired with their aggregates on 2026-11-20 and must not be reused.
 - **Unchanged ids.** The table maintenance `TableId` stays the Iceberg table UUID (and every long-lived reference to a table uses it, ADR 0014), `CatalogDiscoveryId` stays the catalog name, and every id in the catalog context stays what Polaris gives (Polaris is its source of truth). The default discovery policy (the global discovery rules until 2026-11-21) and the default maintenance policy have fixed ids, `dp-00000000000000000000000000` and `mp-00000000000000000000000000`.
 - **Names for display and URLs only.** REST paths and console URLs keep using policy names. Every relation to a policy is by its `mp-` or `dp-` id.
-- **`shared_kernel`.** A top-level package beside `base`, stdlib only, holding `prefixed_id_from_parts(prefix, unix_ms, random_bits)`, `new_prefixed_id(prefix)` and `prefixed_id_pattern(prefix)`. `base.EntityId` uses it to mint and check ids. Temporal contracts and workflows use `prefixed_id_from_parts(prefix, int(workflow.now().timestamp() * 1000), workflow.random().getrandbits(74))` to mint deterministic ids, so a replayed workflow reuses the same id. The package imports nothing from this project and nothing third-party; import-linter contract `shared-kernel-stdlib-only` and `tests/architecture/test_shared_kernel_stdlib_only.py` enforce it. Any package may import it, and it stays small.
+- **`shared_kernel`** (superseded by ADR 0015). A top-level package beside `base`, stdlib only, holding `prefixed_id_from_parts(prefix, unix_ms, random_bits)`, `new_prefixed_id(prefix)` and `prefixed_id_pattern(prefix)`. `base.EntityId` uses it to mint and check ids. Temporal contracts and workflows use `prefixed_id_from_parts(prefix, int(workflow.now().timestamp() * 1000), workflow.random().getrandbits(74))` to mint deterministic ids, so a replayed workflow reuses the same id. The package imports nothing from this project and nothing third-party; import-linter contract `shared-kernel-stdlib-only` and `tests/architecture/test_shared_kernel_stdlib_only.py` enforce it. Any package may import it, and it stays small.
 - **No data migration.** Old rows are not converted. The cluster is rebuilt after the change, and an id of the old shape found in storage is refused when read.
 
 ## Consequences

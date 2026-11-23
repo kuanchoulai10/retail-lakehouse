@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from shared_kernel import prefixed_id_pattern
+from context.table_maintenance.application.domain.model.shared import TableMaintenancePolicyId
 from tests.context.table_maintenance.adapter.inbound.web.policy_web_world import PolicyWebWorld, policy_body
 from tests.context.table_maintenance.fakes.default_content_json import DEFAULT_CONTENT_JSON
+from tests.context.table_maintenance.id_shape import IdShape
 
-MP_ID = prefixed_id_pattern("mp")
+MP_ID = IdShape(TableMaintenancePolicyId)
 DEFAULT_POLICY_ID = "mp-00000000000000000000000000"
 OPERATIONS = ("rewrite_data_files", "rewrite_manifests", "expire_snapshots", "remove_orphan_files")
 
@@ -131,7 +132,7 @@ def test_policy_routes_still_use_names(world: PolicyWebWorld) -> None:
     """Every policy route is addressed by name; each answer adds the policy's ``mp-`` id beside the name."""
     created = world.create("gold")
     policy_id = created["id"]
-    assert MP_ID.match(policy_id)
+    assert MP_ID.fullmatch(policy_id)
     assert world.client.get("/v1/maintenance-policies/gold").json()["id"] == policy_id
     put = world.client.put("/v1/maintenance-policies/gold", json={"version": 1, **policy_body()})
     assert put.json()["id"] == policy_id

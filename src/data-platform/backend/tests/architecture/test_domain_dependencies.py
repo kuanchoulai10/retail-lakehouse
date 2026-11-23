@@ -1,4 +1,4 @@
-"""The domain and the DDD kernel may import only the stdlib, base, the shared kernel, their own domain and Pydantic."""
+"""The domain and the DDD building blocks may import only the stdlib, base, their own domain and Pydantic."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from tests.architecture.contexts import context_names
 
 BACKEND = Path(__file__).resolve().parents[2]
 ALLOWED_THIRD_PARTY = {"pydantic", "pydantic_core", "annotated_types"}
-ALLOWED_TOP_LEVEL = set(sys.stdlib_module_names) | {"__future__", "base", "shared_kernel"} | ALLOWED_THIRD_PARTY
+ALLOWED_TOP_LEVEL = set(sys.stdlib_module_names) | {"__future__", "base"} | ALLOWED_THIRD_PARTY
 
 
 def _imported_modules(tree: ast.AST) -> list[tuple[str, int]]:

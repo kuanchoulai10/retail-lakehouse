@@ -224,7 +224,7 @@ def test_exports_do_not_shadow_a_sibling_module():
     assert not problems, "\n".join(problems)
 
 
-GLOBAL_BOUNDARIES = ("base", "shared_kernel", "bootstrap.configs", "bootstrap.container")
+GLOBAL_BOUNDARIES = ("base", "bootstrap.configs", "bootstrap.container")
 CONTEXT_KERNEL_BOUNDARIES = ("application.exceptions",)
 AGGREGATE_BOUNDARY_LAYERS = (
     "application.domain.model",

@@ -7,12 +7,13 @@ from datetime import UTC, datetime
 from context.table_maintenance.application.domain.model.shared import (
     PolicyTarget,
     PolicyTargetType,
+    TableMaintenancePolicyAttachmentId,
     TableMaintenancePolicyId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
     TableMaintenancePolicyAttachment,
 )
-from shared_kernel import prefixed_id_pattern
+from tests.context.table_maintenance.id_shape import IdShape
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
@@ -23,7 +24,7 @@ def test_attachment_id_has_the_pa_prefix():
     gold = TableMaintenancePolicyId.new()
     first = TableMaintenancePolicyAttachment.attach(target, gold, NOW)
     second = TableMaintenancePolicyAttachment.attach(target, gold, NOW)
-    assert prefixed_id_pattern("pa").fullmatch(first.id.value)
+    assert IdShape(TableMaintenancePolicyAttachmentId).fullmatch(first.id.value)
     assert first.id != second.id
 
 

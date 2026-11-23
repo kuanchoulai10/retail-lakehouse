@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import re
 
-from shared_kernel import any_prefixed_id_pattern
+from base import EntityId
 
 _PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
-_PREFIXED_ID = any_prefixed_id_pattern()
 
 
 def checked_policy_name(value: str) -> str:
@@ -19,7 +18,7 @@ def checked_policy_name(value: str) -> str:
     """
     if _PATTERN.fullmatch(value) is None:
         raise ValueError("policy name must be 1 to 64 letters, digits, underscores or hyphens")
-    if _PREFIXED_ID.fullmatch(value) is not None:
+    if EntityId.is_shaped_like_an_id(value):
         raise ValueError(
             "policy name must not look like a prefixed id (<prefix>-<26 base32 characters>); choose another name"
         )

@@ -6,7 +6,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import TableMaintenancePolicyAttachmentId
+from context.table_maintenance.application.domain.model.shared import (
+    TableDiscoveryPolicyAttachmentId,
+    TableMaintenancePolicyAttachmentId,
+)
 from context.table_maintenance.application.domain.model.table_discovery_policy import TableDiscoveryPolicyName
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table_discovery_policy import (
@@ -31,7 +34,6 @@ from context.table_maintenance.application.service.table_discovery_policy_attach
     DetachTableDiscoveryPolicyService,
     ListTableDiscoveryPolicyAttachmentsService,
 )
-from shared_kernel import prefixed_id_pattern
 from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import FakeReadTableMetadataGateway
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_repo import (
     InMemoryTableDiscoveryPoliciesRepo,
@@ -46,10 +48,11 @@ from tests.context.table_maintenance.fakes.recording_send_discovery_request_gate
 from tests.context.table_maintenance.fakes.recording_sync_discovery_schedules_gateway import (
     RecordingSyncDiscoverySchedulesGateway,
 )
+from tests.context.table_maintenance.id_shape import IdShape
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
 LATER = datetime(2026, 11, 2, tzinfo=UTC)
-DA_ID = prefixed_id_pattern("da")
+DA_ID = IdShape(TableDiscoveryPolicyAttachmentId)
 CONTENT = {
     "description": "",
     "no_match_outcome": "unmanage",

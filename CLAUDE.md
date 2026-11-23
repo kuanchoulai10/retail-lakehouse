@@ -29,7 +29,7 @@ Topic files load on demand: a nested `CLAUDE.md` is read when you work on files 
 | History of what landed and finished initiatives | `docs/agents/project-history.md` |
 | Known follow-ups and deferred work | `docs/agents/known-follow-ups.md` |
 | Writing Linear issues (six sections, labels, placement, updating by comment) | `docs/agents/linear-issues.md` |
-| Architecture decisions | `docs/adr/` (0005 bounded contexts, 0006 choosing an outbound port, 0007 one-time secrets, 0008 design system on Serendie tokens, 0009 pydantic in the domain, 0010 pydantic in inbound ports, 0011 prefixed resource ids, 0012 policies on the catalog hierarchy, 0013 table metrics in the database and Prometheus, 0014 long-lived table references use the UUID) |
+| Architecture decisions | `docs/adr/` (0005 bounded contexts, 0006 choosing an outbound port, 0007 one-time secrets, 0008 design system on Serendie tokens, 0009 pydantic in the domain, 0010 pydantic in inbound ports, 0011 prefixed resource ids, 0012 policies on the catalog hierarchy, 0013 table metrics in the database and Prometheus, 0014 long-lived table references use the UUID, 0015 ids issued only by the domain) |
 
 Keep this file to rules that apply everywhere; put topic rules in the topic file. When work lands, add a line to `docs/agents/project-history.md` and update the topic file it changes.
 

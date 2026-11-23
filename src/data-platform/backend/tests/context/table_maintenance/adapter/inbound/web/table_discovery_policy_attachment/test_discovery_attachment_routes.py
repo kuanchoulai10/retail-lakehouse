@@ -6,15 +6,18 @@ import logging
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import TableMaintenancePolicyAttachmentId
-from shared_kernel import prefixed_id_pattern
+from context.table_maintenance.application.domain.model.shared import (
+    TableDiscoveryPolicyAttachmentId,
+    TableMaintenancePolicyAttachmentId,
+)
 from tests.context.table_maintenance.adapter.inbound.web.discovery_policy_web_world import (
     NOW,
     DiscoveryPolicyWebWorld,
     discovery_rule,
 )
+from tests.context.table_maintenance.id_shape import IdShape
 
-DA_ID = prefixed_id_pattern("da")
+DA_ID = IdShape(TableDiscoveryPolicyAttachmentId)
 
 
 @pytest.fixture

@@ -16,7 +16,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     TableMaintenancePolicy,
     TableMaintenancePolicyName,
 )
-from shared_kernel import prefixed_id_pattern
+from tests.context.table_maintenance.id_shape import IdShape
 
 T0 = datetime(2026, 1, 1, tzinfo=UTC)
 T1 = T0 + timedelta(hours=1)
@@ -40,7 +40,7 @@ def test_policy_gets_an_mp_id_on_create():
     """A new policy gets a random ``mp-`` id of its own and keeps its name beside it."""
     first, second = make("gold"), make("gold")
 
-    assert prefixed_id_pattern("mp").fullmatch(first.id.value)
+    assert IdShape(TableMaintenancePolicyId).fullmatch(first.id.value)
     assert first.id != second.id
     assert first.name == TableMaintenancePolicyName(value="gold")
 

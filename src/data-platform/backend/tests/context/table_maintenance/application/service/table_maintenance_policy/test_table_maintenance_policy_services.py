@@ -35,7 +35,6 @@ from context.table_maintenance.application.service.table_maintenance_policy impo
     ListTableMaintenancePoliciesService,
     UpdateTableMaintenancePolicyService,
 )
-from shared_kernel import prefixed_id_pattern
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
     InMemoryTableMaintenancePoliciesRepo,
 )
@@ -46,6 +45,7 @@ from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemory
 from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
     RecordingSendTableChangeGateway,
 )
+from tests.context.table_maintenance.id_shape import IdShape
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 CONTENT = MaintenancePolicyContent.platform_default().to_primitives()
@@ -88,7 +88,7 @@ def test_create_returns_the_new_mp_id():
 
     out = _create(repo)
 
-    assert prefixed_id_pattern("mp").fullmatch(out.id)
+    assert IdShape(TableMaintenancePolicyId).fullmatch(out.id)
     assert out.name == "gold"
     assert _gold_id(repo).value == out.id
 

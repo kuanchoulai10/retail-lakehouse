@@ -7,7 +7,12 @@ from typing import Any
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
+from context.table_maintenance.application.domain.model.shared import (
+    PolicyTarget,
+    PolicyTargetType,
+    TableDiscoveryPolicyId,
+    TableDiscoveryRuleId,
+)
 from context.table_maintenance.application.domain.model.table_discovery_policy import TableDiscoveryPolicyName
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,
@@ -40,7 +45,6 @@ from context.table_maintenance.application.service.table_discovery_policy import
     ListTableDiscoveryPoliciesService,
     UpdateTableDiscoveryPolicyService,
 )
-from shared_kernel import prefixed_id_pattern
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_repo import (
     InMemoryTableDiscoveryPoliciesRepo,
 )
@@ -53,11 +57,12 @@ from tests.context.table_maintenance.fakes.recording_send_discovery_request_gate
 from tests.context.table_maintenance.fakes.recording_sync_discovery_schedules_gateway import (
     RecordingSyncDiscoverySchedulesGateway,
 )
+from tests.context.table_maintenance.id_shape import IdShape
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
 LATER = datetime(2026, 11, 2, tzinfo=UTC)
-DR_ID = prefixed_id_pattern("dr")
-DP_ID = prefixed_id_pattern("dp")
+DR_ID = IdShape(TableDiscoveryRuleId)
+DP_ID = IdShape(TableDiscoveryPolicyId)
 
 
 def _rule(glob: str = "orders_*", *, outcome: str = "manage", **extra: Any) -> dict[str, Any]:  # noqa: ANN401

@@ -15,7 +15,7 @@ from tests.architecture.contexts import BACKEND, context_dir, context_names
 if TYPE_CHECKING:
     from pathlib import Path
 
-PROJECT_PACKAGES = ("context", "base", "bootstrap", "shared_kernel")
+PROJECT_PACKAGES = ("context", "base", "bootstrap")
 
 AGGREGATE_LAYERS = (
     "application/domain/model",
@@ -26,7 +26,6 @@ AGGREGATE_LAYERS = (
 )
 KERNEL_BOUNDARIES = (
     "base",
-    "shared_kernel",
     "bootstrap/configs",
     "bootstrap/container",
 )

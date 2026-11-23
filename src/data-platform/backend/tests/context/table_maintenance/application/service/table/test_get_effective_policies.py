@@ -6,7 +6,11 @@ from datetime import UTC, datetime
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import TableId
+from context.table_maintenance.application.domain.model.shared import (
+    TableDiscoveryPolicyAttachmentId,
+    TableId,
+    TableMaintenancePolicyAttachmentId,
+)
 from context.table_maintenance.application.domain.model.table import Table, TableName
 from context.table_maintenance.application.domain.model.table_discovery_policy import DEFAULT_DISCOVERY_POLICY_ID
 from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePolicyContent
@@ -49,7 +53,6 @@ from context.table_maintenance.application.service.table_maintenance_policy impo
 from context.table_maintenance.application.service.table_maintenance_policy_attachment import (
     AttachTableMaintenancePolicyService,
 )
-from shared_kernel import prefixed_id_pattern
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import FakeReadTableMetadataGateway
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_repo import (
@@ -74,10 +77,11 @@ from tests.context.table_maintenance.fakes.recording_send_table_change_gateway i
 from tests.context.table_maintenance.fakes.recording_sync_discovery_schedules_gateway import (
     RecordingSyncDiscoverySchedulesGateway,
 )
+from tests.context.table_maintenance.id_shape import IdShape
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
-PA_ID = prefixed_id_pattern("pa")
-DA_ID = prefixed_id_pattern("da")
+PA_ID = IdShape(TableMaintenancePolicyAttachmentId)
+DA_ID = IdShape(TableDiscoveryPolicyAttachmentId)
 MAINTENANCE_CONTENT = MaintenancePolicyContent.platform_default().to_primitives()
 DISCOVERY_CONTENT = {
     "description": "Sales tables",

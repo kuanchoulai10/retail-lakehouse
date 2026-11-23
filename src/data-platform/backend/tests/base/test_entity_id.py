@@ -8,9 +8,11 @@ from typing import ClassVar
 import pytest
 
 from base import EntityId, InvariantViolation, ValueObject
-from shared_kernel import prefixed_id_pattern
 
 RUN_ID = "mr-01h2xcejqtf2nbrexx3vqjhp41"
+TYPEID_SPEC_UUID = uuid.UUID("0188bac7-4afa-78aa-bc3b-bd1eef28d881")
+TYPEID_SPEC_SUFFIX = "01h2xcejqtf2nbrexx3vqjhp41"
+CROCKFORD = "0123456789abcdefghjkmnpqrstvwxyz"
 
 
 class _Id(EntityId):
@@ -122,9 +124,18 @@ def test_prefixed_id_refuses_a_uuid(build) -> None:
         RUN_ID.upper(),
         "mr-81h2xcejqtf2nbrexx3vqjhp41",
         RUN_ID[:-1],
+        RUN_ID[:-1] + "u",
         "",
     ],
-    ids=["other prefix", "trailing newline", "upper case", "first character above 7", "short", "empty"],
+    ids=[
+        "other prefix",
+        "trailing newline",
+        "upper case",
+        "first character above 7",
+        "short",
+        "letter outside the alphabet",
+        "empty",
+    ],
 )
 def test_prefixed_id_refuses_any_other_shape(value: str) -> None:
     """A prefixed id refuses a value of another prefix or of the wrong suffix."""
@@ -160,7 +171,8 @@ def test_new_mints_a_valid_id() -> None:
     minted = _RunId.new()
 
     assert type(minted) is _RunId
-    assert prefixed_id_pattern("mr").fullmatch(minted.value)
+    assert minted.value.startswith("mr-")
+    assert len(minted.suffix) == 26
     assert _RunId.new() != minted
 
 
@@ -180,10 +192,11 @@ def test_new_without_prefix_is_type_error() -> None:
 
 def test_an_invalid_prefix_is_refused_when_the_class_is_defined() -> None:
     """A ``PREFIX`` that is not 2 to 8 lowercase letters fails at class definition."""
-    with pytest.raises(ValueError, match="prefix must be 2 to 8 lowercase letters"):
+    for prefix in ("MR", "m", "mr-", "abcdefghi", "m1", ""):
+        with pytest.raises(ValueError, match="prefix must be 2 to 8 lowercase letters"):
 
-        class _BadId(EntityId):
-            PREFIX: ClassVar[str | None] = "MR"
+            class _BadId(EntityId):
+                PREFIX: ClassVar[str | None] = prefix
 
 
 def test_a_kind_defined_without_a_prefix_accepts_any_value() -> None:
@@ -207,3 +220,74 @@ def test_suffix_needs_a_prefix() -> None:
     """An id kind without ``PREFIX`` has no suffix and raises ``TypeError`` naming the class."""
     with pytest.raises(TypeError, match="_Id has no PREFIX"):
         _ = _Id("mr-01h2xcejqtf2nbrexx3vqjhp41").suffix
+
+
+def _uuid7(unix_ms: int, random_bits: int) -> uuid.UUID:
+    """Build a UUIDv7 from its milliseconds and 74 random bits (12 of ``rand_a`` then 62 of ``rand_b``)."""
+    rand_a, rand_b = random_bits >> 62, random_bits & ((1 << 62) - 1)
+    return uuid.UUID(int=(unix_ms << 80) | (0x7 << 76) | (rand_a << 64) | (0b10 << 62) | rand_b)
+
+
+def _decode(suffix: str) -> int:
+    """Decode a 26-character suffix back to the 128-bit integer, independently of the encoder."""
+    value = 0
+    for character in suffix:
+        value = (value << 5) | CROCKFORD.index(character)
+    return value
+
+
+def test_new_encodes_the_typeid_spec_vector(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The TypeID specification's UUID becomes the specification's suffix."""
+    monkeypatch.setattr(uuid, "uuid7", lambda: TYPEID_SPEC_UUID)
+
+    assert _RunId.new().value == f"mr-{TYPEID_SPEC_SUFFIX}"
+
+
+def test_new_ids_sort_by_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An id from an earlier millisecond sorts before a later one as a string, whatever the random bits."""
+    uuids = iter([_uuid7(1, (1 << 74) - 1), _uuid7(2, 0)])
+    monkeypatch.setattr(uuid, "uuid7", lambda: next(uuids))
+
+    earlier, later = _RunId.new(), _RunId.new()
+
+    assert earlier.value < later.value
+
+
+def test_the_suffix_of_a_new_id_decodes_to_its_uuid(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Decoding the suffix gives back the UUIDv7 the id was made from, timestamp, version and variant included."""
+    made_from = _uuid7(1_700_000_000_123, (0xABC << 62) | 0x123456789ABCDEF)
+    monkeypatch.setattr(uuid, "uuid7", lambda: made_from)
+
+    decoded = _decode(_RunId.new().suffix)
+
+    assert decoded == made_from.int
+    assert decoded >> 80 == 1_700_000_000_123
+    assert uuid.UUID(int=decoded).version == 7
+
+
+def test_a_new_id_is_a_uuid_v7() -> None:
+    """An id from ``new()`` decodes to a version 7, variant 10 UUID."""
+    decoded = _decode(_RunId.new().suffix)
+
+    assert uuid.UUID(int=decoded).version == 7
+    assert (decoded >> 62) & 0b11 == 0b10
+
+
+@pytest.mark.parametrize(
+    ("text", "shaped"),
+    [
+        ("mr-" + TYPEID_SPEC_SUFFIX, True),
+        ("abcdefgh-" + TYPEID_SPEC_SUFFIX, True),
+        ("m-" + TYPEID_SPEC_SUFFIX, False),
+        ("abcdefghi-" + TYPEID_SPEC_SUFFIX, False),
+        ("MR-" + TYPEID_SPEC_SUFFIX, False),
+        ("mr-8" + TYPEID_SPEC_SUFFIX[1:], False),
+        ("mr-" + TYPEID_SPEC_SUFFIX[:-1], False),
+        ("mr-nightly", False),
+        ("mr-" + TYPEID_SPEC_SUFFIX + "x", False),
+        ("policy mr-" + TYPEID_SPEC_SUFFIX, False),
+    ],
+)
+def test_is_shaped_like_an_id_of_any_prefix(text: str, shaped: bool) -> None:  # noqa: FBT001
+    """Text is shaped like an id when it is a prefix of 2 to 8 lowercase letters, a dash and a valid suffix."""
+    assert EntityId.is_shaped_like_an_id(text) is shaped

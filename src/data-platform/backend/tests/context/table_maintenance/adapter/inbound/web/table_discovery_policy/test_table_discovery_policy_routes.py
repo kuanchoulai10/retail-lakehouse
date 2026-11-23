@@ -10,19 +10,20 @@ from context.table_maintenance.application.domain.model.shared import (
     PolicyTarget,
     PolicyTargetType,
     TableDiscoveryPolicyId,
+    TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,
 )
-from shared_kernel import prefixed_id_pattern
 from tests.context.table_maintenance.adapter.inbound.web.discovery_policy_web_world import (
     DiscoveryPolicyWebWorld,
     discovery_policy_body,
     discovery_rule,
 )
+from tests.context.table_maintenance.id_shape import IdShape
 
-DR_ID = prefixed_id_pattern("dr")
-DP_ID = prefixed_id_pattern("dp")
+DR_ID = IdShape(TableDiscoveryRuleId)
+DP_ID = IdShape(TableDiscoveryPolicyId)
 DEFAULT_ID = "dp-00000000000000000000000000"
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
 

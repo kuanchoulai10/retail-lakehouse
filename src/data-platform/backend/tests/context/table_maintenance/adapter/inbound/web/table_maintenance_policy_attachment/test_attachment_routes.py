@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import TableDiscoveryPolicyAttachmentId
-from shared_kernel import prefixed_id_pattern
+from context.table_maintenance.application.domain.model.shared import (
+    TableDiscoveryPolicyAttachmentId,
+    TableMaintenancePolicyAttachmentId,
+)
 from tests.context.table_maintenance.adapter.inbound.web.policy_web_world import NOW, PolicyWebWorld
+from tests.context.table_maintenance.id_shape import IdShape
 
-PA_ID = prefixed_id_pattern("pa")
+PA_ID = IdShape(TableMaintenancePolicyAttachmentId)
 
 
 @pytest.fixture
