@@ -128,3 +128,18 @@ def test_an_entity_or_aggregate_may_name_its_base_without_a_type_parameter() -> 
 
     assert _Plain(id=_UserId("1"), name="a").name == "a"
     assert _PlainRoot(id=_UserId("1"), name="a").name == "a"
+
+
+class _RedeclaredUser(Entity[_UserId]):
+    """Test stub that redeclares ``id``, as every real entity does."""
+
+    id: _UserId  # noqa: A003
+    name: str
+
+
+def test_a_redeclared_id_cannot_be_reassigned() -> None:
+    """A subclass that redeclares ``id`` with its own type still refuses a new id."""
+    user = _RedeclaredUser(id=_UserId("1"), name="a")
+    with pytest.raises(AttributeError, match="^_RedeclaredUser is immutable"):
+        user.id = _UserId("2")
+    assert user.id == _UserId("1")

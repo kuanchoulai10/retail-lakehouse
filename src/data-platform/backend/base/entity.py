@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict
 
 from base._inheritance_guard import enforce_max_depth
 from base._invariant_guarded_model import InvariantGuardedModel
@@ -40,7 +40,7 @@ class Entity[ID: EntityId](InvariantGuardedModel):
 
     _depth_base: ClassVar[bool] = True
 
-    id: ID = Field(frozen=True)  # noqa: A003
+    id: ID  # noqa: A003
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
@@ -69,8 +69,11 @@ class Entity[ID: EntityId](InvariantGuardedModel):
 
         Pydantic stores the value before a cross-field validator runs and does
         not take it back on failure, so the previous value and the set of
-        explicitly assigned fields are restored here.
+        explicitly assigned fields are restored here. The id is refused before
+        anything runs; a subclass that redeclares ``id`` keeps that.
         """
+        if name == "id":
+            raise AttributeError(f"{type(self).__name__} is immutable{self._immutable_hint}")
         if name not in type(self).model_fields:
             super().__setattr__(name, value)
             return
