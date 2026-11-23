@@ -93,6 +93,9 @@ from context.table_maintenance.application.domain.model.shared.snapshot_retentio
 from context.table_maintenance.application.domain.model.shared.spec_filter import (
     SpecFilter,
 )
+from context.table_maintenance.application.domain.model.shared.spec_partitions import (
+    SpecPartitions,
+)
 from context.table_maintenance.application.domain.model.shared.table_discovery_policy_attachment_id import (
     TableDiscoveryPolicyAttachmentId,
 )
@@ -148,6 +151,7 @@ __all__ = [
     "SnapshotInfo",
     "SnapshotRetention",
     "SpecFilter",
+    "SpecPartitions",
     "TableDiscoveryPolicyAttachmentId",
     "TableDiscoveryPolicyId",
     "TableDiscoveryRuleId",

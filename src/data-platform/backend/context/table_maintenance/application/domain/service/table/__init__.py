@@ -23,6 +23,9 @@ from context.table_maintenance.application.domain.service.table.derive_metric_tr
 from context.table_maintenance.application.domain.service.table.fits_smaller_size import (
     fits_smaller_size,
 )
+from context.table_maintenance.application.domain.service.table.group_partitions_by_spec import (
+    group_partitions_by_spec,
+)
 from context.table_maintenance.application.domain.service.table.measure_table import (
     measure_table,
 )
@@ -40,6 +43,7 @@ __all__ = [
     "any_condition_holds",
     "assess_maintenance",
     "build_partition_filters",
+    "group_partitions_by_spec",
     "compute_reducible_files",
     "decide_table_management",
     "derive_metric_trend_values",

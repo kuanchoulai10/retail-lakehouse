@@ -92,6 +92,7 @@ KNOWN_VERBS = {
     # Lifecycle
     "Complete",
     "Fail",
+    "Forward",
     "Start",
     "Stop",
     "Cancel",
