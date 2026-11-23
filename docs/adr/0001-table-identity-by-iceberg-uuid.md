@@ -24,6 +24,7 @@ Option 3. The `Table` aggregate (then called `ManagedTable`) uses `TableId`, whi
 
 - Renames keep settings, operation state and run history. Discovery and the event consumer detect a rename when they see a known UUID under a new name.
 - Drop and recreate never mixes the history of two different tables.
+- ADR 0014 extends this to every long-lived reference to a table, in any context: the UUID is the reference, and a stored path is only a display copy.
 - Name-based lookups (event hints carry names, not UUIDs) need a catalog read first to resolve the UUID. That read is also what makes the catalog the source of truth (ADR 3).
 - A stale row can share its name with a new table. Name lookups must expect this, and discovery reconciles the stale row (marks it `DROPPED`) when it sees a new UUID under a known name.
 - Tables imported or registered from existing metadata (`register_table`) keep the UUID from that metadata. Two catalog entries that point to the same metadata would collide; this is not supported.

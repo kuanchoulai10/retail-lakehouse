@@ -36,7 +36,7 @@ Updated 2026-11-21 (KCL-71): the one discovery rules list became versioned disco
 
 Relations between the contexts:
 
-- The maintenance `Table` and the catalog table are different models of the same thing. They are linked by the Iceberg table UUID (ADR 0001), as an identifier value and not as a shared class.
+- The maintenance `Table` and the catalog table are different models of the same thing. They are linked by the Iceberg table UUID (ADR 0001), as an identifier value and not as a shared class. Any reference to a table that outlives a request uses that UUID (ADR 0014).
 - Maintenance conforms to the catalog. The catalog is the truth and maintenance follows it (ADR 0003).
 - `access` does not depend on `catalog`. A grant names its target by catalog, namespace and table name, and Polaris rejects a target that does not exist. If `access` later needs to check targets itself, it does so through its own outbound port.
 
