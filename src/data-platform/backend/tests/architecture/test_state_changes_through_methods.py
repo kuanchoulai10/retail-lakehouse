@@ -26,26 +26,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _OWN = frozenset({"self", "cls"})
-
-
-def _targets(node: ast.stmt) -> list[ast.expr]:
-    if isinstance(node, ast.Assign):
-        return list(node.targets)
-    if isinstance(node, (ast.AugAssign, ast.AnnAssign)):
-        return [node.target]
-    if isinstance(node, ast.Delete):
-        return list(node.targets)
-    return []
-
-
-def _flattened(target: ast.expr) -> Iterator[ast.expr]:
-    if isinstance(target, (ast.Tuple, ast.List)):
-        for elt in target.elts:
-            yield from _flattened(elt)
-    elif isinstance(target, ast.Starred):
-        yield from _flattened(target.value)
-    else:
-        yield target
+_STARLETTE_CONNECTIONS = frozenset({"request", "websocket"})
 
 
 def _is_foreign(target: ast.expr) -> bool:
@@ -65,22 +46,36 @@ def _is_foreign(target: ast.expr) -> bool:
 
 
 def _is_app_state(owner: ast.expr) -> bool:
-    """Tell whether ``owner`` is Starlette's ``app.state`` (``app.state`` or ``<x>.app.state``)."""
+    """Tell whether ``owner`` is Starlette's ``app.state``: ``app.state`` or ``request.app.state``."""
     if not (isinstance(owner, ast.Attribute) and owner.attr == "state"):
         return False
     app = owner.value
-    return (isinstance(app, ast.Name) and app.id == "app") or (isinstance(app, ast.Attribute) and app.attr == "app")
+    if isinstance(app, ast.Name):
+        return app.id == "app"
+    return (
+        isinstance(app, ast.Attribute)
+        and app.attr == "app"
+        and isinstance(app.value, ast.Name)
+        and app.value.id in _STARLETTE_CONNECTIONS
+    )
 
 
 def foreign_assignments(source: str) -> list[str]:
-    """Return ``<line>: <target>`` for each assignment or deletion of another object's attribute."""
-    found = []
-    for node in ast.walk(ast.parse(source)):
-        if not isinstance(node, ast.stmt):
-            continue
-        for target in _targets(node):
-            found += [f"{node.lineno}: {ast.unparse(t)}" for t in _flattened(target) if _is_foreign(t)]
-    return found
+    """Return ``<line>: <target>`` for each assignment or deletion of another object's attribute.
+
+    Every target counts, wherever it is bound: an assignment, ``del``, ``for``, ``with … as`` or a
+    comprehension.
+    """
+    targets = [
+        node
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Attribute | ast.Subscript) and isinstance(node.ctx, ast.Store | ast.Del)
+    ]
+    return [
+        f"{node.lineno}: {ast.unparse(node)}"
+        for node in sorted(targets, key=lambda n: (n.lineno, n.col_offset))
+        if _is_foreign(node)
+    ]
 
 
 def _is_private(name: str) -> bool:
@@ -133,44 +128,93 @@ def foreign_private_calls(source: str) -> list[str]:
 
 
 _REFLECTIVE_FUNCTIONS = frozenset({"setattr", "delattr", "vars"})
-_REFLECTIVE_DUNDERS = frozenset({"__setattr__", "__delattr__", "__setitem__", "__delitem__"})
+_WRITERS = frozenset({"setattr", "delattr"})
+_REFLECTIVE_DUNDERS = frozenset(
+    {
+        "__setattr__",
+        "__delattr__",
+        "__setitem__",
+        "__delitem__",
+        "__init__",
+        "__setstate__",
+        "__replace__",
+        "__ior__",
+        "__getattribute__",
+    }
+)
+_BUILTIN_TYPES = frozenset({"object", "type", "dict", "list", "set", "bytearray", "BaseModel"})
+_BUILTIN_TYPE_READS = frozenset({"fromkeys"})
+_REPLACE_MODULES = frozenset({"copy", "dataclasses"})
 
 
 def _is_self_or_cls(node: ast.expr) -> bool:
     return isinstance(node, ast.Name) and node.id in _OWN
 
 
-def _is_reflective_write(node: ast.AST) -> bool:
-    if isinstance(node, ast.Attribute) and node.attr == "__dict__":
-        return not _is_self_or_cls(node.value)
+def _is_private_literal(node: ast.expr) -> bool:
+    return isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value.startswith("_")
+
+
+def _is_reflective_write(node: ast.AST, parent: ast.AST | None) -> bool:
+    if isinstance(node, ast.Attribute):
+        return (node.attr == "__dict__" and not _is_self_or_cls(node.value)) or node.attr in _WRITERS
+    if isinstance(node, ast.Name):
+        return node.id in _WRITERS and not (isinstance(parent, ast.Call) and parent.func is node)
+    if isinstance(node, ast.ImportFrom):
+        return node.module in _REPLACE_MODULES and any(alias.name == "replace" for alias in node.names)
     return isinstance(node, ast.Call) and _is_reflective_call(node)
 
 
 def _is_reflective_call(node: ast.Call) -> bool:
     func = node.func
-    if isinstance(func, ast.Name) and func.id in _REFLECTIVE_FUNCTIONS:
-        return bool(node.args) and not _is_self_or_cls(node.args[0])
+    if isinstance(func, ast.Name):
+        return _is_reflective_function_call(func.id, node.args)
     if not isinstance(func, ast.Attribute):
         return False
+    receiver = func.value
+    if isinstance(receiver, ast.Name) and receiver.id in _BUILTIN_TYPES | _REPLACE_MODULES:
+        return _is_module_or_type_write(receiver.id, func.attr)
     if func.attr in _REFLECTIVE_DUNDERS:
-        return not _is_own(func.value)
+        return not _is_own(receiver)
     if func.attr == "model_copy":
         return any(keyword.arg == "update" for keyword in node.keywords)
     return func.attr == "model_construct"
 
 
+def _is_module_or_type_write(owner: str, method: str) -> bool:
+    if owner in _REPLACE_MODULES:
+        return method == "replace"
+    return method not in _BUILTIN_TYPE_READS
+
+
+def _is_reflective_function_call(name: str, args: list[ast.expr]) -> bool:
+    if name in _REFLECTIVE_FUNCTIONS:
+        return bool(args) and not _is_self_or_cls(args[0])
+    if name == "getattr":
+        return len(args) >= 2 and not _is_self_or_cls(args[0]) and _is_private_literal(args[1])  # noqa: PLR2004
+    return False
+
+
 def reflective_writes(source: str) -> list[str]:
     """Return ``<line>: <code>`` for each reflective write to another object.
 
-    A write through ``setattr`` / ``delattr`` / ``vars`` on anything but ``self`` or ``cls``, a call of
-    ``__setattr__``, ``__delattr__``, ``__setitem__`` or ``__delitem__`` on anything but ``self``,
-    ``cls`` or ``super()`` (``object.__setattr__(…)`` included), ``.__dict__`` of another object,
-    ``model_copy(update=…)`` and ``model_construct(…)``, both of which skip validation.
+    Flagged: ``setattr`` / ``delattr`` / ``vars`` on anything but ``self`` or ``cls``, and any other
+    use of ``setattr`` / ``delattr`` (bound to a name, passed to ``partial``, ``builtins.setattr``);
+    ``getattr`` of a private or dunder name on another object; a call of ``__setattr__``,
+    ``__delattr__``, ``__setitem__``, ``__delitem__``, ``__init__``, ``__setstate__``, ``__replace__``,
+    ``__ior__`` or ``__getattribute__`` on anything but ``self``, ``cls`` or ``super()``; any method
+    called through a builtin type or ``BaseModel`` (``dict.update(m, …)``, ``object.__setattr__(…)``),
+    except ``dict.fromkeys``; another object's ``__dict__``; ``copy.replace`` and
+    ``dataclasses.replace`` (and importing either); ``model_copy(update=…)`` and ``model_construct(…)``,
+    which skip validation.
     """
+    tree = ast.parse(source)
+    parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
     return [
         f"{node.lineno}: {ast.unparse(node)}"
-        for node in ast.walk(ast.parse(source))
-        if isinstance(node, (ast.Attribute, ast.Call)) and _is_reflective_write(node)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Attribute | ast.Name | ast.Call | ast.ImportFrom)
+        and _is_reflective_write(node, parents.get(node))
     ]
 
 
@@ -234,6 +278,9 @@ def test_the_scan_covers_every_layer_of_every_context() -> None:
         "table.priority: str = 'P1'",
         "x, table.status = 1, 2",
         "self.repo.table.status = x",
+        "for table.status in xs:\n    pass",
+        "with cm() as table.status:\n    pass",
+        "[0 for table.status in xs]",
     ],
 )
 def test_the_assignment_check_flags_another_objects_attributes(source: str) -> None:
@@ -257,6 +304,7 @@ def test_the_assignment_check_allows_own_and_local_state(source: str) -> None:
         ("request.app.state.x = 1", False),
         ("table.state.status = x", True),
         ("run.state.flag = 1", True),
+        ("table.app.state.flag = 1", True),
     ],
 )
 def test_the_assignment_check_allows_only_starlettes_app_state(source: str, *, flagged: bool) -> None:
@@ -330,6 +378,27 @@ def test_another_class_or_module_code_calling_a_private_helper_is_flagged(source
         'vars(table)["status"] = x',
         'table.model_copy(update={"status": x})',
         "Table.model_construct(status=x)",
+        "dict.update(table.properties, k=1)",
+        'dict.pop(table.properties, "k")',
+        "dict.clear(table.properties)",
+        "dict.__ior__(table.properties, {})",
+        "list.append(rows, 1)",
+        'object.__getattribute__(table, "__dict__")',
+        "BaseModel.__init__(table, **data)",
+        "table.__init__(**data)",
+        "table.properties.__init__({})",
+        "table.__setstate__(state)",
+        "table.__replace__(status=x)",
+        "copy.replace(table, status=x)",
+        "dataclasses.replace(table, status=x)",
+        "from copy import replace",
+        "from dataclasses import replace as swap",
+        'builtins.setattr(table, "s", 1)',
+        "f = setattr",
+        "partial(setattr, table)",
+        "functools.partial(delattr, table)",
+        'getattr(table, "__dict__")["s"] = 1',
+        'getattr(table, "_assign_together")(status=x)',
     ],
 )
 def test_the_reflective_check_flags_bypasses(source: str) -> None:
@@ -349,6 +418,14 @@ def test_the_reflective_check_flags_bypasses(source: str) -> None:
         'getattr(table, "status")',
         "vars()",
         "vars(self)",
+        "dict.fromkeys(ids)",
+        "super().__init__(**data)",
+        'getattr(table, "status", None)',
+        "getattr(self, name)",
+        'getattr(self, "_x")',
+        "policy.replace(content, now)",
+        "text.replace('a', 'b')",
+        "replace()",
     ],
 )
 def test_the_reflective_check_allows_own_and_plain_calls(source: str) -> None:
