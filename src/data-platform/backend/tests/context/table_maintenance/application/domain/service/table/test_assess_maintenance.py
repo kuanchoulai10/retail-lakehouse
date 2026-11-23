@@ -192,7 +192,7 @@ def test_any_condition_holding_makes_operation_due():
 def test_an_absent_block_is_disabled(op: Op):
     """An operation whose block the policy leaves out is not done: no measures, no eligibility time."""
     t = table()
-    t.operation_states[op] = OperationState(last_attempt_at=NOW)
+    t.operation_states = {**t.operation_states, op: OperationState(last_attempt_at=NOW)}
     o = obs(partitions=(part(10),), manifests=(ManifestStats(length_bytes=MIB),) * 9, snapshots=snaps(14, 14))
     a = assess(t, o, op, policy_with_operation(DEFAULT, op, None))
     assert a.verdict == OperationVerdict.DISABLED
@@ -359,9 +359,15 @@ def test_orphan_files_are_due_on_the_platform_interval():
     """Orphan file removal is due once the platform interval has passed since the last attempt."""
     t = table()
     weekly = PLATFORM.with_changes(remove_orphan_files=timedelta(days=7))
-    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=8))
+    t.operation_states = {
+        **t.operation_states,
+        Op.REMOVE_ORPHAN_FILES: OperationState(last_attempt_at=NOW - timedelta(days=8)),
+    }
     assert assess(t, obs(), Op.REMOVE_ORPHAN_FILES, cooldowns=weekly).verdict == OperationVerdict.DUE
-    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=6))
+    t.operation_states = {
+        **t.operation_states,
+        Op.REMOVE_ORPHAN_FILES: OperationState(last_attempt_at=NOW - timedelta(days=6)),
+    }
     assert assess(t, obs(), Op.REMOVE_ORPHAN_FILES, cooldowns=weekly).verdict == OperationVerdict.COOLDOWN
     daily = PLATFORM.with_changes(remove_orphan_files=timedelta(days=1))
     assert assess(t, obs(), Op.REMOVE_ORPHAN_FILES, cooldowns=daily).verdict == OperationVerdict.DUE
@@ -370,7 +376,10 @@ def test_orphan_files_are_due_on_the_platform_interval():
 def test_cooldown_reports_next_eligible_time():
     """An operation in cooldown reports when it is next eligible, keeps its measures and has no plan."""
     t = table()
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(minutes=30))
+    t.operation_states = {
+        **t.operation_states,
+        Op.REWRITE_DATA_FILES: OperationState(last_attempt_at=NOW - timedelta(minutes=30)),
+    }
     two_hours = PLATFORM.with_changes(rewrite_data_files=timedelta(hours=2))
     a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, cooldowns=two_hours)
     assert a.verdict == OperationVerdict.COOLDOWN
@@ -383,7 +392,10 @@ def test_cooldown_reports_next_eligible_time():
 def test_the_platform_cooldown_holds_an_operation_back():
     """The cooldown of the platform settings holds an operation back; a zero one frees it."""
     t = table()
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(minutes=30))
+    t.operation_states = {
+        **t.operation_states,
+        Op.REWRITE_DATA_FILES: OperationState(last_attempt_at=NOW - timedelta(minutes=30)),
+    }
     hour = PLATFORM.with_changes(rewrite_data_files=timedelta(hours=1))
     a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, cooldowns=hour)
     assert a.verdict == OperationVerdict.COOLDOWN
@@ -396,14 +408,16 @@ def test_cooldown_backs_off_after_failures():
     """Consecutive failures double the platform cooldown."""
     t = table()
     hour = PLATFORM.with_changes(rewrite_data_files=timedelta(hours=1))
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
-        last_attempt_at=NOW - timedelta(hours=3), consecutive_failures=2
-    )
+    t.operation_states = {
+        **t.operation_states,
+        Op.REWRITE_DATA_FILES: OperationState(last_attempt_at=NOW - timedelta(hours=3), consecutive_failures=2),
+    }
     o = obs(partitions=(part(10),))
     assert assess(t, o, Op.REWRITE_DATA_FILES, cooldowns=hour).verdict == OperationVerdict.COOLDOWN
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
-        last_attempt_at=NOW - timedelta(hours=4), consecutive_failures=2
-    )
+    t.operation_states = {
+        **t.operation_states,
+        Op.REWRITE_DATA_FILES: OperationState(last_attempt_at=NOW - timedelta(hours=4), consecutive_failures=2),
+    }
     assert assess(t, o, Op.REWRITE_DATA_FILES, cooldowns=hour).verdict == OperationVerdict.DUE
 
 
@@ -411,14 +425,16 @@ def test_failures_double_the_platform_cooldown_up_to_the_cap():
     """Two failures make a 90-minute cooldown six hours; ten failures stop at the cap."""
     t = table()
     cooldowns = PLATFORM.with_changes(rewrite_data_files=timedelta(minutes=90), failure_backoff_cap=timedelta(hours=10))
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
-        last_attempt_at=NOW - timedelta(hours=1), consecutive_failures=2
-    )
+    t.operation_states = {
+        **t.operation_states,
+        Op.REWRITE_DATA_FILES: OperationState(last_attempt_at=NOW - timedelta(hours=1), consecutive_failures=2),
+    }
     two = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, cooldowns=cooldowns)
     assert two.next_eligible_at == NOW - timedelta(hours=1) + timedelta(hours=6)
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
-        last_attempt_at=NOW - timedelta(hours=1), consecutive_failures=10
-    )
+    t.operation_states = {
+        **t.operation_states,
+        Op.REWRITE_DATA_FILES: OperationState(last_attempt_at=NOW - timedelta(hours=1), consecutive_failures=10),
+    }
     ten = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES, cooldowns=cooldowns)
     assert ten.next_eligible_at == NOW - timedelta(hours=1) + timedelta(hours=10)
 
@@ -426,9 +442,10 @@ def test_failures_double_the_platform_cooldown_up_to_the_cap():
 def test_failure_backoff_stops_at_the_given_cap():
     """The doubling of the cooldown stops at the cap the caller passes, 24 hours by default."""
     t = table()
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
-        last_attempt_at=NOW - timedelta(hours=1), consecutive_failures=10
-    )
+    t.operation_states = {
+        **t.operation_states,
+        Op.REWRITE_DATA_FILES: OperationState(last_attempt_at=NOW - timedelta(hours=1), consecutive_failures=10),
+    }
     default = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
     capped = assess(
         t,
@@ -451,7 +468,10 @@ def test_assessment_ignores_status():
 def test_plan_equals_due_operations():
     """The plan of an assessment holds exactly its due operations, in order."""
     t = table()
-    t.operation_states[Op.REWRITE_MANIFESTS] = OperationState(last_attempt_at=NOW - timedelta(minutes=10))
+    t.operation_states = {
+        **t.operation_states,
+        Op.REWRITE_MANIFESTS: OperationState(last_attempt_at=NOW - timedelta(minutes=10)),
+    }
     o = obs(
         partitions=(part(10, value=1), part(1, value=2)),
         manifests=(ManifestStats(length_bytes=MIB),) * 6,

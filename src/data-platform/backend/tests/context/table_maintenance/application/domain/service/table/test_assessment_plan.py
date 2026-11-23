@@ -224,15 +224,20 @@ def test_cooldown_skips_operation():
     """An operation in its platform cooldown is not planned until the cooldown ends."""
     o = obs(partitions=(part(10),))
     t = table()
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(minutes=30))
+    t.operation_states = {
+        **t.operation_states,
+        Op.REWRITE_DATA_FILES: OperationState(last_attempt_at=NOW - timedelta(minutes=30)),
+    }
     assert plan_of(t, P, o, NOW, HOURLY).is_empty
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
-        last_attempt_at=NOW - timedelta(hours=3), consecutive_failures=2
-    )
+    t.operation_states = {
+        **t.operation_states,
+        Op.REWRITE_DATA_FILES: OperationState(last_attempt_at=NOW - timedelta(hours=3), consecutive_failures=2),
+    }
     assert plan_of(t, P, o, NOW, HOURLY).is_empty
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
-        last_attempt_at=NOW - timedelta(hours=5), consecutive_failures=2
-    )
+    t.operation_states = {
+        **t.operation_states,
+        Op.REWRITE_DATA_FILES: OperationState(last_attempt_at=NOW - timedelta(hours=5), consecutive_failures=2),
+    }
     assert not plan_of(t, P, o, NOW, HOURLY).is_empty
 
 
@@ -284,9 +289,15 @@ def test_remove_orphan_files_due_after_interval():
     weekly = PLATFORM.with_changes(remove_orphan_files=timedelta(days=7))
     t = table()
     assert ops(plan_of(t, s, obs(), NOW, weekly)) == [Op.REMOVE_ORPHAN_FILES]
-    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=6))
+    t.operation_states = {
+        **t.operation_states,
+        Op.REMOVE_ORPHAN_FILES: OperationState(last_attempt_at=NOW - timedelta(days=6)),
+    }
     assert plan_of(t, s, obs(), NOW, weekly).is_empty
-    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=7))
+    t.operation_states = {
+        **t.operation_states,
+        Op.REMOVE_ORPHAN_FILES: OperationState(last_attempt_at=NOW - timedelta(days=7)),
+    }
     assert ops(plan_of(t, s, obs(), NOW, weekly)) == [Op.REMOVE_ORPHAN_FILES]
 
 
@@ -304,7 +315,10 @@ def test_cooldown_boundary_is_inclusive():
     """An operation is planned exactly when its cooldown ends."""
     t = table()
     o = obs(partitions=(part(10),))
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(hours=1))
+    t.operation_states = {
+        **t.operation_states,
+        Op.REWRITE_DATA_FILES: OperationState(last_attempt_at=NOW - timedelta(hours=1)),
+    }
     assert ops(plan_of(t, P, o, NOW, HOURLY)) == [Op.REWRITE_DATA_FILES]
 
 

@@ -151,7 +151,7 @@ def test_load_table_without_snapshots_has_an_empty_summary():
     table = TablesPolarisRepo(stub.client()).get(ORDERS_ID)
 
     assert table is not None
-    assert (table.current_snapshot_id, table.snapshots) == (None, [])
+    assert (table.current_snapshot_id, table.snapshots) == (None, ())
     assert table.sort_order == SortOrder.unsorted()
     assert (table.summary.total_records, table.summary.total_data_files, table.summary.total_files_size) == (
         None,
@@ -701,7 +701,7 @@ def test_absent_optional_values_from_polaris_keep_their_defaults():
     table = TablesPolarisRepo(stub.client()).get(ORDERS_ID)
 
     assert table is not None
-    assert (table.properties, table.snapshots, table.current_snapshot_id) == ({}, [], None)
+    assert (table.properties, table.snapshots, table.current_snapshot_id) == ({}, (), None)
     assert table.current_schema.fields[0].required is False
 
 
@@ -717,7 +717,7 @@ def test_a_loaded_table_holds_real_tuples_and_enums():
     assert type(table.sort_order.fields) is tuple
     assert type(table.sort_order.fields[0].direction) is SortDirection
     assert type(table.sort_order.fields[0].null_order) is NullOrder
-    assert type(table.snapshots) is list
+    assert type(table.snapshots) is tuple
 
 
 CREATE_REQUEST_BYTES = (

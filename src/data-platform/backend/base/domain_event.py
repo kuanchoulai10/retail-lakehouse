@@ -35,6 +35,7 @@ class DomainEvent(InvariantGuardedModel):
         extra="forbid",
         validate_by_name=True,
         validate_by_alias=True,
+        validate_default=True,
     )
 
     occurred_at: datetime = Field(default_factory=_now)

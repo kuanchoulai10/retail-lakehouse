@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, model_validator
 
-from base import AggregateRoot
+from base import AggregateRoot, ReadOnlyMapping
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
@@ -79,8 +79,8 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
     priority: TablePriority = TablePriority.P3
     status: RunStatus = RunStatus.PENDING
     filters: tuple[SpecFilter, ...] = ()
-    procedure_args: dict[str, Any] = Field(default_factory=dict)
-    metrics: dict[str, Any] = Field(default_factory=dict)
+    procedure_args: ReadOnlyMapping[str, Any] = Field(default_factory=dict)
+    metrics: ReadOnlyMapping[str, Any] = Field(default_factory=dict)
     error: str | None = None
     skip_reason: str | None = None
     finished_at: datetime | None = None

@@ -15,6 +15,7 @@ from context.table_maintenance.application.domain.service.shared import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from datetime import datetime, timedelta
 
     from context.table_maintenance.application.domain.model.table_maintenance_policy import (
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
 def maintenance_procedure_args(
     operation: MaintenanceOperation,
     policy: MaintenancePolicyContent,
-    properties: dict[str, str],
+    properties: Mapping[str, str],
     now: datetime,
 ) -> dict[str, Any]:
     """Return the primitive Iceberg procedure arguments of one operation, from its target and options.
@@ -50,7 +51,7 @@ def maintenance_procedure_args(
             return _remove_orphan_files_args(policy, now)
 
 
-def _rewrite_data_files_args(policy: MaintenancePolicyContent, properties: dict[str, str]) -> dict[str, Any]:
+def _rewrite_data_files_args(policy: MaintenancePolicyContent, properties: Mapping[str, str]) -> dict[str, Any]:
     rewrite = policy.rewrite_data_files
     options = None if rewrite is None else rewrite.options
     procedure_options: dict[str, Any] = {"target-file-size-bytes": resolve_target_file_size(properties)}
@@ -67,7 +68,7 @@ def _rewrite_manifests_args(policy: MaintenancePolicyContent) -> dict[str, Any]:
 
 
 def _expire_snapshots_args(
-    policy: MaintenancePolicyContent, properties: dict[str, str], now: datetime
+    policy: MaintenancePolicyContent, properties: Mapping[str, str], now: datetime
 ) -> dict[str, Any]:
     snapshots = policy.expire_snapshots
     retention = resolve_snapshot_retention(None if snapshots is None else snapshots.target, properties)

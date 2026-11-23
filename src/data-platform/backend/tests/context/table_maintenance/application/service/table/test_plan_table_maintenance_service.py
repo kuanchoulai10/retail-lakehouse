@@ -612,7 +612,7 @@ def test_scheduled_plan_respects_cooldown(planner, tables_repo, catalog, now):
     _observe(catalog, now)
     plan = _plan(planner, now)
     assert (plan.status, plan.operations) == ("planned", ())
-    table.operation_states.clear()
+    table.operation_states = {}
     control = _plan(planner, now)
     assert "rewrite_data_files" in [o.operation for o in control.operations]
 

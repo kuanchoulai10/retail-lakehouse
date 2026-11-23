@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from base import ValueObject
+from base import ReadOnlyMapping, ValueObject
 from context.table_maintenance.application.domain.model.shared.manifest_stats import (
     ManifestStats,
 )
@@ -26,7 +26,7 @@ class TableObservation(ValueObject):
     """Hold a point-in-time view of an Iceberg table's physical layout."""
 
     table_uuid: str
-    properties: dict[str, str]
+    properties: ReadOnlyMapping[str, str]
     current_snapshot_id: int | None
     specs: tuple[PartitionSpecInfo, ...]
     partitions: tuple[PartitionStats, ...]

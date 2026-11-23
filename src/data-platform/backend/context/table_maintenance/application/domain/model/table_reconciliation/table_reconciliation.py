@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import PositiveInt, model_validator
 
-from base import AggregateRoot
+from base import AggregateRoot, ReadOnlyMapping
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     PolicyTarget,
@@ -47,7 +47,7 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
     id: TableReconciliationId
     table_uuid: TableId
     reconciled_at: datetime
-    wake_reasons: dict[WakeReason, int]
+    wake_reasons: ReadOnlyMapping[WakeReason, int]
     dry_run: bool
     outcome: ReconciliationOutcome
     skip_reason: str | None

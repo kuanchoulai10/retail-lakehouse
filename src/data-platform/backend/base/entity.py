@@ -36,6 +36,7 @@ class Entity[ID: EntityId](InvariantGuardedModel):
         validate_assignment=True,
         validate_by_name=True,
         validate_by_alias=True,
+        validate_default=True,
     )
 
     _depth_base: ClassVar[bool] = True

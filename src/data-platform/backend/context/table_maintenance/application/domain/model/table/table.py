@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
-from base import AggregateRoot
+from base import AggregateRoot, ReadOnlyMapping
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
@@ -76,7 +76,7 @@ class Table(AggregateRoot[TableId]):
     discovered_by: DiscoveryMatch
     registered_at: datetime
     updated_at: datetime
-    operation_states: dict[MaintenanceOperation, OperationState] = Field(default_factory=dict)
+    operation_states: ReadOnlyMapping[MaintenanceOperation, OperationState] = Field(default_factory=dict)
     last_committed_at: datetime | None = None
     last_discovered_at: datetime | None = None
     priority: TablePriority = TablePriority.P3

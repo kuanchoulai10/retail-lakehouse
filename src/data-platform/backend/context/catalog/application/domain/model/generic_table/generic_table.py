@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from base import AggregateRoot
+from base import AggregateRoot, ReadOnlyMapping
 from context.catalog.application.domain.model.generic_table.generic_table_id import GenericTableId
 
 
@@ -18,4 +18,4 @@ class GenericTable(AggregateRoot[GenericTableId]):
     format: str
     base_location: str | None
     doc: str | None
-    properties: dict[str, str] = Field(default_factory=dict)
+    properties: ReadOnlyMapping[str, str] = Field(default_factory=dict)

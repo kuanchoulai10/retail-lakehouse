@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from base import ValueObject
+from base import ReadOnlyMapping, ValueObject
 
 
 class TablePropertyReset(ValueObject):
     """The change that resets properties to default: keys to write with their default, keys to remove."""
 
-    updates: dict[str, str]
+    updates: ReadOnlyMapping[str, str]
     removals: tuple[str, ...]
 
     @property

@@ -15,6 +15,8 @@ from context.table_maintenance.application.domain.service.shared.positive_int_pr
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from context.table_maintenance.application.domain.model.table_maintenance_policy import (
         ExpireSnapshotsTarget,
     )
@@ -25,7 +27,9 @@ DEFAULT_MIN_SNAPSHOTS_TO_KEEP = 1
 DEFAULT_MAX_SNAPSHOT_AGE = timedelta(days=5)
 
 
-def resolve_snapshot_retention(target: ExpireSnapshotsTarget | None, properties: dict[str, str]) -> SnapshotRetention:
+def resolve_snapshot_retention(
+    target: ExpireSnapshotsTarget | None, properties: Mapping[str, str]
+) -> SnapshotRetention:
     """Return the retention of a table: each value the target's, else the table property's, else Iceberg's default.
 
     The age property is in milliseconds; it is floored to whole seconds, and an age under one second
@@ -42,13 +46,13 @@ def resolve_snapshot_retention(target: ExpireSnapshotsTarget | None, properties:
     return SnapshotRetention(min_snapshots_to_keep=minimum, max_snapshot_age=age)
 
 
-def _property_age(properties: dict[str, str]) -> timedelta | None:
+def _property_age(properties: Mapping[str, str]) -> timedelta | None:
     millis = positive_int_property(properties, MAX_SNAPSHOT_AGE_MS_PROPERTY)
     if millis is None or millis < 1000:
         return None
     return timedelta(seconds=min(millis // 1000, MAX_AGE // timedelta(seconds=1)))
 
 
-def _property_count(properties: dict[str, str]) -> int | None:
+def _property_count(properties: Mapping[str, str]) -> int | None:
     count = positive_int_property(properties, MIN_SNAPSHOTS_TO_KEEP_PROPERTY)
     return None if count is None else min(count, MAX_SNAPSHOTS_TO_KEEP)

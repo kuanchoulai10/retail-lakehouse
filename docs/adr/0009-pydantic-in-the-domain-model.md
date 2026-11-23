@@ -29,6 +29,7 @@ The full design is in `docs/superpowers/specs/2026-11-10-pydantic-domain-model-d
 - `model_copy` does not validate, so domain code derives a changed copy through `ValueObject.with_changes`, which does, and an architecture test forbids bare `model_copy`.
 - Annotations that were `TYPE_CHECKING`-only may have to become runtime imports, so import cycles are checked by architecture tests (`tests/architecture/test_domain_models_complete.py`).
 - Adapters that hand a `list` to a `tuple` field, or a plain string to an enum field, now fail under strict mode at runtime.
+- A Pydantic field holding a `list`, `dict` or `set` can be edited in place by anyone who holds the model, which skips validation and the aggregate's methods. Domain model fields therefore hold `tuple`, `frozenset` or `base.ReadOnlyMapping` (an annotated `Mapping` whose value refuses every in-place edit), all the way down, and the model bases validate defaults so a `dict` default is frozen too (`tests/architecture/test_domain_collections_are_immutable.py`, 2026-11-24).
 
 ## Note, 2026-11-18
 

@@ -80,7 +80,7 @@ def _with_snapshots(repo: InMemoryTablesRepo) -> None:
         partition_specs=(PartitionSpec.unpartitioned(),),
         default_spec_id=0,
         sort_order=SortOrder.unsorted(),
-        snapshots=[
+        snapshots=(
             Snapshot(
                 snapshot_id=1, parent_id=None, timestamp_ms=10, operation="append", summary={"total-records": "5"}
             ),
@@ -92,7 +92,7 @@ def _with_snapshots(repo: InMemoryTablesRepo) -> None:
                 operation="append",
                 summary={"total-records": "9", "total-data-files": "3", "total-files-size": "300"},
             ),
-        ],
+        ),
         properties={},
     )
 

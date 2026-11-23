@@ -156,7 +156,7 @@ def test_loaded_state_does_not_alias_between_loads(repo: TablesSqlRepo):
     second = repo.get(TableId("u1"))
     assert first is not None
     assert second is not None
-    first.operation_states.clear()
+    first.operation_states = {}
     assert second.operation_states
 
 
@@ -172,9 +172,10 @@ def test_update_persists_changes(repo: TablesSqlRepo):
     later = NOW + timedelta(hours=1)
     table.status = TableStatus.UNMANAGED
     table.updated_at = later
-    table.operation_states[MaintenanceOperation.REWRITE_MANIFESTS] = OperationState(
-        last_attempt_at=later, consecutive_failures=1
-    )
+    table.operation_states = {
+        **table.operation_states,
+        MaintenanceOperation.REWRITE_MANIFESTS: OperationState(last_attempt_at=later, consecutive_failures=1),
+    }
     repo.update(table)
     loaded = repo.get(table.id)
     assert loaded is not None

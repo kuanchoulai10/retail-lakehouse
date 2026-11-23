@@ -31,7 +31,7 @@ def test_defined_view_has_one_version_and_no_catalog_assigned_facts():
 
     assert (view.uuid, view.location) == (None, None)
     assert view.current_schema == Schema(schema_id=0, fields=())
-    assert view.versions == [
+    assert view.versions == (
         ViewVersion(
             version_id=1,
             timestamp_ms=1762516800000,
@@ -39,8 +39,8 @@ def test_defined_view_has_one_version_and_no_catalog_assigned_facts():
             query="SELECT 1",
             dialect="spark",
             default_namespace=("retail",),
-        )
-    ]
+        ),
+    )
     assert view.current_version.version_id == 1
     assert (view.query, view.dialect, view.default_namespace) == ("SELECT 1", "spark", ("retail",))
 
@@ -59,7 +59,7 @@ def test_current_version_is_the_version_the_view_points_at():
         location="s3://w/v",
         current_schema=Schema(schema_id=0, fields=()),
         current_version_id=1,
-        versions=[older, newer],
+        versions=(older, newer),
         properties={},
     )
 
@@ -75,7 +75,7 @@ def test_view_pointing_at_no_version_is_refused():
         location="s3://w/v",
         current_schema=Schema(schema_id=0, fields=()),
         current_version_id=9,
-        versions=[
+        versions=(
             ViewVersion(
                 version_id=1,
                 timestamp_ms=10,
@@ -83,8 +83,8 @@ def test_view_pointing_at_no_version_is_refused():
                 query="SELECT 1",
                 dialect="spark",
                 default_namespace=("retail",),
-            )
-        ],
+            ),
+        ),
         properties={},
     )
 

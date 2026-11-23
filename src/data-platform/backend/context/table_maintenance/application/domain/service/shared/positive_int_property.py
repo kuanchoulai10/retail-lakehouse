@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 
-def positive_int_property(properties: dict[str, str], key: str) -> int | None:
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+
+def positive_int_property(properties: Mapping[str, str], key: str) -> int | None:
     """Return a table property as a positive int, or None if absent or invalid."""
     raw = properties.get(key)
     if raw is None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from base import AggregateRoot
+from base import AggregateRoot, ReadOnlyMapping
 from context.catalog.application.domain.model.shared import Schema
 from context.catalog.application.domain.model.view.view_id import ViewId
 from context.catalog.application.domain.model.view.view_version import ViewVersion
@@ -26,8 +26,8 @@ class View(AggregateRoot[ViewId]):
     location: str | None
     current_schema: Schema
     current_version_id: int
-    versions: list[ViewVersion] = Field(default_factory=list)
-    properties: dict[str, str] = Field(default_factory=dict)
+    versions: tuple[ViewVersion, ...] = ()
+    properties: ReadOnlyMapping[str, str] = Field(default_factory=dict)
 
     @classmethod
     def define(
@@ -45,7 +45,7 @@ class View(AggregateRoot[ViewId]):
             location=None,
             current_schema=Schema(schema_id=_NO_SCHEMA_ID, fields=()),
             current_version_id=_FIRST_VERSION,
-            versions=[
+            versions=(
                 ViewVersion(
                     version_id=_FIRST_VERSION,
                     timestamp_ms=timestamp_ms,
@@ -53,8 +53,8 @@ class View(AggregateRoot[ViewId]):
                     query=query,
                     dialect=dialect,
                     default_namespace=default_namespace,
-                )
-            ],
+                ),
+            ),
             properties={},
         )
 

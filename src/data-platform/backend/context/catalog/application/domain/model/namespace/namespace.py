@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from base import AggregateRoot
+from base import AggregateRoot, ReadOnlyMapping
 from context.catalog.application.domain.model.namespace.namespace_id import NamespaceId
 
 
@@ -13,7 +13,7 @@ class Namespace(AggregateRoot[NamespaceId]):
     """
 
     id: NamespaceId
-    properties: dict[str, str]
+    properties: ReadOnlyMapping[str, str]
 
     @property
     def catalog(self) -> str:

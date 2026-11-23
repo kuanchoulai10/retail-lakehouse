@@ -42,7 +42,7 @@ def test_defined_table_has_no_catalog_assigned_facts_yet():
         properties={},
     )
 
-    assert (table.uuid, table.format_version, table.current_snapshot_id, table.snapshots) == (None, None, None, [])
+    assert (table.uuid, table.format_version, table.current_snapshot_id, table.snapshots) == (None, None, None, ())
     assert table.sort_order == SortOrder.unsorted()
     assert table.summary == TableSummary(total_records=None, total_data_files=None, total_files_size=None)
 

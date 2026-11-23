@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 from base import ValueObject
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from context.catalog.application.domain.model.table.snapshot import Snapshot
 
 _TOTAL_RECORDS = "total-records"
@@ -14,7 +16,7 @@ _TOTAL_DATA_FILES = "total-data-files"
 _TOTAL_FILES_SIZE = "total-files-size"
 
 
-def _count(summary: dict[str, str], key: str) -> int | None:
+def _count(summary: Mapping[str, str], key: str) -> int | None:
     try:
         return int(summary[key])
     except KeyError, ValueError:

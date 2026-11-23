@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from context.catalog.application.port.outbound.view import Schema, ViewId, ViewVersion
 
 
-def _current_version(versions: list[ViewVersion], current_id: int) -> ViewVersion:
+def _current_version(versions: tuple[ViewVersion, ...], current_id: int) -> ViewVersion:
     for version in versions:
         if version.version_id == current_id:
             return version
@@ -39,7 +39,7 @@ def _schema_of(metadata: Mapping[str, Any], version: ViewVersion) -> Schema:
 
 
 def _view(view_id: ViewId, metadata: Mapping[str, Any]) -> View:
-    versions = [view_version_from_polaris(version) for version in metadata["versions"]]
+    versions = tuple(view_version_from_polaris(version) for version in metadata["versions"])
     current = _current_version(versions, polaris_integer(metadata["current-version-id"], "current-version-id"))
     return View(
         id=view_id,

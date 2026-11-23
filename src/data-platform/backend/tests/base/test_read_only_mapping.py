@@ -9,8 +9,9 @@ from collections.abc import Mapping
 from typing import Any, cast
 
 import pytest
+from pydantic import Field
 
-from base import Entity, EntityId, InvariantViolation, ReadOnlyMapping, ValueObject
+from base import DomainEvent, Entity, EntityId, InvariantViolation, ReadOnlyMapping, ValueObject
 
 
 class _Holder(ValueObject):
@@ -33,6 +34,24 @@ class _Box(Entity[_BoxId]):
     """Test stub: an entity with a typed mapping it may replace."""
 
     counts: ReadOnlyMapping[str, int]
+
+
+class _Defaulted(ValueObject):
+    """Test stub: a value object whose mapping defaults to empty."""
+
+    counts: ReadOnlyMapping[str, int] = Field(default_factory=dict)
+
+
+class _DefaultedBox(Entity[_BoxId]):
+    """Test stub: an entity whose mapping defaults to empty."""
+
+    counts: ReadOnlyMapping[str, int] = Field(default_factory=dict)
+
+
+class _DefaultedEvent(DomainEvent):
+    """Test stub: an event whose mapping defaults to empty."""
+
+    counts: ReadOnlyMapping[str, int] = Field(default_factory=dict)
 
 
 def _box() -> _Box:
@@ -70,6 +89,18 @@ def test_item_assignment_deletion_and_editing_methods_are_refused() -> None:
     _refused(lambda: counts.setdefault("b", 2))
     _refused(lambda: counts.__ior__({"b": 2}))
     assert counts == {"a": 1}
+
+
+@pytest.mark.parametrize(
+    "build",
+    [_Defaulted, lambda: _DefaultedBox(id=_BoxId("1")), _DefaultedEvent],
+    ids=["value object", "entity", "event"],
+)
+def test_a_default_is_held_read_only(build: Any) -> None:  # noqa: ANN401
+    """A field left to its ``dict`` default holds a read-only mapping too: every model base validates defaults."""
+    counts = build().counts
+    assert counts == {}
+    _refused(lambda: counts.__setitem__("a", 1))
 
 
 @pytest.mark.parametrize("counts", [{"a": "1"}, {1: 1}])

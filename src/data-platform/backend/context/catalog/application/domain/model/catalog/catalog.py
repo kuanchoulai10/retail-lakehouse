@@ -3,19 +3,23 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-from base import AggregateRoot
+from base import AggregateRoot, ReadOnlyMapping
 from context.catalog.application.domain.model.catalog.catalog_id import CatalogId
 from context.catalog.application.domain.model.catalog.catalog_type import CatalogType
 from context.catalog.application.domain.model.catalog.connection_config import ConnectionConfig
 from context.catalog.application.domain.model.catalog.storage_config import StorageConfig
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 _DEFAULT_BASE_LOCATION = "default-base-location"
 _TABLE_DEFAULT_PREFIX = "table-default."
 _TABLE_OVERRIDE_PREFIX = "table-override."
 
 
-def _with_prefix(properties: dict[str, str], prefix: str) -> dict[str, str]:
+def _with_prefix(properties: Mapping[str, str], prefix: str) -> dict[str, str]:
     return {
         key.removeprefix(prefix): value for key, value in properties.items() if key.startswith(prefix) and key != prefix
     }
@@ -35,7 +39,7 @@ class Catalog(AggregateRoot[CatalogId]):
 
     id: CatalogId
     type: CatalogType
-    properties: dict[str, str]
+    properties: ReadOnlyMapping[str, str]
     storage_config: StorageConfig
     connection_config: ConnectionConfig | None = None
     entity_version: int = 0

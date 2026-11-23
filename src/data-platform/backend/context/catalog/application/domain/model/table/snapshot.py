@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from base import ValueObject
+from base import ReadOnlyMapping, ValueObject
 
 
 class Snapshot(ValueObject):
@@ -18,4 +18,4 @@ class Snapshot(ValueObject):
     timestamp_ms: int
     schema_id: int | None = None
     operation: str | None
-    summary: dict[str, str]
+    summary: ReadOnlyMapping[str, str]

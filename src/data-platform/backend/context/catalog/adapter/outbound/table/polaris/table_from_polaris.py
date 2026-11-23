@@ -37,12 +37,12 @@ def _current_snapshot_id(value: object) -> int | None:
     return None if current == _NO_SNAPSHOT else current
 
 
-def _snapshots(value: Any) -> list[Snapshot]:  # noqa: ANN401
+def _snapshots(value: Any) -> tuple[Snapshot, ...]:  # noqa: ANN401
     if value is None:
-        return []
+        return ()
     if not isinstance(value, list):
         raise TypeError(f"snapshots must be a list, not {value!r}")
-    return [snapshot_from_polaris(snapshot) for snapshot in value]
+    return tuple(snapshot_from_polaris(snapshot) for snapshot in value)
 
 
 def _table(table_id: TableId, metadata: Mapping[str, Any]) -> Table:

@@ -47,6 +47,7 @@ class ValueObject(InvariantGuardedModel):
         extra="forbid",
         validate_by_name=True,
         validate_by_alias=True,
+        validate_default=True,
     )
 
     @classmethod

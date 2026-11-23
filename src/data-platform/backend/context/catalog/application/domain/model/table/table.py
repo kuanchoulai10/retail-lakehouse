@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field, model_validator
 
-from base import AggregateRoot
+from base import AggregateRoot, ReadOnlyMapping
 from context.catalog.application.domain.model.shared import Schema
 from context.catalog.application.domain.model.table.partition_spec import PartitionSpec
 from context.catalog.application.domain.model.table.snapshot import Snapshot
@@ -37,8 +37,8 @@ class Table(AggregateRoot[TableId]):
     partition_specs: tuple[PartitionSpec, ...]
     default_spec_id: int
     sort_order: SortOrder
-    snapshots: list[Snapshot] = Field(default_factory=list)
-    properties: dict[str, str] = Field(default_factory=dict)
+    snapshots: tuple[Snapshot, ...] = ()
+    properties: ReadOnlyMapping[str, str] = Field(default_factory=dict)
 
     @classmethod
     def define(
@@ -62,7 +62,7 @@ class Table(AggregateRoot[TableId]):
             partition_specs=(partition_spec,),
             default_spec_id=partition_spec.spec_id,
             sort_order=SortOrder.unsorted(),
-            snapshots=[],
+            snapshots=(),
             properties=dict(properties),
         )
 

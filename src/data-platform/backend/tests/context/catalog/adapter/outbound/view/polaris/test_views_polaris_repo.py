@@ -80,7 +80,7 @@ def test_load_view_maps_uuid_location_schema_versions_and_properties():
         (2, "amount", "decimal(10,2)", False, None),
         (3, "tags", "list<string>", False, None),
     ]
-    assert view.versions == [
+    assert view.versions == (
         ViewVersion(
             version_id=1,
             timestamp_ms=1762516800000,
@@ -97,7 +97,7 @@ def test_load_view_maps_uuid_location_schema_versions_and_properties():
             dialect="trino",
             default_namespace=("retail", "a.b"),
         ),
-    ]
+    )
     assert view.properties == {"comment": "top orders"}
 
 
@@ -318,14 +318,14 @@ def test_ill_typed_value_from_polaris_is_unavailable(change: Any):  # noqa: ANN4
 
 
 def test_a_loaded_view_holds_real_tuples():
-    """The mapper hands the strict domain tuples for the default namespace."""
+    """The mapper hands the strict domain tuples for the versions and their default namespaces."""
     stub = PolarisStub()
     stub.on("GET", TOP, httpx.Response(200, json=_load_result()))
 
     view = ViewsPolarisRepo(stub.client()).get(TOP_ID)
 
     assert view is not None
-    assert type(view.versions) is list
+    assert type(view.versions) is tuple
     assert all(type(version.default_namespace) is tuple for version in view.versions)
 
 
