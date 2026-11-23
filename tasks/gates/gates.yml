@@ -130,4 +130,5 @@ tasks:
       - task: nightly:soak-test
       - task: nightly:resilience-test
       - task: nightly:performance-full-test
+      - task: nightly:mutation-test
       - task: nightly:dependency-test

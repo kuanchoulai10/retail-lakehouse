@@ -2,6 +2,12 @@
 
 version: '3'
 
+includes:
+  backend:
+    taskfile: ../../../src/data-platform/backend/Taskfile.yml
+    dir: ../../../src/data-platform/backend
+    internal: true
+
 tasks:
   e2e-full-test:
     summary: "Run the full lakehouse control plane end-to-end test on the cluster"
@@ -25,6 +31,13 @@ tasks:
     summary: "Run the full performance suite and track the trend over time (does not block)"
     cmds:
       - cmd: echo "TODO:// longer load on maintenance, catalog API and console bundle size, compared with previous nights"
+
+  mutation-test:
+    summary: "Run mutmut over the whole backend except the workflows and list the survivors (does not block)"
+    cmds:
+      - task: backend:mutation-test
+        vars:
+          MUTANTS: '*'
 
   dependency-test:
     summary: "Check compatibility with newer dependencies"

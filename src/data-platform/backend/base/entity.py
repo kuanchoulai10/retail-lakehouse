@@ -103,4 +103,4 @@ class Entity[ID: EntityId](InvariantGuardedModel):
             raise AttributeError(f"{type(self).__name__} is immutable{self._immutable_hint}")
         candidate = rebuild(self, changes)
         self.__dict__.update(candidate.__dict__)
-        self.__pydantic_fields_set__ |= candidate.__pydantic_fields_set__
+        self.__pydantic_fields_set__ |= candidate.__pydantic_fields_set__  # pragma: no mutate

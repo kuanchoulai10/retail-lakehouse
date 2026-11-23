@@ -65,6 +65,7 @@ runtime-evaluated-decorators = [
 source_paths = ["base", "context", "shared_kernel"]
 also_copy = ["bootstrap", "entrypoint.py", "openapi.json", ".importlinter"]
 pytest_add_cli_args = ["-q", "-p", "no:cacheprovider", "--ignore=tests/architecture"]
+do_not_mutate = ["*/inbound/workflows/*_workflow.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -73,7 +73,7 @@ class InvariantGuardedModel(BaseModel):
 
     def __init__(self, /, *args: Any, **data: Any) -> None:  # noqa: ANN401
         """Validate the data as the next base does (``EntityId`` takes its root positionally)."""
-        __tracebackhide__ = True
+        __tracebackhide__ = True  # pragma: no mutate
         with _raising_refusal(type(self)):
             super().__init__(*args, **data)
 
