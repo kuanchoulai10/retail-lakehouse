@@ -15,6 +15,7 @@ from context.table_maintenance.application.port.outbound.table import (
     MaintenanceOperation,
     OperationState,
     OverTargetPartition,
+    PolicyTarget,
     RecordedAttempt,
     Table,
     TableDiscoveryPolicyId,
@@ -44,7 +45,7 @@ def _encode_attention(mark: AttentionMark | None) -> dict[str, Any] | None:
         "policy": {
             "id": mark.policy.policy_id.value,
             "version": mark.policy.version,
-            "target": mark.policy.target,
+            "target": None if mark.policy.target is None else mark.policy.target.to_primitives(),
             "name": mark.policy_name.value,
         },
     }
@@ -69,7 +70,9 @@ def _decode_attention(data: dict[str, Any] | None) -> AttentionMark | None:
         since=since,
         reason=data["reason"],
         policy=AppliedPolicyRef(
-            policy_id=TableMaintenancePolicyId(policy["id"]), version=policy["version"], target=policy["target"]
+            policy_id=TableMaintenancePolicyId(policy["id"]),
+            version=policy["version"],
+            target=None if policy["target"] is None else PolicyTarget.from_primitives(policy["target"]),
         ),
         policy_name=TableMaintenancePolicyName(value=policy["name"]),
     )

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from base import ValueObject
+from context.table_maintenance.application.domain.model.shared import PolicyTarget
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     TableMaintenancePolicyId,
 )
@@ -18,4 +17,4 @@ class AppliedPolicyRef(ValueObject):
 
     policy_id: TableMaintenancePolicyId
     version: int
-    target: dict[str, Any] | None = None
+    target: PolicyTarget | None = None

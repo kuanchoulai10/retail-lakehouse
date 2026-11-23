@@ -10,7 +10,6 @@ from context.table_maintenance.application.domain.model.shared import (
     Measurement,
     MeasurementComparison,
     MeasurementUnit,
-    PolicyTarget,
 )
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
@@ -34,7 +33,7 @@ from context.table_maintenance.application.port.inbound.table_reconciliation imp
     RecordTableReconciliationUseCaseInput,
     RecordTableReconciliationUseCaseOutput,
 )
-from context.table_maintenance.application.service.shared import translate_domain_errors
+from context.table_maintenance.application.service.shared import policy_target_of, translate_domain_errors
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_reconciliation import (
@@ -81,7 +80,7 @@ class RecordTableReconciliationService(RecordTableReconciliationUseCase):
                 policy_id=TableMaintenancePolicyId(request.policy_id),
                 policy_name=TableMaintenancePolicyName(value=request.policy_name),
                 policy_version=request.policy_version,
-                policy_target=_policy_target(request.policy_target),
+                policy_target=policy_target_of(request.policy_target),
             )
             self._reconciliations_repo.create(reconciliation)
             self._purge(table_uuid, request)
@@ -103,15 +102,6 @@ def _wake_reasons(raw: dict[str, int]) -> dict[WakeReason, int]:
         return {WakeReason(reason): count for reason, count in raw.items()}
     except ValueError as exc:
         raise ValidationError(f"unknown wake reason: {exc}") from exc
-
-
-def _policy_target(raw: dict[str, Any] | None) -> PolicyTarget | None:
-    if raw is None:
-        return None
-    try:
-        return PolicyTarget.from_primitives(raw)
-    except ValueError as exc:
-        raise ValidationError(f"invalid policy target {raw!r}: {exc}") from exc
 
 
 def _outcome(status: str) -> ReconciliationOutcome:

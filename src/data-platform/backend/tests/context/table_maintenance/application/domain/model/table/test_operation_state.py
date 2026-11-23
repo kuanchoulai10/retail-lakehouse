@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from context.table_maintenance.application.domain.model.shared import ComputeSize
+from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
+    PolicyTarget,
+    PolicyTargetType,
+)
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
     AttentionMark,
@@ -17,7 +21,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 
 T0 = datetime(2026, 11, 13, tzinfo=UTC)
 T1 = T0 + timedelta(hours=1)
-TARGET = {"type": "table", "path": ["iceberg", "e2e", "orders"], "table_uuid": "u1"}
+TARGET = PolicyTarget(type=PolicyTargetType.TABLE, path=("iceberg", "e2e", "orders"), table_uuid="u1")
 NIGHTLY = TableMaintenancePolicyId("mp-00000000000000000000000001")
 WEEKLY = TableMaintenancePolicyId("mp-00000000000000000000000002")
 POLICY = AppliedPolicyRef(policy_id=NIGHTLY, version=1, target=TARGET)
@@ -74,12 +78,30 @@ def test_without_attention_clears_the_mark():
 def test_needs_attention_only_under_the_policy_it_was_marked_under():
     """The mark holds under the same policy id, version and target, and under no other."""
     state = OperationState().with_attention(MARK)
-    assert state.needs_attention_under(AppliedPolicyRef(policy_id=NIGHTLY, version=1, target=dict(TARGET)))
+    assert state.needs_attention_under(AppliedPolicyRef(policy_id=NIGHTLY, version=1, target=TARGET))
     assert not state.needs_attention_under(AppliedPolicyRef(policy_id=NIGHTLY, version=2, target=TARGET))
     assert not state.needs_attention_under(AppliedPolicyRef(policy_id=WEEKLY, version=1, target=TARGET))
-    other_target = {"type": "namespace", "path": ["iceberg", "e2e"]}
+    other_target = PolicyTarget(type=PolicyTargetType.NAMESPACE, path=("iceberg", "e2e"))
     assert not state.needs_attention_under(AppliedPolicyRef(policy_id=NIGHTLY, version=1, target=other_target))
+    assert not state.needs_attention_under(AppliedPolicyRef(policy_id=NIGHTLY, version=1))
     assert not OperationState().needs_attention_under(POLICY)
+
+
+def test_a_mark_holds_under_the_same_target_spelled_differently():
+    """A namespace target read with and without an empty ``table_uuid`` is one target, so the mark holds."""
+    spelled_short = PolicyTarget.from_primitives({"type": "namespace", "path": ["iceberg", "e2e"]})
+    spelled_long = PolicyTarget.from_primitives({"type": "namespace", "path": ["iceberg", "e2e"], "table_uuid": None})
+    mark = MARK.with_changes(policy=AppliedPolicyRef(policy_id=NIGHTLY, version=1, target=spelled_short))
+    state = OperationState().with_attention(mark)
+    assert state.needs_attention_under(AppliedPolicyRef(policy_id=NIGHTLY, version=1, target=spelled_long))
+
+
+def test_a_mark_under_the_platform_default_holds_only_under_it():
+    """A mark set under the default policy (no target) holds under the default and not under an attachment."""
+    default = AppliedPolicyRef(policy_id=NIGHTLY, version=1)
+    state = OperationState().with_attention(MARK.with_changes(policy=default))
+    assert state.needs_attention_under(AppliedPolicyRef(policy_id=NIGHTLY, version=1, target=None))
+    assert not state.needs_attention_under(POLICY)
 
 
 def _successes(state: OperationState, size: ComputeSize, *fits: bool) -> OperationState:

@@ -68,6 +68,7 @@ UTILITY_FILES = {
     "view_id_from_parts.py",
     "view_output_fields.py",
     "applied_policy_ref_of.py",
+    "policy_target_of.py",
     "last_commit_of.py",
     "table_property_output_fields.py",
     "load_table_and_catalog.py",

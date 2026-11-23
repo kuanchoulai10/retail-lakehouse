@@ -11,6 +11,7 @@ from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
     OverTargetPartition,
+    PolicyTarget,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -333,6 +334,18 @@ def test_lifting_nothing_leaves_the_table_unchanged():
     t.mark_needs_attention(OP, AttentionMark(since=T0, reason="oom", policy=v1, policy_name=DEFAULT_NAME), T0)
     assert t.lift_attention_set_under_another_policy(v1, T1) == []
     assert t.updated_at == T0
+
+
+def test_a_mark_is_not_lifted_when_its_target_is_read_with_an_empty_uuid():
+    """A namespace target read with and without ``"table_uuid": None`` is one target, so its mark is kept."""
+    short = PolicyTarget.from_primitives({"type": "namespace", "path": ["iceberg", "e2e"]})
+    long = PolicyTarget.from_primitives({"type": "namespace", "path": ["iceberg", "e2e"], "table_uuid": None})
+    marked = AppliedPolicyRef(policy_id=DEFAULT_POLICY_ID, version=1, target=short)
+    t = managed()
+    t.mark_needs_attention(OP, AttentionMark(since=T0, reason="oom", policy=marked, policy_name=DEFAULT_NAME), T0)
+    again = AppliedPolicyRef(policy_id=DEFAULT_POLICY_ID, version=1, target=long)
+    assert t.lift_attention_set_under_another_policy(again, T1) == []
+    assert t.operation_state(OP).attention is not None
 
 
 def test_a_registered_table_starts_at_p3():

@@ -50,7 +50,11 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
     ReadMaintenanceEventLogGatewayInput,
     ReadMaintenanceJobEvidenceGatewayInput,
 )
-from context.table_maintenance.application.service.shared import applied_policy_ref_of, translate_domain_errors
+from context.table_maintenance.application.service.shared import (
+    applied_policy_ref_of,
+    policy_target_of,
+    translate_domain_errors,
+)
 from context.table_maintenance.application.service.table_maintenance_run.require_run_operation import (
     require_run_operation,
 )
@@ -288,7 +292,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
             ref = AppliedPolicyRef(
                 policy_id=TableMaintenancePolicyId(request.policy_id),
                 version=request.policy_version,
-                target=request.policy_target,
+                target=policy_target_of(request.policy_target),
             )
             return ref, request.policy_name
         applied = self._resolve_applicable_policy.execute(

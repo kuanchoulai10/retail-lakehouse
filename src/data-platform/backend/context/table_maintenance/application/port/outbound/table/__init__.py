@@ -6,6 +6,7 @@ from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
     OverTargetPartition,
+    PolicyTarget,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -98,6 +99,7 @@ __all__ = [
     "MetricHistoryUnavailableError",
     "OperationState",
     "OverTargetPartition",
+    "PolicyTarget",
     "RecordedAttempt",
     "DiscoveryMatch",
     "TableDiscoveryPolicyId",

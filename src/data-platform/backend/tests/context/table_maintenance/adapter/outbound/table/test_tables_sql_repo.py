@@ -14,6 +14,8 @@ from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
     OverTargetPartition,
+    PolicyTarget,
+    PolicyTargetType,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -288,7 +290,7 @@ def test_operation_state_round_trips_size_and_attention(repo: TablesSqlRepo):
         policy=AppliedPolicyRef(
             policy_id=NIGHTLY,
             version=3,
-            target={"type": "table", "path": ["iceberg", "inventory"], "table_uuid": "u1"},
+            target=PolicyTarget(type=PolicyTargetType.TABLE, path=("iceberg", "inventory"), table_uuid="u1"),
         ),
         policy_name=TableMaintenancePolicyName(value="nightly"),
     )
@@ -347,6 +349,71 @@ def test_attention_mark_is_stored_with_the_policy_id(repo: TablesSqlRepo, engine
         "target": None,
         "name": "nightly",
     }
+
+
+def test_attention_mark_stores_its_target_and_reads_it_back(repo: TablesSqlRepo, engine: Engine):
+    """A mark's target is stored in its wire form and reads back as the same target."""
+    table = _table()
+    target = PolicyTarget(type=PolicyTargetType.NAMESPACE, path=("iceberg", "e2e"))
+    mark = AttentionMark(
+        since=NOW,
+        reason="r",
+        policy=AppliedPolicyRef(policy_id=NIGHTLY, version=3, target=target),
+        policy_name=TableMaintenancePolicyName(value="nightly"),
+    )
+    table.operation_states = {MaintenanceOperation.REWRITE_DATA_FILES: OperationState(attention=mark)}
+    repo.create(table)
+
+    with engine.connect() as conn:
+        stored = conn.execute(tables_table.select()).one()._mapping["operation_states_json"]
+    loaded = repo.get(TableId("u1"))
+
+    assert stored["rewrite_data_files"]["attention"]["policy"]["target"] == {
+        "type": "namespace",
+        "path": ["iceberg", "e2e"],
+        "table_uuid": None,
+    }
+    assert loaded is not None
+    assert loaded.operation_state(MaintenanceOperation.REWRITE_DATA_FILES).attention == mark
+
+
+def test_attention_mark_under_the_platform_default_reads_back_without_a_target(repo: TablesSqlRepo):
+    """A mark set under the platform default (no target) reads back with no target."""
+    table = _table()
+    mark = AttentionMark(
+        since=NOW,
+        reason="r",
+        policy=AppliedPolicyRef(policy_id=NIGHTLY, version=3),
+        policy_name=TableMaintenancePolicyName(value="nightly"),
+    )
+    table.operation_states = {MaintenanceOperation.REWRITE_DATA_FILES: OperationState(attention=mark)}
+    repo.create(table)
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.operation_state(MaintenanceOperation.REWRITE_DATA_FILES).attention == mark
+
+
+def test_an_attention_mark_without_its_start_time_is_refused(repo: TablesSqlRepo, engine: Engine):
+    """A stored mark with no start time is refused, naming the missing start time."""
+    repo.create(_table())
+    policy = {"id": NIGHTLY.value, "version": 3, "target": None, "name": "nightly"}
+    with engine.begin() as conn:
+        conn.execute(
+            tables_table.update().values(
+                operation_states_json={
+                    "rewrite_data_files": {
+                        "last_attempt_at": None,
+                        "consecutive_failures": 0,
+                        "last_successful_size": None,
+                        "attention": {"since": None, "reason": "r", "policy": policy},
+                        "low_use_successes": 0,
+                        "last_recorded": None,
+                    }
+                }
+            )
+        )
+    with pytest.raises(ValueError, match="^an attention mark needs its start time$"):
+        repo.get(TableId("u1"))
 
 
 @pytest.mark.parametrize(

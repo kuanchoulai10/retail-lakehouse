@@ -11,6 +11,8 @@ import pytest
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    PolicyTarget,
+    PolicyTargetType,
     SizeMemory,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -420,7 +422,8 @@ def test_needs_attention_is_marked_under_the_policy_the_run_was_planned_under(
     )
     mark = tables_repo.get(TableId("u-1")).operation_state(RDF).attention
     assert mark is not None
-    assert mark.policy == AppliedPolicyRef(policy_id=NIGHTLY, version=2, target=target)
+    typed = PolicyTarget(type=PolicyTargetType.TABLE, path=("iceberg", "sales"), table_uuid="u-1")
+    assert mark.policy == AppliedPolicyRef(policy_id=NIGHTLY, version=2, target=typed)
     assert mark.policy_name.value == "nightly"
     assert resolve_calls == []
 

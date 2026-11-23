@@ -14,6 +14,9 @@ from context.table_maintenance.application.service.shared.policy_target_fields i
 from context.table_maintenance.application.service.shared.policy_target_from_request import (
     policy_target_from_request,
 )
+from context.table_maintenance.application.service.shared.policy_target_of import (
+    policy_target_of,
+)
 from context.table_maintenance.application.service.shared.target_in_catalog import (
     target_in_catalog,
 )
@@ -26,6 +29,7 @@ __all__ = [
     "policy_candidates",
     "policy_target_fields",
     "policy_target_from_request",
+    "policy_target_of",
     "target_in_catalog",
     "translate_domain_errors",
 ]
