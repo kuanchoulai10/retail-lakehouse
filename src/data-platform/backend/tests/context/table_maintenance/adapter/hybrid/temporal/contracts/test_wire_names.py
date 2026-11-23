@@ -19,7 +19,6 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery
     TableDiscoveryActivity,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
-    DEFAULT_START_SIZE,
     TABLE_MAINTENANCE_WORKFLOW,
     MaintenanceAttemptEnding,
     MaintenanceFailureClass,
@@ -32,7 +31,6 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationActivity,
     TableReconciliationSignal,
 )
-from context.table_maintenance.application.domain.model.shared import ComputeSize
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     AttemptEnding,
     FailureClass,
@@ -165,14 +163,8 @@ def test_maintenance_failure_classes():
     }
 
 
-def test_default_start_size():
-    """A plan without a start size starts at S."""
-    assert DEFAULT_START_SIZE == "S"
-
-
 def test_domain_and_contract_values_agree():
     """The contract enums carry exactly the domain's values, so the record activity understands both sides."""
     assert {e.value for e in AttemptEnding} == {e.value for e in MaintenanceAttemptEnding}
     assert {e.value for e in NextStep} == {e.value for e in MaintenanceNextStep}
     assert {e.value for e in FailureClass} == {e.value for e in MaintenanceFailureClass}
-    assert DEFAULT_START_SIZE in {s.value for s in ComputeSize}

@@ -17,9 +17,6 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.default_queue_wait_limit_seconds import (  # noqa: E501
     DEFAULT_QUEUE_WAIT_LIMIT_SECONDS,
 )
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.default_start_size import (
-    DEFAULT_START_SIZE,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.failure_class import (
     MaintenanceFailureClass,
 )
@@ -49,7 +46,6 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 )
 
 __all__ = [
-    "DEFAULT_START_SIZE",
     "MaintenanceFailureClass",
     "MaintenanceNextStep",
     "MaintenanceAttemptEnding",

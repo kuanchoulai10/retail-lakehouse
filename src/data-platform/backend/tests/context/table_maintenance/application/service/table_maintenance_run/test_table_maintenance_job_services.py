@@ -65,6 +65,7 @@ from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_pods_ga
     ScriptedReadMaintenanceJobPodsGateway,
 )
 from tests.context.table_maintenance.fakes.track_calls import track_calls
+from tests.context.table_maintenance.planned_record_fields import PLANNED_RECORD_FIELDS
 
 RUN_1 = "mr-00000000000000000000000001"
 UNKNOWN_RUN = "mr-7zzzzzzzzzzzzzzzzzzzzzzzzz"
@@ -122,6 +123,7 @@ def _submit(submitter, now, **overrides):
         "attempt": 1,
         "callback_base_url": "http://tm.example:8000/",
         "now": now,
+        "size": "S",
     }
     fields.update(overrides)
     return submitter.execute(SubmitMaintenanceOperationUseCaseInput(**fields))
@@ -201,9 +203,7 @@ class _FailingSubmitGateway(SubmitMaintenanceJobGateway):
         raise RuntimeError("k8s down")
 
 
-def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(
-    runs_repo, tables_repo, resolve_applicable_policy, run, submit_job, now
-):
+def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(runs_repo, tables_repo, run, submit_job, now):
     """A failed submit can be recorded as failed and the next attempt is submitted."""
     failing = SubmitMaintenanceOperationService(runs_repo, tables_repo, _FailingSubmitGateway())
     with pytest.raises(RuntimeError, match="k8s down"):
@@ -213,7 +213,6 @@ def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(
         tables_repo,
         ScriptedReadMaintenanceJobEvidenceGateway(),
         ScriptedReadMaintenanceEventLogGateway(),
-        resolve_applicable_policy,
         size_memory={},
     )
     recorder.execute(
@@ -225,6 +224,7 @@ def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(
             metrics={},
             error="submit failed",
             now=now,
+            **PLANNED_RECORD_FIELDS,
         )
     )
     stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
@@ -537,12 +537,13 @@ class _CancelDuringSubmitGateway(SubmitMaintenanceJobGateway):
                 metrics={},
                 error="cancelled",
                 now=self.now,
+                **PLANNED_RECORD_FIELDS,
             )
         )
         return SubmitMaintenanceJobGatewayOutput(job_name="job-cancelled")
 
 
-def test_submit_does_not_overwrite_a_run_cancelled_during_the_submit(tables_repo, resolve_applicable_policy, now):
+def test_submit_does_not_overwrite_a_run_cancelled_during_the_submit(tables_repo, now):
     """A run recorded as failed during the submit is not overwritten when the job name is attached."""
     runs_repo = _CopyingRunsRepo()
     _table(tables_repo, now)
@@ -552,7 +553,6 @@ def test_submit_does_not_overwrite_a_run_cancelled_during_the_submit(tables_repo
         tables_repo,
         ScriptedReadMaintenanceJobEvidenceGateway(),
         ScriptedReadMaintenanceEventLogGateway(),
-        resolve_applicable_policy,
         size_memory={},
     )
     submitter = SubmitMaintenanceOperationService(

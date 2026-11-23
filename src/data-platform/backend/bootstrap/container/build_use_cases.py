@@ -197,7 +197,6 @@ def build_use_cases(
             tables,
             gateways.read_maintenance_job_evidence,
             gateways.read_maintenance_event_log,
-            resolve_applicable_policy,
             size_memory=size_memory or {},
         ),
         delete_maintenance_job=DeleteMaintenanceJobService(runs, gateways.delete_maintenance_job),

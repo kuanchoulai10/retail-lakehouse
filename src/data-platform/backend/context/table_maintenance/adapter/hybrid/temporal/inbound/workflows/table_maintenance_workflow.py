@@ -10,7 +10,6 @@ from temporalio import workflow
 from temporalio.exceptions import ActivityError, FailureError, is_cancelled_exception
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
-    DEFAULT_START_SIZE,
     TABLE_MAINTENANCE_WORKFLOW,
     MaintenanceAttemptEnding,
     MaintenanceNextStep,
@@ -89,15 +88,13 @@ class TableMaintenanceWorkflow:
     pods can outlive the SparkApplication. A
     cancellation (a manual cancel, or the reconciliation giving the run up) fences
     the attempt it interrupts the same way, without a bound and even if another
-    cancel arrives meanwhile, before the run reports. The first attempt runs at the plan's start size
-    (S when the plan names none). Recording a failed attempt names how it ended and returns what follows it: an
+    cancel arrives meanwhile, before the run reports. The first attempt runs at the plan's start size.
+    Recording a failed attempt names how it ended and returns what follows it: an
     out-of-memory failure is retried at the next size, other failures at the same size, and a
     failure that needs a person, is not retried or may still be running ends the run at once; a
     record that failed, and so answers no decision, retries at the same size. Every record names the
     policy the run was planned under, by its id and its name then, from the plan, so a needs-attention
-    mark is set under it and keeps the name for display. A plan from before policies
-    had ids carries no ``policy_id``; its records then leave the policy to the recorder, which marks
-    under the policy applying when it records. Every attempt runs with the ``filters`` and procedure
+    mark is set under it and keeps the name for display. Every attempt runs with the ``filters`` and procedure
     arguments its run was created with, also after running out of memory; the submit reads them from
     the run. A failed run, a failed submit included, never stops the workflow: the next run still
     runs. An attempt whose submit never saved it (a cancel, or a submit refused first, such as for a
@@ -144,7 +141,7 @@ class TableMaintenanceWorkflow:
             attempt_deadline=timedelta(seconds=input.attempt_deadline_seconds),
             queue_wait_limit=timedelta(seconds=input.queue_wait_limit_seconds),
         )
-        self._planned_policy = {key: input.plan.get(key) for key in _PLANNED_POLICY_KEYS}
+        self._planned_policy = {key: input.plan[key] for key in _PLANNED_POLICY_KEYS}
         self._results: dict[tuple[str, int], OperationResultSignal] = {}
         self._started_attempts: list[tuple[str, int]] = []
         self._settled_attempts: set[tuple[str, int]] = set()
@@ -193,7 +190,7 @@ class TableMaintenanceWorkflow:
 
     async def _run_operation(self, operation: dict[str, Any]) -> None:
         self._current = operation["operation"]
-        size: str = operation.get("start_size") or DEFAULT_START_SIZE
+        size: str = operation["start_size"]
         for attempt in range(1, self._policy.max_attempts + 1):
             outcome = await self._run_attempt(operation, attempt, size)
             if (outcome.operation, outcome.attempt) in self._settled_attempts:

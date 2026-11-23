@@ -38,9 +38,6 @@ from context.table_maintenance.application.exceptions import (
     NotFoundError,
     ValidationError,
 )
-from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
-    ResolveApplicableTableMaintenancePolicyUseCaseInput,
-)
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     RecordTableMaintenanceOperationResultUseCase,
     RecordTableMaintenanceOperationResultUseCaseInput,
@@ -50,11 +47,7 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
     ReadMaintenanceEventLogGatewayInput,
     ReadMaintenanceJobEvidenceGatewayInput,
 )
-from context.table_maintenance.application.service.shared import (
-    applied_policy_ref_of,
-    policy_target_of,
-    translate_domain_errors,
-)
+from context.table_maintenance.application.service.shared import policy_target_of, translate_domain_errors
 from context.table_maintenance.application.service.table_maintenance_run.require_run_operation import (
     require_run_operation,
 )
@@ -68,9 +61,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table_maintenance_run import (
         OperationAttempt,
         TableMaintenanceRun,
-    )
-    from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
-        ResolveApplicableTableMaintenancePolicyUseCase,
     )
     from context.table_maintenance.application.port.outbound.table import TablesRepo
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
@@ -98,11 +88,10 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         tables_repo: TablesRepo,
         evidence_gateway: ReadMaintenanceJobEvidenceGateway,
         event_log_gateway: ReadMaintenanceEventLogGateway,
-        resolve_applicable_policy: ResolveApplicableTableMaintenancePolicyUseCase,
         *,
         size_memory: Mapping[ComputeSize, SizeMemory],
     ) -> None:
-        """Bind the repos, the evidence readers, the applicable policy resolution and each size's memory.
+        """Bind the repos, the evidence readers and each size's memory.
 
         A size missing from ``size_memory`` is never stepped down to.
         """
@@ -110,7 +99,6 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         self._tables_repo = tables_repo
         self._evidence_gateway = evidence_gateway
         self._event_log_gateway = event_log_gateway
-        self._resolve_applicable_policy = resolve_applicable_policy
         self._size_memory = dict(size_memory)
 
     def execute(
@@ -272,38 +260,22 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         operation: MaintenanceOperation,
         request: RecordTableMaintenanceOperationResultUseCaseInput,
     ) -> None:
-        policy, name = self._planned_policy(table, request)
         mark = AttentionMark(
             since=request.now,
             reason=_NEEDS_ATTENTION_REASON,
-            policy=policy,
-            policy_name=TableMaintenancePolicyName(value=name),
+            policy=_planned_policy(request),
+            policy_name=TableMaintenancePolicyName(value=request.policy_name),
         )
         table.mark_needs_attention(operation, mark, request.now)
 
-    def _planned_policy(
-        self, table: Table, request: RecordTableMaintenanceOperationResultUseCaseInput
-    ) -> tuple[AppliedPolicyRef, str]:
-        """Return the policy the run was planned under and its name then.
 
-        When the request does not say, the policy applying now and its current name.
-        """
-        if request.policy_id is not None and request.policy_version is not None and request.policy_name is not None:
-            ref = AppliedPolicyRef(
-                policy_id=TableMaintenancePolicyId(request.policy_id),
-                version=request.policy_version,
-                target=policy_target_of(request.policy_target),
-            )
-            return ref, request.policy_name
-        applied = self._resolve_applicable_policy.execute(
-            ResolveApplicableTableMaintenancePolicyUseCaseInput(
-                catalog=table.name.catalog,
-                table_uuid=table.id.value,
-                namespace=table.name.namespace,
-                table=table.name.table,
-            )
-        )
-        return applied_policy_ref_of(applied), applied.policy_name
+def _planned_policy(request: RecordTableMaintenanceOperationResultUseCaseInput) -> AppliedPolicyRef:
+    """Return the policy the run was planned under, as the request names it."""
+    return AppliedPolicyRef(
+        policy_id=TableMaintenancePolicyId(request.policy_id),
+        version=request.policy_version,
+        target=policy_target_of(request.policy_target),
+    )
 
 
 def _driver_started_at(evidence: ReadMaintenanceJobEvidenceGatewayOutput | None) -> datetime | None:

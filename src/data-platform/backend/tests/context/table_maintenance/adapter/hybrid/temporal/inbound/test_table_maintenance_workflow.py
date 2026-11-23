@@ -66,8 +66,7 @@ PLANNED_POLICY_NAME = "nightly"
 AFTER_RUN_CHECK = 1
 
 
-def _plan(*operations: str, start_size: str | None = None) -> dict:
-    sized = {} if start_size is None else {"start_size": start_size}
+def _plan(*operations: str, start_size: str = "S") -> dict:
     return {
         "status": "planned",
         "reason": None,
@@ -83,7 +82,7 @@ def _plan(*operations: str, start_size: str | None = None) -> dict:
                 "operation": op,
                 "filters": [{"spec_id": 0, "where": f"{op} = 1"}],
                 "procedure_args": {"op": op},
-                **sized,
+                "start_size": start_size,
             }
             for op in operations
         ],
@@ -120,7 +119,7 @@ class Harness:
         self,
         *operations: str,
         parent_id: str = PARENT_ID,
-        start_size: str | None = None,
+        start_size: str = "S",
         plan: dict | None = None,
     ) -> None:
         """Start the workflow for the operations (or ``plan``) and wait for it to finish."""
@@ -134,7 +133,7 @@ class Harness:
         attempt_deadline_seconds: int = ATTEMPT_DEADLINE_SECONDS,
         max_attempts: int = 3,
         queue_wait_limit_seconds: int = QUEUE_WAIT_LIMIT_SECONDS,
-        start_size: str | None = None,
+        start_size: str = "S",
         plan: dict | None = None,
         raise_at_start: RaisePrioritySignal | None = None,
     ) -> WorkflowHandle:
@@ -921,17 +920,6 @@ def test_first_attempt_uses_the_plan_start_size():
     _run(scenario)
 
 
-def test_plan_without_start_size_submits_size_s():
-    """A plan from before sizes existed starts its operations at S."""
-
-    async def scenario(h: Harness) -> None:
-        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
-        await h.run_maintenance(COMPACTION)
-        assert _sizes(h) == ["S"]
-
-    _run(scenario)
-
-
 def test_attempts_follow_the_recorded_size_decision():
     """Each retry runs at the size the record of the failed attempt decided."""
 
@@ -980,7 +968,7 @@ def test_needs_attention_stops_the_operation_without_another_attempt():
 
 
 def test_record_result_without_a_decision_keeps_retrying_at_the_same_size():
-    """A record reply without a next step, as before failure classes, retries three times at the same size."""
+    """A record reply that names no next step retries three times at the same size."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {
@@ -1068,19 +1056,6 @@ def test_records_carry_the_policy_the_run_was_planned_under():
             PLANNED_POLICY,
         ]
         assert [r["policy_name"] for r in h.fakes.records] == [PLANNED_POLICY_NAME, PLANNED_POLICY_NAME]
-
-    _run(scenario)
-
-
-def test_a_plan_from_before_policy_ids_records_no_planned_policy_id():
-    """A plan an older reconciliation passed names its policy, not its id; records then leave the id to the recorder."""
-
-    async def scenario(h: Harness) -> None:
-        _ending_by_failed_state(h)
-        older = {key: value for key, value in _plan(COMPACTION).items() if key != "policy_id"}
-        await h.run_maintenance(plan={**older, "policy_name": "nightly"})
-
-        assert [r["policy_id"] for r in h.fakes.records] == [None, None]
 
     _run(scenario)
 

@@ -63,6 +63,7 @@ from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_evidenc
 )
 from tests.context.table_maintenance.fakes.track_calls import track_calls
 from tests.context.table_maintenance.numbered_id import numbered_id
+from tests.context.table_maintenance.planned_record_fields import PLANNED_RECORD_FIELDS
 
 RUN_1 = "mr-00000000000000000000000001"
 RUN_2 = "mr-00000000000000000000000002"
@@ -357,14 +358,13 @@ def started_run(runs_repo, table, now):
 
 
 @pytest.fixture
-def recorder(runs_repo, tables_repo, resolve_applicable_policy):
+def recorder(runs_repo, tables_repo):
     """Provide the record operation result service on the fakes."""
     return RecordTableMaintenanceOperationResultService(
         runs_repo,
         tables_repo,
         ScriptedReadMaintenanceJobEvidenceGateway(),
         ScriptedReadMaintenanceEventLogGateway(),
-        resolve_applicable_policy,
         size_memory={},
     )
 
@@ -378,6 +378,7 @@ def _record(recorder, now, **overrides):
         "metrics": {"rewritten_files": 4},
         "error": None,
         "now": now,
+        **PLANNED_RECORD_FIELDS,
     }
     fields.update(overrides)
     return recorder.execute(RecordTableMaintenanceOperationResultUseCaseInput(**fields))

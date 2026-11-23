@@ -8,9 +8,7 @@ from datetime import UTC, datetime
 import pytest
 from temporalio.exceptions import ApplicationError
 
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
-    DEFAULT_MAX_ATTEMPTS,
-)
+from base import InvariantViolation
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     CreateTableMaintenanceRunsUseCaseInput,
     DeleteMaintenanceJobUseCaseInput,
@@ -38,6 +36,7 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fa
     FakeStatus,
     FakeSubmit,
 )
+from tests.context.table_maintenance.planned_record_fields import PLANNED_RECORD_FIELDS
 
 RUN_1 = "mr-00000000000000000000000001"
 REC_1 = "rc-00000000000000000000000001"
@@ -86,6 +85,7 @@ def test_record_result_payload_carries_the_decision_the_workflow_reads():
             "metrics": {},
             "error": "java.lang.OutOfMemoryError",
             "now": NOW,
+            **PLANNED_RECORD_FIELDS,
         }
     )
 
@@ -333,31 +333,30 @@ def test_record_result_input_is_built_from_the_payload_the_maintenance_workflow_
     )
 
 
-def test_record_result_input_defaults_the_keys_an_older_workflow_does_not_send():
-    """A record request from before failure classes and planned policies reads with the old defaults."""
+@pytest.mark.parametrize(
+    "missing",
+    ["ended_by", "still_running", "max_attempts", "policy_id", "policy_name", "policy_version", "policy_target"],
+)
+def test_record_result_input_requires_the_planned_policy(missing: str):
+    """A record request without a key the maintenance workflow always sends is refused, naming the key."""
+    request = {key: value for key, value in WORKFLOW_RECORD_RESULT_REQUEST.items() if key != missing}
+    with pytest.raises(InvariantViolation, match=missing):
+        RecordTableMaintenanceOperationResultUseCaseInput.from_primitives(request)
+
+
+@pytest.mark.parametrize("key", ["policy_id", "policy_name", "policy_version"])
+def test_record_result_input_refuses_a_planned_policy_without_its_value(key: str):
+    """The planned policy's id, name and version are always known, so an empty one is refused."""
+    with pytest.raises(InvariantViolation, match=key):
+        RecordTableMaintenanceOperationResultUseCaseInput.from_primitives({**WORKFLOW_RECORD_RESULT_REQUEST, key: None})
+
+
+def test_record_result_input_takes_the_platform_default_without_a_target():
+    """The platform default is attached to nothing, so its record names no target."""
     built = RecordTableMaintenanceOperationResultUseCaseInput.from_primitives(
-        {
-            "run_id": RUN_1,
-            "operation": "rewrite_data_files",
-            "attempt": 1,
-            "succeeded": False,
-            "metrics": {},
-            "error": "boom",
-            "now": NOW,
-        }
+        {**WORKFLOW_RECORD_RESULT_REQUEST, "policy_target": None}
     )
-
-    assert (built.ended_by, built.still_running, built.max_attempts) == ("result", False, 3)
-    assert (built.policy_id, built.policy_name, built.policy_version, built.policy_target) == (None, None, None, None)
-
-
-def test_record_result_input_defaults_max_attempts_to_the_workflow_default():
-    """An older request without max_attempts gets the attempts a maintenance workflow defaults to."""
-    built = RecordTableMaintenanceOperationResultUseCaseInput.from_primitives(
-        {k: v for k, v in WORKFLOW_RECORD_RESULT_REQUEST.items() if k != "max_attempts"}
-    )
-
-    assert built.max_attempts == DEFAULT_MAX_ATTEMPTS
+    assert built.policy_target is None
 
 
 def test_record_result_activity_hands_the_use_case_the_input_built_from_the_payload():

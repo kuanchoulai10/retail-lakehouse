@@ -11,6 +11,7 @@ class SubmitMaintenanceOperationUseCaseInput(UseCaseInput):
     """Carry the request to submit one attempt of a run's maintenance operation to Spark.
 
     ``operation`` must be the run's own; the where clauses and the procedure arguments are the run's.
+    ``size`` is the compute size the attempt runs at.
     """
 
     run_id: str
@@ -18,4 +19,4 @@ class SubmitMaintenanceOperationUseCaseInput(UseCaseInput):
     attempt: int
     callback_base_url: str
     now: datetime
-    size: str = "S"
+    size: str

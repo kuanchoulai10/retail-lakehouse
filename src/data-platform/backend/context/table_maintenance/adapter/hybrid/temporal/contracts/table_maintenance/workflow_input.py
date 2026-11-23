@@ -4,16 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.default_attempt_deadline_seconds import (  # noqa: E501
-    DEFAULT_ATTEMPT_DEADLINE_SECONDS,
-)
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.default_max_attempts import (
-    DEFAULT_MAX_ATTEMPTS,
-)
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.default_queue_wait_limit_seconds import (  # noqa: E501
-    DEFAULT_QUEUE_WAIT_LIMIT_SECONDS,
-)
-
 
 @dataclass(frozen=True)
 class TableMaintenanceWorkflowInput:
@@ -32,6 +22,6 @@ class TableMaintenanceWorkflowInput:
     parent_workflow_id: str
     trigger: str
     plan: dict
-    attempt_deadline_seconds: int = DEFAULT_ATTEMPT_DEADLINE_SECONDS
-    max_attempts: int = DEFAULT_MAX_ATTEMPTS
-    queue_wait_limit_seconds: int = DEFAULT_QUEUE_WAIT_LIMIT_SECONDS
+    attempt_deadline_seconds: int
+    max_attempts: int
+    queue_wait_limit_seconds: int

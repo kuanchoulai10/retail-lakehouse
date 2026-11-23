@@ -66,6 +66,7 @@ from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo 
 from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_pods_gateway import (
     ScriptedReadMaintenanceJobPodsGateway,
 )
+from tests.context.table_maintenance.planned_record_fields import PLANNED_RECORD_FIELDS
 
 RUN_1 = "mr-00000000000000000000000001"
 RUN_9 = "mr-00000000000000000000000009"
@@ -579,6 +580,7 @@ def test_submit_injects_callback_base_url():
             "run_id": RUN_1,
             "operation": "rewrite_data_files",
             "attempt": 2,
+            "size": "S",
             "now": NOW,
         }
     )
@@ -606,18 +608,21 @@ def test_submit_activity_passes_the_size():
     assert fakes["submit"].requests[0].size == "M"
 
 
-def test_submit_activity_defaults_the_size_for_old_requests():
-    """A submit request recorded before sizes existed runs at S."""
+def test_submit_input_requires_a_size():
+    """A submit request names the size of its attempt, as the maintenance workflow always sends one."""
     activities, fakes = _maintain()
-    activities.submit_maintenance_operation(
-        {
-            "run_id": RUN_1,
-            "operation": "rewrite_data_files",
-            "attempt": 1,
-            "now": NOW,
-        }
-    )
-    assert fakes["submit"].requests[0].size == "S"
+    with pytest.raises(ApplicationError) as caught:
+        activities.submit_maintenance_operation(
+            {
+                "run_id": RUN_1,
+                "operation": "rewrite_data_files",
+                "attempt": 1,
+                "now": NOW,
+            }
+        )
+    assert caught.value.type == "InvariantViolation"
+    assert "size" in str(caught.value)
+    assert fakes["submit"].requests == []
 
 
 def test_submit_translates_not_found_to_non_retryable():
@@ -629,6 +634,7 @@ def test_submit_translates_not_found_to_non_retryable():
                 "run_id": RUN_1,
                 "operation": "rewrite_data_files",
                 "attempt": 1,
+                "size": "S",
                 "now": NOW,
             }
         )
@@ -645,6 +651,7 @@ def test_submit_keeps_other_errors_retryable():
                 "run_id": RUN_1,
                 "operation": "rewrite_data_files",
                 "attempt": 1,
+                "size": "S",
                 "now": NOW,
             }
         )
@@ -787,6 +794,7 @@ def test_record_result_passes_fields():
     activities = table_maintenance_activities_with_fakes(record_result=record)
     result = activities.record_table_maintenance_operation_result(
         {
+            **PLANNED_RECORD_FIELDS,
             "run_id": RUN_1,
             "operation": "expire_snapshots",
             "attempt": 3,
@@ -815,6 +823,7 @@ def test_record_activity_passes_ending_and_attempt_limit():
     activities = table_maintenance_activities_with_fakes(record_result=record)
     activities.record_table_maintenance_operation_result(
         {
+            **PLANNED_RECORD_FIELDS,
             "run_id": RUN_1,
             "operation": "rewrite_data_files",
             "attempt": 2,
@@ -831,26 +840,6 @@ def test_record_activity_passes_ending_and_attempt_limit():
     assert (request.ended_by, request.still_running, request.max_attempts) == ("timed_out", True, 5)
 
 
-def test_record_activity_defaults_keys_of_old_requests():
-    """A record request from before failure classes reads as a reported result of a finished job, of three attempts."""
-    record = FakeRecordResult()
-    activities = table_maintenance_activities_with_fakes(record_result=record)
-    activities.record_table_maintenance_operation_result(
-        {
-            "run_id": RUN_1,
-            "operation": "rewrite_data_files",
-            "attempt": 1,
-            "succeeded": False,
-            "metrics": {},
-            "error": "boom",
-            "now": NOW,
-        }
-    )
-    request = record.requests[0]
-    assert (request.ended_by, request.still_running, request.max_attempts) == ("result", False, 3)
-    assert (request.policy_id, request.policy_version, request.policy_target) == (None, None, None)
-
-
 def test_record_activity_passes_the_planned_policy():
     """The record activity passes the policy the run was planned under."""
     record = FakeRecordResult()
@@ -858,6 +847,7 @@ def test_record_activity_passes_the_planned_policy():
     target = {"type": "namespace", "path": ["iceberg", "sales"]}
     activities.record_table_maintenance_operation_result(
         {
+            **PLANNED_RECORD_FIELDS,
             "run_id": RUN_1,
             "operation": "rewrite_data_files",
             "attempt": 1,

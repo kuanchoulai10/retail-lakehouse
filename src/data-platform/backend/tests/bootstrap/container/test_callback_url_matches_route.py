@@ -72,6 +72,7 @@ def _submitted_callback_url() -> str:
             attempt=1,
             callback_base_url="http://api.example:8000/",
             now=NOW,
+            size="S",
         )
     )
     (call,) = gateway.calls

@@ -22,7 +22,6 @@ from context.table_maintenance.application.domain.model.table import (
     TableName,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-    DEFAULT_POLICY_ID,
     TableMaintenancePolicyId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
@@ -51,6 +50,7 @@ from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_evidenc
     ScriptedReadMaintenanceJobEvidenceGateway,
 )
 from tests.context.table_maintenance.fakes.track_calls import track_calls
+from tests.context.table_maintenance.planned_record_fields import PLANNED_RECORD_FIELDS
 
 RUN_1 = "mr-00000000000000000000000001"
 NIGHTLY = TableMaintenancePolicyId("mp-00000000000000000000000001")
@@ -87,28 +87,13 @@ def event_log() -> ScriptedReadMaintenanceEventLogGateway:
 
 
 @pytest.fixture
-def resolve_calls(resolve_applicable_policy) -> list[Any]:
-    """Record every call of the applicable policy resolution."""
-    calls: list[Any] = []
-    original = resolve_applicable_policy.execute
-
-    def execute(request: Any) -> Any:  # noqa: ANN401
-        calls.append(request)
-        return original(request)
-
-    resolve_applicable_policy.execute = execute
-    return calls
-
-
-@pytest.fixture
-def recorder(runs_repo, tables_repo, evidence, event_log, resolve_applicable_policy, resolve_calls):
+def recorder(runs_repo, tables_repo, evidence, event_log):
     """Provide the record service on the fakes."""
     return RecordTableMaintenanceOperationResultService(
         runs_repo,
         tables_repo,
         evidence,
         event_log,
-        resolve_applicable_policy,
         size_memory=SIZE_MEMORY,
     )
 
@@ -135,6 +120,7 @@ def _record(recorder, now, **overrides):
         "metrics": {},
         "error": OOM,
         "now": now,
+        **PLANNED_RECORD_FIELDS,
     }
     fields.update(overrides)
     return recorder.execute(RecordTableMaintenanceOperationResultUseCaseInput(**fields))
@@ -240,29 +226,6 @@ def test_unreadable_event_log_still_records_the_attempt(recorder, runs_repo, tab
     assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(1).event_log_finished is None
 
 
-def test_oom_at_l_marks_the_operation_needs_attention_under_the_applicable_policy(
-    recorder, runs_repo, tables_repo, table, resolve_calls, now
-):
-    """An OOM at the largest size stops and marks the table's operation under the policy that applies."""
-    _run(runs_repo, table, now, ComputeSize.M, ComputeSize.L)
-    out = _record(recorder, now, attempt=2)
-    assert (out.failure_class, out.next_step, out.next_size) == ("oom", "needs_attention", None)
-    mark = tables_repo.get(TableId("u-1")).operation_state(RDF).attention
-    assert mark is not None
-    assert mark.since == now
-    assert mark.reason == "out of memory at size L"
-    assert mark.policy == AppliedPolicyRef(policy_id=DEFAULT_POLICY_ID, version=1, target=None)
-    assert mark.policy_name.value == "default"
-    assert len(resolve_calls) == 1
-
-
-def test_oom_below_l_does_not_resolve_the_policy(recorder, runs_repo, table, resolve_calls, now):
-    """Only a needs-attention decision resolves the applicable policy."""
-    _run(runs_repo, table, now, ComputeSize.S)
-    _record(recorder, now)
-    assert resolve_calls == []
-
-
 def test_still_running_failure_stops(recorder, runs_repo, table, now):
     """An attempt whose job may still run is not retried, whatever its class."""
     _run(runs_repo, table, now, ComputeSize.S)
@@ -278,7 +241,7 @@ def test_last_attempt_uses_up_the_attempts(recorder, runs_repo, table, now):
 
 
 def test_replayed_record_returns_the_stored_decision(
-    recorder, runs_repo, tables_repo, table, evidence, event_log, resolve_calls, log, now
+    recorder, runs_repo, tables_repo, table, evidence, event_log, log, now
 ):
     """A retried record returns the decision it stored and reads and saves nothing again."""
     _run(runs_repo, table, now, ComputeSize.M, ComputeSize.L)
@@ -290,7 +253,6 @@ def test_replayed_record_returns_the_stored_decision(
     assert (second.failure_class, second.next_step) == ("oom", "needs_attention")
     assert len(evidence.calls) == 1
     assert len(event_log.calls) == 1
-    assert len(resolve_calls) == 1
     assert log == [("tables.update", "u-1")]
 
 
@@ -406,7 +368,7 @@ def test_a_retried_success_after_the_run_was_saved_remembers_its_size_once(
 
 
 def test_needs_attention_is_marked_under_the_policy_the_run_was_planned_under(
-    recorder, runs_repo, tables_repo, table, resolve_calls, now
+    recorder, runs_repo, tables_repo, table, now
 ):
     """An OOM at L marks the operation under the policy its run was planned under, not the one applying now."""
     _run(runs_repo, table, now, ComputeSize.M, ComputeSize.L)
@@ -425,7 +387,6 @@ def test_needs_attention_is_marked_under_the_policy_the_run_was_planned_under(
     typed = PolicyTarget(type=PolicyTargetType.TABLE, path=("iceberg", "sales"), table_uuid="u-1")
     assert mark.policy == AppliedPolicyRef(policy_id=NIGHTLY, version=2, target=typed)
     assert mark.policy_name.value == "nightly"
-    assert resolve_calls == []
 
 
 def test_a_result_takes_the_driver_start_from_the_evidence(recorder, runs_repo, table, evidence, now):
