@@ -38,4 +38,4 @@ class CreateTableMaintenanceRunsUseCaseInput(UseCaseInput):
     trigger: str
     now: datetime
     runs: tuple[Run, ...]
-    priority: str = "P3"
+    priority: str

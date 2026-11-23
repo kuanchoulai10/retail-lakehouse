@@ -460,9 +460,9 @@ def test_plan_activity_ignores_a_key_a_newer_workflow_sends():
 
 
 def test_plan_input_takes_a_scheduled_payload_without_operations():
-    """A scheduled plan's payload names no manual operations; the run id an older workflow sent is ignored."""
+    """A scheduled plan's payload names no manual operations."""
     built = PlanTableMaintenanceUseCaseInput.from_primitives(
-        {"table_uuid": "u1", "now": NOW, "manual_operations": None, "run_id": RUN_1}
+        {"table_uuid": "u1", "now": NOW, "manual_operations": None}
     )
 
     assert built == PlanTableMaintenanceUseCaseInput(table_uuid="u1", now=NOW_DT)
@@ -742,20 +742,22 @@ def test_create_runs_activity_hands_the_use_case_the_plans_runs_and_returns_thei
     assert result == {"run_ids": [RUN_1, RUN_9]}
 
 
-def test_create_runs_activity_defaults_the_priority_to_p3():
-    """A create payload that names no priority creates its runs at P3."""
+def test_create_runs_activity_refuses_a_payload_without_a_priority():
+    """A create payload that names no priority is refused without retry and creates nothing."""
     create = FakeCreateRuns()
     activities = table_reconciliation_activities_with_fakes(create_runs=create)
-    activities.create_maintenance_runs(
-        {
-            "table_uuid": "u1",
-            "execution_ref": "wf-r1",
-            "trigger": "scheduled",
-            "now": NOW,
-            "runs": [{"run_id": RUN_1, "operation": "expire_snapshots"}],
-        }
-    )
-    assert create.requests[0].priority == "P3"
+    with pytest.raises(ApplicationError) as caught:
+        activities.create_maintenance_runs(
+            {
+                "table_uuid": "u1",
+                "execution_ref": "wf-r1",
+                "trigger": "scheduled",
+                "now": NOW,
+                "runs": [{"run_id": RUN_1, "operation": "expire_snapshots"}],
+            }
+        )
+    assert (caught.value.type, caught.value.non_retryable) == ("InvariantViolation", True)
+    assert create.requests == []
 
 
 def test_skip_runs_activity_skips_each_run_with_the_reason_and_time():

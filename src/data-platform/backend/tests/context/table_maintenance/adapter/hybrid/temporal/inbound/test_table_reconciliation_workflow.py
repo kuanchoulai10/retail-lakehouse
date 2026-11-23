@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from temporalio import activity
-from temporalio.client import WorkflowExecutionStatus
+from temporalio.client import WorkflowExecutionStatus, WorkflowFailureError
 from temporalio.common import SearchAttributeKey
 from temporalio.converter import DataConverter
-from temporalio.exceptions import WorkflowAlreadyStartedError
+from temporalio.exceptions import ApplicationError, WorkflowAlreadyStartedError
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Replayer, UnsandboxedWorkflowRunner, Worker
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
@@ -71,6 +71,10 @@ if TYPE_CHECKING:
 GHOST_RUN_ID = "mr-00000000000000000000000009"
 OTHER_RUN_ID = "mr-00000000000000000000000008"
 GONE_CHILD_ID = "table-maintenance:table-uuid=gone"
+UNSIGNALLED_CHILD_ID = "table-maintenance:table-uuid=unsignalled"
+# The time-skipping test server never resolves a cancel of a missing workflow, so a run given up
+# under one is forgotten once the 15 minute grace without a report has passed and a lookup finds it gone.
+CANCEL_GRACE = timedelta(minutes=15)
 
 UUID = "u1"
 TABLE = "iceberg.e2e.t"
@@ -106,6 +110,8 @@ POLICY = {
     "policy_target": {"type": "catalog", "path": ["prod"]},
 }
 NO_POLICY = {"policy_id": None, "policy_name": None, "policy_version": None, "policy_target": None}
+# The settings the plan activity adds to every plan, as the worker is configured by default.
+RUN_SETTINGS = {"attempt_deadline_seconds": 21600, "max_attempts": 3, "queue_wait_limit_seconds": 86400}
 
 
 def _planned(*operations: str, interval: int = 3600, debounce: int | None = 300) -> dict[str, Any]:
@@ -115,31 +121,14 @@ def _planned(*operations: str, interval: int = 3600, debounce: int | None = 300)
         "schedule_interval_seconds": interval,
         "catalog_commit_debounce_seconds": debounce,
         "table_name": TABLE,
-        "operations": [{"operation": op, "filters": [], "procedure_args": {}} for op in operations],
+        "operations": [{"operation": op, "filters": [], "procedure_args": {}, "start_size": "S"} for op in operations],
         "dry_run": False,
         "table_found": True,
         "checks": [_check(op) for op in operations],
+        "priority": "P3",
         **POLICY,
+        **RUN_SETTINGS,
     }
-
-
-def _with_candidates(plan: dict[str, Any]) -> dict[str, Any]:
-    """Return ``plan`` with its compaction naming a candidate partition, as plans did before whole-table compaction."""
-    operations = [
-        {**op, "candidate_partitions": [{"spec_id": 0, "values": ["eu"]}]} if op["operation"] == COMPACTION else op
-        for op in plan["operations"]
-    ]
-    return {**plan, "operations": operations}
-
-
-def _with_next_check(next_check_in: int) -> Callable[[dict[str, Any]], dict[str, Any]]:
-    """Return a plan carrying a ``next_check_at`` ``next_check_in`` seconds on, as plans did for held candidates."""
-
-    def answer(request: dict[str, Any]) -> dict[str, Any]:
-        at = datetime.fromisoformat(request["now"]) + timedelta(seconds=next_check_in)
-        return {**_planned(), "next_check_at": at.isoformat()}
-
-    return answer
 
 
 def _dry_run(*due: str) -> dict[str, Any]:
@@ -157,7 +146,9 @@ def _skip(reason: str, interval: int = 3600, *, table_found: bool = True, deboun
         "dry_run": False,
         "table_found": table_found,
         "checks": [],
+        "priority": "P3",
         **(POLICY if table_found else NO_POLICY),
+        **RUN_SETTINGS,
     }
 
 
@@ -175,6 +166,7 @@ class Harness:
     plans: ScriptedPlanActivity
     recorder: ScriptedRecordActivity
     runs: ScriptedRunsActivities
+    unsignalled: dict[str, bool]
     handle: WorkflowHandle | None = None
     sent: int = 0
 
@@ -195,21 +187,29 @@ class Harness:
         )
         return self.handle
 
-    async def start_with_a_gone_child(self, **fields: Any) -> WorkflowHandle:
-        """Start the workflow carrying a run in flight whose child workflow does not exist, so no signal reaches it."""
+    async def start_carrying(self, workflow_id: str = GONE_CHILD_ID, **fields: Any) -> WorkflowHandle:
+        """Start the workflow carrying one run in flight under ``workflow_id``, started now, as continue-as-new does."""
+        started_at = await self.env.get_current_time()
         return await self.start(
             start_signal=None,
             in_flight_run_ids=[GHOST_RUN_ID],
-            in_flight_workflow_id=GONE_CHILD_ID,
+            in_flight_workflow_id=workflow_id,
+            in_flight_started_at=started_at.isoformat(),
             in_flight_operation_count=1,
             **fields,
         )
 
+    async def start_with_a_gone_child(self, **fields: Any) -> WorkflowHandle:
+        """Start the workflow carrying a run in flight whose child workflow does not exist, so no signal reaches it."""
+        return await self.start_carrying(GONE_CHILD_ID, **fields)
+
     async def start_with_an_unsignalled_run(self, **fields: Any) -> WorkflowHandle:
-        """Start the workflow carrying a run in flight with no recorded workflow, so it cannot be signalled."""
-        return await self.start(
-            start_signal=None, in_flight_run_ids=[GHOST_RUN_ID], in_flight_operation_count=1, **fields
-        )
+        """Start the workflow carrying a run in flight that no signal reaches but that still runs until it reports.
+
+        Its workflow id names no workflow, so a raise cannot reach it, and the lookup answers it running
+        until ``report_gone_child`` reports it, so the failed raise does not end it.
+        """
+        return await self.start_carrying(UNSIGNALLED_CHILD_ID, **fields)
 
     async def run_input(self) -> dict[str, Any]:
         """Return the input the reconciliation's current execution started with."""
@@ -219,9 +219,10 @@ class Harness:
 
     async def report_gone_child(self, *, unapplied_raise: bool = False) -> None:
         """Report the carried run in flight finished, as its child would have."""
+        self.unsignalled["running"] = False
         await self.signal(
             TableReconciliationSignal.MAINTENANCE_FINISHED,
-            {"run_ids": [GHOST_RUN_ID], "record_failures": 0, "unapplied_raise": unapplied_raise},
+            {"run_ids": [GHOST_RUN_ID], "record_failures": 0, "unapplied_raise": unapplied_raise, "raises_received": 0},
         )
 
     async def signal(self, name: str, payload: dict | None = None) -> None:
@@ -371,6 +372,14 @@ def _run(
             recorder = ScriptedRecordActivity()
             runs = ScriptedRunsActivities()
             lookups = table_reconciliation_activities_with_fakes(client=env.client)
+            unsignalled = {"running": True}
+
+            @activity.defn(name=TableReconciliationActivity.GET_WORKFLOW_RUNNING)
+            async def look_up(request: dict[str, Any]) -> dict[str, Any]:
+                if request["workflow_id"] == UNSIGNALLED_CHILD_ID:
+                    return {"running": unsignalled["running"]}
+                return await lookups.get_workflow_running(request)
+
             async with Worker(
                 env.client,
                 task_queue=TASK_QUEUE,
@@ -378,13 +387,13 @@ def _run(
                 activities=[
                     plans.plan_table_maintenance,
                     recorder.record_table_reconciliation,
-                    lookup or lookups.get_workflow_running,
+                    lookup or look_up,
                     *runs.all(),
                 ],
                 workflow_runner=runner or SandboxedWorkflowRunner(),
                 max_cached_workflows=max_cached_workflows,
             ):
-                await scenario(Harness(env, env.client, plans, recorder, runs))
+                await scenario(Harness(env, env.client, plans, recorder, runs, unsignalled))
 
     asyncio.run(go())
 
@@ -764,7 +773,7 @@ def test_stale_maintenance_finished_is_ignored():
         run_ids = await h.in_flight()
         await h.signal(
             TableReconciliationSignal.MAINTENANCE_FINISHED,
-            {"run_ids": [OTHER_RUN_ID], "record_failures": 0},
+            {"run_ids": [OTHER_RUN_ID], "record_failures": 0, "unapplied_raise": False, "raises_received": 0},
         )
         await h.settle()
         assert (await h.state())["in_flight_run_ids"] == run_ids
@@ -1058,45 +1067,6 @@ def test_continue_as_new_carries_interval_used_after_plan_failure():
     _run(scenario, script=lambda _: _planned(interval=600))
 
 
-def test_carried_in_flight_run_without_start_time_gets_a_fixed_deadline():
-    """A carried in-flight run without a start time gets a fixed deadline and blocks planning meanwhile."""
-
-    async def scenario(h: Harness) -> None:
-        await h.start(
-            start_signal=None,
-            in_flight_run_ids=[GHOST_RUN_ID],
-            in_flight_workflow_id=CHILD_ID,
-            in_flight_operation_count=1,
-        )
-        state = await eventually(h.state, lambda s: s["in_flight_started_at"])
-        await h.env.sleep(OPERATION_BUDGET - timedelta(minutes=1))
-        assert (await h.settle())["in_flight_run_ids"] == [GHOST_RUN_ID]
-        assert h.plans.requests == []
-        # The time-skipping test server never resolves a cancel of a missing
-        # workflow, so the give-up falls back to the 15 min grace here.
-        await h.env.sleep(timedelta(minutes=17))
-        await h.plan_count(1)
-        await h.idle_after(state)
-
-    _run(scenario, script=lambda _: _planned())
-
-
-def test_carried_in_flight_run_without_workflow_id_is_given_up_without_grace():
-    """A carried in-flight run without a workflow id is given up without a grace period."""
-
-    async def scenario(h: Harness) -> None:
-        await h.start(start_signal=None, in_flight_run_ids=[GHOST_RUN_ID], in_flight_operation_count=1)
-        state = await eventually(h.state, lambda s: s["in_flight_started_at"])
-        assert state["in_flight_workflow_id"] is None
-        await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
-        await h.plan_count(1)
-        await h.idle_after(state)
-        # The give-up ends the run, and the plan timer (one hour) came due while it was stuck.
-        assert [r["wake_reasons"] for r in (await h.records(1))] == [{"previous_run_finished": 1, "schedule": 1}]
-
-    _run(scenario, script=lambda _: _planned())
-
-
 def test_child_start_failure_keeps_workflow_alive(monkeypatch: pytest.MonkeyPatch):
     """A failure to start the child run clears the in-flight run and keeps the workflow alive."""
     import temporalio.workflow
@@ -1158,20 +1128,6 @@ def test_timer_wake_records_schedule():
         assert record["policy_target"] == {"type": "catalog", "path": ["prod"]}
 
     _run(scenario, script=lambda _: {**_planned(), "checks": [_check(COMPACTION, "not_needed")]})
-
-
-def test_a_plan_from_before_policy_ids_is_recorded_without_a_policy_id():
-    """A plan an older worker returned names its policy instead of its id; the loop still records it, with no id."""
-
-    async def scenario(h: Harness) -> None:
-        await h.start(start_signal=None)
-        await h.env.sleep(timedelta(seconds=3700))
-        record = (await h.records(1))[0]
-        assert record["policy_id"] is None
-        assert record["policy_version"] == 4
-
-    older = {key: value for key, value in _planned().items() if key != "policy_id"} | {"policy_name": "nightly"}
-    _run(scenario, script=lambda _: older)
 
 
 def test_three_catalog_commits_during_a_run_are_recorded_after_it_finishes():
@@ -1367,14 +1323,11 @@ def test_give_up_before_the_plan_timer_plans_once_as_previous_run_finished():
     """A stuck run given up before the plan timer ends the run: one plan, recorded with the run it starts."""
 
     async def scenario(h: Harness) -> None:
-        await h.start(
-            start_signal=None,
-            in_flight_run_ids=[GHOST_RUN_ID],
-            in_flight_operation_count=1,
+        await h.start_carrying(
             schedule_interval_seconds=10**6,
         )
         await eventually(h.state, lambda s: s["in_flight_started_at"])
-        await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
+        await h.env.sleep(OPERATION_BUDGET + CANCEL_GRACE + timedelta(minutes=1))
         run_ids = (await eventually(h.state, lambda s: s["in_flight_run_ids"] not in (None, [GHOST_RUN_ID])))[
             "in_flight_run_ids"
         ]
@@ -1474,17 +1427,6 @@ def test_reconciliation_passes_the_plan_deadline_to_the_run():
     _run(scenario, script=lambda _: {**_planned(COMPACTION), "attempt_deadline_seconds": 120})
 
 
-def test_reconciliation_defaults_the_deadline_for_old_plans():
-    """A plan without a deadline, recorded before the setting existed, gives the run six hours per attempt."""
-
-    async def scenario(h: Harness) -> None:
-        await h.start()
-        run_ids = await h.in_flight()
-        assert (await h.child(run_ids))["attempt_deadline_seconds"] == 21600
-
-    _run(scenario, script=lambda _: _planned(COMPACTION))
-
-
 SHORT_DEADLINE_BUDGET = TableMaintenanceAttemptPolicy(
     attempt_deadline=timedelta(seconds=120)
 ).operation_worst_case() + (timedelta(hours=1))
@@ -1516,17 +1458,6 @@ def test_reconciliation_passes_the_plan_max_attempts_to_the_run():
     _run(scenario, script=lambda _: {**_planned(COMPACTION), "max_attempts": 5})
 
 
-def test_reconciliation_defaults_the_max_attempts_for_old_plans():
-    """A plan without max attempts, recorded before the setting existed, gives the run three attempts."""
-
-    async def scenario(h: Harness) -> None:
-        await h.start()
-        run_ids = await h.in_flight()
-        assert (await h.child(run_ids))["max_attempts"] == 3
-
-    _run(scenario, script=lambda _: _planned(COMPACTION))
-
-
 LONG_RETRY_BUDGET = TableMaintenanceAttemptPolicy(
     max_attempts=5, attempt_deadline=timedelta(seconds=120)
 ).operation_worst_case() + (timedelta(hours=1))
@@ -1554,20 +1485,47 @@ def test_in_flight_bound_follows_the_plan_max_attempts():
     )
 
 
+@pytest.mark.parametrize(
+    ("missing", "named"),
+    [("in_flight_started_at", "start time"), ("in_flight_workflow_id", "workflow id")],
+)
+def test_a_carried_run_in_flight_needs_its_start_time_and_workflow_id(missing: str, named: str):
+    """A run carried in flight without its start time or workflow id fails the workflow, naming what is missing.
+
+    Continue-as-new carries both with the run ids, so an input without one was not written by this
+    workflow; it is refused instead of given a deadline or a give-up it never had.
+    """
+
+    async def scenario(h: Harness) -> None:
+        carried = {
+            "in_flight_run_ids": [GHOST_RUN_ID],
+            "in_flight_workflow_id": GONE_CHILD_ID,
+            "in_flight_started_at": (await h.env.get_current_time()).isoformat(),
+            "in_flight_operation_count": 1,
+        }
+        del carried[missing]
+        handle = await h.start(start_signal=None, **carried)
+        with pytest.raises(WorkflowFailureError) as failed:
+            await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+        assert named in str(failed.value.cause)
+        assert isinstance(failed.value.cause, ApplicationError)
+        assert failed.value.cause.non_retryable
+        assert h.plans.requests == []
+
+    _run(scenario)
+
+
 def test_carried_in_flight_run_keeps_its_attempt_deadline():
     """Continue-as-new carries the in-flight run's attempt deadline, so its bound does not change."""
 
     async def scenario(h: Harness) -> None:
-        await h.start(
-            start_signal=None,
-            in_flight_run_ids=[GHOST_RUN_ID],
-            in_flight_operation_count=1,
+        await h.start_carrying(
             in_flight_attempt_deadline_seconds=120,
         )
         state = await eventually(h.state, lambda s: s["in_flight_started_at"])
         await h.env.sleep(SHORT_DEADLINE_BUDGET - timedelta(minutes=1))
         assert (await h.settle())["in_flight_run_ids"] == [GHOST_RUN_ID]
-        await h.env.sleep(timedelta(minutes=2))
+        await h.env.sleep(CANCEL_GRACE + timedelta(minutes=2))
         await h.plan_count(1)
         await h.idle_after(state)
 
@@ -1598,17 +1556,6 @@ def test_reconciliation_passes_the_plan_queue_wait_limit_to_the_run():
         assert (await h.child(run_ids))["queue_wait_limit_seconds"] == 600
 
     _run(scenario, script=lambda _: {**_planned(COMPACTION), "queue_wait_limit_seconds": 600})
-
-
-def test_reconciliation_defaults_the_queue_wait_limit_for_old_plans():
-    """A plan without a queue wait limit lets each attempt of the run wait a day in its queue."""
-
-    async def scenario(h: Harness) -> None:
-        await h.start()
-        run_ids = await h.in_flight()
-        assert (await h.child(run_ids))["queue_wait_limit_seconds"] == 86400
-
-    _run(scenario, script=lambda _: _planned(COMPACTION))
 
 
 SHORT_QUEUE_BUDGET = TableMaintenanceAttemptPolicy(
@@ -1643,17 +1590,14 @@ def test_carried_in_flight_run_keeps_its_queue_wait_limit():
     """Continue-as-new carries the in-flight run's queue wait limit, so its bound does not change."""
 
     async def scenario(h: Harness) -> None:
-        await h.start(
-            start_signal=None,
-            in_flight_run_ids=[GHOST_RUN_ID],
-            in_flight_operation_count=1,
+        await h.start_carrying(
             in_flight_attempt_deadline_seconds=120,
             in_flight_queue_wait_limit_seconds=600,
         )
         state = await eventually(h.state, lambda s: s["in_flight_started_at"])
         await h.env.sleep(SHORT_QUEUE_BUDGET - timedelta(minutes=1))
         assert (await h.settle())["in_flight_run_ids"] == [GHOST_RUN_ID]
-        await h.env.sleep(timedelta(minutes=2))
+        await h.env.sleep(CANCEL_GRACE + timedelta(minutes=2))
         await h.plan_count(1)
         await h.idle_after(state)
 
@@ -1664,10 +1608,7 @@ def test_continue_as_new_carries_the_in_flight_queue_wait_limit():
     """A carried run in flight across another continue-as-new is still given up on its queue wait limit."""
 
     async def scenario(h: Harness) -> None:
-        handle = await h.start(
-            start_signal=None,
-            in_flight_run_ids=[GHOST_RUN_ID],
-            in_flight_operation_count=1,
+        handle = await h.start_carrying(
             in_flight_attempt_deadline_seconds=120,
             in_flight_queue_wait_limit_seconds=600,
             continue_as_new_after=2,
@@ -1685,7 +1626,7 @@ def test_continue_as_new_carries_the_in_flight_queue_wait_limit():
         assert (await h.settle())["in_flight_run_ids"] == [GHOST_RUN_ID]
         await h.env.sleep(SHORT_QUEUE_BUDGET - timedelta(minutes=1))
         assert (await h.settle())["in_flight_run_ids"] == [GHOST_RUN_ID]
-        await h.env.sleep(timedelta(minutes=2))
+        await h.env.sleep(CANCEL_GRACE + timedelta(minutes=2))
         await h.plan_count(1)
         await h.idle_after(state)
 
@@ -1789,17 +1730,6 @@ def test_a_manual_plans_runs_are_created_as_manual_runs():
         await h.start(start_signal=TableReconciliationSignal.TRIGGER_NOW)
         await h.in_flight()
         assert h.runs.created[0]["trigger"] == "manual"
-
-    _run(scenario, script=lambda _: _planned(COMPACTION))
-
-
-def test_a_plan_without_a_priority_creates_its_runs_at_p3():
-    """A plan that names no priority creates its runs at P3."""
-
-    async def scenario(h: Harness) -> None:
-        await h.start()
-        await h.in_flight()
-        assert h.runs.created[0]["priority"] == "P3"
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -1919,7 +1849,7 @@ def test_unstarted_run_releases_nothing(monkeypatch: pytest.MonkeyPatch):
             "record_table_reconciliation",
         ]
 
-    _run(scenario, script=lambda _: _with_candidates(_planned(COMPACTION)), runner=UnsandboxedWorkflowRunner())
+    _run(scenario, script=lambda _: _planned(COMPACTION), runner=UnsandboxedWorkflowRunner())
 
 
 def test_stop_during_plan_releases_nothing():
@@ -1935,24 +1865,7 @@ def test_stop_during_plan_releases_nothing():
         await h.ended()
         assert await h.scheduled_activities() == ["plan_table_maintenance"]
 
-    _run(scenario, script=lambda _: _with_candidates(_planned(COMPACTION)))
-
-
-def test_next_plan_is_one_interval_on():
-    """A plan's ``next_check_at`` is ignored: the next plan comes one reconcile interval later."""
-
-    async def scenario(h: Harness) -> None:
-        await h.start()
-        first = (await h.plan_count(1))[0]
-        await h.settle()
-        await h.env.sleep(timedelta(seconds=100))
-        assert len(h.plans.requests) == 1
-        await h.env.sleep(timedelta(seconds=3600))
-        second = (await h.plan_count(2))[1]
-        gap = datetime.fromisoformat(second["now"]) - datetime.fromisoformat(first["now"])
-        assert _within_a_second(gap, 3600)
-
-    _run(scenario, script=_with_next_check(90))
+    _run(scenario, script=lambda _: _planned(COMPACTION))
 
 
 def test_a_long_run_in_flight_still_blocks_planning():
@@ -2748,14 +2661,21 @@ def test_a_report_naming_other_runs_is_ignored():
         await h.start()
         run_ids = await h.in_flight()
         await h.signal(
-            TableReconciliationSignal.MAINTENANCE_FINISHED, {"run_ids": [OTHER_RUN_ID], "record_failures": 0}
+            TableReconciliationSignal.MAINTENANCE_FINISHED,
+            {"run_ids": [OTHER_RUN_ID], "record_failures": 0, "unapplied_raise": False, "raises_received": 0},
         )
-        await h.signal(TableReconciliationSignal.MAINTENANCE_FINISHED, {"run_ids": run_ids[:1], "record_failures": 0})
+        await h.signal(
+            TableReconciliationSignal.MAINTENANCE_FINISHED,
+            {"run_ids": run_ids[:1], "record_failures": 0, "unapplied_raise": False, "raises_received": 0},
+        )
         await h.signal(TableReconciliationSignal.MAINTENANCE_FINISHED, {"record_failures": 0})
         state = await h.settle()
         assert state["in_flight_run_ids"] == run_ids
         assert len(h.plans.requests) == 1
-        await h.signal(TableReconciliationSignal.MAINTENANCE_FINISHED, {"run_ids": run_ids, "record_failures": 0})
+        await h.signal(
+            TableReconciliationSignal.MAINTENANCE_FINISHED,
+            {"run_ids": run_ids, "record_failures": 0, "unapplied_raise": False, "raises_received": 0},
+        )
         await h.plan_count(2)
 
     _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE))

@@ -8,7 +8,7 @@ from typing import Any
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy, SearchAttributePair, TypedSearchAttributes, WorkflowIDReusePolicy
-from temporalio.exceptions import ActivityError, FailureError, is_cancelled_exception
+from temporalio.exceptions import ActivityError, ApplicationError, FailureError, is_cancelled_exception
 from temporalio.workflow import ParentClosePolicy
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
@@ -96,14 +96,13 @@ class TableReconciliationWorkflow:
     A run given up gives its consumed trigger back whether or not it reports, since
     the cancel stopped its work. A run that never reports back is given up once the
     child's worst case has passed (per planned operation: every attempt waiting out
-    the queue wait limit the plan carried, 24 hours for a plan without one, then
-    timing out after the attempt deadline the plan carried, six hours for a plan
-    without one, and being fenced for 15 minutes, plus the backoffs, plus 1 h): the
+    the queue wait limit the plan carried, then timing out after the attempt deadline
+    the plan carried and being fenced for 15 minutes, plus the backoffs, plus 1 h): the
     child is cancelled first (by the workflow ID recorded when it started, the
     table's maintenance workflow ID), so its cleanup fences its live attempt,
     records the result and deletes its Spark job, and its report is awaited for as
-    long as the child still runs (less if the cancel fails because the child is gone
-    or no workflow ID was recorded), so a new run does not overlap the old one's
+    long as the child still runs (less if the cancel fails because the child is gone),
+    so a new run does not overlap the old one's
     Spark job. A skip because the table was dropped or unmanaged, or a ``stop``
     signal, ends the workflow once no run is in flight, but never on a stale
     decision (R31): any other signal after ``stop`` cancels the stop, and a wake
@@ -180,8 +179,8 @@ class TableReconciliationWorkflow:
         self._in_flight_started_at: datetime | None = None
         if input.in_flight_started_at:
             self._in_flight_started_at = datetime.fromisoformat(input.in_flight_started_at)
-        elif input.in_flight_run_ids is not None:
-            self._in_flight_started_at = workflow.now()
+        if input.in_flight_run_ids is not None:
+            _refuse_a_partly_carried_run(input)
         self._in_flight_operations = input.in_flight_operation_count
         self._in_flight_attempt_deadline_seconds = input.in_flight_attempt_deadline_seconds
         self._in_flight_max_attempts = input.in_flight_max_attempts
@@ -308,13 +307,9 @@ class TableReconciliationWorkflow:
         """Tell whether the run's report leaves a raise of it unapplied.
 
         The run says so (``unapplied_raise``), or it received fewer raises than were delivered to it:
-        those arrived after it built its report. A report without ``raises_received`` counts only
-        its own word.
+        those arrived after it built its report.
         """
-        if report.get("unapplied_raise", False):
-            return True
-        received = report.get("raises_received")
-        return received is not None and self._raises_delivered > received
+        return report["unapplied_raise"] or self._raises_delivered > report["raises_received"]
 
     @workflow.query
     def state(self) -> dict[str, Any]:
@@ -465,10 +460,10 @@ class TableReconciliationWorkflow:
         """
         deadline = self._in_flight_deadline()
         run_ids = self._in_flight_run_ids
-        if run_ids is None or deadline is None or workflow.now() < deadline:
+        workflow_id = self._in_flight_workflow_id
+        if run_ids is None or workflow_id is None or deadline is None or workflow.now() < deadline:
             return
         workflow.logger.warning("maintenance runs %s never reported back; cancelling them", run_ids)
-        workflow_id = self._in_flight_workflow_id
         self._given_up_run_ids = run_ids
         self._cancel_failed = False
         self._cancel_task = asyncio.create_task(self._cancel_child(run_ids, workflow_id))
@@ -480,7 +475,7 @@ class TableReconciliationWorkflow:
                 )
                 break
             except TimeoutError:
-                if workflow_id is None or not await self._still_running(workflow_id):
+                if not await self._still_running(workflow_id):
                     workflow.logger.warning("cancelled runs %s did not report back; no longer waiting", run_ids)
                     break
                 workflow.logger.warning("cancelled runs %s are still running; waiting for them", run_ids)
@@ -504,11 +499,7 @@ class TableReconciliationWorkflow:
             return True
         return bool(looked_up["running"])
 
-    async def _cancel_child(self, run_ids: list[str], workflow_id: str | None) -> None:
-        if workflow_id is None:
-            workflow.logger.info("runs %s have no recorded workflow to cancel", run_ids)
-            self._cancel_failed = True
-            return
+    async def _cancel_child(self, run_ids: list[str], workflow_id: str) -> None:
         handle = workflow.get_external_workflow_handle(workflow_id)
         try:
             await handle.cancel()
@@ -523,15 +514,14 @@ class TableReconciliationWorkflow:
         A delivered signal consumes the trigger (unless another replaced it meanwhile), keeps it
         with the run in flight in case the run reports the raise unapplied, and takes one
         ``manual_run`` off the wake reasons, since no plan follows it. A signal that fails (the
-        child is gone or no workflow ID was recorded), or one delivered to a run that reported
+        child is gone), or one delivered to a run that reported
         meanwhile, leaves the trigger pending, to be planned once the run reports (or at once).
         """
         manual = self._pending_manual
         priority = self._pending_manual_priority
         run_ids = self._in_flight_run_ids
         workflow_id = self._in_flight_workflow_id
-        if workflow_id is None:
-            workflow.logger.info("runs %s have no recorded workflow to raise; keeping the manual trigger", run_ids)
+        if run_ids is None or workflow_id is None:
             return
         handle = workflow.get_external_workflow_handle(workflow_id)
         try:
@@ -763,7 +753,7 @@ class TableReconciliationWorkflow:
                     "table_uuid": self._table_uuid,
                     "execution_ref": table_maintenance_workflow_id(self._table_uuid),
                     "trigger": _trigger(manual),
-                    "priority": plan.get("priority", "P3"),
+                    "priority": plan["priority"],
                     "now": workflow.now().isoformat(),
                     "runs": [
                         {
@@ -809,10 +799,7 @@ class TableReconciliationWorkflow:
         ``run_ids`` links each operation the started child runs to its run id (empty when no child started).
 
         The record points at the plan's policy by id and carries the plan's ``policy_name`` for
-        display. A plan an older worker returned names its policy instead and has no ``policy_id``
-        (or no ``policy_name``): the record then carries none, the recorder refuses it and the
-        refusal is logged like any other failure (it changes only the activity's input, so it
-        needs no patch).
+        display.
         """
         if not plan["table_found"]:
             return
@@ -828,8 +815,8 @@ class TableReconciliationWorkflow:
                     "checks": plan["checks"],
                     "run_ids": run_ids,
                     "run_start_failed": run_start_failed,
-                    "policy_id": plan.get("policy_id"),
-                    "policy_name": plan.get("policy_name"),
+                    "policy_id": plan["policy_id"],
+                    "policy_name": plan["policy_name"],
                     "policy_version": plan["policy_version"],
                     "policy_target": plan["policy_target"],
                 },
@@ -862,9 +849,9 @@ class TableReconciliationWorkflow:
         caller first awaits the run that reported last until it closed (``_await_closing``).
         """
         child_id = table_maintenance_workflow_id(self._table_uuid)
-        attempt_deadline_seconds = plan.get("attempt_deadline_seconds", DEFAULT_ATTEMPT_DEADLINE_SECONDS)
-        max_attempts = plan.get("max_attempts", DEFAULT_MAX_ATTEMPTS)
-        queue_wait_limit_seconds = plan.get("queue_wait_limit_seconds", DEFAULT_QUEUE_WAIT_LIMIT_SECONDS)
+        attempt_deadline_seconds = plan["attempt_deadline_seconds"]
+        max_attempts = plan["max_attempts"]
+        queue_wait_limit_seconds = plan["queue_wait_limit_seconds"]
         self._in_flight_run_ids = run_ids
         self._in_flight_workflow_id = child_id
         self._in_flight_started_at = workflow.now()
@@ -920,6 +907,22 @@ class TableReconciliationWorkflow:
                 SearchAttributePair(keys.MAINTENANCE_TRIGGER, trigger),
             ]
         )
+
+
+def _refuse_a_partly_carried_run(input: TableReconciliationWorkflowInput) -> None:  # noqa: A002
+    """Refuse a run carried in flight without its start time or workflow id.
+
+    Continue-as-new carries both with the run ids (``_carry``), so an input without one was not
+    written by this workflow; it has no deadline or child to give the run up by.
+    """
+    missing = [
+        name
+        for name, value in (("start time", input.in_flight_started_at), ("workflow id", input.in_flight_workflow_id))
+        if not value
+    ]
+    if missing:
+        msg = f"runs {input.in_flight_run_ids} are carried in flight without their {' and '.join(missing)}"
+        raise ApplicationError(msg, non_retryable=True)
 
 
 def _trigger(manual: bool) -> str:

@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from base import InvariantViolation
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
@@ -100,6 +101,7 @@ def _create_input(now, *, runs=None, operation="rewrite_data_files", filters=(),
         "execution_ref": "wf-run-1",
         "now": now,
         "runs": (one,) if runs is None else runs,
+        "priority": "P3",
     }
     fields.update(overrides)
     return CreateTableMaintenanceRunsUseCaseInput(**fields)
@@ -160,10 +162,10 @@ def test_create_run_records_its_priority(creator, runs_repo, table, now):
     assert runs_repo.get(TableMaintenanceRunId(RUN_1)).priority is TablePriority.P0
 
 
-def test_create_run_without_a_priority_records_p3(creator, runs_repo, table, now):
-    """Runs created without a priority record P3."""
-    creator.execute(_create_input(now))
-    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).priority is TablePriority.P3
+def test_create_run_records_the_priority_it_names(creator, runs_repo, table, now):
+    """Runs are created at the priority the request names."""
+    creator.execute(_create_input(now, priority="P1"))
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).priority is TablePriority.P1
 
 
 def test_create_run_service_saves_the_filters(creator, runs_repo, table, now):
@@ -226,18 +228,33 @@ def test_create_run_with_an_unknown_priority_is_refused(creator, runs_repo, tabl
     assert len(runs_repo.items) == 0
 
 
-def test_create_input_without_a_priority_parses_as_p3(now):
-    """A payload without a priority, filters or arguments parses, as P3 on the whole table with no arguments."""
+def test_create_input_without_filters_or_arguments_parses_on_the_whole_table(now):
+    """A run without filters or arguments parses, on the whole table with no arguments."""
     parsed = CreateTableMaintenanceRunsUseCaseInput.from_primitives(
         {
             "table_uuid": "u-1",
             "execution_ref": "wf-run-1",
             "trigger": "scheduled",
             "now": now.isoformat(),
+            "priority": "P3",
             "runs": [{"run_id": RUN_1, "operation": "rewrite_data_files"}],
         }
     )
-    assert (parsed.priority, parsed.runs[0].filters, parsed.runs[0].procedure_args) == ("P3", (), {})
+    assert (parsed.runs[0].filters, parsed.runs[0].procedure_args) == ((), {})
+
+
+def test_create_input_requires_a_priority(now):
+    """A payload without a priority is refused: the plan always names the table's priority."""
+    with pytest.raises(InvariantViolation, match="priority"):
+        CreateTableMaintenanceRunsUseCaseInput.from_primitives(
+            {
+                "table_uuid": "u-1",
+                "execution_ref": "wf-run-1",
+                "trigger": "scheduled",
+                "now": now.isoformat(),
+                "runs": [{"run_id": RUN_1, "operation": "rewrite_data_files"}],
+            }
+        )
 
 
 def test_create_run_is_idempotent_by_id(creator, runs_repo, table, now):

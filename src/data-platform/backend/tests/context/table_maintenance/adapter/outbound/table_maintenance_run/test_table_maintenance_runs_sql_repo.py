@@ -252,6 +252,7 @@ def test_a_create_of_a_plan_retried_after_it_was_stored_succeeds_on_the_sql_repo
         execution_ref="wf",
         trigger="scheduled",
         now=NOW,
+        priority="P3",
         runs=(
             CreateTableMaintenanceRunsUseCaseInput.Run(run_id=R1, operation="rewrite_data_files"),
             CreateTableMaintenanceRunsUseCaseInput.Run(run_id=OTHER, operation="expire_snapshots"),
@@ -277,6 +278,7 @@ def test_a_retry_whose_insert_hits_the_primary_key_of_its_first_try_succeeds_on_
         execution_ref="wf",
         trigger="scheduled",
         now=NOW,
+        priority="P3",
         runs=(
             CreateTableMaintenanceRunsUseCaseInput.Run(run_id=R1, operation="rewrite_data_files"),
             CreateTableMaintenanceRunsUseCaseInput.Run(run_id=OTHER, operation="expire_snapshots"),
