@@ -2753,3 +2753,65 @@ def test_a_stop_during_the_create_skips_the_created_runs_and_starts_no_child():
         assert h.recorder.records == []
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+# --- the ids come from local activities, which leave no gap a signal can slip through ---
+
+
+async def _id_requests(h: Harness, kind: str, count: int = 1) -> None:
+    """Wait until the workflow has asked for ``count`` ids of ``kind``."""
+
+    async def probe() -> int:
+        return h.ids.requests.count(kind)
+
+    await eventually(probe, lambda n: n >= count)
+
+
+def test_a_manual_trigger_sent_while_the_reconciliation_id_is_issued_is_planned_by_that_pass():
+    """A trigger that arrives while the pass waits for its id is the pass's own: it plans the manual run at once."""
+
+    async def scenario(h: Harness) -> None:
+        h.ids.reconciliation_gate = asyncio.Event()
+        await h.start()
+        await _id_requests(h, "reconciliation_id")
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [COMPACTION]})
+        await eventually(h.state, lambda s: s["signals_handled"] >= h.sent)
+        h.ids.reconciliation_gate.set()
+        [request] = await h.plan_count(1)
+        assert request["manual_operations"] == [COMPACTION]
+
+    _run(scenario)
+
+
+def test_a_stop_while_the_run_ids_are_issued_creates_no_run():
+    """A stop that arrives while the plan's run ids are issued creates no run, starts no child and records nothing."""
+
+    async def scenario(h: Harness) -> None:
+        h.ids.run_ids_gate = asyncio.Event()
+        await h.start()
+        await _id_requests(h, "run_ids")
+        await h.signal(TableReconciliationSignal.STOP)
+        await eventually(h.state, lambda s: s["stopping"])
+        h.ids.run_ids_gate.set()
+        await h.ended()
+        assert h.runs.created == []
+        assert h.runs.skips == []
+        assert await h.started_children() == {}
+        assert h.recorder.records == []
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_a_cancel_while_an_id_is_issued_cancels_the_workflow():
+    """Cancelling the workflow while it waits for an id ends it cancelled, not failed, like any other activity."""
+
+    async def scenario(h: Harness) -> None:
+        h.ids.reconciliation_gate = asyncio.Event()
+        handle = await h.start()
+        await _id_requests(h, "reconciliation_id")
+        await handle.cancel()
+        with pytest.raises(WorkflowFailureError):
+            await handle.result()
+        assert (await handle.describe()).status == WorkflowExecutionStatus.CANCELED
+
+    _run(scenario)

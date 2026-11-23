@@ -8,6 +8,6 @@ from base import EntityId
 
 
 class TableMaintenanceRunId(EntityId):
-    """Identify a TableMaintenanceRun; the reconciliation workflow mints it as an ``mr-`` id."""
+    """Identify a TableMaintenanceRun; an ``mr-`` id the application issues (ADR 0015)."""
 
     PREFIX: ClassVar[str | None] = "mr"

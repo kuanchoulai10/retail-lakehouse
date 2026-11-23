@@ -635,9 +635,14 @@ class TableReconciliationWorkflow:
             self._planning = False
 
     async def _plan_and_start_once(self) -> bool:
+        """Issue the pass's reconciliation id, then plan and start; True ends the workflow.
+
+        The id comes first, before the pending trigger and wake reasons are read: a signal handled while
+        it is issued belongs to this pass, as if it arrived before it.
+        """
+        reconciliation_id = await self._issue_reconciliation_id()
         manual = self._pending_manual
         manual_priority = self._pending_manual_priority
-        reconciliation_id = await self._issue_reconciliation_id()
         now = workflow.now()
         if manual is None:
             self._take_commit_window()
@@ -694,9 +699,13 @@ class TableReconciliationWorkflow:
         """Create the plan's runs, start the child that runs them, and record the reconciliation.
 
         Runs are linked only when the create succeeded and the child started. A stop that arrived
-        during the create skips the runs and drops the plan unrecorded, as a stop before it does.
+        while the run ids were issued creates no run, and one during the create skips the runs; both
+        drop the plan unrecorded, as a stop before them does.
         """
         run_ids = await self._issue_run_ids(plan)
+        if self._stopping:
+            self._drop_unstarted_plan(manual, reconciliation_id)
+            return
         created = await self._create_runs(plan, manual is not None, run_ids)
         if created and self._stopping:
             await self._skip_runs(run_ids, _STOPPED_BEFORE_START)

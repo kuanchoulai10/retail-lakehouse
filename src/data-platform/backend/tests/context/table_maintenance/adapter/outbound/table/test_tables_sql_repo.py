@@ -347,6 +347,37 @@ def test_attention_mark_under_the_platform_default_reads_back_without_a_target(r
     assert loaded.operation_state(MaintenanceOperation.REWRITE_DATA_FILES).attention == mark
 
 
+def test_a_recorded_attempt_is_stored_as_its_run_id_string(repo: TablesSqlRepo, engine: Engine):
+    """A recorded attempt is stored as ``{"run_id": "mr-…", "attempt": n}``, and a row of that shape reads back."""
+    table = _table()
+    attempt = RecordedAttempt(run_id=TableMaintenanceRunId(RUN_7), attempt=3)
+    table.operation_states = {MaintenanceOperation.REWRITE_DATA_FILES: OperationState(last_recorded=attempt)}
+    repo.create(table)
+
+    with engine.connect() as conn:
+        stored = conn.execute(tables_table.select()).one()._mapping["operation_states_json"]
+    assert stored["rewrite_data_files"]["last_recorded"] == {"run_id": RUN_7, "attempt": 3}
+
+    with engine.begin() as conn:
+        conn.execute(
+            tables_table.update().values(
+                operation_states_json={
+                    "rewrite_data_files": {
+                        "last_attempt_at": None,
+                        "consecutive_failures": 0,
+                        "last_successful_size": None,
+                        "attention": None,
+                        "low_use_successes": 0,
+                        "last_recorded": {"run_id": RUN_7, "attempt": 3},
+                    }
+                }
+            )
+        )
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.operation_state(MaintenanceOperation.REWRITE_DATA_FILES).last_recorded == attempt
+
+
 def test_an_attention_mark_without_its_start_time_is_refused(repo: TablesSqlRepo, engine: Engine):
     """A stored mark with no start time is refused, naming the missing start time."""
     repo.create(_table())

@@ -1,1 +1,1 @@
-"""Tests for base shared kernel."""
+"""Tests for the base DDD building blocks."""
