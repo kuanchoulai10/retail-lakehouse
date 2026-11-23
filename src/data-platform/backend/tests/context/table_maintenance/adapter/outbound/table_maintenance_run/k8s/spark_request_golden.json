@@ -1,0 +1,151 @@
+{
+  "compaction_every_option": {
+    "where": [],
+    "procedure_args": {
+      "strategy": "sort",
+      "sort_order": "id DESC NULLS LAST, ts",
+      "options": {
+        "target-file-size-bytes": 536870912,
+        "min-input-files": 4,
+        "partial-progress.enabled": true,
+        "partial-progress.max-commits": 7,
+        "max-concurrent-file-group-rewrites": 3,
+        "rewrite-all": false,
+        "delete-file-threshold": 2,
+        "remove-dangling-deletes": true,
+        "max-file-group-size-bytes": 1073741824
+      }
+    }
+  },
+  "compaction_platform_default": {
+    "where": [],
+    "procedure_args": {
+      "options": {
+        "target-file-size-bytes": 536870912,
+        "min-input-files": 2,
+        "partial-progress.enabled": true
+      }
+    }
+  },
+  "compaction_left_out_with_table_size": {
+    "where": [],
+    "procedure_args": {
+      "options": {
+        "target-file-size-bytes": 134217728
+      }
+    }
+  },
+  "compaction_quote_and_backslash": {
+    "where": [
+      "(`region` = 'a\\\\b') OR (`region` = 'o\\'neil')"
+    ],
+    "procedure_args": {
+      "options": {
+        "target-file-size-bytes": 536870912,
+        "min-input-files": 2,
+        "partial-progress.enabled": true
+      }
+    }
+  },
+  "compaction_day_and_bucket": {
+    "where": [
+      "(`iceberg`.system.days(`ts`) = DATE '2025-10-24' AND `ts` >= TIMESTAMP '2025-10-24 00:00:00.000000+00:00' AND `ts` < TIMESTAMP '2025-10-25 00:00:00.000000+00:00' AND `iceberg`.system.bucket(16, `id`) = 7) OR (`iceberg`.system.days(`ts`) = DATE '2025-10-25' AND `ts` >= TIMESTAMP '2025-10-25 00:00:00.000000+00:00' AND `ts` < TIMESTAMP '2025-10-26 00:00:00.000000+00:00' AND `iceberg`.system.bucket(16, `id`) = 0)"
+    ],
+    "procedure_args": {
+      "options": {
+        "target-file-size-bytes": 536870912,
+        "min-input-files": 2,
+        "partial-progress.enabled": true
+      }
+    }
+  },
+  "compaction_evolved_spec": {
+    "where": [
+      "(`region` = 'eu')",
+      "(`iceberg`.system.days(`ts`) = DATE '2025-10-23' AND `ts` >= TIMESTAMP '2025-10-23 00:00:00.000000+00:00' AND `ts` < TIMESTAMP '2025-10-24 00:00:00.000000+00:00') OR (`iceberg`.system.days(`ts`) = DATE '2025-10-24' AND `ts` >= TIMESTAMP '2025-10-24 00:00:00.000000+00:00' AND `ts` < TIMESTAMP '2025-10-25 00:00:00.000000+00:00')"
+    ],
+    "procedure_args": {
+      "options": {
+        "target-file-size-bytes": 536870912,
+        "min-input-files": 2,
+        "partial-progress.enabled": true
+      }
+    }
+  },
+  "compaction_month_year_hour": {
+    "where": [
+      "(`iceberg`.system.months(`d`) = 681 AND `d` >= DATE '2026-10-01' AND `d` < DATE '2026-11-01' AND `iceberg`.system.years(`y`) = 56 AND `y` >= DATE '2026-01-01' AND `y` < DATE '2027-01-01' AND `iceberg`.system.hours(`t`) = 489240 AND `t` >= TIMESTAMP_NTZ '2025-10-24 00:00:00.000000' AND `t` < TIMESTAMP_NTZ '2025-10-24 01:00:00.000000')"
+    ],
+    "procedure_args": {
+      "options": {
+        "target-file-size-bytes": 536870912,
+        "min-input-files": 2,
+        "partial-progress.enabled": true
+      }
+    }
+  },
+  "compaction_scalar_values_and_null": {
+    "where": [
+      "(`iceberg`.system.truncate(4, `name`) = 'abcd' AND `flag` = true AND `price` = 12.50 AND `score` = 1.5 AND `seq` = 9000000000 AND `note` IS NULL)"
+    ],
+    "procedure_args": {
+      "options": {
+        "target-file-size-bytes": 536870912,
+        "min-input-files": 2,
+        "partial-progress.enabled": true
+      }
+    }
+  },
+  "compaction_nested_column_and_backtick_catalog": {
+    "where": [
+      "(`a`.`b` = 3 AND `ice``berg`.system.bucket(4, `a`.`c`) = 1)"
+    ],
+    "procedure_args": {
+      "options": {
+        "target-file-size-bytes": 536870912,
+        "min-input-files": 2,
+        "partial-progress.enabled": true
+      }
+    }
+  },
+  "manifests_with_caching": {
+    "where": [],
+    "procedure_args": {
+      "use_caching": false
+    }
+  },
+  "manifests_left_out": {
+    "where": [],
+    "procedure_args": {}
+  },
+  "expiry_with_options": {
+    "where": [],
+    "procedure_args": {
+      "older_than": "2026-10-22T12:15:30.123456+00:00",
+      "retain_last": 4,
+      "max_concurrent_deletes": 8,
+      "stream_results": true
+    }
+  },
+  "expiry_left_out_with_table_retention": {
+    "where": [],
+    "procedure_args": {
+      "older_than": "2026-10-24T11:15:30.123456+00:00",
+      "retain_last": 3
+    }
+  },
+  "orphans_with_options": {
+    "where": [],
+    "procedure_args": {
+      "older_than": "2026-10-22T12:15:30.123456+00:00",
+      "max_concurrent_deletes": 4,
+      "prefix_mismatch_mode": "IGNORE"
+    }
+  },
+  "orphans_left_out": {
+    "where": [],
+    "procedure_args": {
+      "older_than": "2026-10-21T12:15:30.123456+00:00"
+    }
+  }
+}
