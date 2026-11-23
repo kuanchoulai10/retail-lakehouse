@@ -24,10 +24,11 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 )
 from context.table_maintenance.application.domain.service.table import (
     assess_maintenance,
-    build_partition_filters,
+    group_partitions_by_spec,
     measure_table,
     plan_manual_maintenance,
 )
+from context.table_maintenance.application.domain.service.table_maintenance_run import build_maintenance_job_content
 from context.table_maintenance.application.exceptions import ValidationError
 from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCase,
@@ -44,15 +45,12 @@ from context.table_maintenance.application.service.shared import applied_policy_
 from context.table_maintenance.application.service.table.table_observation_from_gateway import (
     table_observation_from_gateway,
 )
-from context.table_maintenance.application.service.table_maintenance_run import (
-    maintenance_procedure_args,
-)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from datetime import datetime
 
-    from context.table_maintenance.application.domain.model.shared import TableObservation
+    from context.table_maintenance.application.domain.model.shared import SpecPartitions, TableObservation
     from context.table_maintenance.application.domain.model.table import (
         OperationCooldowns,
         PartitionSelectionSettings,
@@ -238,8 +236,13 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         operations = tuple(
             PlanTableMaintenanceUseCaseOutput.Operation(
                 operation=planned.operation.value,
-                filters=_filters_of(table, planned, observation),
-                procedure_args=maintenance_procedure_args(planned.operation, policy, properties, request.now),
+                content=build_maintenance_job_content(
+                    planned.operation,
+                    policy,
+                    properties,
+                    request.now,
+                    _partitions_of(table, planned, observation),
+                ).to_primitives(),
                 start_size=table.operation_state(planned.operation).start_size().value,
             )
             for planned in plan.operations
@@ -297,18 +300,18 @@ def _debounce(policy: MaintenancePolicyContent) -> int | None:
     return None if commit is None else int(commit.debounce.total_seconds())
 
 
-def _filters_of(
+def _partitions_of(
     table: Table, planned: PlannedOperation, observation: TableObservation
-) -> tuple[PlanTableMaintenanceUseCaseOutput.Filter, ...]:
-    """Return the where clauses of ``planned``, or ``()`` for the whole table.
+) -> tuple[SpecPartitions, ...]:
+    """Return the partitions ``planned`` rewrites per spec, or ``()`` for the whole table.
 
-    A selection the builder cannot render, or one with an empty ``where``, compacts the whole table
-    so the clauses a run records are exactly what its jobs ran with.
+    A selection no maintenance call can name (a transform, type or value a partition filter cannot
+    express) compacts the whole table, so the partitions a run records are exactly what its jobs ran with.
     """
     if not planned.partitions:
         return ()
     try:
-        filters = build_partition_filters(table.name.catalog, observation.specs, planned.partitions)
+        return group_partitions_by_spec(observation.specs, planned.partitions)
     except ValueError as exc:
         logger.warning(
             "cannot scope %s of %s to partitions (%s); compacting the whole table",
@@ -317,9 +320,6 @@ def _filters_of(
             exc,
         )
         return ()
-    if any(not f.where for f in filters):
-        return ()
-    return tuple(PlanTableMaintenanceUseCaseOutput.Filter(spec_id=f.spec_id, where=f.where) for f in filters)
 
 
 _VERDICTS = {

@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from typing import Annotated
+
+from pydantic import Field
+
 from context.table_maintenance.application.domain.model.table_maintenance_run.expire_snapshots_job_content import (
     ExpireSnapshotsJobContent,
 )
@@ -15,6 +19,8 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.re
     RewriteManifestsJobContent,
 )
 
-type MaintenanceJobContent = (
-    RewriteDataFilesJobContent | RewriteManifestsJobContent | ExpireSnapshotsJobContent | RemoveOrphanFilesJobContent
-)
+type MaintenanceJobContent = Annotated[
+    RewriteDataFilesJobContent | RewriteManifestsJobContent | ExpireSnapshotsJobContent | RemoveOrphanFilesJobContent,
+    Field(discriminator="operation"),
+]
+"""What one job of any operation does, read by its ``operation``."""

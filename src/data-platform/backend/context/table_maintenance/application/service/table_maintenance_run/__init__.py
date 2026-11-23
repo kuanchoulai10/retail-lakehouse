@@ -11,6 +11,9 @@ from context.table_maintenance.application.service.table_maintenance_run.delete_
 from context.table_maintenance.application.service.table_maintenance_run.forward_table_maintenance_result import (
     ForwardTableMaintenanceResultService,
 )
+from context.table_maintenance.application.service.table_maintenance_run.gateway_job_of import (
+    gateway_job_of,
+)
 from context.table_maintenance.application.service.table_maintenance_run.get_maintenance_job_processes import (
     GetMaintenanceJobProcessesService,
 )
@@ -28,9 +31,6 @@ from context.table_maintenance.application.service.table_maintenance_run.issue_t
 )
 from context.table_maintenance.application.service.table_maintenance_run.list_table_maintenance_runs import (
     ListTableMaintenanceRunsService,
-)
-from context.table_maintenance.application.service.table_maintenance_run.maintenance_procedure_args import (
-    maintenance_procedure_args,
 )
 from context.table_maintenance.application.service.table_maintenance_run.raise_table_maintenance_run_priority import (  # noqa: E501
     RaiseTableMaintenanceRunPriorityService,
@@ -69,7 +69,7 @@ __all__ = [
     "RecordTableMaintenanceOperationResultService",
     "SkipTableMaintenanceRunService",
     "SubmitMaintenanceOperationService",
-    "maintenance_procedure_args",
+    "gateway_job_of",
     "require_run_operation",
     "table_maintenance_run_output_fields",
 ]

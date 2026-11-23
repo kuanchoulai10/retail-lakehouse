@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -14,13 +14,11 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
     VolcanoSettings,
     build_spark_application,
 )
-from context.table_maintenance.application.domain.model.shared import (
-    MaintenanceOperation,
-    TableId,
-    TableMaintenanceRunId,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRun, TriggerType
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
+    ExpireSnapshotsJob,
+    JobPartitionField,
+    JobPartitionSpec,
+    RewriteDataFilesJob,
     SubmitMaintenanceJobGatewayInput,
 )
 
@@ -42,8 +40,7 @@ INPUT = SubmitMaintenanceJobGatewayInput(
     catalog="iceberg",
     namespace="sales",
     table="orders",
-    where=[],
-    procedure_args={},
+    job=RewriteDataFilesJob(target_file_size_bytes=536870912),
     result_report_url="http://cp/callback",
 )
 
@@ -276,18 +273,48 @@ def test_only_the_pod_group_carries_the_priority_class(priority: str, priority_c
     assert "priorityClassName" not in spec["executor"]
 
 
-def test_a_runs_nested_procedure_args_reach_the_request():
-    """A compaction run's nested options, held read-only by the run, are encoded into the job request."""
-    run = TableMaintenanceRun.create(
-        TableMaintenanceRunId(RUN_1),
-        TableId("4504b45d-bea7-4a04-a5a3-08d369e83441"),
-        TriggerType.SCHEDULED,
-        MaintenanceOperation.REWRITE_DATA_FILES,
-        datetime(2026, 11, 24, tzinfo=UTC),
-        execution_ref="wf-1",
-        procedure_args={"options": {"min-input-files": "2"}},
+def test_the_request_writes_the_job_in_icebergs_spelling_with_the_runtimes_keys_in_order():
+    """A compaction's partitions become where clauses and its options Iceberg's names, under the runtime's keys."""
+    day = JobPartitionField(source_column="ts", source_type="timestamptz", transform="day")
+    job = RewriteDataFilesJob(
+        target_file_size_bytes=536870912,
+        partitions=(JobPartitionSpec(spec_id=0, fields=(day,), values=((20412,),)),),
+        min_input_files=2,
     )
-    spec = build_spark_application(CONFIG, replace(INPUT, procedure_args=dict(run.procedure_args)), "app")["spec"]
+    spec = build_spark_application(CONFIG, replace(INPUT, job=job), "app")["spec"]
 
     env = {e["name"]: e.get("value") for e in spec["driver"]["env"]}
-    assert json.loads(env["GLAC_REQUEST"])["procedure_args"] == {"options": {"min-input-files": "2"}}
+    request = json.loads(env["GLAC_REQUEST"])
+    assert list(request) == [
+        "run_id",
+        "operation",
+        "attempt",
+        "catalog",
+        "namespace",
+        "table",
+        "where",
+        "procedure_args",
+        "result_report_url",
+        "size",
+        "priority",
+        "app_name",
+    ]
+    assert request["where"] == [
+        "(`iceberg`.system.days(`ts`) = DATE '2025-11-20'"
+        " AND `ts` >= TIMESTAMP '2025-11-20 00:00:00.000000+00:00'"
+        " AND `ts` < TIMESTAMP '2025-11-21 00:00:00.000000+00:00')"
+    ]
+    assert request["procedure_args"] == {"options": {"target-file-size-bytes": 536870912, "min-input-files": 2}}
+    assert request["app_name"] == "app"
+
+
+def test_an_expiry_request_writes_its_cutoff_in_utc():
+    """An expiry's cutoff reaches the runtime as UTC ISO text, its count beside it, and no where clause."""
+    cutoff = datetime(2026, 10, 23, 8, tzinfo=timezone(timedelta(hours=8)))
+    job = ExpireSnapshotsJob(older_than=cutoff, retain_last=5)
+    spec = build_spark_application(CONFIG, replace(INPUT, operation="expire_snapshots", job=job), "app")["spec"]
+
+    env = {e["name"]: e.get("value") for e in spec["driver"]["env"]}
+    request = json.loads(env["GLAC_REQUEST"])
+    assert request["where"] == []
+    assert request["procedure_args"] == {"older_than": "2026-10-23T00:00:00+00:00", "retain_last": 5}

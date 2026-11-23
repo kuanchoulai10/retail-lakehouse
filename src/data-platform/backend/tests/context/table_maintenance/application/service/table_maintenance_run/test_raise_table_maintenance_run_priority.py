@@ -21,6 +21,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
     RaiseTableMaintenanceRunPriorityService,
 )
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED
+from tests.context.table_maintenance.fakes.job_content import job_content
 from tests.context.table_maintenance.fakes.track_calls import track_calls
 
 RUN_1 = "mr-00000000000000000000000001"
@@ -50,6 +51,7 @@ def _stored_run(runs_repo, now, priority: TablePriority, *, started: bool = True
         TriggerType.SCHEDULED,
         RDF,
         now,
+        content=job_content(RDF),
         execution_ref="wf-1",
         priority=priority,
     )

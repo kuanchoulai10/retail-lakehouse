@@ -388,7 +388,7 @@ export const MaintenanceRunPanelPhone: Story = {
   play: async ({ canvasElement }) => {
     const panel = await within(canvasElement.ownerDocument.body).findByRole("dialog", { name: "Rewrite data files" });
     await expect(panel.getBoundingClientRect().width).toBe(window.innerWidth);
-    await expect(within(panel).getByText("spec 0: (`region` = 'eu')")).toBeVisible();
+    await expect(within(panel).getByText("spec 0: region = eu")).toBeVisible();
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };
@@ -483,8 +483,9 @@ export const MaintenancePartitionScope: Story = {
     const canvas = within(canvasElement);
     const panel = await openedRun(canvasElement, "Rewrite data files");
     await expect(panel.getByText("Partitions over the target")).toBeVisible();
-    await expect(panel.getByText(/^spec 0: .*DATE '2026-11-19'\)$/)).toBeVisible();
-    await expect(panel.getByText(/^spec 1: /)).toBeVisible();
+    await expect(panel.getAllByText(/^spec 0: /)).toHaveLength(10);
+    await expect(panel.getByText("spec 0: region = eu, day(order_day) = 2026-11-19")).toBeVisible();
+    await expect(panel.getByText("spec 1: hour(order_hour) = 2026-11-19-03")).toBeVisible();
     await userEvent.click(canvas.getByRole("button", { name: `Open Rewrite data files run ${ESCALATED_RUN_ID}` }));
     await expect(await panel.findByText("Whole table")).toBeVisible();
     await expect(panel.queryByText("Partitions over the target")).toBeNull();

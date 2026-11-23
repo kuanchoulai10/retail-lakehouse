@@ -136,8 +136,12 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
         "operations": [
             {
                 "operation": "rewrite_data_files",
-                "filters": [{"spec_id": 0, "where": "x = 1"}],
-                "procedure_args": {"strategy": "binpack"},
+                "content": {
+                    "operation": "rewrite_data_files",
+                    "target_file_size_bytes": 536870912,
+                    "options": {"strategy": "binpack"},
+                    "partitions": [],
+                },
                 "start_size": "S",
             }
         ],
@@ -162,10 +166,38 @@ def test_plan_payload_carries_policy_id_and_a_display_name():
     assert (result["policy_id"], result["policy_name"]) == (GOLD_POLICY_ID, "gold")
 
 
+COMPACTION_CONTENT = {
+    "operation": "rewrite_data_files",
+    "target_file_size_bytes": 536870912,
+    "options": {"strategy": "binpack", "min_input_files": 5},
+    "partitions": [
+        {
+            "spec": {
+                "spec_id": 1,
+                "fields": [
+                    {
+                        "field_id": 1000,
+                        "name": "region",
+                        "source_column": "region",
+                        "source_type": "string",
+                        "transform": "identity",
+                    }
+                ],
+            },
+            "values": [["eu"], ["us"]],
+        }
+    ],
+}
+EXPIRY_CONTENT = {
+    "operation": "expire_snapshots",
+    "older_than": "2026-10-17T01:02:03Z",
+    "retain_last": 3,
+    "options": {},
+}
+
+
 def _full_plan() -> PlanTableMaintenanceUseCaseOutput:
     """Return a plan that sets every field, nested ones included, with datetimes and sequences."""
-    where = PlanTableMaintenanceUseCaseOutput.Filter(spec_id=1, where="region = 'eu'")
-    other = PlanTableMaintenanceUseCaseOutput.Filter(spec_id=1, where="region = 'us'")
     return PlanTableMaintenanceUseCaseOutput(
         status="planned",
         reason=None,
@@ -175,14 +207,12 @@ def _full_plan() -> PlanTableMaintenanceUseCaseOutput:
         operations=(
             PlanTableMaintenanceUseCaseOutput.Operation(
                 operation="rewrite_data_files",
-                filters=(where, other),
-                procedure_args={"strategy": "binpack", "options": {"min-input-files": "5"}},
+                content=COMPACTION_CONTENT,
                 start_size="M",
             ),
             PlanTableMaintenanceUseCaseOutput.Operation(
                 operation="expire_snapshots",
-                filters=(),
-                procedure_args={"older_than": "2026-10-17T01:02:03+00:00", "retain_last": 3},
+                content=EXPIRY_CONTENT,
             ),
         ),
         dry_run=False,
@@ -232,17 +262,12 @@ def test_plan_payload_keeps_every_field_of_a_full_plan():
         "operations": [
             {
                 "operation": "rewrite_data_files",
-                "filters": [
-                    {"spec_id": 1, "where": "region = 'eu'"},
-                    {"spec_id": 1, "where": "region = 'us'"},
-                ],
-                "procedure_args": {"strategy": "binpack", "options": {"min-input-files": "5"}},
+                "content": COMPACTION_CONTENT,
                 "start_size": "M",
             },
             {
                 "operation": "expire_snapshots",
-                "filters": [],
-                "procedure_args": {"older_than": "2026-10-17T01:02:03+00:00", "retain_last": 3},
+                "content": EXPIRY_CONTENT,
                 "start_size": "S",
             },
         ],
@@ -722,8 +747,8 @@ def test_create_runs_activity_hands_the_use_case_the_plans_runs_and_returns_thei
             "priority": "P1",
             "now": NOW,
             "runs": [
-                {"run_id": RUN_1, "operation": "rewrite_data_files", "filters": [{"spec_id": 0, "where": "x"}]},
-                {"run_id": RUN_9, "operation": "expire_snapshots", "procedure_args": {"retain_last": 3}},
+                {"run_id": RUN_1, "operation": "rewrite_data_files", "content": COMPACTION_CONTENT},
+                {"run_id": RUN_9, "operation": "expire_snapshots", "content": EXPIRY_CONTENT},
             ],
         }
     )
@@ -739,8 +764,7 @@ def test_create_runs_activity_hands_the_use_case_the_plans_runs_and_returns_thei
         (RUN_1, "rewrite_data_files"),
         (RUN_9, "expire_snapshots"),
     ]
-    assert request.runs[0].filters[0].where == "x"
-    assert request.runs[1].procedure_args == {"retain_last": 3}
+    assert [r.content for r in request.runs] == [COMPACTION_CONTENT, EXPIRY_CONTENT]
     assert result == {"run_ids": [RUN_1, RUN_9]}
 
 

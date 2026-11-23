@@ -30,10 +30,6 @@ if TYPE_CHECKING:
     )
 
 
-def _iso(moment: datetime | None) -> str | None:
-    return None if moment is None else moment.isoformat()
-
-
 def _to_item(commit: dict[str, Any]) -> ListTableCommitsUseCaseOutput.Commit:
     summary = commit["summary"]
     return ListTableCommitsUseCaseOutput.Commit(
@@ -68,8 +64,8 @@ class ListTableCommitsService(ListTableCommitsUseCase):
             ref,
             TableCommitSelection(
                 limit=request.limit,
-                since=_iso(request.since),
-                before=_iso(request.before),
+                since=request.since,
+                before=request.before,
                 writer=request.writer,
             ),
         )

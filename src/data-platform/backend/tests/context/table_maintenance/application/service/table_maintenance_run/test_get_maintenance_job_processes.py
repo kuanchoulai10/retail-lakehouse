@@ -18,6 +18,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
 from context.table_maintenance.application.service.table_maintenance_run import (
     GetMaintenanceJobProcessesService,
 )
+from tests.context.table_maintenance.fakes.job_content import job_content
 from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_processes_gateway import (
     ScriptedReadMaintenanceJobProcessesGateway,
 )
@@ -35,6 +36,7 @@ def run(runs_repo, now):
         TriggerType.SCHEDULED,
         MaintenanceOperation.REWRITE_DATA_FILES,
         now,
+        content=job_content(MaintenanceOperation.REWRITE_DATA_FILES),
         execution_ref="wf-run-1",
     )
     runs_repo.create(created)

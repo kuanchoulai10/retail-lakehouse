@@ -11,7 +11,6 @@ from base import InvariantViolation
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
-    SpecFilter,
     TableId,
     TableMaintenanceRunId,
     TablePriority,
@@ -22,6 +21,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    ExpireSnapshotsJobContent,
     FailureClass,
     NextAttempt,
     NextStep,
@@ -51,6 +51,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
     SkipTableMaintenanceRunService,
 )
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED
+from tests.context.table_maintenance.fakes.job_content import job_content
 from tests.context.table_maintenance.fakes.scripted_read_maintenance_event_log_gateway import (
     ScriptedReadMaintenanceEventLogGateway,
 )
@@ -83,13 +84,20 @@ def table(tables_repo, now):
     return t
 
 
-def _planned_run(run_id, operation, **fields):
-    return CreateTableMaintenanceRunsUseCaseInput.Run(run_id=run_id, operation=operation, **fields)
+def _planned_run(run_id, operation, content=None):
+    """Plan one run of ``operation``, with ``content`` or the default content of its operation."""
+    if content is None:
+        known = operation in {op.value for op in MaintenanceOperation}
+        content = job_content(MaintenanceOperation(operation)).to_primitives() if known else {"operation": operation}
+    return CreateTableMaintenanceRunsUseCaseInput.Run(run_id=run_id, operation=operation, content=content)
 
 
-def _create_input(now, *, runs=None, operation="rewrite_data_files", filters=(), procedure_args=None, **overrides):
+EXPIRY = {"operation": "expire_snapshots", "older_than": "2026-10-23T08:00:00+08:00", "retain_last": 1}
+
+
+def _create_input(now, *, runs=None, operation="rewrite_data_files", content=None, **overrides):
     """Build the request to create the runs of one plan: run 1 of ``operation`` by default, or ``runs``."""
-    one = _planned_run(RUN_1, operation, filters=filters, procedure_args=procedure_args or {})
+    one = _planned_run(RUN_1, operation, content)
     fields: dict[str, Any] = {
         "table_uuid": "u-1",
         "trigger": "scheduled",
@@ -130,7 +138,7 @@ def test_create_stores_every_run_of_the_plan_at_one_time(creator, runs_repo, tab
             now,
             runs=(
                 _planned_run(RUN_1, "rewrite_data_files"),
-                _planned_run(RUN_2, "expire_snapshots", procedure_args={"retain_last": 1}),
+                _planned_run(RUN_2, "expire_snapshots", EXPIRY),
             ),
         )
     )
@@ -139,15 +147,15 @@ def test_create_stores_every_run_of_the_plan_at_one_time(creator, runs_repo, tab
     assert (first.operation, second.operation) == (RDF, OPS.EXPIRE_SNAPSHOTS)
     assert {first.status, second.status} == {RunStatus.PENDING}
     assert first.created_at == second.created_at == now
-    assert second.procedure_args == {"retain_last": 1}
+    assert second.content == ExpireSnapshotsJobContent.from_primitives(EXPIRY)
 
 
-def test_create_saves_one_operation_with_its_parameters(creator, runs_repo, table, now):
-    """A run of expire_snapshots is stored with the arguments its procedure is called with."""
-    creator.execute(_create_input(now, operation="expire_snapshots", procedure_args={"retain_last": 1}))
+def test_create_saves_one_operation_with_its_content(creator, runs_repo, table, now):
+    """A run of expire_snapshots is stored with the job content the plan built for it."""
+    creator.execute(_create_input(now, operation="expire_snapshots", content=EXPIRY))
     stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
     assert stored.operation is OPS.EXPIRE_SNAPSHOTS
-    assert stored.procedure_args == {"retain_last": 1}
+    assert stored.content == ExpireSnapshotsJobContent.from_primitives(EXPIRY)
     assert stored.status is RunStatus.PENDING
 
 
@@ -163,11 +171,11 @@ def test_create_run_records_the_priority_it_names(creator, runs_repo, table, now
     assert runs_repo.get(TableMaintenanceRunId(RUN_1)).priority is TablePriority.P1
 
 
-def test_create_run_service_saves_the_filters(creator, runs_repo, table, now):
-    """The where clauses of a compaction are stored on its run."""
-    creator.execute(_create_input(now, filters=(CreateTableMaintenanceRunsUseCaseInput.Filter(spec_id=0, where="x"),)))
-    stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
-    assert stored.filters == (SpecFilter(spec_id=0, where="x"),)
+def test_create_refuses_content_it_cannot_read(creator, runs_repo, table, now):
+    """Content without a known operation raises a ValidationError and stores nothing."""
+    with pytest.raises(ValidationError):
+        creator.execute(_create_input(now, content={"operation": "compact"}))
+    assert len(runs_repo.items) == 0
 
 
 def test_create_refuses_an_unknown_operation(creator, runs_repo, table, now):
@@ -177,14 +185,14 @@ def test_create_refuses_an_unknown_operation(creator, runs_repo, table, now):
     assert len(runs_repo.items) == 0
 
 
-def test_create_refuses_filters_on_expire(creator, runs_repo, table, now):
-    """Filters on a run other than rewrite_data_files raise a ConflictError and store nothing."""
+def test_create_refuses_content_of_another_operation(creator, runs_repo, table, now):
+    """An expire_snapshots run holding compaction content raises a ConflictError and stores nothing."""
     with pytest.raises(ConflictError):
         creator.execute(
             _create_input(
                 now,
                 operation="expire_snapshots",
-                filters=(CreateTableMaintenanceRunsUseCaseInput.Filter(spec_id=0, where="x"),),
+                content=job_content(MaintenanceOperation.REWRITE_DATA_FILES).to_primitives(),
             )
         )
     assert len(runs_repo.items) == 0
@@ -193,7 +201,7 @@ def test_create_refuses_filters_on_expire(creator, runs_repo, table, now):
 def test_create_stores_no_run_of_the_plan_when_one_is_refused(creator, runs_repo, table, now):
     """A plan whose second run is refused stores neither run: the plan's runs are created all or none."""
     refused = _planned_run(
-        RUN_2, "expire_snapshots", filters=(CreateTableMaintenanceRunsUseCaseInput.Filter(spec_id=0, where="x"),)
+        RUN_2, "expire_snapshots", job_content(MaintenanceOperation.REWRITE_DATA_FILES).to_primitives()
     )
     with pytest.raises(ConflictError):
         creator.execute(_create_input(now, runs=(_planned_run(RUN_1, "rewrite_data_files"), refused)))
@@ -223,19 +231,19 @@ def test_create_run_with_an_unknown_priority_is_refused(creator, runs_repo, tabl
     assert len(runs_repo.items) == 0
 
 
-def test_create_input_without_filters_or_arguments_parses_on_the_whole_table(now):
-    """A run without filters or arguments parses, on the whole table with no arguments."""
-    parsed = CreateTableMaintenanceRunsUseCaseInput.from_primitives(
-        {
-            "table_uuid": "u-1",
-            "execution_ref": "wf-run-1",
-            "trigger": "scheduled",
-            "now": now.isoformat(),
-            "priority": "P3",
-            "runs": [{"run_id": RUN_1, "operation": "rewrite_data_files"}],
-        }
-    )
-    assert (parsed.runs[0].filters, parsed.runs[0].procedure_args) == ((), {})
+def test_create_input_requires_the_content_of_each_run(now):
+    """A planned run without content is refused: the plan always builds what the job does."""
+    with pytest.raises(InvariantViolation, match="content"):
+        CreateTableMaintenanceRunsUseCaseInput.from_primitives(
+            {
+                "table_uuid": "u-1",
+                "execution_ref": "wf-run-1",
+                "trigger": "scheduled",
+                "now": now.isoformat(),
+                "priority": "P3",
+                "runs": [{"run_id": RUN_1, "operation": "rewrite_data_files"}],
+            }
+        )
 
 
 def test_create_input_requires_a_priority(now):
@@ -247,7 +255,7 @@ def test_create_input_requires_a_priority(now):
                 "execution_ref": "wf-run-1",
                 "trigger": "scheduled",
                 "now": now.isoformat(),
-                "runs": [{"run_id": RUN_1, "operation": "rewrite_data_files"}],
+                "runs": [{"run_id": RUN_1, "operation": "expire_snapshots", "content": EXPIRY}],
             }
         )
 
@@ -355,6 +363,7 @@ def _stored_run(runs_repo, table, now, run_id=RUN_1, operation=RDF) -> TableMain
         TriggerType.SCHEDULED,
         operation,
         now,
+        content=job_content(operation),
         execution_ref="wf-run-1",
     )
     runs_repo.create(run)
@@ -554,6 +563,7 @@ def test_list_runs_newest_first_with_limit(runs_repo, table, now):
                 TriggerType.MANUAL,
                 RDF,
                 now + timedelta(minutes=i),
+                content=job_content(RDF),
                 execution_ref=f"wf-run-{i}",
             )
         )

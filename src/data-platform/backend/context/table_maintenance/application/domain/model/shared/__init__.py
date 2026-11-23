@@ -90,9 +90,6 @@ from context.table_maintenance.application.domain.model.shared.snapshot_info imp
 from context.table_maintenance.application.domain.model.shared.snapshot_retention import (
     SnapshotRetention,
 )
-from context.table_maintenance.application.domain.model.shared.spec_filter import (
-    SpecFilter,
-)
 from context.table_maintenance.application.domain.model.shared.spec_partitions import (
     SpecPartitions,
 )
@@ -150,7 +147,6 @@ __all__ = [
     "SizeSource",
     "SnapshotInfo",
     "SnapshotRetention",
-    "SpecFilter",
     "SpecPartitions",
     "TableDiscoveryPolicyAttachmentId",
     "TableDiscoveryPolicyId",

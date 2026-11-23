@@ -70,8 +70,12 @@ class FakePlan(PlanTableMaintenanceUseCase):
             operations=(
                 PlanTableMaintenanceUseCaseOutput.Operation(
                     operation="rewrite_data_files",
-                    filters=(PlanTableMaintenanceUseCaseOutput.Filter(spec_id=0, where="x = 1"),),
-                    procedure_args={"strategy": "binpack"},
+                    content={
+                        "operation": "rewrite_data_files",
+                        "target_file_size_bytes": 536870912,
+                        "options": {"strategy": "binpack"},
+                        "partitions": [],
+                    },
                 ),
             ),
             policy_id=GOLD_POLICY_ID,

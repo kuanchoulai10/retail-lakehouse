@@ -12,7 +12,6 @@ from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
     OverTargetPartition,
-    SpecFilter,
     TableId,
     TableMaintenancePolicyId,
     TablePriority,
@@ -117,6 +116,11 @@ def _partition(spec_id, values, files=10, size=10 * 1024, written=None):
     if written is not None:
         partition["last_written_at"] = written.isoformat()
     return partition
+
+
+def _selected(operation) -> list[tuple[int, list[list[object]]]]:
+    """Return each partition spec a planned compaction rewrites and its partitions' values."""
+    return [(p["spec"]["spec_id"], p["values"]) for p in operation.content.get("partitions", [])]
 
 
 def _field(name):
@@ -278,7 +282,7 @@ def _three_regions(catalog, now, size=10 * 1024):
 
 
 def test_due_compaction_targets_the_partitions_over_target(planner, tables_repo, catalog, now):
-    """A due compaction rewrites the partitions over the target with their where clause and the policy's options."""
+    """A due compaction rewrites the partitions over the target, with the table's file size and the policy's options."""
     _table(tables_repo, now)
     _observe(
         catalog,
@@ -287,23 +291,16 @@ def test_due_compaction_targets_the_partitions_over_target(planner, tables_repo,
         partitions=[_partition(0, ["eu"]), _partition(0, ["us"], files=1), _partition(0, ["o'neil"])],
     )
     compaction = _plan(planner, now).operations[0]
-    assert compaction.filters == (
-        PlanTableMaintenanceUseCaseOutput.Filter(spec_id=0, where="(`region` = 'eu') OR (`region` = 'o\\'neil')"),
-    )
-    assert compaction.procedure_args == {
-        "options": {
-            "target-file-size-bytes": 536870912,
-            "min-input-files": 2,
-            "partial-progress.enabled": True,
-        }
-    }
+    assert _selected(compaction) == [(0, [["o'neil"], ["eu"]])]
+    assert compaction.content["target_file_size_bytes"] == 536870912
+    assert compaction.content["options"] == {"min_input_files": 2, "partial_progress_enabled": True}
 
 
-def test_two_specs_give_two_filters(planner, tables_repo, catalog, now):
-    """A selection across two partition specs gives one filter per spec."""
+def test_two_specs_give_two_selections(planner, tables_repo, catalog, now):
+    """A selection across two partition specs gives one selection per spec, in spec order."""
     _table(tables_repo, now)
     _observe(catalog, now)
-    assert [f.spec_id for f in _plan(planner, now).operations[0].filters] == [0, 1]
+    assert [spec_id for spec_id, _ in _selected(_plan(planner, now).operations[0])] == [0, 1]
 
 
 def test_the_plan_takes_at_most_the_cap(tables_repo, catalog, resolve_applicable_policy, now):
@@ -321,21 +318,21 @@ def test_the_plan_takes_at_most_the_cap(tables_repo, catalog, resolve_applicable
         specs=[{"spec_id": 0, "fields": [_field("region")]}],
         partitions=[_partition(0, [f"r{i}"], files=6 + i) for i in range(5)],
     )
-    assert _plan(planner, now).operations[0].filters[0].where == "(`region` = 'r3') OR (`region` = 'r4')"
+    assert _selected(_plan(planner, now).operations[0]) == [(0, [["r4"], ["r3"]])]
 
 
 def test_an_unrenderable_partition_compacts_the_whole_table(planner, tables_repo, catalog, caplog, now):
-    """A selected partition the builder cannot render compacts the whole table, with a warning."""
+    """A selected partition whose value no job can name compacts the whole table, with a warning."""
     _table(tables_repo, now)
     day_ns = {"field_id": 1000, "name": "d", "source_column": "ts", "source_type": "timestamp_ns", "transform": "day"}
     _observe(catalog, now, specs=[{"spec_id": 0, "fields": [day_ns]}], partitions=[_partition(0, [19700])])
     compaction = _plan(planner, now).operations[0]
-    assert (compaction.operation, compaction.filters) == ("rewrite_data_files", ())
+    assert (compaction.operation, _selected(compaction)) == ("rewrite_data_files", [])
     assert "compacting the whole table" in caplog.text
 
 
-def test_per_table_has_no_filters(planner, tables_repo, catalog, policies, now):
-    """A compaction per table rewrites the whole table, with no where."""
+def test_per_table_selects_no_partitions(planner, tables_repo, catalog, policies, now):
+    """A compaction per table rewrites the whole table, with no partitions."""
     _use_policy(
         policies,
         now,
@@ -349,14 +346,14 @@ def test_per_table_has_no_filters(planner, tables_repo, catalog, policies, now):
     )
     _table(tables_repo, now)
     _three_regions(catalog, now)
-    assert _plan(planner, now).operations[0].filters == ()
+    assert _selected(_plan(planner, now).operations[0]) == []
 
 
-def test_a_manual_compaction_has_no_filters(planner, tables_repo, catalog, now):
+def test_a_manual_compaction_selects_no_partitions(planner, tables_repo, catalog, now):
     """A manual compaction rewrites the whole table."""
     _table(tables_repo, now)
     _three_regions(catalog, now)
-    assert _plan(planner, now, ["rewrite_data_files"]).operations[0].filters == ()
+    assert _selected(_plan(planner, now, ["rewrite_data_files"]).operations[0]) == []
 
 
 def test_every_partition_written_now_plans_no_compaction(planner, tables_repo, catalog, now):
@@ -474,20 +471,18 @@ def test_the_repo_is_written_only_when_the_record_changes(planner, tables_repo, 
     assert len(calls) == 1
 
 
-@pytest.mark.parametrize(
-    "wheres",
-    [pytest.param([""], id="empty"), pytest.param(["", "x"], id="mixed")],
-)
-def test_an_empty_where_compacts_the_whole_table(planner, tables_repo, catalog, monkeypatch, wheres, now):
-    """A rendered where that is empty, alone or beside another, compacts the whole table."""
-    monkeypatch.setattr(
-        "context.table_maintenance.application.service.table.plan_table_maintenance.build_partition_filters",
-        lambda *_args: tuple(SpecFilter(spec_id=i, where=where) for i, where in enumerate(wheres)),
-    )
+def test_a_selected_spec_without_partition_fields_compacts_the_whole_table(planner, tables_repo, catalog, now):
+    """Partitions of a spec whose fields are all void beside another spec's compact the whole table."""
+    void = {**_field("old"), "field_id": 1001, "transform": "void"}
     _table(tables_repo, now)
-    _three_regions(catalog, now)
+    _observe(
+        catalog,
+        now,
+        specs=[{"spec_id": 0, "fields": [_field("region")]}, {"spec_id": 1, "fields": [void]}],
+        partitions=[_partition(0, ["eu"]), _partition(1, [None])],
+    )
     compaction = _plan(planner, now).operations[0]
-    assert (compaction.operation, compaction.filters) == ("rewrite_data_files", ())
+    assert (compaction.operation, _selected(compaction)) == ("rewrite_data_files", [])
 
 
 @pytest.mark.parametrize("skip", ["dropped", "unmanaged"])
@@ -548,8 +543,8 @@ def test_plan_input_has_no_run_id():
     assert "run_id" not in PlanTableMaintenanceUseCaseInput.model_fields
 
 
-def test_plan_orders_operations_and_renders_procedure_args(planner, tables_repo, catalog, now):
-    """The plan orders its operations and renders the arguments of each procedure."""
+def test_plan_orders_operations_and_builds_their_content(planner, tables_repo, catalog, now):
+    """The plan orders its operations and builds what each job does: ages and counts as the policy resolves them."""
     _table(tables_repo, now)
     _observe(catalog, now)
     plan = _plan(planner, now)
@@ -560,13 +555,18 @@ def test_plan_orders_operations_and_renders_procedure_args(planner, tables_repo,
         "remove_orphan_files",
     ]
     by_op = {o.operation: o for o in plan.operations}
-    assert by_op["rewrite_manifests"].procedure_args == {}
-    assert by_op["rewrite_manifests"].filters == ()
-    assert by_op["expire_snapshots"].procedure_args == {
-        "older_than": "2026-10-23T12:00:00+00:00",
+    assert by_op["rewrite_manifests"].content == {"operation": "rewrite_manifests", "options": {}}
+    assert by_op["expire_snapshots"].content == {
+        "operation": "expire_snapshots",
+        "older_than": "2026-10-23T12:00:00Z",
         "retain_last": 10,
+        "options": {},
     }
-    assert by_op["remove_orphan_files"].procedure_args == {"older_than": "2026-10-21T12:00:00+00:00"}
+    assert by_op["remove_orphan_files"].content == {
+        "operation": "remove_orphan_files",
+        "older_than": "2026-10-21T12:00:00Z",
+        "options": {},
+    }
     assert plan.schedule_interval_seconds == 3600
 
 
@@ -586,12 +586,12 @@ def test_plan_target_file_size_comes_from_the_table(planner, tables_repo, catalo
         partitions=[_partition(0, [], files=20, size=2000)],
     )
     plan = _plan(planner, now)
-    assert plan.operations[0].procedure_args == {"options": {"target-file-size-bytes": 1024}}
+    assert plan.operations[0].content["target_file_size_bytes"] == 1024
     assert plan.schedule_interval_seconds == 300
 
 
-def test_plan_whole_table_compaction_has_no_filters(planner, tables_repo, catalog, now):
-    """A whole table compaction has no filters."""
+def test_plan_whole_table_compaction_selects_no_partitions(planner, tables_repo, catalog, now):
+    """A compaction of an unpartitioned table selects no partitions."""
     _table(tables_repo, now)
     _observe(
         catalog,
@@ -601,7 +601,7 @@ def test_plan_whole_table_compaction_has_no_filters(planner, tables_repo, catalo
     )
     compaction = _plan(planner, now).operations[0]
     assert compaction.operation == "rewrite_data_files"
-    assert compaction.filters == ()
+    assert _selected(compaction) == []
 
 
 def test_scheduled_plan_respects_cooldown(planner, tables_repo, catalog, now):
@@ -646,9 +646,13 @@ def test_manual_plan_ignores_disabled_and_cooldown(planner, tables_repo, catalog
         "rewrite_data_files",
         "remove_orphan_files",
     ]
-    assert plan.operations[0].filters == ()
-    assert plan.operations[0].procedure_args == {"options": {"target-file-size-bytes": 536870912}}
-    assert plan.operations[1].procedure_args == {"older_than": "2026-10-21T12:00:00+00:00"}
+    assert plan.operations[0].content == {
+        "operation": "rewrite_data_files",
+        "target_file_size_bytes": 536870912,
+        "options": {},
+        "partitions": [],
+    }
+    assert plan.operations[1].content["older_than"] == "2026-10-21T12:00:00Z"
 
 
 def test_manual_plan_without_a_catalog_observation_is_skipped_not_found(planner, tables_repo, now):

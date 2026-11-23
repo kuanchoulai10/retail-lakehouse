@@ -94,8 +94,8 @@ class TableMaintenanceWorkflow:
     failure that needs a person, is not retried or may still be running ends the run at once; a
     record that failed, and so answers no decision, retries at the same size. Every record names the
     policy the run was planned under, by its id and its name then, from the plan, so a needs-attention
-    mark is set under it and keeps the name for display. Every attempt runs with the ``filters`` and procedure
-    arguments its run was created with, also after running out of memory; the submit reads them from
+    mark is set under it and keeps the name for display. Every attempt runs with the job content its run was
+    created with, also after running out of memory; the submit reads them from
     the run. A failed run, a failed submit included, never stops the workflow: the next run still
     runs. An attempt whose submit never saved it (a cancel, or a submit refused first, such as for a
     table not found) leaves its run pending, and recording it answers so: that counts no record

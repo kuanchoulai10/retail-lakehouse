@@ -5,9 +5,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { TableMaintenanceRunApiResponseMetrics } from './tableMaintenanceRunApiResponseMetrics';
-import type { TableMaintenanceRunApiResponseProcedureArgs } from './tableMaintenanceRunApiResponseProcedureArgs';
+import type { TableMaintenanceRunApiResponseSettings } from './tableMaintenanceRunApiResponseSettings';
 import type { TableMaintenanceRunAttemptApiResponse } from './tableMaintenanceRunAttemptApiResponse';
-import type { TableMaintenanceRunFilterApiResponse } from './tableMaintenanceRunFilterApiResponse';
+import type { TableMaintenanceRunPartitionSpecApiResponse } from './tableMaintenanceRunPartitionSpecApiResponse';
 
 /**
  * Describe a maintenance run: one operation on one table, and the attempts that make up its timeline.
@@ -18,18 +18,18 @@ export interface TableMaintenanceRunApiResponse {
   created_at: string;
   error: string | null;
   execution_ref: string;
-  /** The where clauses each job of this run passes to rewrite_data_files, one per partition spec; empty: the whole table. */
-  filters: TableMaintenanceRunFilterApiResponse[];
   finished_at: string | null;
   /** The numbers the procedure returned. */
   metrics: TableMaintenanceRunApiResponseMetrics;
   /** The one operation this run does. */
   operation: string;
+  /** The partitions each job of a compaction rewrites, per partition spec; empty: the whole table. */
+  partitions: TableMaintenanceRunPartitionSpecApiResponse[];
   /** The priority this run was started with, `P0` to `P3`. */
   priority: string;
-  /** The arguments this run passes to the Iceberg procedure, besides the where clauses. */
-  procedure_args: TableMaintenanceRunApiResponseProcedureArgs;
   run_id: string;
+  /** What each job of this run is set to do: the target file size, ages and counts the platform resolved, and the policy's options; an option not listed is the procedure's default. */
+  settings: TableMaintenanceRunApiResponseSettings;
   /** Why the run was skipped; set only when status is skipped. */
   skip_reason: string | null;
   /** When the first attempt was submitted; null while pending. */

@@ -20,6 +20,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
 from context.table_maintenance.application.service.table_maintenance_run import (
     RecordMaintenanceAttemptRunningService,
 )
+from tests.context.table_maintenance.fakes.job_content import job_content
 
 RUN_1 = "mr-00000000000000000000000001"
 UNKNOWN_RUN = "mr-7zzzzzzzzzzzzzzzzzzzzzzzzz"
@@ -30,7 +31,13 @@ RDF = MaintenanceOperation.REWRITE_DATA_FILES
 def queued_run(runs_repo, now) -> TableMaintenanceRun:
     """Provide a stored run whose first attempt is queued."""
     run = TableMaintenanceRun.create(
-        TableMaintenanceRunId(RUN_1), TableId("u-1"), TriggerType.SCHEDULED, RDF, now, execution_ref="wf-1"
+        TableMaintenanceRunId(RUN_1),
+        TableId("u-1"),
+        TriggerType.SCHEDULED,
+        RDF,
+        now,
+        content=job_content(RDF),
+        execution_ref="wf-1",
     )
     run.start_attempt(1, "job-1", now, size=ComputeSize.S)
     runs_repo.create(run)

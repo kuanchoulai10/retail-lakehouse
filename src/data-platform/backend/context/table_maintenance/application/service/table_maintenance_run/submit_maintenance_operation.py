@@ -24,6 +24,7 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
     SubmitMaintenanceJobGatewayInput,
 )
 from context.table_maintenance.application.service.shared import translate_domain_errors
+from context.table_maintenance.application.service.table_maintenance_run.gateway_job_of import gateway_job_of
 from context.table_maintenance.application.service.table_maintenance_run.require_run_operation import (
     require_run_operation,
 )
@@ -55,8 +56,8 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
     def execute(self, request: SubmitMaintenanceOperationUseCaseInput) -> SubmitMaintenanceOperationUseCaseOutput:
         """Record the attempt as queued, submit the job, then attach its name.
 
-        The job runs the run's operation with the run's where clauses and procedure
-        arguments, and posts its result to the run's own result route. No job is
+        The job runs the run's operation as the run's content says, and posts its result
+        to the run's own result route. No job is
         submitted for an operation other than the run's, or for an attempt the run
         rejects. The attempt is saved before the submit so a failed submit can still
         be recorded as a failure.
@@ -82,7 +83,6 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
         with translate_domain_errors():
             run.start_attempt(request.attempt, None, request.now, size=size)
             self._runs_repo.update(run)
-        wheres = [f.where for f in run.filters]
         submitted = self._submit_gateway.submit(
             SubmitMaintenanceJobGatewayInput(
                 run_id=request.run_id,
@@ -91,8 +91,7 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
                 catalog=table.name.catalog,
                 namespace=table.name.namespace,
                 table=table.name.table,
-                where=[] if not all(wheres) else wheres,
-                procedure_args=dict(run.procedure_args),
+                job=gateway_job_of(run.content),
                 result_report_url=f"{request.result_report_base_url.rstrip('/')}/v1/table-maintenance-runs/{request.run_id}/result",
                 size=size.value,
                 priority=run.priority.value,

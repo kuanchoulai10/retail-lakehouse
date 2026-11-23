@@ -13,8 +13,13 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from context.table_maintenance.application.domain.service.table import build_partition_filters
-from context.table_maintenance.application.service.table_maintenance_run import maintenance_procedure_args
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
+    iceberg_procedure_args,
+    spark_where_clauses,
+)
+from context.table_maintenance.application.domain.service.table import group_partitions_by_spec
+from context.table_maintenance.application.domain.service.table_maintenance_run import build_maintenance_job_content
+from context.table_maintenance.application.service.table_maintenance_run import gateway_job_of
 from tests.context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.spark_request_cases import (
     SPARK_REQUEST_CASES,
 )
@@ -28,12 +33,16 @@ GOLDEN = Path(__file__).with_name("spark_request_golden.json")
 
 
 def render(case: SparkRequestCase) -> dict[str, Any]:
-    """Return the ``where`` and ``procedure_args`` of the request a run of ``case`` sends."""
-    where = [f.where for f in build_partition_filters(case.catalog, case.specs, case.partitions)]
-    return {
-        "where": where,
-        "procedure_args": maintenance_procedure_args(case.operation, case.policy, case.properties, case.now),
-    }
+    """Return the ``where`` and ``procedure_args`` of the request a run of ``case`` sends.
+
+    The path is the one a run takes: the plan groups the partitions and builds the content, the
+    submit turns it into the port's job, and the Spark adapter writes the call's two parts.
+    """
+    partitions = group_partitions_by_spec(case.specs, case.partitions)
+    job = gateway_job_of(
+        build_maintenance_job_content(case.operation, case.policy, case.properties, case.now, partitions)
+    )
+    return {"where": spark_where_clauses(case.catalog, job), "procedure_args": iceberg_procedure_args(job)}
 
 
 def _golden() -> dict[str, Any]:

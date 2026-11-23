@@ -604,8 +604,8 @@ function endedRun(
     created_at: "2026-11-08T02:00:00Z",
     started_at: attempts[0]?.started_at ?? null,
     finished_at: attempts.at(-1)?.finished_at ?? null,
-    filters: [],
-    procedure_args: {},
+    settings: {},
+    partitions: [],
     metrics: {},
     error: null,
     skip_reason: null,
@@ -620,8 +620,8 @@ const SCHEDULED_COMPACTION_RUN: TableMaintenanceRunApiResponse = endedRun(
   "rewrite_data_files",
   [succeededAttempt("tm-orders-rewrite", "2026-11-08T02:00:00Z", "2026-11-08T02:03:10Z")],
   {
-    filters: [{ spec_id: 0, where: "(`region` = 'eu')" }],
-    procedure_args: { options: { "target-file-size-bytes": 134217728 } },
+    settings: { target_file_size_bytes: 134217728 },
+    partitions: [{ spec_id: 0, fields: [{ column: "region", transform: "identity" }], partitions: [["eu"]] }],
     metrics: { rewritten_data_files_count: 14 },
   },
 );
@@ -633,14 +633,14 @@ export const RUNS: TableMaintenanceRunApiResponse[] = [
     SCHEDULED_ORPHANS_RUN_ID,
     "remove_orphan_files",
     [succeededAttempt("tm-orders-orphans", "2026-11-08T02:04:50Z", "2026-11-08T02:05:30Z")],
-    { procedure_args: { older_than: "2026-11-05T02:00:00+00:00" }, metrics: { orphan_file_location_count: 3 } },
+    { settings: { older_than: "2026-11-05T02:00:00+00:00" }, metrics: { orphan_file_location_count: 3 } },
   ),
   endedRun(
     SCHEDULED_EXPIRE_RUN_ID,
     "expire_snapshots",
     [succeededAttempt("tm-orders-expire", "2026-11-08T02:04:10Z", "2026-11-08T02:04:40Z")],
     {
-      procedure_args: { older_than: "2026-11-03T02:00:00+00:00", retain_last: 5 },
+      settings: { older_than: "2026-11-03T02:00:00+00:00", retain_last: 5 },
       metrics: { deleted_data_files_count: 42, deleted_manifest_files_count: 6 },
     },
   ),
@@ -690,25 +690,29 @@ export const ESCALATED_RUN: TableMaintenanceRunApiResponse = endedRun(
   {
     trigger: "manual",
     created_at: "2026-11-09T02:00:00Z",
-    procedure_args: { options: { "target-file-size-bytes": 134217728 } },
+    settings: { target_file_size_bytes: 134217728 },
     metrics: { rewritten_data_files_count: 24, peak_coordinator_memory_bytes: 612368384, peak_worker_memory_bytes: 1140850688 },
   },
 );
 
 export const PARTITION_SCOPE_RUN_ID = "mr-01m8c2v7e0k3b9x4d5n6q1w2yb";
 
-const TEN_PARTITIONS_WHERE = Array.from(
-  { length: 10 },
-  (_, day) => `(\`region\` = 'eu' AND \`order_day\` = DATE '2026-11-${String(day + 10).padStart(2, "0")}')`,
-).join(" OR ");
+const TEN_PARTITIONS = Array.from({ length: 10 }, (_, day) => ["eu", `2026-11-${String(day + 10).padStart(2, "0")}`]);
 
-// A scheduled compaction of the partitions over the target: one where clause per partition spec, the first of them long.
+// A scheduled compaction of the partitions over the target in two partition specs, the first of them with ten.
 export const PARTITION_SCOPE_RUN: TableMaintenanceRunApiResponse = {
   ...SCHEDULED_COMPACTION_RUN,
   run_id: PARTITION_SCOPE_RUN_ID,
-  filters: [
-    { spec_id: 0, where: TEN_PARTITIONS_WHERE },
-    { spec_id: 1, where: "(`order_hour` = TIMESTAMP '2026-11-19 03:00:00')" },
+  partitions: [
+    {
+      spec_id: 0,
+      fields: [
+        { column: "region", transform: "identity" },
+        { column: "order_day", transform: "day" },
+      ],
+      partitions: TEN_PARTITIONS,
+    },
+    { spec_id: 1, fields: [{ column: "order_hour", transform: "hour" }], partitions: [["2026-11-19-03"]] },
   ],
 };
 
@@ -719,7 +723,7 @@ export const OLDER_RUN: TableMaintenanceRunApiResponse = endedRun(
   [succeededAttempt("tm-orders-expire-old", "2026-10-01T02:00:00Z", "2026-10-01T02:00:40Z")],
   {
     created_at: "2026-10-01T02:00:00Z",
-    procedure_args: { older_than: "2026-09-26T02:00:00+00:00", retain_last: 5 },
+    settings: { older_than: "2026-09-26T02:00:00+00:00", retain_last: 5 },
     metrics: { deleted_data_files_count: 7 },
   },
 );
@@ -742,7 +746,7 @@ function runOfAttempts(
     status,
     created_at: attempts[0]!.started_at,
     finished_at: finishedAt,
-    procedure_args: { options: { "target-file-size-bytes": 134217728 } },
+    settings: { target_file_size_bytes: 134217728 },
   });
 }
 
@@ -806,7 +810,7 @@ export function pendingRun(now: Date = new Date()): TableMaintenanceRunApiRespon
     priority: "P1",
     status: "pending",
     created_at: agoFrom(now)(40),
-    procedure_args: { older_than: agoFrom(now)(40 + 5 * 24 * 60), retain_last: 5 },
+    settings: { older_than: agoFrom(now)(40 + 5 * 24 * 60), retain_last: 5 },
   });
 }
 

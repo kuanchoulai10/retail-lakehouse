@@ -23,6 +23,7 @@ from context.table_maintenance.application.domain.model.shared import (
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
     DeleteMaintenanceJobGatewayInput,
     ReadMaintenanceJobGatewayInput,
+    RewriteDataFilesJob,
     SubmitMaintenanceJobGatewayInput,
 )
 
@@ -50,8 +51,7 @@ def _input(**overrides) -> SubmitMaintenanceJobGatewayInput:
         "catalog": "iceberg",
         "namespace": "sales",
         "table": "orders",
-        "where": ["region = 'eu'"],
-        "procedure_args": {"min-input-files": 2},
+        "job": RewriteDataFilesJob(target_file_size_bytes=536870912, min_input_files=2),
         "result_report_url": "http://cp/callback",
     }
     data.update(overrides)
@@ -101,12 +101,12 @@ def test_manifest_snapshot():
 
 
 def test_manifest_driver_and_executor_env():
-    """The driver request carries the application name, filter and callback URL."""
+    """The driver request carries the application name, the procedure's arguments and callback URL."""
     spec = build_spark_application(CONFIG, _input(), NAME)["spec"]
     env = {e["name"]: e for e in spec["driver"]["env"]}
     request = json.loads(env["GLAC_REQUEST"]["value"])
     assert request["app_name"] == NAME
-    assert request["where"] == ["region = 'eu'"]
+    assert request["procedure_args"] == {"options": {"target-file-size-bytes": 536870912, "min-input-files": 2}}
     assert request["result_report_url"] == "http://cp/callback"
     assert env["POLARIS_CREDENTIAL"]["valueFrom"]["secretKeyRef"] == {
         "name": "polaris-spark-credential",

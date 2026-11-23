@@ -8,9 +8,6 @@ from context.table_maintenance.application.domain.service.table.any_condition_ho
 from context.table_maintenance.application.domain.service.table.assess_maintenance import (
     assess_maintenance,
 )
-from context.table_maintenance.application.domain.service.table.build_partition_filters import (
-    build_partition_filters,
-)
 from context.table_maintenance.application.domain.service.table.compute_reducible_files import (
     compute_reducible_files,
 )
@@ -42,7 +39,6 @@ from context.table_maintenance.application.domain.service.table.track_over_targe
 __all__ = [
     "any_condition_holds",
     "assess_maintenance",
-    "build_partition_filters",
     "group_partitions_by_spec",
     "compute_reducible_files",
     "decide_table_management",

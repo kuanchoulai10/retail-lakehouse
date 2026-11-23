@@ -28,18 +28,15 @@ class PlanTableMaintenanceUseCaseOutput(UseCaseOutput):
     default's.
     """
 
-    class Filter(UseCaseOutput):
-        """One where clause of a compaction, per partition spec."""
-
-        spec_id: int
-        where: str
-
     class Operation(UseCaseOutput):
-        """One planned operation with its filters, procedure arguments and the size it starts at."""
+        """One planned operation with what its job does and the size it starts at.
+
+        ``content`` is the job content in primitives: the operation's settings and, for a compaction,
+        the partitions it rewrites per spec (empty means the whole table).
+        """
 
         operation: str
-        filters: tuple[PlanTableMaintenanceUseCaseOutput.Filter, ...]
-        procedure_args: dict[str, Any]
+        content: dict[str, Any]
         start_size: str = "S"
 
     class Measurement(UseCaseOutput):

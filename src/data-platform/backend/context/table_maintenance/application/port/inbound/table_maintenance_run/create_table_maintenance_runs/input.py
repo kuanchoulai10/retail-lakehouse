@@ -15,23 +15,15 @@ class CreateTableMaintenanceRunsUseCaseInput(UseCaseInput):
     ``runs`` lists each run in plan order.
     """
 
-    class Filter(UseCaseInput):
-        """One where clause of a compaction, for one partition spec."""
-
-        spec_id: int
-        where: str
-
     class Run(UseCaseInput):
-        """One run of the plan: its id, its operation and what its procedure is called with.
+        """One run of the plan: its id, its operation and what its job does.
 
-        ``filters`` holds the where clauses of a compaction, one per partition spec; an empty ``filters``
-        means the whole table. ``procedure_args`` holds the arguments the operation's procedure is called with.
+        ``content`` is the job content the plan built, in primitives.
         """
 
         run_id: str
         operation: str
-        filters: tuple[CreateTableMaintenanceRunsUseCaseInput.Filter, ...] = ()
-        procedure_args: dict[str, Any] = {}
+        content: dict[str, Any]
 
     table_uuid: str
     execution_ref: str

@@ -48,11 +48,12 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     RewriteManifestsTarget,
     TableMaintenancePolicyName,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_run import ExpireSnapshotsJobContent
 from context.table_maintenance.application.domain.service.table import (
     any_condition_holds,
     assess_maintenance,
 )
-from context.table_maintenance.application.service.table_maintenance_run import maintenance_procedure_args
+from context.table_maintenance.application.domain.service.table_maintenance_run import build_maintenance_job_content
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED, UNMANAGED
 from tests.context.table_maintenance.fakes.policy_with_operation import policy_with_operation
 
@@ -322,10 +323,9 @@ def test_assessment_and_args_agree_on_retention():
     o = obs(properties={"history.expire.min-snapshots-to-keep": "3"}, snapshots=snaps(5, 5))
     a = assess(table(), o, Op.EXPIRE_SNAPSHOTS, policy)
     assert (a.measured, a.verdict) == (2, OperationVerdict.DUE)
-    assert maintenance_procedure_args(Op.EXPIRE_SNAPSHOTS, policy, o.properties, NOW) == {
-        "older_than": (NOW - timedelta(days=1)).isoformat(),
-        "retain_last": 3,
-    }
+    assert build_maintenance_job_content(Op.EXPIRE_SNAPSHOTS, policy, o.properties, NOW) == ExpireSnapshotsJobContent(
+        older_than=NOW - timedelta(days=1), retain_last=3
+    )
 
 
 def test_a_never_by_age_property_still_assesses_and_runs():
@@ -334,10 +334,9 @@ def test_a_never_by_age_property_still_assesses_and_runs():
     o = obs(properties={"history.expire.max-snapshot-age-ms": "9223372036854775807"}, snapshots=snaps(5, 5))
     a = assess(table(), o, Op.EXPIRE_SNAPSHOTS, policy)
     assert (a.measured, a.verdict) == (0, OperationVerdict.NOT_DUE)
-    assert maintenance_procedure_args(Op.EXPIRE_SNAPSHOTS, policy, o.properties, NOW) == {
-        "older_than": (NOW - timedelta(days=36500)).isoformat(),
-        "retain_last": 1,
-    }
+    assert build_maintenance_job_content(Op.EXPIRE_SNAPSHOTS, policy, o.properties, NOW) == ExpireSnapshotsJobContent(
+        older_than=NOW - timedelta(days=36500), retain_last=1
+    )
 
 
 def test_retention_age_comes_from_the_target():

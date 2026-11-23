@@ -764,7 +764,7 @@ class TableReconciliationWorkflow:
     async def _create_runs(self, plan: dict[str, Any], manual: bool, run_ids: list[str]) -> bool:
         """Create every run of the plan, pending, in one activity and one transaction; False when none was created.
 
-        Each run gets its planned operation, the filters and procedure arguments the plan passes it,
+        Each run gets its planned operation, the job content the plan built for it,
         the plan's priority, the trigger and the child's workflow id, and all share one time. The
         create stores all of them or none, so a reconciliation links only runs that exist.
         """
@@ -781,8 +781,7 @@ class TableReconciliationWorkflow:
                         {
                             "run_id": run_id,
                             "operation": op["operation"],
-                            "filters": op["filters"],
-                            "procedure_args": op["procedure_args"],
+                            "content": op["content"],
                         }
                         for run_id, op in zip(run_ids, plan["operations"], strict=True)
                     ],

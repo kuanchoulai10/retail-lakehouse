@@ -41,8 +41,7 @@ def commit_page_from_table(table: Table, selection: TableCommitSelection) -> Tab
     )
 
 
-def _to_ms(timestamp: str) -> int:
-    parsed = datetime.fromisoformat(timestamp)
+def _to_ms(parsed: datetime) -> int:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=UTC)
     return int(parsed.timestamp() * 1000)

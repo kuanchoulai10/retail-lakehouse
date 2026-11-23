@@ -41,8 +41,8 @@ function run(overrides: Partial<TableMaintenanceRunApiResponse>): TableMaintenan
     created_at: "2026-10-31T10:00:00Z",
     started_at: "2026-10-31T10:00:00Z",
     finished_at: "2026-10-31T10:01:00Z",
-    filters: [],
-    procedure_args: {},
+    settings: {},
+    partitions: [],
     metrics: {},
     error: null,
     skip_reason: null,
@@ -57,7 +57,7 @@ const EXPIRE_RUN = run({
   operation: "expire_snapshots",
   status: "failed",
   finished_at: "2026-10-31T10:02:30Z",
-  procedure_args: { older_than: "2026-10-26T10:00:00+00:00", retain_last: 5 },
+  settings: { older_than: "2026-10-26T10:00:00+00:00", retain_last: 5 },
   error: "snapshot store unreachable",
   attempts: [1, 2, 3].map((n) =>
     attempt({
@@ -78,7 +78,7 @@ const ESCALATED_RUN = run({
   trigger: "scheduled",
   finished_at: "2026-10-31T10:09:00Z",
   priority: "P1",
-  procedure_args: { options: { "target-file-size-bytes": 134217728 } },
+  settings: { target_file_size_bytes: 134217728 },
   metrics: { rewritten_data_files_count: 24 },
   attempts: [
     attempt({
@@ -110,9 +110,9 @@ const ESCALATED_RUN = run({
 const SCOPED_RUN = run({
   run_id: "mr-scoped",
   trigger: "event",
-  filters: [
-    { spec_id: 0, where: "(`region` = 'eu')" },
-    { spec_id: 1, where: "(`region` = 'us')" },
+  partitions: [
+    { spec_id: 0, fields: [{ column: "region", transform: "identity" }], partitions: [["eu"]] },
+    { spec_id: 1, fields: [{ column: "ts", transform: "day" }], partitions: [["2026-10-30"]] },
   ],
 });
 
@@ -259,28 +259,28 @@ describe("MaintenanceTab", () => {
     expect(markers(items)).toEqual(["outlined", "outlined"]);
   });
 
-  it("says which partitions a compaction passed to rewrite_data_files, each spec on its own line", async () => {
+  it("says which partitions a compaction rewrote, each partition on its own line", async () => {
     calls = stubCatalogApi({ [`GET ${RUNS_PATH}`]: () => jsonResponse([SCOPED_RUN]) });
     renderTab("/?run=mr-scoped");
     const panel = await screen.findByRole("dialog", { name: "Rewrite data files" });
     expect(within(panel).getByText("Scope")).toBeInTheDocument();
     expect(within(panel).getByText("Partitions over the target")).toBeInTheDocument();
-    expect(within(panel).getByText("spec 0: (`region` = 'eu')")).toHaveClass("break-all");
-    expect(within(panel).getByText("spec 1: (`region` = 'us')")).toBeInTheDocument();
+    expect(within(panel).getByText("spec 0: region = eu")).toHaveClass("break-all");
+    expect(within(panel).getByText("spec 1: day(ts) = 2026-10-30")).toBeInTheDocument();
   });
 
-  it("says a compaction with no filters covers the whole table", async () => {
+  it("says a compaction with no partitions covers the whole table", async () => {
     renderTab("/?run=mr-escalated");
     const panel = await screen.findByRole("dialog", { name: "Rewrite data files" });
     expect(within(panel).getByText("Whole table")).toBeInTheDocument();
     expect(within(panel).queryByText(/^spec \d+:/)).not.toBeInTheDocument();
   });
 
-  it("shows an expiry's parameters and error, and no scope or result", async () => {
+  it("shows an expiry's settings and error, and no scope or result", async () => {
     renderTab("/?run=mr-expire");
     const panel = await screen.findByRole("dialog", { name: "Expire snapshots" });
     expect(within(panel).queryByText("Scope")).not.toBeInTheDocument();
-    expect(within(panel).getByText("Parameters")).toBeInTheDocument();
+    expect(within(panel).getByText("Settings")).toBeInTheDocument();
     expect(within(panel).getByText("retain_last")).toHaveClass("font-mono");
     expect(within(panel).getByText("5")).toBeInTheDocument();
     expect(within(panel).getByText("older_than")).toBeInTheDocument();
@@ -289,11 +289,11 @@ describe("MaintenanceTab", () => {
     expect(within(panel).getByText("snapshot store unreachable")).toHaveClass("text-negative-text");
   });
 
-  it("leaves out the parameters and the error when the run has none", async () => {
+  it("leaves out the settings and the error when the run has none", async () => {
     calls = stubCatalogApi({ [`GET ${RUNS_PATH}`]: () => jsonResponse([SCOPED_RUN]) });
     renderTab("/?run=mr-scoped");
     const panel = await screen.findByRole("dialog", { name: "Rewrite data files" });
-    expect(within(panel).queryByText("Parameters")).not.toBeInTheDocument();
+    expect(within(panel).queryByText("Settings")).not.toBeInTheDocument();
     expect(within(panel).queryByText("Error")).not.toBeInTheDocument();
     expect(within(panel).queryByText("Skipped")).not.toBeInTheDocument();
   });

@@ -37,6 +37,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
     RecordTableMaintenanceOperationResultService,
 )
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED
+from tests.context.table_maintenance.fakes.job_content import job_content
 from tests.context.table_maintenance.fakes.scripted_read_maintenance_event_log_gateway import (
     ScriptedReadMaintenanceEventLogGateway,
 )
@@ -95,7 +96,13 @@ def recorder(runs_repo, tables_repo, evidence, event_log):
 def _run(runs_repo, table, now, *sizes: ComputeSize) -> TableMaintenanceRun:
     """Store a run whose rewrite operation has failed every size but the last, which is running."""
     run = TableMaintenanceRun.create(
-        TableMaintenanceRunId(RUN_1), table.id, TriggerType.SCHEDULED, RDF, now, execution_ref="wf-1"
+        TableMaintenanceRunId(RUN_1),
+        table.id,
+        TriggerType.SCHEDULED,
+        RDF,
+        now,
+        content=job_content(RDF),
+        execution_ref="wf-1",
     )
     for attempt, size in enumerate(sizes, start=1):
         if attempt > 1:

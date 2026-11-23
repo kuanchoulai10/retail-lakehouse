@@ -74,7 +74,7 @@ def _planned(request: dict[str, Any]) -> dict[str, Any]:
         "schedule_interval_seconds": 3600,
         "catalog_commit_debounce_seconds": 300,
         "table_name": "iceberg.e2e.t",
-        "operations": [{"operation": op, "filters": [], "procedure_args": {}, "start_size": "S"} for op in operations],
+        "operations": [{"operation": op, "content": {"operation": op}, "start_size": "S"} for op in operations],
         "dry_run": False,
         "table_found": True,
         "checks": [],

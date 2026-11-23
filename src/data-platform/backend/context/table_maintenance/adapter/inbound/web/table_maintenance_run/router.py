@@ -15,6 +15,7 @@ from context.table_maintenance.adapter.inbound.web.table_maintenance_run.dto imp
     ForwardTableMaintenanceResultApiResponse,
     TableMaintenanceRunApiResponse,
 )
+from context.table_maintenance.adapter.inbound.web.table_maintenance_run.run_api_response import run_api_response
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     ForwardTableMaintenanceResultUseCaseInput,
     GetTableMaintenanceRunUseCaseInput,
@@ -40,14 +41,14 @@ def list_table_maintenance_runs(
     output = use_cases.list_table_maintenance_runs.execute(
         ListTableMaintenanceRunsUseCaseInput(table_uuid=table_uuid, limit=limit)
     )
-    return [TableMaintenanceRunApiResponse.model_validate(item) for item in output.items]
+    return [run_api_response(item) for item in output.items]
 
 
 @router.get("/table-maintenance-runs/{run_id}")
 def get_table_maintenance_run(run_id: RunId, use_cases: UseCases) -> TableMaintenanceRunApiResponse:
     """Return one maintenance run."""
     output = use_cases.get_table_maintenance_run.execute(GetTableMaintenanceRunUseCaseInput(run_id=run_id))
-    return TableMaintenanceRunApiResponse.model_validate(output)
+    return run_api_response(output)
 
 
 @router.post(

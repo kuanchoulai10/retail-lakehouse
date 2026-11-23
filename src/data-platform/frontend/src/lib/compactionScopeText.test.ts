@@ -14,8 +14,8 @@ function run(overrides: Partial<TableMaintenanceRunApiResponse>): TableMaintenan
     created_at: "2026-11-20T10:00:00Z",
     started_at: "2026-11-20T10:00:00Z",
     finished_at: "2026-11-20T10:05:00Z",
-    filters: [],
-    procedure_args: {},
+    settings: {},
+    partitions: [],
     metrics: {},
     error: null,
     skip_reason: null,
@@ -29,32 +29,49 @@ describe("compactionScopeText", () => {
     expect(compactionScopeText(run({ operation: "expire_snapshots" }))).toBeNull();
   });
 
-  it("says the whole table for a compaction with no filters", () => {
-    expect(compactionScopeText(run({ filters: [] }))).toEqual({ summary: "Whole table", wheres: [] });
+  it("says the whole table for a compaction with no partitions", () => {
+    expect(compactionScopeText(run({ partitions: [] }))).toEqual({ summary: "Whole table", partitions: [] });
   });
 
-  it("names the partitions over the target for a compaction with exactly one filter", () => {
-    expect(compactionScopeText(run({ filters: [{ spec_id: 0, where: "(`region` = 'eu')" }] }))).toEqual({
-      summary: "Partitions over the target",
-      wheres: [{ specId: 0, where: "(`region` = 'eu')" }],
-    });
-  });
-
-  it("lists the where clause of each partition spec in the API's order", () => {
+  it("names each partition by its columns and values, an identity field by its column alone", () => {
     const scope = compactionScopeText(
       run({
-        filters: [
-          { spec_id: 0, where: "(`region` = 'eu')" },
-          { spec_id: 1, where: "(`day` = DATE '2026-11-19')" },
+        partitions: [
+          {
+            spec_id: 0,
+            fields: [
+              { column: "region", transform: "identity" },
+              { column: "ts", transform: "day" },
+            ],
+            partitions: [
+              ["eu", "2026-11-19"],
+              ["us", null],
+            ],
+          },
         ],
       }),
     );
     expect(scope).toEqual({
       summary: "Partitions over the target",
-      wheres: [
-        { specId: 0, where: "(`region` = 'eu')" },
-        { specId: 1, where: "(`day` = DATE '2026-11-19')" },
+      partitions: [
+        { specId: 0, text: "region = eu, day(ts) = 2026-11-19" },
+        { specId: 0, text: "region = us, day(ts) = null" },
       ],
     });
+  });
+
+  it("lists the partitions of each partition spec in the API's order", () => {
+    const scope = compactionScopeText(
+      run({
+        partitions: [
+          { spec_id: 0, fields: [{ column: "region", transform: "identity" }], partitions: [["eu"]] },
+          { spec_id: 1, fields: [{ column: "id", transform: "bucket[16]" }], partitions: [["3"]] },
+        ],
+      }),
+    );
+    expect(scope?.partitions).toEqual([
+      { specId: 0, text: "region = eu" },
+      { specId: 1, text: "bucket[16](id) = 3" },
+    ]);
   });
 });

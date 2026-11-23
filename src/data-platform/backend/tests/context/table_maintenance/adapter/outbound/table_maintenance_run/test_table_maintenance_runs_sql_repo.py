@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from typing import TYPE_CHECKING, cast
 
 import pytest
@@ -15,7 +15,6 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.sql import
 )
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
-    SpecFilter,
     TableId,
     TableMaintenanceRunId,
     TablePriority,
@@ -25,9 +24,11 @@ from context.table_maintenance.application.domain.model.shared import (
 )
 from context.table_maintenance.application.domain.model.table import Table, TableName
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    ExpireSnapshotsJobContent,
     FailureClass,
     NextAttempt,
     NextStep,
+    RewriteDataFilesJobContent,
     RunStatus,
     TableMaintenanceRun,
     TriggerType,
@@ -41,6 +42,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
 )
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
+from tests.context.table_maintenance.fakes.job_content import job_content
 from tests.context.table_maintenance.numbered_id import numbered_id
 
 if TYPE_CHECKING:
@@ -61,6 +63,7 @@ def _run(
         TriggerType.SCHEDULED,
         operation,
         at,
+        content=job_content(operation),
         execution_ref=f"wf-{run_id}",
     )
 
@@ -72,7 +75,7 @@ def repo(engine: Engine) -> TableMaintenanceRunsSqlRepo:
 
 
 def test_sql_round_trip_keeps_every_field(repo: TableMaintenanceRunsSqlRepo):
-    """A stored run loads back equal, with its operation, filters, arguments, metrics and attempts."""
+    """A stored run loads back equal, with its operation, job content, metrics and attempts."""
     run = TableMaintenanceRun.create(
         TableMaintenanceRunId(R1),
         TableId("u1"),
@@ -80,8 +83,29 @@ def test_sql_round_trip_keeps_every_field(repo: TableMaintenanceRunsSqlRepo):
         Op.REWRITE_DATA_FILES,
         NOW,
         execution_ref="wf",
-        filters=[SpecFilter(spec_id=0, where="(`region` = 'eu')")],
-        procedure_args={"options": {"min-input-files": "2"}},
+        content=RewriteDataFilesJobContent.from_primitives(
+            {
+                "target_file_size_bytes": 536870912,
+                "options": {"min_input_files": 2},
+                "partitions": [
+                    {
+                        "spec": {
+                            "spec_id": 0,
+                            "fields": [
+                                {
+                                    "field_id": 1000,
+                                    "name": "region",
+                                    "source_column": "region",
+                                    "source_type": "string",
+                                    "transform": "identity",
+                                }
+                            ],
+                        },
+                        "values": [["eu"], [None]],
+                    }
+                ],
+            }
+        ),
     )
     run.start_attempt(1, "job-1", NOW, size=ComputeSize.S)
     run.succeed(1, {"rewritten_data_files_count": 4}, NOW, started_running_at=NOW, event_log_finished=True)
@@ -92,6 +116,52 @@ def test_sql_round_trip_keeps_every_field(repo: TableMaintenanceRunsSqlRepo):
     assert loaded.model_dump() == run.model_dump()
     assert loaded.created_at.tzinfo is not None
     assert loaded.collect_events() == []
+
+
+def test_an_expiry_keeps_its_cutoff_to_the_microsecond_and_its_zone(repo: TableMaintenanceRunsSqlRepo):
+    """An expiry's cutoff, stored as JSON text, loads back the same instant at the same offset."""
+    cutoff = datetime(2026, 10, 23, 8, 0, 0, 123456, tzinfo=timezone(timedelta(hours=8)))
+    run = TableMaintenanceRun.create(
+        TableMaintenanceRunId(R1),
+        TableId("u1"),
+        TriggerType.SCHEDULED,
+        Op.EXPIRE_SNAPSHOTS,
+        NOW,
+        execution_ref="wf",
+        content=ExpireSnapshotsJobContent(older_than=cutoff, retain_last=5),
+    )
+    repo.create(run)
+
+    loaded = repo.get(TableMaintenanceRunId(R1))
+
+    assert loaded is not None
+    assert isinstance(loaded.content, ExpireSnapshotsJobContent)
+    assert loaded.content.older_than == cutoff
+    assert loaded.content.older_than.utcoffset() == timedelta(hours=8)
+    assert loaded.content == run.content
+
+
+def test_a_row_with_content_of_another_operation_is_refused():
+    """A row whose content belongs to another operation does not load as a run."""
+    row = {
+        "id": R1,
+        "table_uuid": "u1",
+        "execution_ref": f"wf-{R1}",
+        "trigger": "scheduled",
+        "operation": "rewrite_data_files",
+        "priority": "P3",
+        "status": "pending",
+        "error": None,
+        "skip_reason": None,
+        "content_json": {"operation": "rewrite_manifests"},
+        "metrics_json": {},
+        "attempts_json": [],
+        "created_at": NOW,
+        "finished_at": None,
+    }
+
+    with pytest.raises(InvariantViolation, match="a rewrite_data_files run cannot hold rewrite_manifests content"):
+        TableMaintenanceRunRowMapper.to_aggregate(cast("RowMapping", row))
 
 
 def test_a_skipped_run_round_trips_its_reason(repo: TableMaintenanceRunsSqlRepo):
@@ -115,6 +185,7 @@ def test_priority_round_trips(repo: TableMaintenanceRunsSqlRepo):
         TriggerType.MANUAL,
         Op.EXPIRE_SNAPSHOTS,
         NOW,
+        content=job_content(Op.EXPIRE_SNAPSHOTS),
         execution_ref=f"wf-{R1}",
         priority=TablePriority.P1,
     )
@@ -245,8 +316,12 @@ def test_a_create_of_a_plan_retried_after_it_was_stored_succeeds_on_the_sql_repo
         now=NOW,
         priority="P3",
         runs=(
-            CreateTableMaintenanceRunsUseCaseInput.Run(run_id=R1, operation="rewrite_data_files"),
-            CreateTableMaintenanceRunsUseCaseInput.Run(run_id=OTHER, operation="expire_snapshots"),
+            CreateTableMaintenanceRunsUseCaseInput.Run(
+                run_id=R1, operation="rewrite_data_files", content=job_content(Op.REWRITE_DATA_FILES).to_primitives()
+            ),
+            CreateTableMaintenanceRunsUseCaseInput.Run(
+                run_id=OTHER, operation="expire_snapshots", content=job_content(Op.EXPIRE_SNAPSHOTS).to_primitives()
+            ),
         ),
     )
     first = service.execute(request)
@@ -271,8 +346,12 @@ def test_a_retry_whose_insert_hits_the_primary_key_of_its_first_try_succeeds_on_
         now=NOW,
         priority="P3",
         runs=(
-            CreateTableMaintenanceRunsUseCaseInput.Run(run_id=R1, operation="rewrite_data_files"),
-            CreateTableMaintenanceRunsUseCaseInput.Run(run_id=OTHER, operation="expire_snapshots"),
+            CreateTableMaintenanceRunsUseCaseInput.Run(
+                run_id=R1, operation="rewrite_data_files", content=job_content(Op.REWRITE_DATA_FILES).to_primitives()
+            ),
+            CreateTableMaintenanceRunsUseCaseInput.Run(
+                run_id=OTHER, operation="expire_snapshots", content=job_content(Op.EXPIRE_SNAPSHOTS).to_primitives()
+            ),
         ),
     )
     insert = repo.create_all
@@ -340,8 +419,7 @@ def test_attempt_without_a_running_time_decodes_to_none():
         "status": "running",
         "error": None,
         "skip_reason": None,
-        "filters_json": [],
-        "procedure_args_json": {},
+        "content_json": {"operation": "rewrite_data_files", "target_file_size_bytes": 1},
         "metrics_json": {},
         "attempts_json": [
             {**_STORED_ATTEMPT, "status": "running"},
@@ -366,8 +444,7 @@ def test_a_stored_attempt_without_its_start_time_is_refused_naming_it():
         "status": "queued",
         "error": None,
         "skip_reason": None,
-        "filters_json": [],
-        "procedure_args_json": {},
+        "content_json": {"operation": "rewrite_data_files", "target_file_size_bytes": 1},
         "metrics_json": {},
         "attempts_json": [{**_STORED_ATTEMPT, "attempt": 2, "started_at": None}],
         "created_at": NOW,
@@ -391,8 +468,7 @@ def test_a_stored_attempt_without_one_of_its_keys_is_refused(key: str):
         "status": "queued",
         "error": None,
         "skip_reason": None,
-        "filters_json": [],
-        "procedure_args_json": {},
+        "content_json": {"operation": "rewrite_data_files", "target_file_size_bytes": 1},
         "metrics_json": {},
         "attempts_json": [attempt],
         "created_at": NOW,
@@ -422,8 +498,7 @@ def test_a_status_that_disagrees_with_the_attempts_is_refused_on_load():
         "status": "succeeded",
         "error": None,
         "skip_reason": None,
-        "filters_json": [],
-        "procedure_args_json": {},
+        "content_json": job_content(Op.EXPIRE_SNAPSHOTS).to_primitives(),
         "metrics_json": {},
         "attempts_json": [
             dict(_STORED_ATTEMPT),

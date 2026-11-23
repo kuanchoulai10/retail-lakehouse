@@ -42,26 +42,3 @@ class RewriteDataFilesOptions(ValueObject):
         if self.partial_progress_max_commits is not None and self.partial_progress_enabled is not True:
             raise ValueError("partial_progress_max_commits needs partial_progress_enabled true")
         return self
-
-    def procedure_arguments(self) -> dict[str, str]:
-        """Return the named procedure arguments that are set."""
-        arguments: dict[str, str] = {}
-        if self.strategy is not None:
-            arguments["strategy"] = str(self.strategy)
-        if self.sort_order is not None:
-            arguments["sort_order"] = self.sort_order
-        return arguments
-
-    def procedure_options(self) -> dict[str, int | bool]:
-        """Return the entries of the procedure's options map that are set, in Iceberg's spelling."""
-        spelled: dict[str, int | bool | None] = {
-            "min-input-files": self.min_input_files,
-            "partial-progress.enabled": self.partial_progress_enabled,
-            "partial-progress.max-commits": self.partial_progress_max_commits,
-            "max-concurrent-file-group-rewrites": self.max_concurrent_file_group_rewrites,
-            "rewrite-all": self.rewrite_all,
-            "delete-file-threshold": self.delete_file_threshold,
-            "remove-dangling-deletes": self.remove_dangling_deletes,
-            "max-file-group-size-bytes": self.max_file_group_size_bytes,
-        }
-        return {key: value for key, value in spelled.items() if value is not None}

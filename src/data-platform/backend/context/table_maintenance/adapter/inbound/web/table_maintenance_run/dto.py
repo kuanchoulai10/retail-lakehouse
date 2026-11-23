@@ -29,13 +29,24 @@ class TableMaintenanceRunAttemptApiResponse(BaseModel):
     next_size: str | None
 
 
-class TableMaintenanceRunFilterApiResponse(BaseModel):
-    """Describe one where clause a compaction passes to rewrite_data_files, for one partition spec."""
+class TableMaintenanceRunPartitionFieldApiResponse(BaseModel):
+    """Describe one field of a partition spec: the column it is computed from and its transform."""
 
-    model_config = ConfigDict(from_attributes=True)
+    column: str = Field(description="The source column, dot-joined for a nested column.")
+    transform: str = Field(description="Iceberg's transform, such as `identity`, `day` or `bucket[16]`.")
+
+
+class TableMaintenanceRunPartitionSpecApiResponse(BaseModel):
+    """Describe the partitions of one partition spec a compaction rewrites."""
 
     spec_id: int
-    where: str
+    fields: list[TableMaintenanceRunPartitionFieldApiResponse]
+    partitions: list[list[str | None]] = Field(
+        description=(
+            "One entry per partition, one value per field, as Iceberg prints it "
+            "(`2026-11-20` for a day); null is a null partition."
+        )
+    )
 
 
 class TableMaintenanceRunApiResponse(BaseModel):
@@ -50,14 +61,14 @@ class TableMaintenanceRunApiResponse(BaseModel):
     priority: str = Field(description="The priority this run was started with, `P0` to `P3`.")
     operation: str = Field(description="The one operation this run does.")
     status: str
-    filters: list[TableMaintenanceRunFilterApiResponse] = Field(
+    settings: dict[str, Any] = Field(
         description=(
-            "The where clauses each job of this run passes to rewrite_data_files, "
-            "one per partition spec; empty: the whole table."
+            "What each job of this run is set to do: the target file size, ages and counts the platform "
+            "resolved, and the policy's options; an option not listed is the procedure's default."
         )
     )
-    procedure_args: dict[str, Any] = Field(
-        description="The arguments this run passes to the Iceberg procedure, besides the where clauses."
+    partitions: list[TableMaintenanceRunPartitionSpecApiResponse] = Field(
+        description="The partitions each job of a compaction rewrites, per partition spec; empty: the whole table."
     )
     metrics: dict[str, int] = Field(description="The numbers the procedure returned.")
     error: str | None

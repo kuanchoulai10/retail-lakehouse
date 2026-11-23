@@ -9,7 +9,9 @@ import pytest
 from base import InvariantViolation
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
-    SpecFilter,
+    PartitionFieldInfo,
+    PartitionSpecInfo,
+    SpecPartitions,
     TableId,
     TableMaintenanceRunId,
     TablePriority,
@@ -18,15 +20,18 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation as Op,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    ExpireSnapshotsJobContent,
     FailureClass,
     InvalidRunTransition,
     NextAttempt,
     NextStep,
     OperationAttempt,
+    RewriteDataFilesJobContent,
     RunStatus,
     TableMaintenanceRun,
     TriggerType,
 )
+from tests.context.table_maintenance.fakes.job_content import job_content
 
 RUN_1 = "mr-00000000000000000000000001"
 
@@ -42,6 +47,7 @@ def _now(minutes: int = 0) -> datetime:
 
 def _run(operation: Op = Op.EXPIRE_SNAPSHOTS, **create_kwargs) -> TableMaintenanceRun:
     create_kwargs.setdefault("execution_ref", "wf-run-1")
+    create_kwargs.setdefault("content", job_content(operation))
     return TableMaintenanceRun.create(
         TableMaintenanceRunId(RUN_1),
         TableId("t-1"),
@@ -57,7 +63,10 @@ def _with(run: TableMaintenanceRun, **changes: object) -> TableMaintenanceRun:
     return TableMaintenanceRun.model_validate({**dict(run), **changes})
 
 
-EU = SpecFilter(spec_id=0, where="(`region` = 'eu')")
+REGION = PartitionFieldInfo(
+    field_id=1000, name="region", source_column="region", source_type="string", transform="identity"
+)
+EU = SpecPartitions(spec=PartitionSpecInfo(spec_id=0, fields=(REGION,)), values=(("eu",),))
 
 
 def _attempt(n: int, status: RunStatus = RunStatus.FAILED, **fields: object) -> OperationAttempt:
@@ -157,21 +166,24 @@ def test_a_started_run_cannot_be_skipped():
         run.skip(STOPPED, _now(2))
 
 
-def test_a_run_keeps_the_parameters_it_passes():
-    """A run records the arguments its procedure is called with."""
-    run = _run(procedure_args={"older_than": "2026-10-23T00:00:00+00:00", "retain_last": 1})
-    assert run.procedure_args == {"older_than": "2026-10-23T00:00:00+00:00", "retain_last": 1}
+def test_a_run_keeps_what_its_job_does():
+    """A run records the content every attempt of it runs with."""
+    content = ExpireSnapshotsJobContent(older_than=_now(-60), retain_last=1)
+    assert _run(content=content).content == content
 
 
-def test_a_compaction_run_keeps_its_filters():
-    """A compaction run keeps the where clauses it was created with."""
-    assert _run(COMPACTION, filters=[EU]).filters == (EU,)
+def test_a_compaction_run_keeps_its_partitions():
+    """A compaction run keeps the partitions it was created with."""
+    content = RewriteDataFilesJobContent(target_file_size_bytes=1, partitions=(EU,))
+    kept = _run(COMPACTION, content=content).content
+    assert isinstance(kept, RewriteDataFilesJobContent)
+    assert kept.partitions == (EU,)
 
 
-def test_filters_on_another_operation_are_refused():
-    """Only a compaction run may hold filters."""
-    with pytest.raises(InvalidRunTransition):
-        _run(Op.EXPIRE_SNAPSHOTS, filters=[EU])
+def test_content_of_another_operation_is_refused():
+    """A run holds the content of its own operation only."""
+    with pytest.raises(InvalidRunTransition, match="expire_snapshots run cannot hold rewrite_data_files content"):
+        _run(Op.EXPIRE_SNAPSHOTS, content=RewriteDataFilesJobContent(target_file_size_bytes=1))
 
 
 @pytest.mark.parametrize("status", [RunStatus.PENDING, RunStatus.SKIPPED])
@@ -189,15 +201,17 @@ def test_there_is_no_partially_failed_status():
 # --- the run's invariants ---
 
 
-def test_a_run_without_filters_is_the_whole_table():
-    """A compaction run created without filters compacts the whole table."""
-    assert _run(COMPACTION).filters == ()
+def test_a_run_without_partitions_is_the_whole_table():
+    """A compaction run created without partitions compacts the whole table."""
+    content = _run(COMPACTION).content
+    assert isinstance(content, RewriteDataFilesJobContent)
+    assert content.partitions == ()
 
 
-def test_a_run_built_with_filters_on_another_operation_is_refused():
-    """The filters invariant holds for a run built directly, not only through create."""
-    with pytest.raises(InvariantViolation, match="filters"):
-        _with(_run(), filters=(EU,))
+def test_a_run_built_with_content_of_another_operation_is_refused():
+    """The content invariant holds for a run built directly, not only through create."""
+    with pytest.raises(InvariantViolation, match="cannot hold rewrite_data_files content"):
+        _with(_run(), content=RewriteDataFilesJobContent(target_file_size_bytes=1))
 
 
 def test_a_run_without_attempts_is_valid():
@@ -305,7 +319,7 @@ def test_create_without_a_priority_records_p3():
 
 
 def test_create_records_its_operation_and_starts_pending():
-    """Creating a run records its operation and creation time, pending, with no parameters by default."""
+    """Creating a run records its operation and creation time, pending, with nothing measured yet."""
     run = _run(COMPACTION)
     assert (run.operation, run.status, run.created_at, run.finished_at) == (
         COMPACTION,
@@ -313,7 +327,7 @@ def test_create_records_its_operation_and_starts_pending():
         _now(),
         None,
     )
-    assert (run.procedure_args, run.metrics, run.error, run.skip_reason) == ({}, {}, None, None)
+    assert (run.content, run.metrics, run.error, run.skip_reason) == (job_content(COMPACTION), {}, None, None)
 
 
 def test_create_records_the_workflow_id():
@@ -325,14 +339,6 @@ def test_create_rejects_an_empty_execution_ref():
     """A run without an execution reference is rejected."""
     with pytest.raises(ValueError, match="execution reference"):
         _run(execution_ref="")
-
-
-def test_create_copies_the_parameters():
-    """Changing the mapping a run was created from leaves the run's parameters alone."""
-    args = {"retain_last": 1}
-    run = _run(procedure_args=args)
-    args["retain_last"] = 9
-    assert run.procedure_args == {"retain_last": 1}
 
 
 # --- status ---

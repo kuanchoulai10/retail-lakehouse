@@ -12,13 +12,17 @@ import pytest
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
-    SpecFilter,
+    PartitionFieldInfo,
+    PartitionSpecInfo,
+    SpecPartitions,
     TableId,
     TableMaintenanceRunId,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import Table, TableName
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    ExpireSnapshotsJobContent,
+    RewriteDataFilesJobContent,
     RunStatus,
     TableMaintenanceRun,
     TriggerType,
@@ -36,6 +40,10 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     SubmitMaintenanceOperationUseCaseInput,
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
+    ExpireSnapshotsJob,
+    JobPartitionField,
+    JobPartitionSpec,
+    RewriteDataFilesJob,
     SubmitMaintenanceJobGateway,
     SubmitMaintenanceJobGatewayInput,
     SubmitMaintenanceJobGatewayOutput,
@@ -52,6 +60,7 @@ from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_runs_repo import (
     InMemoryTableMaintenanceRunsRepo,
 )
+from tests.context.table_maintenance.fakes.job_content import job_content
 from tests.context.table_maintenance.fakes.scripted_read_maintenance_event_log_gateway import (
     ScriptedReadMaintenanceEventLogGateway,
 )
@@ -70,7 +79,12 @@ UNKNOWN_RUN = "mr-7zzzzzzzzzzzzzzzzzzzzzzzzz"
 NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 KEY = ("iceberg", "sales", "orders")
 OPS = MaintenanceOperation
-EU = SpecFilter(spec_id=0, where="(`region` = 'eu')")
+REGION = PartitionFieldInfo(
+    field_id=1000, name="region", source_column="region", source_type="string", transform="identity"
+)
+DAY = PartitionFieldInfo(field_id=1001, name="ts_day", source_column="ts", source_type="timestamptz", transform="day")
+BY_REGION = SpecPartitions(spec=PartitionSpecInfo(spec_id=0, fields=(REGION,)), values=(("eu",),))
+BY_DAY = SpecPartitions(spec=PartitionSpecInfo(spec_id=1, fields=(DAY,)), values=((20412,), (None,)))
 
 
 def _table(repo, now, settings=None, uuid="u-1", name=NAME):
@@ -80,7 +94,7 @@ def _table(repo, now, settings=None, uuid="u-1", name=NAME):
 
 
 def _stored_run(
-    runs_repo, now, operation=OPS.REWRITE_DATA_FILES, trigger=TriggerType.SCHEDULED, **kwargs
+    runs_repo, now, operation=OPS.REWRITE_DATA_FILES, trigger=TriggerType.SCHEDULED, content=None, **kwargs
 ) -> TableMaintenanceRun:
     created = TableMaintenanceRun.create(
         TableMaintenanceRunId(RUN_1),
@@ -88,6 +102,7 @@ def _stored_run(
         trigger,
         operation,
         now,
+        content=job_content(operation) if content is None else content,
         execution_ref="wf-run-1",
         **kwargs,
     )
@@ -97,13 +112,18 @@ def _stored_run(
 
 @pytest.fixture
 def run(runs_repo, tables_repo, now):
-    """Provide a stored compaction run of two partition specs, with its procedure arguments."""
+    """Provide a stored compaction run of two partition specs, with an option."""
     _table(tables_repo, now)
     return _stored_run(
         runs_repo,
         now,
-        filters=[SpecFilter(spec_id=0, where="a = 1"), SpecFilter(spec_id=1, where="b = 2")],
-        procedure_args={"min-input-files": 2},
+        content=RewriteDataFilesJobContent.from_primitives(
+            {
+                "target_file_size_bytes": 536870912,
+                "options": {"min_input_files": 2},
+                "partitions": [BY_REGION.to_primitives(), BY_DAY.to_primitives()],
+            }
+        ),
     )
 
 
@@ -137,8 +157,16 @@ def test_submit_submits_job_then_records_attempt_with_its_job_name(submitter, ru
         1,
     )
     assert (job.catalog, job.namespace, job.table) == ("iceberg", "sales", "orders")
-    assert job.where == ["a = 1", "b = 2"]
-    assert job.procedure_args == {"min-input-files": 2}
+    assert job.job == RewriteDataFilesJob(
+        target_file_size_bytes=536870912,
+        partitions=(
+            JobPartitionSpec(spec_id=0, fields=(JobPartitionField("region", "string", "identity"),), values=(("eu",),)),
+            JobPartitionSpec(
+                spec_id=1, fields=(JobPartitionField("ts", "timestamptz", "day"),), values=((20412,), (None,))
+            ),
+        ),
+        min_input_files=2,
+    )
     assert len(run.attempts) == 1
     assert run.attempts[0].job_name == out.job_name
 
@@ -151,14 +179,21 @@ def test_submit_builds_the_run_result_callback_url(submitter, run, submit_job, n
     )
 
 
-def test_submit_takes_the_where_and_the_arguments_from_the_run(submitter, runs_repo, tables_repo, submit_job, now):
-    """The job is submitted with the where clauses and the arguments the run recorded."""
+def test_submit_takes_the_job_from_the_runs_content(submitter, runs_repo, tables_repo, submit_job, now):
+    """An expiry is submitted with the cutoff and the count its run was created with, not ones worked out again."""
     _table(tables_repo, now)
-    _stored_run(runs_repo, now, filters=[EU], procedure_args={"options": {"min-input-files": "2"}})
-    _submit(submitter, now)
+    cutoff = datetime(2026, 10, 23, tzinfo=UTC)
+    _stored_run(
+        runs_repo,
+        now,
+        operation=OPS.EXPIRE_SNAPSHOTS,
+        content=ExpireSnapshotsJobContent.from_primitives(
+            {"older_than": cutoff.isoformat(), "retain_last": 4, "options": {"stream_results": True}}
+        ),
+    )
+    _submit(submitter, now, operation="expire_snapshots")
     (call,) = submit_job.calls
-    assert call.where == ["(`region` = 'eu')"]
-    assert call.procedure_args == {"options": {"min-input-files": "2"}}
+    assert call.job == ExpireSnapshotsJob(older_than=cutoff, retain_last=4, stream_results=True)
 
 
 def test_submit_refuses_another_operation(submitter, runs_repo, tables_repo, submit_job, now):
@@ -231,20 +266,12 @@ def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(runs_re
     assert out.job_name == f"job-{RUN_1}-rewrite_data_files-2"
 
 
-def test_submit_whole_table_filter_means_no_where(submitter, runs_repo, tables_repo, submit_job, now):
-    """A whole table filter submits the job without a where clause."""
+def test_a_compaction_without_partitions_submits_the_whole_table(submitter, runs_repo, tables_repo, submit_job, now):
+    """A compaction whose content names no partition submits a job without partitions: the whole table."""
     _table(tables_repo, now)
-    _stored_run(runs_repo, now, filters=[SpecFilter(spec_id=0, where="")])
+    _stored_run(runs_repo, now)
     _submit(submitter, now)
-    assert next(iter(submit_job.jobs.values())).where == []
-
-
-def test_submit_any_empty_where_makes_the_whole_table_the_target(submitter, runs_repo, tables_repo, submit_job, now):
-    """If any filter has an empty where clause the job targets the whole table."""
-    _table(tables_repo, now)
-    _stored_run(runs_repo, now, filters=[SpecFilter(spec_id=0, where="a = 1"), SpecFilter(spec_id=1, where="")])
-    _submit(submitter, now)
-    assert next(iter(submit_job.jobs.values())).where == []
+    assert next(iter(submit_job.jobs.values())).job.partitions == ()
 
 
 def test_retried_submit_leaves_one_job_and_records_the_attempt_once(submitter, run, submit_job, now):
@@ -267,8 +294,7 @@ def test_retried_submit_after_a_lost_record_still_records_the_attempt(submitter,
             catalog="iceberg",
             namespace="sales",
             table="orders",
-            where=[],
-            procedure_args={},
+            job=RewriteDataFilesJob(target_file_size_bytes=1),
             result_report_url="http://x",
         )
     )

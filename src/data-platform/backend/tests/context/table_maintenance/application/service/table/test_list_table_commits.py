@@ -131,7 +131,7 @@ def test_limit_time_window_and_writer_are_forwarded(service, catalog):
 
     name, (_, got) = catalog.calls[-1]
     assert name == "list_commits"
-    assert got == TableCommitSelection(limit=5, since=since.isoformat(), before=before.isoformat(), writer="spark")
+    assert got == TableCommitSelection(limit=5, since=since, before=before, writer="spark")
 
 
 def test_commits_unknown_table_raises_not_found(service):

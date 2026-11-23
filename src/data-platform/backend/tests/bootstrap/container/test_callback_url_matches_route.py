@@ -30,6 +30,7 @@ from tests.context.table_maintenance.fakes.in_memory_table_maintenance_runs_repo
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import (
     InMemoryTablesRepo,
 )
+from tests.context.table_maintenance.fakes.job_content import job_content
 from tests.context.table_maintenance.fakes.recording_submit_maintenance_job_gateway import (
     RecordingSubmitMaintenanceJobGateway,
 )
@@ -55,6 +56,7 @@ def _submitted_callback_url() -> str:
             TriggerType.SCHEDULED,
             MaintenanceOperation.EXPIRE_SNAPSHOTS,
             NOW,
+            content=job_content(MaintenanceOperation.EXPIRE_SNAPSHOTS),
             execution_ref="wf-run-1",
         )
     )

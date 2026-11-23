@@ -11,8 +11,7 @@ function timeText(value: string | null): string {
   return value === null ? "—" : formatTimestamp(value);
 }
 
-// Each key in monospace with its JSON value: the arguments the run passed to the procedure, or the
-// numbers it returned.
+// Each key in monospace with its JSON value: what the run was set to do, or the numbers it returned.
 function KeyValues({ values }: { values: Record<string, unknown> }) {
   return (
     <ul className="flex flex-col gap-1">
@@ -45,10 +44,10 @@ function fields(run: TableMaintenanceRunApiResponse): DescriptionListItem[] {
       description: (
         <>
           {scope.summary}
-          {scope.wheres.length > 0 && (
+          {scope.partitions.length > 0 && (
             <ul className="type-code text-on-surface-variant">
-              {scope.wheres.map(({ specId, where }) => (
-                <li key={specId} className="break-all">{`spec ${specId}: ${where}`}</li>
+              {scope.partitions.map(({ specId, text }) => (
+                <li key={`${specId}:${text}`} className="break-all">{`spec ${specId}: ${text}`}</li>
               ))}
             </ul>
           )}
@@ -56,8 +55,8 @@ function fields(run: TableMaintenanceRunApiResponse): DescriptionListItem[] {
       ),
     });
   }
-  if (Object.keys(run.procedure_args).length > 0) {
-    items.push({ term: "Parameters", description: <KeyValues values={run.procedure_args} /> });
+  if (Object.keys(run.settings).length > 0) {
+    items.push({ term: "Settings", description: <KeyValues values={run.settings} /> });
   }
   if (Object.keys(run.metrics).length > 0) {
     items.push({ term: "Result", description: <KeyValues values={run.metrics} /> });

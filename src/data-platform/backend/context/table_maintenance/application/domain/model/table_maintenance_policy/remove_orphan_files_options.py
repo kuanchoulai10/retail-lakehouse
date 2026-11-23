@@ -25,12 +25,3 @@ class RemoveOrphanFilesOptions(ValueObject):
     def _leave_unset_out(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
         """Write only the options that are set, so an unset one stays left to the procedure."""
         return {key: value for key, value in handler(self).items() if value is not None}
-
-    def procedure_arguments(self) -> dict[str, int | str]:
-        """Return the procedure arguments that are set."""
-        arguments: dict[str, int | str] = {}
-        if self.max_concurrent_deletes is not None:
-            arguments["max_concurrent_deletes"] = self.max_concurrent_deletes
-        if self.prefix_mismatch_mode is not None:
-            arguments["prefix_mismatch_mode"] = str(self.prefix_mismatch_mode)
-        return arguments

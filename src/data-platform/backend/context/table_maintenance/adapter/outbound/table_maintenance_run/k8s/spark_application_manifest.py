@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.iceberg_procedure_args import (
+    iceberg_procedure_args,
+)
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.maintenance_job_pod_labels import (
     maintenance_job_pod_labels,
 )
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.pod_group_resources import (
     pod_group_resources,
+)
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.spark_where_clauses import (
+    spark_where_clauses,
 )
 
 if TYPE_CHECKING:
@@ -96,6 +101,28 @@ def _executor_conf() -> dict[str, str]:
     return {"spark.kubernetes.executor.deleteOnTermination": "false"}
 
 
+def _spark_request(input: SubmitMaintenanceJobGatewayInput, name: str) -> dict[str, Any]:  # noqa: A002
+    """Return the request the Spark runtime reads: the table, the ``CALL``'s where clauses and arguments.
+
+    The keys and their order are the runtime's contract; ``where`` and ``procedure_args`` are the job
+    written in Iceberg's spelling.
+    """
+    return {
+        "run_id": input.run_id,
+        "operation": input.operation,
+        "attempt": input.attempt,
+        "catalog": input.catalog,
+        "namespace": input.namespace,
+        "table": input.table,
+        "where": spark_where_clauses(input.catalog, input.job),
+        "procedure_args": iceberg_procedure_args(input.job),
+        "result_report_url": input.result_report_url,
+        "size": input.size,
+        "priority": input.priority,
+        "app_name": name,
+    }
+
+
 def build_spark_application(
     config: SparkK8sConfig,
     input: SubmitMaintenanceJobGatewayInput,  # noqa: A002
@@ -164,7 +191,7 @@ def build_spark_application(
                 "env": [
                     {
                         "name": "GLAC_REQUEST",
-                        "value": json.dumps({**asdict(input), "app_name": name}),
+                        "value": json.dumps(_spark_request(input, name)),
                     },
                     {
                         "name": "POLARIS_CREDENTIAL",

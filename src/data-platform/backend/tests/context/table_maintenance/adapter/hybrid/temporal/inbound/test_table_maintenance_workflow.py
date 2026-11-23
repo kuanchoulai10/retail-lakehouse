@@ -80,8 +80,7 @@ def _plan(*operations: str, start_size: str = "S") -> dict:
         "operations": [
             {
                 "operation": op,
-                "filters": [{"spec_id": 0, "where": f"{op} = 1"}],
-                "procedure_args": {"op": op},
+                "content": {"operation": op},
                 "start_size": start_size,
             }
             for op in operations
@@ -1102,11 +1101,11 @@ def test_failed_attempt_is_recorded_before_its_job_is_deleted():
     _run(scenario)
 
 
-PLANNED_FILTERS = [{"spec_id": 0, "where": "region IN ('eu', 'us', 'ap', 'sa')"}]
+PLANNED_CONTENT = {"operation": COMPACTION, "target_file_size_bytes": 1024, "options": {}, "partitions": []}
 
 
-def test_oom_retry_keeps_the_planned_filters():
-    """No attempt, also after running out of memory, sends filters of its own: the submit reads the run's."""
+def test_oom_retry_keeps_the_planned_content():
+    """No attempt, also after running out of memory, sends job content of its own: the submit reads the run's."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, a): [(a, False, OOM_ERROR)] for a in (1, 2)}
@@ -1117,11 +1116,11 @@ def test_oom_retry_keeps_the_planned_filters():
         plan = _plan(COMPACTION)
         plan["operations"][0] = {
             **plan["operations"][0],
-            "filters": PLANNED_FILTERS,
+            "content": PLANNED_CONTENT,
         }
         await h.run_maintenance(plan=plan)
         assert len(h.fakes.submits) == 3
-        assert not [s for s in h.fakes.submits if "filters" in s or "procedure_args" in s]
+        assert not [s for s in h.fakes.submits if "content" in s]
 
     _run(scenario)
 
@@ -1892,7 +1891,7 @@ def test_each_operation_runs_as_its_own_run():
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)], (EXPIRE, 1): [(1, True, None)]}
         await h.run_maintenance(COMPACTION, EXPIRE)
-        assert "filters" not in h.fakes.submits[0] and "procedure_args" not in h.fakes.submits[0]
+        assert "content" not in h.fakes.submits[0]
         assert [(s["run_id"], s["operation"]) for s in h.fakes.submits] == [
             (RUN_IDS[0], COMPACTION),
             (RUN_IDS[1], EXPIRE),

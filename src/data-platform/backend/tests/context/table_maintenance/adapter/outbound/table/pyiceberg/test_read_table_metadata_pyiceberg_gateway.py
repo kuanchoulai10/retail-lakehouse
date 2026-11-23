@@ -522,7 +522,7 @@ def test_list_commits_since(catalog: SqlCatalog, gateway: ReadTableMetadataPyIce
     everything = gateway.list_commits(_ref(), TableCommitSelection(limit=10))
     assert everything is not None
     assert everything.truncated is False
-    second = everything.commits[1]["committed_at"]
+    second = datetime.fromisoformat(everything.commits[1]["committed_at"])
 
     page = gateway.list_commits(_ref(), TableCommitSelection(limit=10, since=second))
 
@@ -538,7 +538,7 @@ def test_list_commits_before(catalog: SqlCatalog, gateway: ReadTableMetadataPyIc
         table.append(_rows([day], day=day))
     everything = gateway.list_commits(_ref(), TableCommitSelection(limit=10))
     assert everything is not None
-    newest = everything.commits[0]["committed_at"]
+    newest = datetime.fromisoformat(everything.commits[0]["committed_at"])
 
     page = gateway.list_commits(_ref(), TableCommitSelection(limit=10, before=newest))
 

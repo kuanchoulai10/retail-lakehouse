@@ -11,7 +11,7 @@ from base import UseCaseOutput
 class GetTableMaintenanceRunUseCaseOutput(UseCaseOutput):
     """Carry the result of the request to get one maintenance run.
 
-    ``filters`` holds each where clause as ``spec_id`` and ``where``; ``attempts`` lists every attempt,
+    ``content`` is what the run's job does, in primitives; ``attempts`` lists every attempt,
     oldest first, with its job, size, outcome and what followed it.
     """
 
@@ -22,8 +22,7 @@ class GetTableMaintenanceRunUseCaseOutput(UseCaseOutput):
     priority: str
     operation: str
     status: str
-    filters: tuple[dict[str, Any], ...]
-    procedure_args: dict[str, Any]
+    content: dict[str, Any]
     metrics: dict[str, Any]
     error: str | None
     skip_reason: str | None

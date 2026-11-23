@@ -11,7 +11,6 @@ from base import AggregateRoot, ReadOnlyMapping
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
-    SpecFilter,
     TableId,
     TableMaintenanceRunId,
     TablePriority,
@@ -21,6 +20,9 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.fa
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run.invalid_run_transition import (
     InvalidRunTransition,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_run.maintenance_job_content import (
+    MaintenanceJobContent,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run.next_step import (
     NextStep,
@@ -36,7 +38,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.tr
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Mapping
 
     from context.table_maintenance.application.domain.model.table_maintenance_run.next_attempt import (
         NextAttempt,
@@ -49,10 +51,10 @@ _TERMINAL = frozenset({RunStatus.SUCCEEDED, RunStatus.FAILED, RunStatus.SKIPPED}
 _NEVER_STARTED = frozenset({RunStatus.PENDING, RunStatus.SKIPPED})
 
 
-def _misplaced_filters(operation: MaintenanceOperation, filters: Sequence[SpecFilter]) -> str | None:
-    """Return why a run of ``operation`` cannot hold ``filters``, or None when it can."""
-    if filters and operation is not MaintenanceOperation.REWRITE_DATA_FILES:
-        return f"a {operation} run cannot hold filters: only a rewrite_data_files run can"
+def _misplaced_content(operation: MaintenanceOperation, content: MaintenanceJobContent) -> str | None:
+    """Return why a run of ``operation`` cannot hold ``content``, or None when it can."""
+    if content.operation != operation:
+        return f"a {operation} run cannot hold {content.operation} content"
     return None
 
 
@@ -61,11 +63,10 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
 
     ``status`` is the run's one status: pending until the first attempt is submitted, then the status of
     its latest attempt, or skipped when it never started. A run whose attempt failed and will be retried
-    reads failed, with a finish time, until the next attempt is submitted. ``filters`` holds the where
-    clauses, one per partition spec, every attempt of a compaction passes to ``rewrite_data_files``; empty
-    means the whole table. ``procedure_args`` holds the arguments the procedure is called with, and
-    ``metrics`` the numbers it returned. ``error`` is the latest failure's error and ``skip_reason`` why a
-    skipped run never started.
+    reads failed, with a finish time, until the next attempt is submitted. ``content`` is what every
+    attempt does: the settings of its operation and, for a compaction, the partitions it rewrites (none
+    means the whole table). ``metrics`` holds the numbers the job returned. ``error`` is the latest
+    failure's error and ``skip_reason`` why a skipped run never started.
     """
 
     id: TableMaintenanceRunId
@@ -76,8 +77,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
     execution_ref: str
     priority: TablePriority = TablePriority.P3
     status: RunStatus = RunStatus.PENDING
-    filters: tuple[SpecFilter, ...] = ()
-    procedure_args: ReadOnlyMapping[str, Any] = Field(default_factory=dict)
+    content: MaintenanceJobContent
     metrics: ReadOnlyMapping[str, Any] = Field(default_factory=dict)
     error: str | None = None
     skip_reason: str | None = None
@@ -96,8 +96,8 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         return self
 
     @model_validator(mode="after")
-    def _only_a_compaction_holds_filters(self) -> TableMaintenanceRun:
-        if msg := _misplaced_filters(self.operation, self.filters):
+    def _content_is_of_its_operation(self) -> TableMaintenanceRun:
+        if msg := _misplaced_content(self.operation, self.content):
             raise ValueError(msg)
         return self
 
@@ -143,22 +143,20 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         now: datetime,
         *,
         execution_ref: str,
+        content: MaintenanceJobContent,
         priority: TablePriority = TablePriority.P3,
-        filters: Sequence[SpecFilter] = (),
-        procedure_args: Mapping[str, Any] | None = None,
     ) -> TableMaintenanceRun:
         """Create a pending run of one operation.
 
         ``execution_ref`` names the execution that runs it, so a result
         that only carries the run id can still be routed to that execution.
-        ``priority`` is the priority the run was started with. ``filters`` holds the where clauses
-        every attempt is submitted with; only a ``rewrite_data_files`` run may hold any.
-        ``procedure_args`` holds the arguments the procedure is called with.
+        ``priority`` is the priority the run was started with. ``content`` is what every attempt does,
+        and must be the content of ``operation``.
         """
         if not execution_ref:
             msg = "a maintenance run needs the execution reference that runs it"
             raise ValueError(msg)
-        if msg := _misplaced_filters(operation, filters):
+        if msg := _misplaced_content(operation, content):
             raise InvalidRunTransition(msg)
         return cls(
             id=id,
@@ -168,8 +166,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             created_at=now,
             execution_ref=execution_ref,
             priority=priority,
-            filters=tuple(filters),
-            procedure_args=dict(procedure_args or {}),
+            content=content,
         )
 
     @property

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from typing import Any
 
 import pytest
 from temporalio.exceptions import ApplicationError
@@ -43,11 +44,16 @@ REC_1 = "rc-00000000000000000000000001"
 
 NOW = "2026-10-24T01:02:03+00:00"
 
+CREATE_CONTENT: dict[str, Any] = {
+    "operation": "rewrite_data_files",
+    "target_file_size_bytes": 536870912,
+    "options": {"strategy": "binpack", "min_input_files": 5},
+    "partitions": [],
+}
 CREATE_RUN = {
     "run_id": RUN_1,
     "operation": "rewrite_data_files",
-    "filters": [{"spec_id": 0, "where": "(`region` = 'eu')"}],
-    "procedure_args": {"strategy": "binpack", "options": {"min-input-files": "5"}},
+    "content": CREATE_CONTENT,
 }
 CREATE_REQUEST = {
     "table_uuid": "u1",
@@ -194,20 +200,16 @@ def test_create_runs_input_is_built_from_the_payload_the_reconciliation_workflow
             CreateTableMaintenanceRunsUseCaseInput.Run(
                 run_id=RUN_1,
                 operation="rewrite_data_files",
-                filters=(CreateTableMaintenanceRunsUseCaseInput.Filter(spec_id=0, where="(`region` = 'eu')"),),
-                procedure_args={"strategy": "binpack", "options": {"min-input-files": "5"}},
+                content=CREATE_CONTENT,
             ),
         ),
     )
 
 
-def test_create_runs_input_reads_a_whole_table_payload_as_no_filters():
-    """A run whose operation holds no filters, or names none, reads as no filters and no arguments."""
-    whole_table = {**CREATE_REQUEST, "runs": [{**CREATE_RUN, "filters": [], "procedure_args": {}}]}
-    built = CreateTableMaintenanceRunsUseCaseInput.from_primitives(whole_table).runs[0]
-    assert (built.filters, built.procedure_args) == ((), {})
-    bare = {**CREATE_REQUEST, "runs": [{"run_id": RUN_1, "operation": "rewrite_data_files"}]}
-    assert CreateTableMaintenanceRunsUseCaseInput.from_primitives(bare).runs[0].filters == ()
+def test_create_runs_input_carries_the_content_as_the_workflow_sent_it():
+    """A run's content passes through the activity's input untouched; the service reads it into the domain."""
+    built = CreateTableMaintenanceRunsUseCaseInput.from_primitives(CREATE_REQUEST).runs[0]
+    assert built.content == CREATE_CONTENT
 
 
 def test_create_runs_activity_hands_the_use_case_the_input_built_from_the_payload():

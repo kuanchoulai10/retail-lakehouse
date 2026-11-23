@@ -6,13 +6,16 @@ from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
-    SpecFilter,
     TableId,
     TableMaintenanceRunId,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import TableStatus
-from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRun, TriggerType
+from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    TableMaintenanceRun,
+    TriggerType,
+    maintenance_job_content_from_primitives,
+)
 from context.table_maintenance.application.exceptions import ConflictError, NotFoundError
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     CreateTableMaintenanceRunsUseCase,
@@ -72,8 +75,7 @@ class CreateTableMaintenanceRunsService(CreateTableMaintenanceRunsUseCase):
                         request.now,
                         execution_ref=request.execution_ref,
                         priority=priority,
-                        filters=[SpecFilter(spec_id=f.spec_id, where=f.where) for f in run.filters],
-                        procedure_args=run.procedure_args,
+                        content=maintenance_job_content_from_primitives(run.content),
                     )
                     for run_id, run in planned
                 ]

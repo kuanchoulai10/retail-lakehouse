@@ -4616,14 +4616,6 @@
             "title": "Execution Ref",
             "type": "string"
           },
-          "filters": {
-            "description": "The where clauses each job of this run passes to rewrite_data_files, one per partition spec; empty: the whole table.",
-            "items": {
-              "$ref": "#/components/schemas/TableMaintenanceRunFilterApiResponse"
-            },
-            "title": "Filters",
-            "type": "array"
-          },
           "finished_at": {
             "anyOf": [
               {
@@ -4649,20 +4641,28 @@
             "title": "Operation",
             "type": "string"
           },
+          "partitions": {
+            "description": "The partitions each job of a compaction rewrites, per partition spec; empty: the whole table.",
+            "items": {
+              "$ref": "#/components/schemas/TableMaintenanceRunPartitionSpecApiResponse"
+            },
+            "title": "Partitions",
+            "type": "array"
+          },
           "priority": {
             "description": "The priority this run was started with, `P0` to `P3`.",
             "title": "Priority",
             "type": "string"
           },
-          "procedure_args": {
-            "additionalProperties": true,
-            "description": "The arguments this run passes to the Iceberg procedure, besides the where clauses.",
-            "title": "Procedure Args",
-            "type": "object"
-          },
           "run_id": {
             "title": "Run Id",
             "type": "string"
+          },
+          "settings": {
+            "additionalProperties": true,
+            "description": "What each job of this run is set to do: the target file size, ages and counts the platform resolved, and the policy's options; an option not listed is the procedure's default.",
+            "title": "Settings",
+            "type": "object"
           },
           "skip_reason": {
             "anyOf": [
@@ -4710,8 +4710,8 @@
           "priority",
           "operation",
           "status",
-          "filters",
-          "procedure_args",
+          "settings",
+          "partitions",
           "metrics",
           "error",
           "skip_reason",
@@ -4852,23 +4852,66 @@
         "title": "TableMaintenanceRunAttemptApiResponse",
         "type": "object"
       },
-      "TableMaintenanceRunFilterApiResponse": {
-        "description": "Describe one where clause a compaction passes to rewrite_data_files, for one partition spec.",
+      "TableMaintenanceRunPartitionFieldApiResponse": {
+        "description": "Describe one field of a partition spec: the column it is computed from and its transform.",
         "properties": {
-          "spec_id": {
-            "title": "Spec Id",
-            "type": "integer"
+          "column": {
+            "description": "The source column, dot-joined for a nested column.",
+            "title": "Column",
+            "type": "string"
           },
-          "where": {
-            "title": "Where",
+          "transform": {
+            "description": "Iceberg's transform, such as `identity`, `day` or `bucket[16]`.",
+            "title": "Transform",
             "type": "string"
           }
         },
         "required": [
-          "spec_id",
-          "where"
+          "column",
+          "transform"
         ],
-        "title": "TableMaintenanceRunFilterApiResponse",
+        "title": "TableMaintenanceRunPartitionFieldApiResponse",
+        "type": "object"
+      },
+      "TableMaintenanceRunPartitionSpecApiResponse": {
+        "description": "Describe the partitions of one partition spec a compaction rewrites.",
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/TableMaintenanceRunPartitionFieldApiResponse"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "partitions": {
+            "description": "One entry per partition, one value per field, as Iceberg prints it (`2026-11-20` for a day); null is a null partition.",
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "title": "Partitions",
+            "type": "array"
+          },
+          "spec_id": {
+            "title": "Spec Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "spec_id",
+          "fields",
+          "partitions"
+        ],
+        "title": "TableMaintenanceRunPartitionSpecApiResponse",
         "type": "object"
       },
       "TableMetricTrendPointApiResponse": {

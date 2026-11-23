@@ -9,11 +9,18 @@ import pytest
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
-    SpecFilter,
+    PartitionFieldInfo,
+    PartitionSpecInfo,
+    SpecPartitions,
     TableId,
     TableMaintenanceRunId,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRun, TriggerType
+from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    ExpireSnapshotsJobContent,
+    RewriteDataFilesJobContent,
+    TableMaintenanceRun,
+    TriggerType,
+)
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     ForwardTableMaintenanceResultUseCaseInput,
     ForwardTableMaintenanceResultUseCaseOutput,
@@ -76,8 +83,12 @@ FIELDS: dict[str, Any] = {
     "priority": "P1",
     "operation": "rewrite_data_files",
     "status": "queued",
-    "filters": (),
-    "procedure_args": {},
+    "content": {
+        "operation": "rewrite_data_files",
+        "target_file_size_bytes": 536870912,
+        "options": {},
+        "partitions": [],
+    },
     "metrics": {},
     "error": None,
     "skip_reason": None,
@@ -129,7 +140,8 @@ def test_get_run_is_flat() -> None:
     assert body["execution_ref"] == "wf-run-1"
     assert body["priority"] == "P1"
     assert body["started_at"] == NOW.isoformat().replace("+00:00", "Z")
-    assert body["procedure_args"] == {}
+    assert body["settings"] == {"target_file_size_bytes": 536870912}
+    assert body["partitions"] == []
     assert body["skip_reason"] is None
     assert [a["job_name"] for a in body["attempts"]] == [
         f"{RUN_ID}-rewrite_data_files-1",
@@ -171,6 +183,7 @@ def test_a_fresh_attempt_is_queued_and_has_not_started_running() -> None:
         MaintenanceOperation.REWRITE_DATA_FILES,
         NOW,
         execution_ref="wf-run-1",
+        content=RewriteDataFilesJobContent(target_file_size_bytes=1),
     )
     run.start_attempt(1, "job-1", NOW, size=ComputeSize.S)
     runs.create(run)
@@ -187,7 +200,7 @@ def test_a_fresh_attempt_is_queued_and_has_not_started_running() -> None:
 def test_a_pending_run_has_no_start() -> None:
     """A run that has only been created reads pending, with no start and no attempts."""
     runs = InMemoryTableMaintenanceRunsRepo()
-    _stored_run(runs, with_filters=False)
+    _stored_run(runs, with_partitions=False)
     client = build_client(get_table_maintenance_run=GetTableMaintenanceRunService(runs))
 
     body = client.get(f"/v1/table-maintenance-runs/{RUN_ID}").json()
@@ -197,11 +210,17 @@ def test_a_pending_run_has_no_start() -> None:
     assert body["attempts"] == []
 
 
-EU = SpecFilter(spec_id=0, where="(`region` = 'eu')")
-EU_BODY = {"spec_id": 0, "where": "(`region` = 'eu')"}
+DAY = PartitionFieldInfo(field_id=1000, name="ts_day", source_column="ts", source_type="timestamptz", transform="day")
+OLD = PartitionFieldInfo(field_id=1001, name="old", source_column="old", source_type="string", transform="void")
+EU = SpecPartitions(spec=PartitionSpecInfo(spec_id=0, fields=(DAY, OLD)), values=((20412, "x"), (None, None)))
+EU_BODY = {
+    "spec_id": 0,
+    "fields": [{"column": "ts", "transform": "day"}],
+    "partitions": [["2025-11-20"], [None]],
+}
 
 
-def _stored_run(runs: InMemoryTableMaintenanceRunsRepo, *, with_filters: bool) -> None:
+def _stored_run(runs: InMemoryTableMaintenanceRunsRepo, *, with_partitions: bool) -> None:
     runs.create(
         TableMaintenanceRun.create(
             TableMaintenanceRunId(RUN_ID),
@@ -210,35 +229,37 @@ def _stored_run(runs: InMemoryTableMaintenanceRunsRepo, *, with_filters: bool) -
             MaintenanceOperation.REWRITE_DATA_FILES,
             NOW,
             execution_ref="wf-run-1",
-            filters=[EU] if with_filters else (),
+            content=RewriteDataFilesJobContent(
+                target_file_size_bytes=536870912, partitions=(EU,) if with_partitions else ()
+            ),
         )
     )
 
 
-def test_get_run_shows_the_filters() -> None:
-    """A run's compaction lists the where clauses it passes to rewrite_data_files."""
+def test_get_run_shows_the_partitions() -> None:
+    """A compaction lists the partitions it rewrites per spec, values as Iceberg prints them, void fields left out."""
     runs = InMemoryTableMaintenanceRunsRepo()
-    _stored_run(runs, with_filters=True)
+    _stored_run(runs, with_partitions=True)
     client = build_client(get_table_maintenance_run=GetTableMaintenanceRunService(runs))
 
     body = client.get(f"/v1/table-maintenance-runs/{RUN_ID}").json()
 
-    assert body["filters"] == [EU_BODY]
+    assert body["partitions"] == [EU_BODY]
 
 
-def test_get_run_shows_empty_filters_for_the_whole_table() -> None:
-    """A run stored without filters shows an empty list."""
+def test_get_run_shows_no_partitions_for_the_whole_table() -> None:
+    """A run stored without partitions shows an empty list."""
     runs = InMemoryTableMaintenanceRunsRepo()
-    _stored_run(runs, with_filters=False)
+    _stored_run(runs, with_partitions=False)
     client = build_client(get_table_maintenance_run=GetTableMaintenanceRunService(runs))
 
     body = client.get(f"/v1/table-maintenance-runs/{RUN_ID}").json()
 
-    assert body["filters"] == []
+    assert body["partitions"] == []
 
 
-def test_get_run_shows_the_procedure_arguments_and_the_skip_reason() -> None:
-    """A skipped expire_snapshots run shows its procedure arguments and why it was skipped."""
+def test_get_run_shows_the_settings_and_the_skip_reason() -> None:
+    """A skipped expire_snapshots run shows its settings, options beside them, and why it was skipped."""
     runs = InMemoryTableMaintenanceRunsRepo()
     run = TableMaintenanceRun.create(
         TableMaintenanceRunId(RUN_ID),
@@ -247,7 +268,9 @@ def test_get_run_shows_the_procedure_arguments_and_the_skip_reason() -> None:
         MaintenanceOperation.EXPIRE_SNAPSHOTS,
         NOW,
         execution_ref="wf-run-1",
-        procedure_args={"retain_last": 5},
+        content=ExpireSnapshotsJobContent.from_primitives(
+            {"older_than": "2026-10-23T08:00:00+08:00", "retain_last": 5, "options": {"stream_results": True}}
+        ),
     )
     run.skip("the table's maintenance stopped before this run started", NOW)
     runs.create(run)
@@ -256,29 +279,33 @@ def test_get_run_shows_the_procedure_arguments_and_the_skip_reason() -> None:
     body = client.get(f"/v1/table-maintenance-runs/{RUN_ID}").json()
 
     assert body["status"] == "skipped"
-    assert body["procedure_args"] == {"retain_last": 5}
+    assert body["settings"] == {"older_than": "2026-10-23T08:00:00+08:00", "retain_last": 5, "stream_results": True}
     assert body["skip_reason"] == "the table's maintenance stopped before this run started"
     assert body["error"] is None
 
 
-def test_list_runs_of_a_table_shows_the_filters() -> None:
-    """The runs of a table list the where clauses of their compaction."""
+def test_list_runs_of_a_table_shows_the_partitions() -> None:
+    """The runs of a table list the partitions of their compaction."""
     runs = InMemoryTableMaintenanceRunsRepo()
-    _stored_run(runs, with_filters=True)
+    _stored_run(runs, with_partitions=True)
     client = build_client(list_table_maintenance_runs=ListTableMaintenanceRunsService(runs))
 
     body = client.get("/v1/tables/u-1/table-maintenance-runs").json()
 
-    assert body[0]["filters"] == [EU_BODY]
+    assert body[0]["partitions"] == [EU_BODY]
 
 
-def test_run_schema_types_its_filters_and_attempts() -> None:
-    """The OpenAPI schema names the filter and attempt shapes, and has no operation shape."""
+def test_run_schema_types_its_partitions_and_attempts() -> None:
+    """The OpenAPI schema names the partition and attempt shapes, and has no operation shape."""
     schemas = build_client().get("/openapi.json").json()["components"]["schemas"]
 
     properties = schemas["TableMaintenanceRunApiResponse"]["properties"]
     assert properties["attempts"]["items"] == {"$ref": "#/components/schemas/TableMaintenanceRunAttemptApiResponse"}
-    assert properties["filters"]["items"] == {"$ref": "#/components/schemas/TableMaintenanceRunFilterApiResponse"}
+    assert properties["partitions"]["items"] == {
+        "$ref": "#/components/schemas/TableMaintenanceRunPartitionSpecApiResponse"
+    }
+    assert "filters" not in properties
+    assert "procedure_args" not in properties
     assert "operations" not in properties
     assert "TableMaintenanceRunOperationApiResponse" not in schemas
 
@@ -350,7 +377,7 @@ def _callback_service(runs: InMemoryTableMaintenanceRunsRepo) -> tuple[ForwardTa
 def test_the_callback_refuses_another_operation() -> None:
     """A body naming an operation other than the run's is rejected with 422 and sends nothing."""
     runs = InMemoryTableMaintenanceRunsRepo()
-    _stored_run(runs, with_filters=False)
+    _stored_run(runs, with_partitions=False)
     service, results = _callback_service(runs)
     client = build_client(forward_table_maintenance_result=service)
 
@@ -363,7 +390,7 @@ def test_the_callback_refuses_another_operation() -> None:
 def test_the_callback_of_the_runs_own_operation_is_forwarded() -> None:
     """A body naming the run's own operation, or none, is forwarded to the run's execution."""
     runs = InMemoryTableMaintenanceRunsRepo()
-    _stored_run(runs, with_filters=False)
+    _stored_run(runs, with_partitions=False)
     service, results = _callback_service(runs)
     client = build_client(forward_table_maintenance_result=service)
 
@@ -387,7 +414,7 @@ def test_callback_for_unknown_run_returns_404() -> None:
 def test_callback_with_unknown_operation_returns_422() -> None:
     """A callback body naming an unknown operation is rejected with 422."""
     runs = InMemoryTableMaintenanceRunsRepo()
-    _stored_run(runs, with_filters=False)
+    _stored_run(runs, with_partitions=False)
     service, results = _callback_service(runs)
     client = build_client(forward_table_maintenance_result=service)
 

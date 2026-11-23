@@ -119,7 +119,7 @@ def _planned(*operations: str, interval: int = 3600, debounce: int | None = 300)
         "schedule_interval_seconds": interval,
         "catalog_commit_debounce_seconds": debounce,
         "table_name": TABLE,
-        "operations": [{"operation": op, "filters": [], "procedure_args": {}, "start_size": "S"} for op in operations],
+        "operations": [{"operation": op, "content": {"operation": op}, "start_size": "S"} for op in operations],
         "dry_run": False,
         "table_found": True,
         "checks": [_check(op) for op in operations],
@@ -1663,17 +1663,16 @@ def test_run_and_reconciliation_ids_survive_replay():
 START_FAILED = "the table's maintenance workflow could not be started"
 
 
+COMPACTION_CONTENT = {"operation": COMPACTION, "target_file_size_bytes": 1024, "options": {}, "partitions": []}
+EXPIRY_CONTENT = {"operation": EXPIRE, "older_than": "2026-10-23T08:00:00+08:00", "retain_last": 1, "options": {}}
+
+
 def _planned_with_parameters() -> dict[str, Any]:
-    """Return a plan of a compaction and an expiry, each carrying its own filters and procedure arguments."""
+    """Return a plan of a compaction and an expiry, each carrying the job content built for it."""
     plan = _planned(COMPACTION, EXPIRE)
     plan["operations"] = [
-        {
-            "operation": COMPACTION,
-            "filters": [{"spec_id": 0, "where": "region = 'eu'"}],
-            "procedure_args": {},
-            "start_size": "M",
-        },
-        {"operation": EXPIRE, "filters": [], "procedure_args": {"retain_last": 1}},
+        {"operation": COMPACTION, "content": COMPACTION_CONTENT, "start_size": "M"},
+        {"operation": EXPIRE, "content": EXPIRY_CONTENT},
     ]
     return {**plan, "priority": "P1"}
 
@@ -1691,7 +1690,7 @@ async def _commands(h: Harness) -> list[str]:
 
 
 def test_the_plans_runs_are_created_at_once_before_the_child_starts():
-    """One create holds every run of the plan, in plan order with its parameters, before the child is started.
+    """One create holds every run of the plan, in plan order with its job content, before the child is started.
 
     The runs share the table, the child's workflow id, the trigger, the plan's priority and one time, and the
     record links each operation to the run created for it.
@@ -1704,13 +1703,8 @@ def test_the_plans_runs_are_created_at_once_before_the_child_starts():
         assert len(h.runs.created) == 1
         created = h.runs.created[0]
         assert created["runs"] == [
-            {
-                "run_id": run_ids[0],
-                "operation": COMPACTION,
-                "filters": [{"spec_id": 0, "where": "region = 'eu'"}],
-                "procedure_args": {},
-            },
-            {"run_id": run_ids[1], "operation": EXPIRE, "filters": [], "procedure_args": {"retain_last": 1}},
+            {"run_id": run_ids[0], "operation": COMPACTION, "content": COMPACTION_CONTENT},
+            {"run_id": run_ids[1], "operation": EXPIRE, "content": EXPIRY_CONTENT},
         ]
         assert (created["table_uuid"], created["execution_ref"]) == (UUID, CHILD_ID)
         assert (created["trigger"], created["priority"]) == ("scheduled", "P1")

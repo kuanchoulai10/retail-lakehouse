@@ -5,7 +5,6 @@ from __future__ import annotations
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
-    SpecFilter,
     TableId,
     TableMaintenanceRunId,
     TablePriority,
@@ -17,6 +16,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     RunStatus,
     TableMaintenanceRun,
     TriggerType,
+    maintenance_job_content_from_primitives,
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run.delete_maintenance_job.gateway import (
     DeleteMaintenanceJobGateway,
@@ -120,7 +120,6 @@ __all__ = [
     "RunStatus",
     "SendMaintenanceResultGateway",
     "SendMaintenanceResultGatewayInput",
-    "SpecFilter",
     "SubmitMaintenanceJobGateway",
     "SubmitMaintenanceJobGatewayInput",
     "SubmitMaintenanceJobGatewayOutput",
@@ -130,4 +129,5 @@ __all__ = [
     "TableMaintenanceRunsRepo",
     "TablePriority",
     "TriggerType",
+    "maintenance_job_content_from_primitives",
 ]

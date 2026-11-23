@@ -43,7 +43,7 @@ UTILITY_FILES = {
     "attention_policy_names.py",
     "table_maintenance_run_output_fields.py",
     "table_reconciliation_output_fields.py",
-    "maintenance_procedure_args.py",
+    "gateway_job_of.py",
     "require_run_operation.py",
     "compaction_share.py",
     "table_observation_from_gateway.py",

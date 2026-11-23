@@ -18,7 +18,3 @@ class RewriteManifestsOptions(ValueObject):
     def _leave_unset_out(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
         """Write only the options that are set, so an unset one stays left to the procedure."""
         return {key: value for key, value in handler(self).items() if value is not None}
-
-    def procedure_arguments(self) -> dict[str, bool]:
-        """Return the procedure arguments that are set."""
-        return {} if self.use_caching is None else {"use_caching": self.use_caching}

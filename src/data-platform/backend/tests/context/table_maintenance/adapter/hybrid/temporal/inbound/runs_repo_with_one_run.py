@@ -13,6 +13,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_runs_repo import (
     InMemoryTableMaintenanceRunsRepo,
 )
+from tests.context.table_maintenance.fakes.job_content import job_content
 
 STORED_RUN_ID = "mr-00000000000000000000000001"
 
@@ -32,6 +33,7 @@ def runs_repo_with_one_run(
             TriggerType.SCHEDULED,
             MaintenanceOperation(operation),
             datetime(2026, 10, 24, tzinfo=UTC),
+            content=job_content(MaintenanceOperation(operation)),
             execution_ref="wf-r1",
         )
     )

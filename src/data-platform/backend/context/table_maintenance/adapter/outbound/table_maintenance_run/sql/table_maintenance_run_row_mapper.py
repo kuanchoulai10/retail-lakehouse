@@ -12,12 +12,12 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
     NextStep,
     OperationAttempt,
     RunStatus,
-    SpecFilter,
     TableId,
     TableMaintenanceRun,
     TableMaintenanceRunId,
     TablePriority,
     TriggerType,
+    maintenance_job_content_from_primitives,
 )
 
 if TYPE_CHECKING:
@@ -85,8 +85,7 @@ class TableMaintenanceRunRowMapper:
             "status": run.status.value,
             "error": run.error,
             "skip_reason": run.skip_reason,
-            "filters_json": [{"spec_id": f.spec_id, "where": f.where} for f in run.filters],
-            "procedure_args_json": dict(run.procedure_args),
+            "content_json": run.content.to_primitives(),
             "metrics_json": dict(run.metrics),
             "attempts_json": [_encode_attempt(a) for a in run.attempts],
             "created_at": run.created_at,
@@ -105,8 +104,7 @@ class TableMaintenanceRunRowMapper:
             execution_ref=row["execution_ref"],
             priority=TablePriority(row["priority"]),
             status=RunStatus(row["status"]),
-            filters=tuple(SpecFilter(spec_id=f["spec_id"], where=f["where"]) for f in row["filters_json"]),
-            procedure_args=dict(row["procedure_args_json"]),
+            content=maintenance_job_content_from_primitives(row["content_json"]),
             metrics=dict(row["metrics_json"]),
             error=row["error"],
             skip_reason=row["skip_reason"],

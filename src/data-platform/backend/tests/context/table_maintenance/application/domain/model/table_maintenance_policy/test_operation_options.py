@@ -19,50 +19,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 )
 
 
-def test_rewrite_options_render_iceberg_spelling() -> None:
-    """Check set options are rendered in Iceberg's spelling."""
-    options = RewriteDataFilesOptions(min_input_files=2, partial_progress_enabled=True, partial_progress_max_commits=3)
-    assert options.procedure_options() == {
-        "min-input-files": 2,
-        "partial-progress.enabled": True,
-        "partial-progress.max-commits": 3,
-    }
-    assert options.procedure_arguments() == {}
-
-
-def test_rewrite_options_render_every_option() -> None:
-    """Check every option has its Iceberg spelling."""
-    options = RewriteDataFilesOptions(
-        strategy=RewriteDataFilesStrategy.SORT,
-        sort_order="zorder(a, b)",
-        min_input_files=2,
-        partial_progress_enabled=True,
-        partial_progress_max_commits=3,
-        max_concurrent_file_group_rewrites=4,
-        rewrite_all=False,
-        delete_file_threshold=5,
-        remove_dangling_deletes=True,
-        max_file_group_size_bytes=6,
-    )
-    assert options.procedure_arguments() == {"strategy": "sort", "sort_order": "zorder(a, b)"}
-    assert options.procedure_options() == {
-        "min-input-files": 2,
-        "partial-progress.enabled": True,
-        "partial-progress.max-commits": 3,
-        "max-concurrent-file-group-rewrites": 4,
-        "rewrite-all": False,
-        "delete-file-threshold": 5,
-        "remove-dangling-deletes": True,
-        "max-file-group-size-bytes": 6,
-    }
-
-
-def test_unset_rewrite_options_render_nothing() -> None:
-    """Check an unset option is left to the procedure."""
-    assert RewriteDataFilesOptions().procedure_arguments() == {}
-    assert RewriteDataFilesOptions().procedure_options() == {}
-
-
 def test_sort_order_needs_the_sort_strategy() -> None:
     """Check a sort order without the sort strategy is refused."""
     with pytest.raises(InvariantViolation):
@@ -103,26 +59,6 @@ def test_rewrite_integers_are_positive(key: str) -> None:
     """Check integer options must be positive."""
     with pytest.raises(InvariantViolation):
         RewriteDataFilesOptions.from_primitives({"partial_progress_enabled": True, key: 0})
-
-
-def test_manifest_options_render_arguments() -> None:
-    """Check use_caching is the only manifest option."""
-    assert RewriteManifestsOptions(use_caching=False).procedure_arguments() == {"use_caching": False}
-    assert RewriteManifestsOptions().procedure_arguments() == {}
-
-
-def test_expire_options_render_arguments() -> None:
-    """Check the expire options are rendered when set."""
-    options = ExpireSnapshotsOptions(max_concurrent_deletes=4, stream_results=True)
-    assert options.procedure_arguments() == {"max_concurrent_deletes": 4, "stream_results": True}
-    assert ExpireSnapshotsOptions().procedure_arguments() == {}
-
-
-def test_orphan_options_render_arguments() -> None:
-    """Check the orphan options are rendered when set."""
-    options = RemoveOrphanFilesOptions(max_concurrent_deletes=4, prefix_mismatch_mode=PrefixMismatchMode.IGNORE)
-    assert options.procedure_arguments() == {"max_concurrent_deletes": 4, "prefix_mismatch_mode": "IGNORE"}
-    assert RemoveOrphanFilesOptions().procedure_arguments() == {}
 
 
 @pytest.mark.parametrize(
