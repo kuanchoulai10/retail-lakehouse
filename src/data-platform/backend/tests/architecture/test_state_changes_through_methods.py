@@ -1,10 +1,15 @@
-"""Guard test: services and adapters change an aggregate only through its own methods.
+"""Guard test: an aggregate changes only through its own methods, in every layer of every context.
 
-An aggregate keeps its invariants only if every change goes through a method of its own, so the
-code around it (application services and adapters) never assigns or deletes an attribute of an
-object it was handed (``table.status = …``, ``run.attempts += …``, ``run.attempts[0] = …``) and
-never calls another object's private method (``table._assign_together(…)``). Assigning its own
-attributes (``self._repo = repo``) and Starlette's ``app.state`` are allowed.
+An aggregate keeps its invariants only if every change goes through a method of its own, so no
+other code (domain services, other aggregates, application services, ports, adapters) assigns or
+deletes an attribute of an object it holds (``table.status = …``, ``run.attempts += …``,
+``run.attempts[0] = …``), calls another object's private method (``table._assign_together(…)``),
+or writes one reflectively (``setattr(table, …)``, ``object.__setattr__(…)``, ``table.__dict__``,
+``vars(table)``, ``model_copy(update=…)``, ``model_construct(…)``). Assigning its own attributes
+(``self._repo = repo``), calling its own class's private helpers (``Schema._walk``,
+``type(self)._clamp``) and Starlette's ``app.state`` are allowed. An object built in the same
+function is another object too: build it with its values in one call. The collections inside an
+aggregate cannot be edited in place at all (``test_domain_collections_are_immutable.py``).
 """
 
 from __future__ import annotations
@@ -54,9 +59,17 @@ def _is_foreign(target: ast.expr) -> bool:
         node = node.value
     if not isinstance(node, ast.Attribute):
         return False
-    if isinstance(node.value, ast.Attribute) and node.value.attr == "state":
+    if _is_app_state(node.value):
         return False
     return not (isinstance(node.value, ast.Name) and node.value.id in _OWN)
+
+
+def _is_app_state(owner: ast.expr) -> bool:
+    """Tell whether ``owner`` is Starlette's ``app.state`` (``app.state`` or ``<x>.app.state``)."""
+    if not (isinstance(owner, ast.Attribute) and owner.attr == "state"):
+        return False
+    app = owner.value
+    return (isinstance(app, ast.Name) and app.id == "app") or (isinstance(app, ast.Attribute) and app.attr == "app")
 
 
 def foreign_assignments(source: str) -> list[str]:
@@ -80,24 +93,100 @@ def _is_own(receiver: ast.expr) -> bool:
     return isinstance(receiver, ast.Call) and isinstance(receiver.func, ast.Name) and receiver.func.id == "super"
 
 
+def _is_own_class(receiver: ast.expr, classes: tuple[str, ...]) -> bool:
+    """Tell whether ``receiver`` names an enclosing class, or is ``type(self)``."""
+    if isinstance(receiver, ast.Name):
+        return receiver.id in classes
+    return (
+        isinstance(receiver, ast.Call)
+        and isinstance(receiver.func, ast.Name)
+        and receiver.func.id == "type"
+        and len(receiver.args) == 1
+        and isinstance(receiver.args[0], ast.Name)
+        and receiver.args[0].id == "self"
+    )
+
+
+def _calls_with_classes(node: ast.AST, classes: tuple[str, ...] = ()) -> Iterator[tuple[ast.Call, tuple[str, ...]]]:
+    """Yield every call under ``node`` with the names of the classes enclosing it."""
+    if isinstance(node, ast.ClassDef):
+        classes = (*classes, node.name)
+    if isinstance(node, ast.Call):
+        yield node, classes
+    for child in ast.iter_child_nodes(node):
+        yield from _calls_with_classes(child, classes)
+
+
 def foreign_private_calls(source: str) -> list[str]:
-    """Return ``<line>: <call>`` for each call of a private method on something other than ``self``, ``cls`` or ``super()``."""  # noqa: E501
+    """Return ``<line>: <call>`` for each call of a private method on another object.
+
+    ``self``, ``cls``, ``super()``, an enclosing class by name and ``type(self)`` are the code's own.
+    """
     return [
         f"{node.lineno}: {ast.unparse(node.func)}"
-        for node in ast.walk(ast.parse(source))
-        if isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Attribute)
+        for node, classes in _calls_with_classes(ast.parse(source))
+        if isinstance(node.func, ast.Attribute)
         and _is_private(node.func.attr)
         and not _is_own(node.func.value)
+        and not (classes and _is_own_class(node.func.value, classes))
     ]
+
+
+_REFLECTIVE_FUNCTIONS = frozenset({"setattr", "delattr", "vars"})
+_REFLECTIVE_DUNDERS = frozenset({"__setattr__", "__delattr__", "__setitem__", "__delitem__"})
+
+
+def _is_self_or_cls(node: ast.expr) -> bool:
+    return isinstance(node, ast.Name) and node.id in _OWN
+
+
+def _is_reflective_write(node: ast.AST) -> bool:
+    if isinstance(node, ast.Attribute) and node.attr == "__dict__":
+        return not _is_self_or_cls(node.value)
+    return isinstance(node, ast.Call) and _is_reflective_call(node)
+
+
+def _is_reflective_call(node: ast.Call) -> bool:
+    func = node.func
+    if isinstance(func, ast.Name) and func.id in _REFLECTIVE_FUNCTIONS:
+        return bool(node.args) and not _is_self_or_cls(node.args[0])
+    if not isinstance(func, ast.Attribute):
+        return False
+    if func.attr in _REFLECTIVE_DUNDERS:
+        return not _is_own(func.value)
+    if func.attr == "model_copy":
+        return any(keyword.arg == "update" for keyword in node.keywords)
+    return func.attr == "model_construct"
+
+
+def reflective_writes(source: str) -> list[str]:
+    """Return ``<line>: <code>`` for each reflective write to another object.
+
+    A write through ``setattr`` / ``delattr`` / ``vars`` on anything but ``self`` or ``cls``, a call of
+    ``__setattr__``, ``__delattr__``, ``__setitem__`` or ``__delitem__`` on anything but ``self``,
+    ``cls`` or ``super()`` (``object.__setattr__(…)`` included), ``.__dict__`` of another object,
+    ``model_copy(update=…)`` and ``model_construct(…)``, both of which skip validation.
+    """
+    return [
+        f"{node.lineno}: {ast.unparse(node)}"
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, (ast.Attribute, ast.Call)) and _is_reflective_write(node)
+    ]
+
+
+_LAYERS = (
+    ("application", "domain", "model"),
+    ("application", "domain", "service"),
+    ("application", "port"),
+    ("application", "service"),
+    ("adapter",),
+)
 
 
 def _scanned_files() -> list[Path]:
     files: list[Path] = []
     for name in context_names():
-        root = context_dir(name)
-        for part in (root / "application" / "service", root / "adapter"):
-            files += [p for p in part.rglob("*.py") if "__pycache__" not in p.parts]
+        files += [p for p in context_dir(name).rglob("*.py") if "__pycache__" not in p.parts]
     return sorted(files)
 
 
@@ -106,25 +195,32 @@ _IDS = [str(p.relative_to(BACKEND)) for p in _FILES]
 
 
 @pytest.mark.parametrize("path", _FILES, ids=_IDS)
-def test_services_and_adapters_assign_only_their_own_attributes(path: Path) -> None:
-    """A service or adapter assigns or deletes only its own attributes, never those of an object it holds."""
+def test_context_code_assigns_only_its_own_attributes(path: Path) -> None:
+    """Context code assigns or deletes only its own attributes, never those of an object it holds."""
     found = foreign_assignments(path.read_text())
     assert not found, f"{path.relative_to(BACKEND)} changes another object's state: {found}"
 
 
 @pytest.mark.parametrize("path", _FILES, ids=_IDS)
-def test_services_and_adapters_call_no_private_method_of_another_object(path: Path) -> None:
-    """A service or adapter calls private methods only on itself, never on an object it holds."""
+def test_context_code_calls_no_private_method_of_another_object(path: Path) -> None:
+    """Context code calls private methods only on itself or its own class, never on an object it holds."""
     found = foreign_private_calls(path.read_text())
     assert not found, f"{path.relative_to(BACKEND)} calls another object's private method: {found}"
 
 
-def test_the_scan_covers_services_and_adapters_of_every_context() -> None:
-    """Every context's services and adapters are scanned."""
+@pytest.mark.parametrize("path", _FILES, ids=_IDS)
+def test_context_code_makes_no_reflective_write(path: Path) -> None:
+    """Context code never changes another object through ``setattr``, ``__dict__`` or an unvalidated copy."""
+    found = reflective_writes(path.read_text())
+    assert not found, f"{path.relative_to(BACKEND)} writes another object's state reflectively: {found}"
+
+
+def test_the_scan_covers_every_layer_of_every_context() -> None:
+    """Every layer of every context is scanned: domain model and services, ports, services and adapters."""
     for name in context_names():
         root = context_dir(name)
-        assert any(p.is_relative_to(root / "application" / "service") for p in _FILES), name
-        assert any(p.is_relative_to(root / "adapter") for p in _FILES), name
+        for layer in _LAYERS:
+            assert any(p.is_relative_to(root.joinpath(*layer)) for p in _FILES), (name, layer)
 
 
 @pytest.mark.parametrize(
@@ -154,6 +250,25 @@ def test_the_assignment_check_allows_own_and_local_state(source: str) -> None:
     assert foreign_assignments(source) == []
 
 
+@pytest.mark.parametrize(
+    ("source", "flagged"),
+    [
+        ("app.state.x = 1", False),
+        ("request.app.state.x = 1", False),
+        ("table.state.status = x", True),
+        ("run.state.flag = 1", True),
+    ],
+)
+def test_the_assignment_check_allows_only_starlettes_app_state(source: str, *, flagged: bool) -> None:
+    """Only Starlette's ``app.state`` may be assigned; another object's ``state`` attribute may not."""
+    assert bool(foreign_assignments(source)) is flagged
+
+
+def test_an_attribute_write_on_a_locally_built_object_is_flagged() -> None:
+    """An object built in the function is still another object: build it with its values in one call."""
+    assert foreign_assignments("def f():\n    b = Builder()\n    b.x = 1\n") == ["3: b.x"]
+
+
 def test_the_assignment_check_names_the_line_and_the_target() -> None:
     """A finding names its line and the target as written."""
     assert foreign_assignments("x = 1\nrun.attempts[0] = a\n") == ["2: run.attempts[0]"]
@@ -169,3 +284,78 @@ def test_the_call_check_flags_another_objects_private_methods(source: str) -> No
 def test_the_call_check_allows_own_private_and_public_calls(source: str) -> None:
     """Own private calls, dunders, public methods and plain functions are allowed."""
     assert foreign_private_calls(source) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "class Schema:\n    def f(self):\n        return Schema._walk(1)\n",
+        "class Run:\n    def f(self):\n        return type(self)._clamp(1)\n",
+        "class Outer:\n    class Inner:\n        def f(self):\n            return Outer._walk(1)\n",
+    ],
+)
+def test_a_class_may_call_its_own_private_helpers(source: str) -> None:
+    """A class calls its own private static helpers by its own name or through ``type(self)``."""
+    assert foreign_private_calls(source) == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "class Other:\n    def f(self):\n        return Schema._walk(1)\n",
+        "Schema._walk(1)\n",
+        "def f(t):\n    return type(t)._clamp(1)\n",
+        "class Run:\n    @classmethod\n    def f(cls):\n        return type(cls)._clamp(1)\n",
+        "class Schema:\n    pass\n\n\ndef f():\n    return Schema._walk(1)\n",
+    ],
+)
+def test_another_class_or_module_code_calling_a_private_helper_is_flagged(source: str) -> None:
+    """A private helper of a class called from another class or from module code is flagged."""
+    assert foreign_private_calls(source)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        'setattr(table, "status", x)',
+        'delattr(table, "status")',
+        'object.__setattr__(table, "status", x)',
+        'object.__delattr__(table, "status")',
+        'object.__setattr__(self, "status", x)',
+        'table.__setattr__("status", x)',
+        'dict.__setitem__(table.properties, "k", "v")',
+        'table.properties.__delitem__("k")',
+        'table.__dict__["status"] = x',
+        "table.__dict__.update(status=x)",
+        'vars(table)["status"] = x',
+        'table.model_copy(update={"status": x})',
+        "Table.model_construct(status=x)",
+    ],
+)
+def test_the_reflective_check_flags_bypasses(source: str) -> None:
+    """Writing another object's state through ``setattr``, ``__dict__``, a dunder or an unvalidated copy is flagged."""
+    assert reflective_writes(source)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        'setattr(self, "x", 1)',
+        'setattr(cls, "x", 1)',
+        "self.__dict__.update(x=1)",
+        "super().__setattr__(name, value)",
+        "table.model_copy()",
+        "table.model_copy(deep=True)",
+        'getattr(table, "status")',
+        "vars()",
+        "vars(self)",
+    ],
+)
+def test_the_reflective_check_allows_own_and_plain_calls(source: str) -> None:
+    """Own reflective writes, ``super()`` dunders, plain copies and reads are allowed."""
+    assert reflective_writes(source) == []
+
+
+def test_the_reflective_check_names_the_line_and_the_call() -> None:
+    """A finding names its line and the call as written."""
+    assert reflective_writes('x = 1\nsetattr(t, "a", 1)\n') == ["2: setattr(t, 'a', 1)"]
