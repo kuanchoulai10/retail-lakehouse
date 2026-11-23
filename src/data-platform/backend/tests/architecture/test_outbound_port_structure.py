@@ -51,17 +51,26 @@ GATEWAY_EXTRA_FILES = {
     "catalog_access_denied_error.py",
     "job_container_exit.py",
     "metric_history_unavailable_error.py",
+    "job_partition_field.py",
+    "job_partition_spec.py",
+    "rewrite_data_files_job.py",
+    "rewrite_manifests_job.py",
+    "expire_snapshots_job.py",
+    "remove_orphan_files_job.py",
 }
 GATEWAY_ALLOWED_FILES = GATEWAY_STANDARD_FILES | GATEWAY_EXTRA_FILES
 
-# Imports allowed in input.py / output.py (primitive-only constraint).
+# Imports allowed in input.py / output.py and the extra files (primitive-only constraint), besides
+# the extra files of their own gateway directory, which hold to the same rule.
 # These files must NOT import from context.*.application.domain or base (except base.value_object).
 ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES = (
     "from __future__",
     "from dataclasses",
+    "from datetime",
     "from typing",
     "from base.value_object",
     "import dataclasses",
+    "import datetime",
     "import typing",
 )
 
@@ -124,6 +133,29 @@ def _parse_imports(file_path: Path) -> list[str]:
             if node.module:
                 imports.append(f"from {node.module}")
     return imports
+
+
+def _own_extra_modules(context: str, group: str, gw_dir: Path) -> tuple[str, ...]:
+    """Return the module paths of the extra files in one gateway directory."""
+    return tuple(
+        f"{_outbound_port_module(context)}.{group}.{gw_dir.name}.{f.stem}"
+        for f in sorted(gw_dir.iterdir())
+        if f.name in GATEWAY_EXTRA_FILES
+    )
+
+
+def _non_primitive_imports(file_path: Path, own_extra_modules: tuple[str, ...]) -> list[str]:
+    """Return the imports of a port data file that are neither primitive-safe nor its own gateway's extra files.
+
+    An extra file is primitive-only itself, so a data file made of its own gateway's extra files stays
+    primitive. An own extra file must match exactly; a primitive-safe module matches by prefix.
+    """
+    own = {f"from {module}" for module in own_extra_modules}
+    return [
+        imp
+        for imp in _parse_imports(file_path)
+        if imp not in own and not any(imp.startswith(prefix) for prefix in ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES)
+    ]
 
 
 # --- Rule 1: Only aggregate group directories exist ---
@@ -223,15 +255,12 @@ def test_output_class_naming(gw_entry: tuple[str, str, Path]):
 
 @pytest.mark.parametrize("gw_entry", _gateway_dirs(), ids=_gateway_id)
 def test_input_primitive_only(gw_entry: tuple[str, str, Path]):
-    """Verify that input.py does not import domain or base types (except ValueObject)."""
-    _context, _group, gw_dir = gw_entry
+    """Verify that input.py imports only primitives and the extra files of its own gateway."""
+    context, group, gw_dir = gw_entry
     input_file = gw_dir / "input.py"
     if not input_file.exists():
         pytest.skip("No input.py")
-    imports = _parse_imports(input_file)
-    violations = [
-        imp for imp in imports if not any(imp.startswith(prefix) for prefix in ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES)
-    ]
+    violations = _non_primitive_imports(input_file, _own_extra_modules(context, group, gw_dir))
     assert violations == [], f"{gw_dir.name}/input.py has non-primitive imports: {violations}"
 
 
@@ -245,14 +274,7 @@ def test_output_primitive_only(gw_entry: tuple[str, str, Path]):
     output_file = gw_dir / "output.py"
     if not output_file.exists():
         pytest.skip("No output.py")
-    imports = _parse_imports(output_file)
-    own_extra_files = tuple(
-        f"from {_outbound_port_module(context)}.{group}.{gw_dir.name}.{f.stem}"
-        for f in gw_dir.iterdir()
-        if f.name in GATEWAY_EXTRA_FILES
-    )
-    allowed = ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES + own_extra_files
-    violations = [imp for imp in imports if not any(imp == prefix or imp.startswith(prefix) for prefix in allowed)]
+    violations = _non_primitive_imports(output_file, _own_extra_modules(context, group, gw_dir))
     assert violations == [], f"{gw_dir.name}/output.py has non-primitive imports: {violations}"
 
 
@@ -313,11 +335,36 @@ def test_extra_file_class_naming_and_export(extra: tuple[str, str, Path]):
 
 @pytest.mark.parametrize("extra", _extra_files(), ids=_extra_id)
 def test_extra_file_primitive_only(extra: tuple[str, str, Path]):
-    """Verify an extra file imports only primitive-safe modules."""
-    _context, _group, f = extra
-    violations = [
-        imp
-        for imp in _parse_imports(f)
-        if not any(imp.startswith(prefix) for prefix in ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES)
-    ]
+    """Verify an extra file imports only primitive-safe modules and the other extra files of its gateway."""
+    context, group, f = extra
+    violations = _non_primitive_imports(f, _own_extra_modules(context, group, f.parent))
     assert violations == [], f"{f.name} has non-primitive imports: {violations}"
+
+
+# --- Rule 9: a port data file may hold its own gateway's extra files ---
+
+
+def test_a_data_file_may_import_time_and_its_own_gateway_extra_files(tmp_path: Path):
+    """A data file made of primitives, times and its own gateway's extra files stays primitive."""
+    data_file = tmp_path / "input.py"
+    data_file.write_text(
+        "from __future__ import annotations\n"
+        "from datetime import datetime\n"
+        "from ctx.port.outbound.run.submit_job.job_partition_spec import JobPartitionSpec\n"
+    )
+    assert _non_primitive_imports(data_file, ("ctx.port.outbound.run.submit_job.job_partition_spec",)) == []
+
+
+def test_a_data_file_may_not_import_the_domain_or_another_gateway(tmp_path: Path):
+    """The domain, another gateway's files and a module merely named like an extra file stay refused."""
+    data_file = tmp_path / "job_partition_spec.py"
+    data_file.write_text(
+        "from ctx.application.domain.model.shared import SpecPartitions\n"
+        "from ctx.port.outbound.run.read_job.job_partition_spec import JobPartitionSpec\n"
+        "from ctx.port.outbound.run.submit_job.job_partition_spec_v2 import Other\n"
+    )
+    assert _non_primitive_imports(data_file, ("ctx.port.outbound.run.submit_job.job_partition_spec",)) == [
+        "from ctx.application.domain.model.shared",
+        "from ctx.port.outbound.run.read_job.job_partition_spec",
+        "from ctx.port.outbound.run.submit_job.job_partition_spec_v2",
+    ]
