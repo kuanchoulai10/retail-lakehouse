@@ -75,6 +75,13 @@ class EntityId(InvariantGuardedModel, RootModel[str]):
         """Return the raw identifier string."""
         return self.root
 
+    @property
+    def suffix(self) -> str:
+        """Return the 26 characters after ``<PREFIX>-``; raise ``TypeError`` when the kind declares no ``PREFIX``."""
+        if self.PREFIX is None:
+            raise TypeError(f"{type(self).__name__} has no PREFIX, so its ids have no suffix")
+        return self.root.removeprefix(f"{self.PREFIX}-")
+
     def __str__(self) -> str:
         """Return the raw identifier string."""
         return self.root

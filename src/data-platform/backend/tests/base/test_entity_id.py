@@ -196,3 +196,14 @@ def test_a_kind_defined_without_a_prefix_accepts_any_value() -> None:
         pass
 
     assert _FreeId("anything at all").value == "anything at all"
+
+
+def test_suffix_is_the_part_after_the_prefix() -> None:
+    """A prefixed id's ``suffix`` is the 26 characters after ``<PREFIX>-``."""
+    assert _RunId(RUN_ID).suffix == "01h2xcejqtf2nbrexx3vqjhp41"
+
+
+def test_suffix_needs_a_prefix() -> None:
+    """An id kind without ``PREFIX`` has no suffix and raises ``TypeError`` naming the class."""
+    with pytest.raises(TypeError, match="_Id has no PREFIX"):
+        _ = _Id("mr-01h2xcejqtf2nbrexx3vqjhp41").suffix
