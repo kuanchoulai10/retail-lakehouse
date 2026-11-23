@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from base import Entity, EntityId, InvariantViolation
+from base import AggregateRoot, Entity, EntityId, InvariantViolation
 
 
 class _UserId(EntityId):
@@ -81,3 +81,50 @@ def test_third_level_subclass_is_rejected() -> None:
 
         class _Deeper(_User):
             pass
+
+
+def test_the_id_cannot_be_reassigned() -> None:
+    """An entity keeps the id it was created with; reassigning it raises and changes nothing."""
+    user = _User(id=_UserId("1"), name="a")
+    with pytest.raises(AttributeError, match="^_User is immutable$"):
+        user.id = _UserId("2")
+    assert user.id == _UserId("1")
+    user.name = "b"
+    assert user.name == "b"
+
+
+def test_the_id_cannot_be_reassigned_even_to_the_same_value() -> None:
+    """The id is never assigned after creation, whatever the value."""
+    user = _User(id=_UserId("1"), name="a")
+    with pytest.raises(AttributeError, match="^_User is immutable$"):
+        user.id = _UserId("1")
+
+
+def test_construction_and_validation_still_set_the_id() -> None:
+    """Building an entity, by keyword or from a dict, sets its id."""
+    assert _User(id=_UserId("1"), name="a").id == _UserId("1")
+    assert _User.model_validate({"id": "1", "name": "a"}).id == _UserId("1")
+    assert _User.model_validate_json('{"id": "1", "name": "a"}').id == _UserId("1")
+
+
+def test_hashing_follows_the_id() -> None:
+    """An entity hashes as its id does, so entities of different ids spread over a set."""
+    user = _User(id=_UserId("1"), name="a")
+    assert hash(user) == hash(_UserId("1"))
+    assert len({_User(id=_UserId(str(n)), name="a") for n in range(3)}) == 3
+
+
+def test_an_entity_or_aggregate_may_name_its_base_without_a_type_parameter() -> None:
+    """A subclass of ``Entity`` or ``AggregateRoot`` itself, unparametrized, is one level deep and allowed.
+
+    The classes are defined here, not at module level, so the check runs while the test runs.
+    """
+
+    class _Plain(Entity):
+        name: str
+
+    class _PlainRoot(AggregateRoot):
+        name: str
+
+    assert _Plain(id=_UserId("1"), name="a").name == "a"
+    assert _PlainRoot(id=_UserId("1"), name="a").name == "a"

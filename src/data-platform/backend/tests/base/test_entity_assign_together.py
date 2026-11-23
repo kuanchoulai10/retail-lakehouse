@@ -92,3 +92,12 @@ def test_assign_together_keeps_pending_events_and_identity() -> None:
     assert r.collect_events() == [event]
     assert hash(r) == before
     assert r.id == _RangeId("1")
+
+
+@pytest.mark.parametrize("new_id", ["2", "1"])
+def test_assign_together_refuses_the_id(new_id: str) -> None:
+    """The id is not among the fields that change together, even to its own value; nothing changes."""
+    r = _range()
+    with pytest.raises(AttributeError, match="^_Range is immutable$"):
+        r._assign_together(id=_RangeId(new_id), low=10, high=20)
+    assert (r.id, r.low, r.high) == (_RangeId("1"), 1, 2)

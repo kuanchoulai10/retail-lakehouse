@@ -184,3 +184,15 @@ def test_an_invalid_prefix_is_refused_when_the_class_is_defined() -> None:
 
         class _BadId(EntityId):
             PREFIX: ClassVar[str | None] = "MR"
+
+
+def test_a_kind_defined_without_a_prefix_accepts_any_value() -> None:
+    """A kind without ``PREFIX`` checks no shape, even when defined after the others.
+
+    The class is defined here, not at module level, so its definition runs while the test runs.
+    """
+
+    class _FreeId(EntityId):
+        pass
+
+    assert _FreeId("anything at all").value == "anything at all"

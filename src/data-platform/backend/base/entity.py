@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 
 from base._inheritance_guard import enforce_max_depth
 from base._invariant_guarded_model import InvariantGuardedModel
@@ -17,8 +17,9 @@ class Entity[ID: EntityId](InvariantGuardedModel):
 
     Two Entities are equal when they are of one class and share the same
     ``id``, even if every other field differs; hashing follows the id.
-    State may change, and every assignment is validated, strictly; a
-    refused one raises ``InvariantViolation``.
+    The id is set when the entity is built and never changes: assigning it
+    raises ``AttributeError``. Other state may change, and every assignment
+    is validated, strictly; a refused one raises ``InvariantViolation``.
 
     Usage::
 
@@ -39,7 +40,7 @@ class Entity[ID: EntityId](InvariantGuardedModel):
 
     _depth_base: ClassVar[bool] = True
 
-    id: ID  # noqa: A003
+    id: ID = Field(frozen=True)  # noqa: A003
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
@@ -92,8 +93,11 @@ class Entity[ID: EntityId](InvariantGuardedModel):
         validator runs, untouched fields keep their values) and only then
         takes it over; if validation fails, nothing changes. Private
         attributes such as pending events are kept. Afterwards every
-        field counts as set, because the rebuild passes all fields.
+        field counts as set, because the rebuild passes all fields. The id
+        is never among the changes, whatever its value.
         """
+        if "id" in changes:
+            raise AttributeError(f"{type(self).__name__} is immutable{self._immutable_hint}")
         candidate = rebuild(self, changes)
         self.__dict__.update(candidate.__dict__)
         self.__pydantic_fields_set__ |= candidate.__pydantic_fields_set__
