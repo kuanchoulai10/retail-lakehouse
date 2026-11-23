@@ -5,7 +5,8 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
-from sqlalchemy import Table, create_engine, inspect, text
+import pytest
+from sqlalchemy import Table, create_engine, inspect
 
 from context.table_maintenance.adapter.outbound.shared.sql import (
     AGGREGATE_SQL_PACKAGES,
@@ -61,16 +62,6 @@ def test_create_schema_creates_the_tables_of_the_eight_aggregates():
     }
 
 
-def test_create_schema_adds_columns_an_older_release_did_not_create(tmp_path: Path) -> None:
-    """A table stored by an older release gets the columns added since, when the schema is created again."""
-    engine = create_engine(f"sqlite:///{tmp_path / 'db.sqlite'}")
-    create_schema(engine)
-    with engine.begin() as connection:
-        connection.execute(text("ALTER TABLE table_maintenance_runs DROP COLUMN priority"))
-    create_schema(engine)
-    assert "priority" in {c["name"] for c in inspect(engine).get_columns("table_maintenance_runs")}
-
-
 def test_create_schema_creates_the_table_metrics_table(tmp_path: Path) -> None:
     """The newest metrics of each table are kept in the table_metrics table."""
     engine = create_engine(f"sqlite:///{tmp_path / 'db.sqlite'}")
@@ -78,17 +69,18 @@ def test_create_schema_creates_the_table_metrics_table(tmp_path: Path) -> None:
     assert "table_metrics" in inspect(engine).get_table_names()
 
 
-def test_create_schema_leaves_the_legacy_discovery_rule_tables_in_place(tmp_path: Path) -> None:
-    """The discovery rules tables an older release created are never dropped; the discovery policy tables join them."""
-    engine = create_engine(f"sqlite:///{tmp_path / 'db.sqlite'}")
-    with engine.begin() as connection:
-        connection.execute(text("CREATE TABLE table_discovery_rules (id VARCHAR PRIMARY KEY)"))
-        connection.execute(text("CREATE TABLE table_discovery_rule_items (id VARCHAR PRIMARY KEY)"))
-    create_schema(engine)
-    assert {
-        "table_discovery_rules",
-        "table_discovery_rule_items",
-        "table_discovery_policies",
-        "table_discovery_policy_versions",
-        "table_discovery_policy_attachments",
-    } <= set(inspect(engine).get_table_names())
+@pytest.mark.parametrize(
+    ("table", "column"),
+    [
+        ("tables", "matched_policy_id"),
+        ("tables", "matched_policy_version"),
+        ("tables", "priority"),
+        ("tables", "over_target_partitions_json"),
+        ("table_maintenance_runs", "priority"),
+    ],
+)
+def test_tables_columns_current_writers_always_fill_are_not_null(table: str, column: str) -> None:
+    """A column every current writer fills is NOT NULL, so a row without it is refused when written, not read."""
+    for package in AGGREGATE_SQL_PACKAGES:
+        importlib.import_module(package)
+    assert metadata.tables[table].columns[column].nullable is False

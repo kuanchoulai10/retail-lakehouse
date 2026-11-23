@@ -6,9 +6,8 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import inspect
 
-from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo, tables_table
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
@@ -29,7 +28,6 @@ from context.table_maintenance.application.domain.model.table import (
     TableStatus,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
-    DEFAULT_DISCOVERY_POLICY_ID,
     DiscoveryDecision,
     DiscoveryMatch,
     DiscoveryOutcome,
@@ -48,8 +46,6 @@ from tests.context.table_maintenance.fakes.recording_send_table_change_gateway i
 )
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from sqlalchemy import Engine
 
     from context.table_maintenance.application.port.outbound.table import TablesRepo
@@ -145,29 +141,6 @@ def test_the_deciding_policy_and_version_are_stored_in_their_columns(repo: Table
         3,
         RULE_1,
     )
-
-
-def test_a_table_stored_before_matches_reads_as_decided_by_the_default(tmp_path: Path):
-    """A row stored before the policy columns gains them empty and reads as decided by the default, status kept."""
-    engine = create_engine(f"sqlite:///{tmp_path / 'tables.db'}")
-    create_schema(engine)
-    with engine.begin() as connection:
-        connection.execute(text("ALTER TABLE tables DROP COLUMN matched_policy_id"))
-        connection.execute(text("ALTER TABLE tables DROP COLUMN matched_policy_version"))
-        connection.execute(
-            text(
-                "INSERT INTO tables (uuid, catalog, namespace, table_name, status, matched_rule_id,"
-                " registered_at, updated_at, operation_states_json)"
-                " VALUES ('u-old', 'iceberg', 'sales', 'orders', 'managed', :rule,"
-                " '2026-10-24 12:00:00.000000', '2026-10-24 12:00:00.000000', '{}')"
-            ),
-            {"rule": RULE_1},
-        )
-    create_schema(engine)
-    loaded = TablesSqlRepo(engine).get(TableId("u-old"))
-    assert loaded is not None
-    assert loaded.status is TableStatus.MANAGED
-    assert loaded.discovered_by == DiscoveryMatch(policy_id=DEFAULT_DISCOVERY_POLICY_ID, policy_version=1, rule_id=None)
 
 
 def test_tables_have_no_selection_settings_or_preset_columns(engine: Engine):
@@ -309,25 +282,6 @@ def test_operation_state_round_trips_size_and_attention(repo: TablesSqlRepo):
     assert loaded.operation_states == table.operation_states
 
 
-def test_operation_state_without_new_keys_decodes_with_defaults(repo: TablesSqlRepo, engine: Engine):
-    """A row written before sizes and attention existed decodes with no size and no mark."""
-    repo.create(_table())
-    with engine.begin() as conn:
-        conn.execute(
-            tables_table.update().values(
-                operation_states_json={
-                    "rewrite_data_files": {"last_attempt_at": NOW.isoformat(), "consecutive_failures": 1}
-                }
-            )
-        )
-    loaded = repo.get(TableId("u1"))
-    assert loaded is not None
-    state = loaded.operation_state(MaintenanceOperation.REWRITE_DATA_FILES)
-    assert state == OperationState(last_attempt_at=NOW, consecutive_failures=1)
-    assert state.start_size() is ComputeSize.S
-    assert state.low_use_successes == 0
-
-
 def test_attention_mark_is_stored_with_the_policy_id(repo: TablesSqlRepo, engine: Engine):
     """A needs-attention mark is stored as ``{"policy": {"id", "version", "target", "name"}}``, by the policy id."""
     table = _table()
@@ -416,31 +370,15 @@ def test_an_attention_mark_without_its_start_time_is_refused(repo: TablesSqlRepo
         repo.get(TableId("u1"))
 
 
-@pytest.mark.parametrize(
-    "old_policy",
-    [
-        {"name": "nightly", "version": 3, "target": None},
-        {"id": NIGHTLY.value, "version": 3, "target": None},
-    ],
-    ids=["named-by-name", "without-name"],
-)
-def test_an_attention_mark_of_an_older_shape_is_refused_naming_the_expected_one(
-    repo: TablesSqlRepo, engine: Engine, old_policy: dict
-):
-    """A mark stored before policies had ids and kept names is refused with the shape it needs, not a KeyError."""
+def test_an_over_target_partition_without_its_start_time_is_refused(repo: TablesSqlRepo, engine: Engine):
+    """A stored over-target partition with no start time is refused, naming the missing start time."""
     repo.create(_table())
-    mark = {"since": NOW.isoformat(), "reason": "r", "policy": old_policy}
     with engine.begin() as conn:
         conn.execute(
-            tables_table.update().values(
-                operation_states_json={
-                    "rewrite_data_files": {"last_attempt_at": None, "consecutive_failures": 0, "attention": mark}
-                }
-            )
+            tables_table.update().values(over_target_partitions_json=[{"spec_id": 0, "values": ["a"], "since": None}])
         )
-    with pytest.raises(ValueError, match=r'"id", "version", "target", "name"') as refused:
+    with pytest.raises(ValueError, match="^an over-target partition needs its start time$"):
         repo.get(TableId("u1"))
-    assert not isinstance(refused.value, KeyError)
 
 
 def test_last_commit_and_last_discovery_round_trip(repo: TablesSqlRepo):
@@ -457,27 +395,6 @@ def test_last_commit_and_last_discovery_round_trip(repo: TablesSqlRepo):
     assert loaded.last_committed_at.tzinfo is not None
 
 
-def test_a_table_stored_before_the_two_times_reads_them_as_unknown(tmp_path: Path):
-    """A row stored by an older release gains the two columns, empty, and reads as unknown."""
-    engine = create_engine(f"sqlite:///{tmp_path / 'tables.db'}")
-    create_schema(engine)
-    with engine.begin() as connection:
-        connection.execute(text("ALTER TABLE tables DROP COLUMN last_committed_at"))
-        connection.execute(text("ALTER TABLE tables DROP COLUMN last_discovered_at"))
-        connection.execute(
-            text(
-                "INSERT INTO tables (uuid, catalog, namespace, table_name, status, matched_rule_id,"
-                " registered_at, updated_at, operation_states_json)"
-                " VALUES ('u-old', 'iceberg', 'sales', 'orders', 'managed', NULL,"
-                " '2026-10-24 12:00:00.000000', '2026-10-24 12:00:00.000000', '{}')"
-            )
-        )
-    create_schema(engine)
-    loaded = TablesSqlRepo(engine).get(TableId("u-old"))
-    assert loaded is not None
-    assert (loaded.last_committed_at, loaded.last_discovered_at) == (None, None)
-
-
 def test_priority_round_trips(repo: TablesSqlRepo):
     """A table's priority is stored and read back."""
     table = _table()
@@ -486,16 +403,6 @@ def test_priority_round_trips(repo: TablesSqlRepo):
     loaded = repo.get(table.id)
     assert loaded is not None
     assert loaded.priority is TablePriority.P1
-
-
-def test_a_row_without_a_priority_reads_as_p3(repo: TablesSqlRepo, engine: Engine):
-    """A row stored before priorities existed (priority NULL) reads as the default, P3."""
-    repo.create(_table())
-    with engine.begin() as connection:
-        connection.execute(text("UPDATE tables SET priority = NULL"))
-    loaded = repo.get(TableId("u1"))
-    assert loaded is not None
-    assert loaded.priority is TablePriority.P3
 
 
 @pytest.fixture(params=["sql", "memory"])
@@ -695,15 +602,5 @@ def test_over_target_partitions_of_a_dropped_or_unknown_table_are_not_written(ei
     assert either_repo.record_over_target_partitions(TableId("u1"), entries) is False
     assert either_repo.record_over_target_partitions(TableId("nope"), entries) is False
     loaded = either_repo.get(TableId("u1"))
-    assert loaded is not None
-    assert loaded.over_target_partitions == ()
-
-
-def test_a_null_over_target_column_reads_as_empty(repo: TablesSqlRepo, engine: Engine):
-    """A row stored before the column existed (NULL) reads as holding no over-target partitions."""
-    repo.create(_table())
-    with engine.begin() as connection:
-        connection.execute(text("UPDATE tables SET over_target_partitions_json = NULL"))
-    loaded = repo.get(TableId("u1"))
     assert loaded is not None
     assert loaded.over_target_partitions == ()

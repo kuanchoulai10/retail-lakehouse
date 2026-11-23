@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect
 
 from bootstrap.container import (
     build_engine,
@@ -89,22 +89,20 @@ def test_migrate_seeds_the_default_discovery_policy():
     assert policies.get_version(DEFAULT_DISCOVERY_POLICY_ID, 1) is not None
 
 
-def test_migrate_adds_the_discovery_policy_tables_to_an_older_database():
-    """A database migrated before discovery policies existed gets their tables and the default on the next migrate."""
+def test_migrate_again_keeps_the_schema_and_the_defaults():
+    """A second migrate of a migrated database changes nothing: every table and both defaults stay as they were."""
     engine = build_engine(sqlite_settings())
     run_migrations(engine)
-    with engine.begin() as connection:
-        for table in (
-            "table_discovery_policy_attachments",
-            "table_discovery_policy_versions",
-            "table_discovery_policies",
-        ):
-            connection.execute(text(f"DROP TABLE {table}"))
+    tables = set(inspect(engine).get_table_names())
 
     run_migrations(engine)
 
-    assert build_repositories(engine).table_discovery_policies.get(DEFAULT_DISCOVERY_POLICY_ID) is not None
-    assert "table_discovery_policy_attachments" in inspect(engine).get_table_names()
+    assert set(inspect(engine).get_table_names()) == tables
+    repositories = build_repositories(engine)
+    assert [p.id for p in repositories.table_discovery_policies.list_all()] == [DEFAULT_DISCOVERY_POLICY_ID]
+    default = repositories.table_discovery_policies.get(DEFAULT_DISCOVERY_POLICY_ID)
+    assert default is not None
+    assert default.version == 1
 
 
 def test_migrate_logs_what_happened_to_both_defaults(caplog: pytest.LogCaptureFixture):

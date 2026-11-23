@@ -33,8 +33,6 @@ if TYPE_CHECKING:
 
     from sqlalchemy import RowMapping
 
-_ATTENTION_POLICY_KEYS = frozenset({"id", "version", "target", "name"})
-
 
 def _encode_attention(mark: AttentionMark | None) -> dict[str, Any] | None:
     if mark is None:
@@ -59,13 +57,6 @@ def _decode_attention(data: dict[str, Any] | None) -> AttentionMark | None:
         msg = "an attention mark needs its start time"
         raise ValueError(msg)
     policy = data["policy"]
-    if not isinstance(policy, dict) or not _ATTENTION_POLICY_KEYS <= policy.keys():
-        found = sorted(policy) if isinstance(policy, dict) else type(policy).__name__
-        msg = (
-            'an attention mark\'s policy must be {"id", "version", "target", "name"} (an mp- id and the '
-            f"policy's name when the mark was set); found {found}, a mark from before policies had ids"
-        )
-        raise ValueError(msg)
     return AttentionMark(
         since=since,
         reason=data["reason"],
@@ -98,25 +89,22 @@ def _encode_state(state: OperationState) -> dict[str, Any]:
 
 
 def _decode_state(data: dict[str, Any]) -> OperationState:
-    size = data.get("last_successful_size")
+    size = data["last_successful_size"]
     return OperationState(
         last_attempt_at=IsoDatetimeCodec.decode(data["last_attempt_at"]),
         consecutive_failures=data["consecutive_failures"],
         last_successful_size=None if size is None else ComputeSize(size),
-        attention=_decode_attention(data.get("attention")),
-        low_use_successes=data.get("low_use_successes", 0),
-        last_recorded=_decode_recorded(data.get("last_recorded")),
+        attention=_decode_attention(data["attention"]),
+        low_use_successes=data["low_use_successes"],
+        last_recorded=_decode_recorded(data["last_recorded"]),
     )
 
 
 def _decode_discovered_by(row: RowMapping) -> DiscoveryMatch:
-    """Return the match a row stored, or the platform default's for a row stored before matches were."""
-    policy_id = row["matched_policy_id"]
-    if policy_id is None:
-        return DiscoveryMatch.platform_default()
+    """Return the match a row stored: the deciding policy's id and version, and its rule (none for no match)."""
     rule_id = row["matched_rule_id"]
     return DiscoveryMatch(
-        policy_id=TableDiscoveryPolicyId(policy_id),
+        policy_id=TableDiscoveryPolicyId(row["matched_policy_id"]),
         policy_version=row["matched_policy_version"],
         rule_id=None if rule_id is None else TableDiscoveryRuleId(rule_id),
     )
@@ -129,9 +117,7 @@ def encode_over_target_partitions(partitions: Sequence[OverTargetPartition]) -> 
     ]
 
 
-def _decode_over_target_partitions(data: list[dict[str, Any]] | None) -> tuple[OverTargetPartition, ...]:
-    if data is None:
-        return ()
+def _decode_over_target_partitions(data: list[dict[str, Any]]) -> tuple[OverTargetPartition, ...]:
     decoded = []
     for entry in data:
         since = IsoDatetimeCodec.decode(entry["since"])
@@ -184,6 +170,6 @@ class TableRowMapper:
             },
             last_committed_at=row["last_committed_at"],
             last_discovered_at=row["last_discovered_at"],
-            priority=TablePriority(row["priority"] or TablePriority.default()),
+            priority=TablePriority(row["priority"]),
             over_target_partitions=_decode_over_target_partitions(row["over_target_partitions_json"]),
         )

@@ -103,7 +103,7 @@ class TableMaintenanceRunRowMapper:
             operation=MaintenanceOperation(row["operation"]),
             created_at=row["created_at"],
             execution_ref=row["execution_ref"],
-            priority=TablePriority(row["priority"] or TablePriority.default()),
+            priority=TablePriority(row["priority"]),
             status=RunStatus(row["status"]),
             filters=tuple(SpecFilter(spec_id=f["spec_id"], where=f["where"]) for f in row["filters_json"]),
             procedure_args=dict(row["procedure_args_json"]),

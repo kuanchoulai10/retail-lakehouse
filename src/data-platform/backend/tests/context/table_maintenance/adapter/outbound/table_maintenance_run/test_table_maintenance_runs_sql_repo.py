@@ -123,16 +123,6 @@ def test_priority_round_trips(repo: TableMaintenanceRunsSqlRepo):
     assert loaded.priority is TablePriority.P1
 
 
-def test_a_row_without_a_priority_reads_as_p3(repo: TableMaintenanceRunsSqlRepo, engine: Engine):
-    """A run stored without a priority (priority NULL) reads as the default, P3."""
-    repo.create(_run(R1))
-    with engine.begin() as connection:
-        connection.execute(text("UPDATE table_maintenance_runs SET priority = NULL"))
-    loaded = repo.get(TableMaintenanceRunId(R1))
-    assert loaded is not None
-    assert loaded.priority is TablePriority.P3
-
-
 def test_the_status_is_a_column(repo: TableMaintenanceRunsSqlRepo, engine: Engine):
     """The run's status and operation are real columns, not buried in JSON."""
     repo.create(_run(R1))

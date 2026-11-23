@@ -64,7 +64,7 @@ def _decode_operation(data: dict[str, Any]) -> OperationOutcome:
         result=OperationResult(data["result"]),
         measurements=tuple(_decode_measurement(m) for m in data["measurements"]),
         next_eligible_at=IsoDatetimeCodec.decode(data["next_eligible_at"]),
-        run_id=None if data.get("run_id") is None else TableMaintenanceRunId(data["run_id"]),
+        run_id=None if data["run_id"] is None else TableMaintenanceRunId(data["run_id"]),
     )
 
 

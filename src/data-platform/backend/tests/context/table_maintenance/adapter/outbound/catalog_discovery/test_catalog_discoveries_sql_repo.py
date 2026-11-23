@@ -6,14 +6,12 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
-from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import IntegrityError
 
 from context.table_maintenance.adapter.outbound.catalog_discovery.sql import (
     CatalogDiscoveriesSqlRepo,
     catalog_discoveries_table,
 )
-from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from context.table_maintenance.application.domain.model.catalog_discovery import (
     CatalogDiscovery,
     CatalogDiscoveryId,
@@ -25,8 +23,6 @@ from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo im
 )
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from sqlalchemy import Engine
 
     from context.table_maintenance.application.port.outbound.catalog_discovery import CatalogDiscoveriesRepo
@@ -177,15 +173,3 @@ def test_a_scan_after_a_failure_makes_it_not_current(repo: CatalogDiscoveriesRep
     assert loaded is not None
     assert loaded.current_failure is None
     assert loaded.last_failure == _failure(NOW)
-
-
-def test_an_older_catalog_discoveries_table_gains_the_failure_columns(tmp_path: Path) -> None:
-    """A table stored before failures were recorded gets their columns when the schema is created again."""
-    engine = create_engine(f"sqlite:///{tmp_path / 'db.sqlite'}")
-    with engine.begin() as connection:
-        connection.execute(
-            text("CREATE TABLE catalog_discoveries (catalog VARCHAR PRIMARY KEY, last_discovered_at VARCHAR NOT NULL)")
-        )
-    create_schema(engine)
-    columns = {c["name"] for c in inspect(engine).get_columns("catalog_discoveries")}
-    assert {"failure_reason", "failure_detail", "failed_at"} <= columns
