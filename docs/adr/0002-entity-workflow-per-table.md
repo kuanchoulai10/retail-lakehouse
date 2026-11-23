@@ -31,6 +31,6 @@ Workflow and schedule IDs are a name followed by `key=value` segments joined by 
 - One run per table at a time is a property of the workflow, not of a database lock.
 - Durable timers and retries replace the polling scheduler and the outbox. A worker restart resumes every table where it was.
 - The database stays the authority on status and settings. Signals only wake the loop, so a lost or duplicate signal costs at most one extra plan.
-- Workflow code must stay deterministic, and changing it needs care with running histories (versioning or patching once tables are long-lived in production).
+- Workflow code must stay deterministic, and changing it needs care with running histories (versioning or patching once tables are long-lived in production). During development the cluster is rebuilt instead, so the workflows carry no patches.
 - There is one running workflow per table. That is cheap in Temporal but has to be counted for capacity at large table counts.
 - A child that never reports back is given up once its worst case has passed (per planned operation: three attempt deadlines, the two backoffs and a 1 hour margin, about 19 hours), so a terminated child cannot wedge its table forever. The parent first cancels the child, whose cleanup records the result, frees its admission slot and deletes its Spark job, and waits up to 15 minutes for its report, so the next run does not overlap the old Spark job.
