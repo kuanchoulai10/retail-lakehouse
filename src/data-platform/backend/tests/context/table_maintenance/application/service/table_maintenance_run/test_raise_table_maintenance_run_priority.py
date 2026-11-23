@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation, TablePriority
-from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
-from context.table_maintenance.application.domain.model.table_maintenance_run import (
-    TableMaintenanceRun,
+from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
+    MaintenanceOperation,
+    TableId,
     TableMaintenanceRunId,
-    TriggerType,
+    TablePriority,
 )
+from context.table_maintenance.application.domain.model.table import Table, TableName
+from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRun, TriggerType
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     RaiseTableMaintenanceRunPriorityUseCaseInput,

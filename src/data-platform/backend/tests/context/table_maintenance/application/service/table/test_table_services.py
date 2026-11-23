@@ -6,18 +6,17 @@ from datetime import timedelta
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation, TablePriority
-from context.table_maintenance.application.domain.model.table import (
-    AppliedPolicyRef,
-    AttentionMark,
-    Table,
+from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
+    MaintenanceOperation,
     TableId,
-    TableName,
+    TableMaintenancePolicyId,
+    TablePriority,
 )
+from context.table_maintenance.application.domain.model.table import AppliedPolicyRef, AttentionMark, Table, TableName
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     MaintenancePolicyContent,
     TableMaintenancePolicy,
-    TableMaintenancePolicyId,
     TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.exceptions import (

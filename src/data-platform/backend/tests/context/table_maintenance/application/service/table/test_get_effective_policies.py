@@ -6,7 +6,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
+from context.table_maintenance.application.domain.model.shared import TableId
+from context.table_maintenance.application.domain.model.table import Table, TableName
 from context.table_maintenance.application.domain.model.table_discovery_policy import DEFAULT_DISCOVERY_POLICY_ID
 from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePolicyContent
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError

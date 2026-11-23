@@ -12,6 +12,7 @@ from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
     OverTargetPartition,
+    TableId,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table.invalid_table_transition import (
@@ -20,7 +21,6 @@ from context.table_maintenance.application.domain.model.table.invalid_table_tran
 from context.table_maintenance.application.domain.model.table.operation_state import (
     OperationState,
 )
-from context.table_maintenance.application.domain.model.table.table_id import TableId
 from context.table_maintenance.application.domain.model.table.table_name import (
     TableName,
 )
@@ -34,6 +34,7 @@ from context.table_maintenance.application.domain.model.table_discovery_policy i
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from context.table_maintenance.application.domain.model.shared import TableDiscoveryRuleId
     from context.table_maintenance.application.domain.model.table.applied_policy_ref import (
         AppliedPolicyRef,
     )
@@ -43,10 +44,7 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table.recorded_attempt import (
         RecordedAttempt,
     )
-    from context.table_maintenance.application.domain.model.table_discovery_policy import (
-        DiscoveryDecision,
-        TableDiscoveryRuleId,
-    )
+    from context.table_maintenance.application.domain.model.table_discovery_policy import DiscoveryDecision
 
 
 class Table(AggregateRoot[TableId]):

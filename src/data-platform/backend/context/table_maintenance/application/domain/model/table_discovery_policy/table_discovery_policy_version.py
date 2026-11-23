@@ -7,11 +7,9 @@ from datetime import datetime
 from pydantic import PositiveInt
 
 from base import ValueObject
+from context.table_maintenance.application.domain.model.shared import TableDiscoveryPolicyId
 from context.table_maintenance.application.domain.model.table_discovery_policy.discovery_policy_content import (
     DiscoveryPolicyContent,
-)
-from context.table_maintenance.application.domain.model.table_discovery_policy.table_discovery_policy_id import (
-    TableDiscoveryPolicyId,
 )
 
 

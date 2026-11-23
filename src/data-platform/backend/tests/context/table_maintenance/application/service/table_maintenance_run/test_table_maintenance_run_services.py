@@ -12,15 +12,11 @@ from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
     SpecFilter,
+    TableId,
+    TableMaintenanceRunId,
     TablePriority,
 )
-from context.table_maintenance.application.domain.model.table import (
-    AppliedPolicyRef,
-    AttentionMark,
-    Table,
-    TableId,
-    TableName,
-)
+from context.table_maintenance.application.domain.model.table import AppliedPolicyRef, AttentionMark, Table, TableName
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_ID,
     TableMaintenancePolicyName,
@@ -31,7 +27,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     NextStep,
     RunStatus,
     TableMaintenanceRun,
-    TableMaintenanceRunId,
     TriggerType,
 )
 from context.table_maintenance.application.exceptions import (

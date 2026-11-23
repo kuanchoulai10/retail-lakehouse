@@ -13,6 +13,8 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     OverTargetPartition,
     SpecFilter,
+    TableId,
+    TableMaintenancePolicyId,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -21,7 +23,6 @@ from context.table_maintenance.application.domain.model.table import (
     OperationCooldowns,
     PartitionSelectionSettings,
     Table,
-    TableId,
     TableMetrics,
     TableName,
     TableStatus,
@@ -36,7 +37,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     RewriteDataFilesSpec,
     RewriteDataFilesTarget,
     ScheduleTrigger,
-    TableMaintenancePolicyId,
     TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.exceptions import ValidationError

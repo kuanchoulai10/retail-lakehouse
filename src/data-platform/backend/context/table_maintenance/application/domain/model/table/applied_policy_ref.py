@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 from base import ValueObject
-from context.table_maintenance.application.domain.model.shared import PolicyTarget
-from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-    TableMaintenancePolicyId,
-)
+from context.table_maintenance.application.domain.model.shared import PolicyTarget, TableMaintenancePolicyId
 
 
 class AppliedPolicyRef(ValueObject):

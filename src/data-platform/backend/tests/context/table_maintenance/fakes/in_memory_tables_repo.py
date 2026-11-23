@@ -13,12 +13,8 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from base import EntityId
-    from context.table_maintenance.application.domain.model.shared import OverTargetPartition
-    from context.table_maintenance.application.domain.model.table import (
-        Table,
-        TableId,
-        TableName,
-    )
+    from context.table_maintenance.application.domain.model.shared import OverTargetPartition, TableId
+    from context.table_maintenance.application.domain.model.table import Table, TableName
 
 
 class InMemoryTablesRepo(TablesRepo):

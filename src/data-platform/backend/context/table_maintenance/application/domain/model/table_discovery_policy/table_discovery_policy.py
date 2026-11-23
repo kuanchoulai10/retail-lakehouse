@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from pydantic import PositiveInt
 
 from base import AggregateRoot
+from context.table_maintenance.application.domain.model.shared import TableDiscoveryPolicyId
 from context.table_maintenance.application.domain.model.table_discovery_policy.default_discovery_policy_id import (
     DEFAULT_DISCOVERY_POLICY_ID,
 )
@@ -29,9 +30,6 @@ from context.table_maintenance.application.domain.model.table_discovery_policy.d
 from context.table_maintenance.application.domain.model.table_discovery_policy.stale_discovery_policy_version import (
     StaleDiscoveryPolicyVersion,
 )
-from context.table_maintenance.application.domain.model.table_discovery_policy.table_discovery_policy_id import (
-    TableDiscoveryPolicyId,
-)
 from context.table_maintenance.application.domain.model.table_discovery_policy.table_discovery_policy_name import (
     TableDiscoveryPolicyName,
 )
@@ -45,10 +43,8 @@ from context.table_maintenance.application.domain.model.table_discovery_policy.u
 if TYPE_CHECKING:
     from collections.abc import Collection
 
+    from context.table_maintenance.application.domain.model.shared import TableDiscoveryRuleId
     from context.table_maintenance.application.domain.model.table import TableName
-    from context.table_maintenance.application.domain.model.table_discovery_policy.table_discovery_rule_id import (
-        TableDiscoveryRuleId,
-    )
 
 
 class TableDiscoveryPolicy(AggregateRoot[TableDiscoveryPolicyId]):

@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
-from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
+from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType, TableId
+from context.table_maintenance.application.domain.model.table import Table, TableName
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.outbound.table import CatalogAccessDeniedError
 from context.table_maintenance.application.service.shared import policy_candidates

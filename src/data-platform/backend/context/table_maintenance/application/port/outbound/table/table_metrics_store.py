@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING
 from base import Store
 
 if TYPE_CHECKING:
-    from context.table_maintenance.application.domain.model.table import TableId, TableMetrics
+    from context.table_maintenance.application.domain.model.shared import TableId
+    from context.table_maintenance.application.domain.model.table import TableMetrics
 
 
 class TableMetricsStore(Store):

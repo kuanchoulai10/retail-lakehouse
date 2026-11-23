@@ -6,12 +6,10 @@ from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
+    TableId,
     TablePriority,
 )
-from context.table_maintenance.application.domain.model.table import (
-    TableChange,
-    TableId,
-)
+from context.table_maintenance.application.domain.model.table import TableChange
 from context.table_maintenance.application.exceptions import (
     ConflictError,
     NotFoundError,

@@ -10,12 +10,13 @@ from base import InvariantViolation
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     SpecFilter,
+    TableId,
+    TableMaintenanceRunId,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation as Op,
 )
-from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     FailureClass,
     InvalidRunTransition,
@@ -24,7 +25,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     OperationAttempt,
     RunStatus,
     TableMaintenanceRun,
-    TableMaintenanceRunId,
     TriggerType,
 )
 

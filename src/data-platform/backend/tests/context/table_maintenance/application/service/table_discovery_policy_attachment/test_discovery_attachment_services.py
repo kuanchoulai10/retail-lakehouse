@@ -6,10 +6,8 @@ from datetime import UTC, datetime
 
 import pytest
 
+from context.table_maintenance.application.domain.model.shared import TableMaintenancePolicyAttachmentId
 from context.table_maintenance.application.domain.model.table_discovery_policy import TableDiscoveryPolicyName
-from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
-    TableMaintenancePolicyAttachmentId,
-)
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table_discovery_policy import (
     CreateTableDiscoveryPolicyUseCaseInput,

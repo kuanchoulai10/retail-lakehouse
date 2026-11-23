@@ -14,10 +14,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from base import EntityId
-    from context.table_maintenance.application.domain.model.shared import PolicyTarget
-    from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-        TableMaintenancePolicyId,
-    )
+    from context.table_maintenance.application.domain.model.shared import PolicyTarget, TableMaintenancePolicyId
 
 
 class TableMaintenancePolicyAttachmentsRepo(Repository[TableMaintenancePolicyAttachment]):

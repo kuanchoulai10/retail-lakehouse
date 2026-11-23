@@ -6,8 +6,11 @@ from datetime import UTC, datetime
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
-from context.table_maintenance.application.domain.model.table_discovery_policy import TableDiscoveryPolicyId
+from context.table_maintenance.application.domain.model.shared import (
+    PolicyTarget,
+    PolicyTargetType,
+    TableDiscoveryPolicyId,
+)
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,
 )

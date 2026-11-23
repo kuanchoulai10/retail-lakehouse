@@ -6,13 +6,13 @@ from datetime import timedelta
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation
-from context.table_maintenance.application.domain.model.table import TableId
-from context.table_maintenance.application.domain.model.table_maintenance_run import (
-    TableMaintenanceRun,
+from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
+    MaintenanceOperation,
+    TableId,
     TableMaintenanceRunId,
-    TriggerType,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRun, TriggerType
 from context.table_maintenance.application.exceptions import ConflictError, NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     RecordMaintenanceAttemptRunningUseCaseInput,

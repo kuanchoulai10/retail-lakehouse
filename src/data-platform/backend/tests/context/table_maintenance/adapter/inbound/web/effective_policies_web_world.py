@@ -5,7 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
+from context.table_maintenance.application.domain.model.shared import TableId
+from context.table_maintenance.application.domain.model.table import Table, TableName
 from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePolicyContent
 from context.table_maintenance.application.port.inbound.table_discovery_policy import (
     CreateTableDiscoveryPolicyUseCaseInput,

@@ -5,12 +5,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
+from context.table_maintenance.application.domain.model.shared import (
+    PolicyTarget,
+    PolicyTargetType,
+    TableDiscoveryRuleId,
+)
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
     DiscoveryPolicyContent,
     TableDiscoveryPolicy,
     TableDiscoveryPolicyName,
-    TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,

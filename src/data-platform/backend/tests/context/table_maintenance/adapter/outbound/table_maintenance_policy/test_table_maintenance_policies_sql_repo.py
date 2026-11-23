@@ -16,12 +16,15 @@ from context.table_maintenance.adapter.outbound.table_maintenance_policy.sql imp
 from context.table_maintenance.adapter.outbound.table_maintenance_policy_attachment.sql import (
     TableMaintenancePolicyAttachmentsSqlRepo,
 )
-from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
+from context.table_maintenance.application.domain.model.shared import (
+    PolicyTarget,
+    PolicyTargetType,
+    TableMaintenancePolicyId,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     MaintenancePolicyContent,
     StalePolicyVersion,
     TableMaintenancePolicy,
-    TableMaintenancePolicyId,
     TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (

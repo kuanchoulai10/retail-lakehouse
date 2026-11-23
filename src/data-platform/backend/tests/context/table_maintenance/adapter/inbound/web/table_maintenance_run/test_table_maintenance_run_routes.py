@@ -6,13 +6,14 @@ from typing import Any
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation, SpecFilter
-from context.table_maintenance.application.domain.model.table import TableId
-from context.table_maintenance.application.domain.model.table_maintenance_run import (
-    TableMaintenanceRun,
+from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
+    MaintenanceOperation,
+    SpecFilter,
+    TableId,
     TableMaintenanceRunId,
-    TriggerType,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRun, TriggerType
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     GetTableMaintenanceRunUseCaseInput,
     GetTableMaintenanceRunUseCaseOutput,

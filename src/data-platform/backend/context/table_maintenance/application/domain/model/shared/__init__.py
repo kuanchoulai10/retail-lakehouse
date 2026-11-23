@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.domain.model.shared.catalog_discovery_id import CatalogDiscoveryId
 from context.table_maintenance.application.domain.model.shared.checked_policy_name import (
     checked_policy_name,
 )
@@ -92,20 +93,35 @@ from context.table_maintenance.application.domain.model.shared.snapshot_retentio
 from context.table_maintenance.application.domain.model.shared.spec_filter import (
     SpecFilter,
 )
+from context.table_maintenance.application.domain.model.shared.table_discovery_policy_attachment_id import (
+    TableDiscoveryPolicyAttachmentId,
+)
+from context.table_maintenance.application.domain.model.shared.table_discovery_policy_id import TableDiscoveryPolicyId
+from context.table_maintenance.application.domain.model.shared.table_discovery_rule_id import TableDiscoveryRuleId
+from context.table_maintenance.application.domain.model.shared.table_id import TableId
+from context.table_maintenance.application.domain.model.shared.table_maintenance_policy_attachment_id import (
+    TableMaintenancePolicyAttachmentId,
+)
+from context.table_maintenance.application.domain.model.shared.table_maintenance_policy_id import (
+    TableMaintenancePolicyId,
+)
+from context.table_maintenance.application.domain.model.shared.table_maintenance_run_id import TableMaintenanceRunId
 from context.table_maintenance.application.domain.model.shared.table_observation import (
     TableObservation,
 )
 from context.table_maintenance.application.domain.model.shared.table_priority import (
     TablePriority,
 )
+from context.table_maintenance.application.domain.model.shared.table_reconciliation_id import TableReconciliationId
 from context.table_maintenance.application.domain.model.shared.whole_seconds import (
     WholeSeconds,
 )
 
 __all__ = [
+    "CatalogDiscoveryId",
+    "ComputeSize",
     "MAX_AGE",
     "MAX_SNAPSHOTS_TO_KEEP",
-    "ComputeSize",
     "MaintenanceAssessment",
     "MaintenanceOperation",
     "MaintenancePlan",
@@ -122,8 +138,8 @@ __all__ = [
     "PartitionSpecInfo",
     "PartitionStats",
     "PlannedOperation",
-    "PlatformSettings",
     "PlatformComputeSize",
+    "PlatformSettings",
     "PolicyTarget",
     "PolicyTargetType",
     "PositiveDuration",
@@ -132,8 +148,16 @@ __all__ = [
     "SnapshotInfo",
     "SnapshotRetention",
     "SpecFilter",
+    "TableDiscoveryPolicyAttachmentId",
+    "TableDiscoveryPolicyId",
+    "TableDiscoveryRuleId",
+    "TableId",
+    "TableMaintenancePolicyAttachmentId",
+    "TableMaintenancePolicyId",
+    "TableMaintenanceRunId",
     "TableObservation",
     "TablePriority",
+    "TableReconciliationId",
     "WholeSeconds",
     "checked_policy_name",
 ]

@@ -5,8 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.shared import TablePriority
-from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.shared import TableId, TablePriority
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table import (
     SetTablePriorityUseCase,

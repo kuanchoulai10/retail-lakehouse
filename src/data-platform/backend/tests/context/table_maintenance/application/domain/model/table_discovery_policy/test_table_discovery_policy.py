@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 from base import InvariantViolation
+from context.table_maintenance.application.domain.model.shared import TableDiscoveryPolicyId, TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table import TableName
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
     DEFAULT_DISCOVERY_POLICY_ID,
@@ -19,10 +20,8 @@ from context.table_maintenance.application.domain.model.table_discovery_policy i
     DiscoveryPolicyContent,
     StaleDiscoveryPolicyVersion,
     TableDiscoveryPolicy,
-    TableDiscoveryPolicyId,
     TableDiscoveryPolicyName,
     TableDiscoveryPolicyVersion,
-    TableDiscoveryRuleId,
     UnknownDiscoveryRuleId,
 )
 from shared_kernel import prefixed_id_pattern

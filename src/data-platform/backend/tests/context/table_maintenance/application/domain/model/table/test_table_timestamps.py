@@ -4,11 +4,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from context.table_maintenance.application.domain.model.table import (
-    Table,
-    TableId,
-    TableName,
-)
+from context.table_maintenance.application.domain.model.shared import TableId
+from context.table_maintenance.application.domain.model.table import Table, TableName
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED, UNMANAGED
 
 T0 = datetime(2026, 1, 1, tzinfo=UTC)

@@ -6,10 +6,10 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from context.table_maintenance.application.domain.model.shared import TableMaintenancePolicyId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_ID,
     MaintenancePolicyContent,
-    TableMaintenancePolicyId,
     TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.exceptions import (

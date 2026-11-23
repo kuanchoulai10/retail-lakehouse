@@ -16,14 +16,17 @@ from context.table_maintenance.adapter.outbound.table_discovery_policy.sql impor
 from context.table_maintenance.adapter.outbound.table_discovery_policy_attachment.sql import (
     TableDiscoveryPolicyAttachmentsSqlRepo,
 )
-from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
+from context.table_maintenance.application.domain.model.shared import (
+    PolicyTarget,
+    PolicyTargetType,
+    TableDiscoveryPolicyId,
+    TableDiscoveryRuleId,
+)
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
     DiscoveryPolicyContent,
     StaleDiscoveryPolicyVersion,
     TableDiscoveryPolicy,
-    TableDiscoveryPolicyId,
     TableDiscoveryPolicyName,
-    TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,

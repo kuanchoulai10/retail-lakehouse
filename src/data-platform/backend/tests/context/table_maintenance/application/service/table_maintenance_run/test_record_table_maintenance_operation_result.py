@@ -14,21 +14,15 @@ from context.table_maintenance.application.domain.model.shared import (
     PolicyTarget,
     PolicyTargetType,
     SizeMemory,
-)
-from context.table_maintenance.application.domain.model.table import (
-    AppliedPolicyRef,
-    Table,
     TableId,
-    TableName,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     TableMaintenancePolicyId,
+    TableMaintenanceRunId,
 )
+from context.table_maintenance.application.domain.model.table import AppliedPolicyRef, Table, TableName
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     FailureClass,
     NextStep,
     TableMaintenanceRun,
-    TableMaintenanceRunId,
     TriggerType,
 )
 from context.table_maintenance.application.exceptions import ConflictError, ValidationError

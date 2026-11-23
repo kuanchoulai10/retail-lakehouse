@@ -42,7 +42,6 @@ from context.table_maintenance.application.domain.model.table.table import Table
 from context.table_maintenance.application.domain.model.table.table_change import (
     TableChange,
 )
-from context.table_maintenance.application.domain.model.table.table_id import TableId
 from context.table_maintenance.application.domain.model.table.table_management_change import (
     TableManagementChange,
 )
@@ -73,7 +72,6 @@ __all__ = [
     "RecordedAttempt",
     "Table",
     "TableChange",
-    "TableId",
     "TableManagementChange",
     "TableMetrics",
     "TableName",

@@ -13,7 +13,7 @@ from context.table_maintenance.application.domain.model.table_reconciliation imp
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from context.table_maintenance.application.domain.model.table import TableId
+    from context.table_maintenance.application.domain.model.shared import TableId
 
 
 class TableReconciliationsRepo(Repository[TableReconciliation]):

@@ -13,8 +13,7 @@ from context.table_maintenance.application.domain.service.table.compute_reducibl
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from context.table_maintenance.application.domain.model.shared import TableObservation
-    from context.table_maintenance.application.domain.model.table import TableId
+    from context.table_maintenance.application.domain.model.shared import TableId, TableObservation
 
 
 def measure_table(table_id: TableId, observation: TableObservation, observed_at: datetime) -> TableMetrics:

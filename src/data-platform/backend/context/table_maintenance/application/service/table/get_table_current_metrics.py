@@ -4,11 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.table import (
-    TABLE_METRIC_COUNT_FIELDS,
-    TableId,
-    TableStatus,
-)
+from context.table_maintenance.application.domain.model.shared import TableId
+from context.table_maintenance.application.domain.model.table import TABLE_METRIC_COUNT_FIELDS, TableStatus
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table import (
     GetTableCurrentMetricsUseCase,

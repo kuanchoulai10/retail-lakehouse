@@ -11,11 +11,9 @@ from context.table_maintenance.application.domain.service.shared import candidat
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
+    from context.table_maintenance.application.domain.model.shared import TableDiscoveryPolicyId
     from context.table_maintenance.application.domain.model.table import TableName
-    from context.table_maintenance.application.domain.model.table_discovery_policy import (
-        DiscoveryDecision,
-        TableDiscoveryPolicyId,
-    )
+    from context.table_maintenance.application.domain.model.table_discovery_policy import DiscoveryDecision
     from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
         TableDiscoveryPolicyAttachment,
     )

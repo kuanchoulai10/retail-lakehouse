@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.domain.model.shared import TableDiscoveryPolicyId
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
     DEFAULT_DISCOVERY_POLICY_ID,
     DiscoveryPolicyContent,
     StaleDiscoveryPolicyVersion,
     TableDiscoveryPolicy,
-    TableDiscoveryPolicyId,
     TableDiscoveryPolicyName,
     TableDiscoveryPolicyVersion,
 )

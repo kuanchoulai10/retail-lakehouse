@@ -8,15 +8,11 @@ import pytest
 
 from context.table_maintenance.application.domain.model.catalog_discovery import (
     CatalogDiscovery,
-    CatalogDiscoveryId,
     CatalogScanFailure,
     CatalogScanFailureReason,
 )
-from context.table_maintenance.application.domain.model.table import (
-    Table,
-    TableId,
-    TableName,
-)
+from context.table_maintenance.application.domain.model.shared import CatalogDiscoveryId, TableId
+from context.table_maintenance.application.domain.model.table import Table, TableName
 from context.table_maintenance.application.domain.model.table_discovery_policy import DiscoveryMatch
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,

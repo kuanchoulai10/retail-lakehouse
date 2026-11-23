@@ -20,6 +20,7 @@ from context.table_maintenance.application.domain.model.shared import (
     PartitionStats,
     SizeSource,
     SnapshotInfo,
+    TableId,
     TableObservation,
 )
 from context.table_maintenance.application.domain.model.shared import (
@@ -32,7 +33,6 @@ from context.table_maintenance.application.domain.model.table import (
     OperationState,
     PartitionSelectionSettings,
     Table,
-    TableId,
     TableName,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (

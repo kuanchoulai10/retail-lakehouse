@@ -7,13 +7,13 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from base import InvariantViolation
+from context.table_maintenance.application.domain.model.shared import TableMaintenancePolicyId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_ID,
     DEFAULT_POLICY_NAME,
     MaintenancePolicyContent,
     StalePolicyVersion,
     TableMaintenancePolicy,
-    TableMaintenancePolicyId,
     TableMaintenancePolicyName,
 )
 from shared_kernel import prefixed_id_pattern

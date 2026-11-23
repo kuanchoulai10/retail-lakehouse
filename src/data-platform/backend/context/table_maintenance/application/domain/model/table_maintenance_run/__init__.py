@@ -32,9 +32,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.ru
 from context.table_maintenance.application.domain.model.table_maintenance_run.table_maintenance_run import (
     TableMaintenanceRun,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_run.table_maintenance_run_id import (
-    TableMaintenanceRunId,
-)
 from context.table_maintenance.application.domain.model.table_maintenance_run.trigger_type import (
     TriggerType,
 )
@@ -50,6 +47,5 @@ __all__ = [
     "OperationAttempt",
     "RunStatus",
     "TableMaintenanceRun",
-    "TableMaintenanceRunId",
     "TriggerType",
 ]

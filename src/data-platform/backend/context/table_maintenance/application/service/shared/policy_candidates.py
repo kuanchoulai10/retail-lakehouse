@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.table import TableId, TableName
+from context.table_maintenance.application.domain.model.shared import TableId
+from context.table_maintenance.application.domain.model.table import TableName
 from context.table_maintenance.application.domain.service.shared import (
     candidate_policy_targets,
     enclosing_policy_targets,

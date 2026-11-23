@@ -8,16 +8,14 @@ from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     PolicyTarget,
     PolicyTargetType,
+    TableMaintenancePolicyId,
 )
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
     AttentionMark,
     OperationState,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-    TableMaintenancePolicyId,
-    TableMaintenancePolicyName,
-)
+from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyName
 
 T0 = datetime(2026, 11, 13, tzinfo=UTC)
 T1 = T0 + timedelta(hours=1)

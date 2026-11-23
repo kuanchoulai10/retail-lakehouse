@@ -5,14 +5,9 @@ from __future__ import annotations
 from pydantic import PositiveInt
 
 from base import ValueObject
+from context.table_maintenance.application.domain.model.shared import TableDiscoveryPolicyId, TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table_discovery_policy.default_discovery_policy_id import (
     DEFAULT_DISCOVERY_POLICY_ID,
-)
-from context.table_maintenance.application.domain.model.table_discovery_policy.table_discovery_policy_id import (
-    TableDiscoveryPolicyId,
-)
-from context.table_maintenance.application.domain.model.table_discovery_policy.table_discovery_rule_id import (
-    TableDiscoveryRuleId,
 )
 
 

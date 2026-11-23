@@ -12,12 +12,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from datetime import datetime
 
-    from context.table_maintenance.application.domain.model.shared import OverTargetPartition
-    from context.table_maintenance.application.domain.model.table import (
-        TableId,
-        TableName,
-        TableStatus,
-    )
+    from context.table_maintenance.application.domain.model.shared import OverTargetPartition, TableId
+    from context.table_maintenance.application.domain.model.table import TableName, TableStatus
 
 
 class TablesRepo(Repository[Table]):

@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 from base import InvariantViolation
+from context.table_maintenance.application.domain.model.shared import TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table import TableName
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
     ConditionOperator,
@@ -15,7 +16,6 @@ from context.table_maintenance.application.domain.model.table_discovery_policy i
     DiscoveryOutcome,
     DiscoveryPolicyContent,
     TableDiscoveryRule,
-    TableDiscoveryRuleId,
 )
 
 R1, R2 = "dr-00000000000000000000000001", "dr-00000000000000000000000002"

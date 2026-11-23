@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.shared import PolicyTargetType
-from context.table_maintenance.application.domain.model.table import TableId, TableStatus
+from context.table_maintenance.application.domain.model.shared import PolicyTargetType, TableId
+from context.table_maintenance.application.domain.model.table import TableStatus
 from context.table_maintenance.application.port.outbound.table import (
     CatalogAccessDeniedError,
     CatalogNotFoundError,

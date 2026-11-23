@@ -7,6 +7,11 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     OverTargetPartition,
     PolicyTarget,
+    TableDiscoveryPolicyId,
+    TableDiscoveryRuleId,
+    TableId,
+    TableMaintenancePolicyId,
+    TableMaintenanceRunId,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -16,20 +21,12 @@ from context.table_maintenance.application.domain.model.table import (
     OperationState,
     RecordedAttempt,
     Table,
-    TableId,
     TableMetrics,
     TableName,
     TableStatus,
 )
-from context.table_maintenance.application.domain.model.table_discovery_policy import (
-    DiscoveryMatch,
-    TableDiscoveryPolicyId,
-    TableDiscoveryRuleId,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-    TableMaintenancePolicyId,
-    TableMaintenancePolicyName,
-)
+from context.table_maintenance.application.domain.model.table_discovery_policy import DiscoveryMatch
+from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyName
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.catalog_access_denied_error import (  # noqa: E501
     CatalogAccessDeniedError,
 )
@@ -106,6 +103,7 @@ __all__ = [
     "TableDiscoveryRuleId",
     "TableId",
     "TableMaintenancePolicyId",
+    "TableMaintenanceRunId",
     "TableMaintenancePolicyName",
     "ReadTableMetadataGateway",
     "ReadTableMetricHistoryGateway",

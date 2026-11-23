@@ -14,13 +14,13 @@ from context.table_maintenance.application.domain.model.shared import (
     PartitionSpecInfo,
     PartitionStats,
     SnapshotInfo,
+    TableId,
     TableObservation,
 )
 from context.table_maintenance.application.domain.model.table import (
     OperationCooldowns,
     OperationState,
     Table,
-    TableId,
     TableName,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (

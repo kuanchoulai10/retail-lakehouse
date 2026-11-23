@@ -8,14 +8,12 @@ from typing import TYPE_CHECKING, Self
 from pydantic import model_validator
 
 from base import ValueObject
+from context.table_maintenance.application.domain.model.shared import TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table_discovery_policy.discovery_condition import (
     DiscoveryCondition,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy.discovery_outcome import (
     DiscoveryOutcome,
-)
-from context.table_maintenance.application.domain.model.table_discovery_policy.table_discovery_rule_id import (
-    TableDiscoveryRuleId,
 )
 
 if TYPE_CHECKING:

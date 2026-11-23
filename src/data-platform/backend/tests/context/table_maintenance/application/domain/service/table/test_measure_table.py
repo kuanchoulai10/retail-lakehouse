@@ -11,9 +11,10 @@ from context.table_maintenance.application.domain.model.shared import (
     ManifestStats,
     PartitionStats,
     SnapshotInfo,
+    TableId,
     TableObservation,
 )
-from context.table_maintenance.application.domain.model.table import TABLE_METRIC_COUNT_FIELDS, TableId
+from context.table_maintenance.application.domain.model.table import TABLE_METRIC_COUNT_FIELDS
 from context.table_maintenance.application.domain.service.table import measure_table
 
 NOW = datetime(2026, 11, 20, 12, tzinfo=UTC)

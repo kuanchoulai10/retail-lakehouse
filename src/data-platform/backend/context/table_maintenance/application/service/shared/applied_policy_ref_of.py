@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.application.domain.model.shared import TableMaintenancePolicyId
 from context.table_maintenance.application.domain.model.table import AppliedPolicyRef
-from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyId
 from context.table_maintenance.application.service.shared.policy_target_of import policy_target_of
 
 if TYPE_CHECKING:

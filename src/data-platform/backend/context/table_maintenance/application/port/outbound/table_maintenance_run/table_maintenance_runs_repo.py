@@ -13,7 +13,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from context.table_maintenance.application.domain.model.table import TableId
+    from context.table_maintenance.application.domain.model.shared import TableId
 
 
 class TableMaintenanceRunsRepo(Repository[TableMaintenanceRun]):

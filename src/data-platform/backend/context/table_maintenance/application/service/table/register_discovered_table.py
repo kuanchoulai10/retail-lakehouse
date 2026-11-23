@@ -4,12 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.table import (
-    Table,
-    TableChange,
-    TableId,
-    TableName,
-)
+from context.table_maintenance.application.domain.model.shared import TableId
+from context.table_maintenance.application.domain.model.table import Table, TableChange, TableName
 from context.table_maintenance.application.port.outbound.table import (
     SendTableChangeGatewayInput,
 )

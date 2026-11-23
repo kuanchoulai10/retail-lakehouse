@@ -12,6 +12,9 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     OverTargetPartition,
     PolicyTarget,
+    TableDiscoveryRuleId,
+    TableId,
+    TableMaintenanceRunId,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -21,14 +24,10 @@ from context.table_maintenance.application.domain.model.table import (
     OperationState,
     RecordedAttempt,
     Table,
-    TableId,
     TableName,
     TableStatus,
 )
-from context.table_maintenance.application.domain.model.table_discovery_policy import (
-    DiscoveryMatch,
-    TableDiscoveryRuleId,
-)
+from context.table_maintenance.application.domain.model.table_discovery_policy import DiscoveryMatch
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_ID,
     TableMaintenancePolicyName,
@@ -274,7 +273,7 @@ def test_a_dropped_table_refuses_attention_changes():
 def test_recording_the_same_attempt_twice_counts_it_once():
     """A result recorded again for the same attempt of the same run changes nothing."""
     t = managed()
-    attempt = RecordedAttempt(run_id=RUN_1, attempt=2)
+    attempt = RecordedAttempt(run_id=TableMaintenanceRunId(RUN_1), attempt=2)
     t.record_operation_result(OP, False, T0, attempt=attempt)
     t.record_operation_result(OP, False, T1, attempt=attempt)
     state = t.operation_state(OP)
@@ -286,19 +285,27 @@ def test_recording_the_same_attempt_twice_counts_it_once():
 def test_another_attempt_is_recorded():
     """A later attempt, or the same attempt number of another run, is a new result."""
     t = managed()
-    t.record_operation_result(OP, False, T0, attempt=RecordedAttempt(run_id=RUN_1, attempt=1))
-    t.record_operation_result(OP, False, T0, attempt=RecordedAttempt(run_id=RUN_1, attempt=2))
-    t.record_operation_result(OP, False, T0, attempt=RecordedAttempt(run_id=RUN_2, attempt=2))
+    t.record_operation_result(OP, False, T0, attempt=RecordedAttempt(run_id=TableMaintenanceRunId(RUN_1), attempt=1))
+    t.record_operation_result(OP, False, T0, attempt=RecordedAttempt(run_id=TableMaintenanceRunId(RUN_1), attempt=2))
+    t.record_operation_result(OP, False, T0, attempt=RecordedAttempt(run_id=TableMaintenanceRunId(RUN_2), attempt=2))
     assert t.operation_state(OP).consecutive_failures == 3
-    assert not t.has_recorded(OP, RecordedAttempt(run_id=RUN_1, attempt=1))
-    assert not t.has_recorded(MaintenanceOperation.EXPIRE_SNAPSHOTS, RecordedAttempt(run_id=RUN_2, attempt=2))
+    assert not t.has_recorded(OP, RecordedAttempt(run_id=TableMaintenanceRunId(RUN_1), attempt=1))
+    other_operation = MaintenanceOperation.EXPIRE_SNAPSHOTS
+    assert not t.has_recorded(other_operation, RecordedAttempt(run_id=TableMaintenanceRunId(RUN_2), attempt=2))
+
+
+def test_a_recorded_attempt_holds_a_run_id():
+    """The attempt names its run by the run id type, and a malformed id is refused."""
+    assert type(RecordedAttempt(run_id=TableMaintenanceRunId(RUN_1), attempt=1).run_id) is TableMaintenanceRunId
+    with pytest.raises(InvariantViolation, match="TableMaintenanceRunId must look like mr-"):
+        RecordedAttempt(run_id=TableMaintenanceRunId("mr-x"), attempt=1)
 
 
 @pytest.mark.parametrize(("run_id", "attempt"), [("", 1), (RUN_1, 0)])
 def test_a_recorded_attempt_names_a_run_and_a_positive_attempt(run_id, attempt):
     """A recorded attempt needs its run and a positive attempt number."""
     with pytest.raises(InvariantViolation):
-        RecordedAttempt(run_id=run_id, attempt=attempt)
+        RecordedAttempt(run_id=TableMaintenanceRunId(run_id), attempt=attempt)
 
 
 @pytest.mark.parametrize(
@@ -307,7 +314,7 @@ def test_a_recorded_attempt_names_a_run_and_a_positive_attempt(run_id, attempt):
 def test_a_recorded_attempt_refuses_a_run_id_of_another_shape(run_id):
     """A recorded attempt holds an ``mr-`` run id only, like ``TableMaintenanceRunId``; an old UUID is refused."""
     with pytest.raises(InvariantViolation, match="mr-<26 base32 characters>"):
-        RecordedAttempt(run_id=run_id, attempt=1)
+        RecordedAttempt(run_id=TableMaintenanceRunId(run_id), attempt=1)
 
 
 def test_marks_set_under_another_policy_are_lifted():

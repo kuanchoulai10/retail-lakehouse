@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from base import EntityId
-    from context.table_maintenance.application.domain.model.table import TableId
+    from context.table_maintenance.application.domain.model.shared import TableId
     from context.table_maintenance.application.domain.model.table_maintenance_run import (
         TableMaintenanceRun,
     )

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.shared import TableId
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.outbound.table import TableMetadataRef
 

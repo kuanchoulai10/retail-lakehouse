@@ -6,12 +6,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from context.table_maintenance.application.domain.model.table import (
-    Table,
-    TableChange,
-    TableId,
-    TableName,
-)
+from context.table_maintenance.application.domain.model.shared import TableId
+from context.table_maintenance.application.domain.model.table import Table, TableChange, TableName
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_NAME,
     MaintenancePolicyContent,

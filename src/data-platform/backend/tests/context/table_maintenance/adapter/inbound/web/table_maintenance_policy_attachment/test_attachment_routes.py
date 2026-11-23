@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
-    TableDiscoveryPolicyAttachmentId,
-)
+from context.table_maintenance.application.domain.model.shared import TableDiscoveryPolicyAttachmentId
 from shared_kernel import prefixed_id_pattern
 from tests.context.table_maintenance.adapter.inbound.web.policy_web_world import NOW, PolicyWebWorld
 

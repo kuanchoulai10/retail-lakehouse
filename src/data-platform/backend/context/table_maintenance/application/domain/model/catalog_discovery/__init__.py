@@ -5,9 +5,6 @@ from __future__ import annotations
 from context.table_maintenance.application.domain.model.catalog_discovery.catalog_discovery import (
     CatalogDiscovery,
 )
-from context.table_maintenance.application.domain.model.catalog_discovery.catalog_discovery_id import (
-    CatalogDiscoveryId,
-)
 from context.table_maintenance.application.domain.model.catalog_discovery.catalog_scan_failure import (
     CatalogScanFailure,
 )
@@ -17,7 +14,6 @@ from context.table_maintenance.application.domain.model.catalog_discovery.catalo
 
 __all__ = [
     "CatalogDiscovery",
-    "CatalogDiscoveryId",
     "CatalogScanFailure",
     "CatalogScanFailureReason",
 ]

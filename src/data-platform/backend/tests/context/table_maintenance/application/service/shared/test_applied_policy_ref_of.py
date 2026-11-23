@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
+from context.table_maintenance.application.domain.model.shared import (
+    PolicyTarget,
+    PolicyTargetType,
+    TableMaintenancePolicyId,
+)
 from context.table_maintenance.application.domain.model.table import AppliedPolicyRef
-from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyId
 from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
     ResolveApplicableTableMaintenancePolicyUseCaseOutput,
 )

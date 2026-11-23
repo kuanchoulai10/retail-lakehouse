@@ -6,12 +6,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from context.table_maintenance.application.domain.model.table import (
-    TABLE_METRIC_COUNT_FIELDS,
-    Table,
-    TableId,
-    TableName,
-)
+from context.table_maintenance.application.domain.model.shared import TableId
+from context.table_maintenance.application.domain.model.table import TABLE_METRIC_COUNT_FIELDS, Table, TableName
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table import GetTableMetricTrendsUseCaseInput
 from context.table_maintenance.application.port.outbound.table import MetricHistoryUnavailableError

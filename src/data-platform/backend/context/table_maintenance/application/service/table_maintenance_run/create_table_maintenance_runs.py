@@ -7,14 +7,12 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     SpecFilter,
+    TableId,
+    TableMaintenanceRunId,
     TablePriority,
 )
-from context.table_maintenance.application.domain.model.table import TableId, TableStatus
-from context.table_maintenance.application.domain.model.table_maintenance_run import (
-    TableMaintenanceRun,
-    TableMaintenanceRunId,
-    TriggerType,
-)
+from context.table_maintenance.application.domain.model.table import TableStatus
+from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRun, TriggerType
 from context.table_maintenance.application.exceptions import ConflictError, NotFoundError
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     CreateTableMaintenanceRunsUseCase,

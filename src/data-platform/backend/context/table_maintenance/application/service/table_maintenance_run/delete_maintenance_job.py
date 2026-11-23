@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
+    TableMaintenanceRunId,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRunId
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     DeleteMaintenanceJobUseCase,

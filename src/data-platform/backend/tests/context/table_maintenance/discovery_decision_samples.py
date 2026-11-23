@@ -7,12 +7,11 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.domain.model.shared import TableDiscoveryPolicyId, TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
     DiscoveryDecision,
     DiscoveryMatch,
     DiscoveryOutcome,
-    TableDiscoveryPolicyId,
-    TableDiscoveryRuleId,
 )
 
 SAMPLE_POLICY_ID = TableDiscoveryPolicyId("dp-00000000000000000000000001")

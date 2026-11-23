@@ -6,16 +6,16 @@ from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
     SpecFilter,
+    TableId,
+    TableMaintenanceRunId,
     TablePriority,
 )
-from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     FailureClass,
     NextStep,
     OperationAttempt,
     RunStatus,
     TableMaintenanceRun,
-    TableMaintenanceRunId,
     TriggerType,
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run.delete_maintenance_job.gateway import (

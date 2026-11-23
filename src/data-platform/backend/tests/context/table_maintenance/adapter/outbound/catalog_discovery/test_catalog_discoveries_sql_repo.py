@@ -14,10 +14,10 @@ from context.table_maintenance.adapter.outbound.catalog_discovery.sql import (
 )
 from context.table_maintenance.application.domain.model.catalog_discovery import (
     CatalogDiscovery,
-    CatalogDiscoveryId,
     CatalogScanFailure,
     CatalogScanFailureReason,
 )
+from context.table_maintenance.application.domain.model.shared import CatalogDiscoveryId
 from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import (
     InMemoryCatalogDiscoveriesRepo,
 )

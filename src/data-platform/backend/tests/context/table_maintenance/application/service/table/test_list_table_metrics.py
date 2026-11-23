@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.domain.model.shared import TableId
 from context.table_maintenance.application.domain.model.table import (
     TABLE_METRIC_COUNT_FIELDS,
     Table,
-    TableId,
     TableMetrics,
     TableName,
 )

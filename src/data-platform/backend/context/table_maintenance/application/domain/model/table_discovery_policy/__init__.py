@@ -38,9 +38,6 @@ from context.table_maintenance.application.domain.model.table_discovery_policy.s
 from context.table_maintenance.application.domain.model.table_discovery_policy.table_discovery_policy import (
     TableDiscoveryPolicy,
 )
-from context.table_maintenance.application.domain.model.table_discovery_policy.table_discovery_policy_id import (
-    TableDiscoveryPolicyId,
-)
 from context.table_maintenance.application.domain.model.table_discovery_policy.table_discovery_policy_name import (
     TableDiscoveryPolicyName,
 )
@@ -49,9 +46,6 @@ from context.table_maintenance.application.domain.model.table_discovery_policy.t
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy.table_discovery_rule import (
     TableDiscoveryRule,
-)
-from context.table_maintenance.application.domain.model.table_discovery_policy.table_discovery_rule_id import (
-    TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy.unknown_discovery_rule_id import (
     UnknownDiscoveryRuleId,
@@ -70,10 +64,8 @@ __all__ = [
     "DiscoveryPolicyContent",
     "StaleDiscoveryPolicyVersion",
     "TableDiscoveryPolicy",
-    "TableDiscoveryPolicyId",
     "TableDiscoveryPolicyName",
     "TableDiscoveryPolicyVersion",
     "TableDiscoveryRule",
-    "TableDiscoveryRuleId",
     "UnknownDiscoveryRuleId",
 ]

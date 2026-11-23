@@ -6,17 +6,11 @@ from urllib.parse import urlsplit
 
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
-)
-from context.table_maintenance.application.domain.model.table import (
-    Table,
     TableId,
-    TableName,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_run import (
-    TableMaintenanceRun,
     TableMaintenanceRunId,
-    TriggerType,
 )
+from context.table_maintenance.application.domain.model.table import Table, TableName
+from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRun, TriggerType
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     ProcessTableMaintenanceCallbackUseCaseOutput,
     SubmitMaintenanceOperationUseCaseInput,

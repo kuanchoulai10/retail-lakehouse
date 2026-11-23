@@ -7,12 +7,10 @@ from datetime import datetime
 from pydantic import model_validator
 
 from base import AggregateRoot
-from context.table_maintenance.application.domain.model.catalog_discovery.catalog_discovery_id import (
-    CatalogDiscoveryId,
-)
 from context.table_maintenance.application.domain.model.catalog_discovery.catalog_scan_failure import (
     CatalogScanFailure,
 )
+from context.table_maintenance.application.domain.model.shared import CatalogDiscoveryId
 
 
 class CatalogDiscovery(AggregateRoot[CatalogDiscoveryId]):

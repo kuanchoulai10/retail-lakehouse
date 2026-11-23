@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydantic import AwareDatetime, NonNegativeInt
 
 from base import ValueObject
-from context.table_maintenance.application.domain.model.table.table_id import TableId
+from context.table_maintenance.application.domain.model.shared import TableId
 
 TABLE_METRIC_COUNT_FIELDS: tuple[str, ...] = (
     "data_files",

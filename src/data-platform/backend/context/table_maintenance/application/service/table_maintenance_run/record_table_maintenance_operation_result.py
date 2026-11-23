@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    TableMaintenancePolicyId,
+    TableMaintenanceRunId,
 )
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
@@ -17,10 +19,7 @@ from context.table_maintenance.application.domain.model.table import (
     RecordedAttempt,
     TableStatus,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-    TableMaintenancePolicyId,
-    TableMaintenancePolicyName,
-)
+from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyName
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     AttemptEnding,
     ContainerExit,
@@ -28,7 +27,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     InvalidRunTransition,
     NextStep,
     RunStatus,
-    TableMaintenanceRunId,
 )
 from context.table_maintenance.application.domain.service.table import fits_smaller_size
 from context.table_maintenance.application.domain.service.table_maintenance_run import (
@@ -230,7 +228,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         table = self._tables_repo.get(run.table_uuid)
         if table is None or table.status == TableStatus.DROPPED:
             return
-        attempt = RecordedAttempt(run_id=request.run_id, attempt=request.attempt)
+        attempt = RecordedAttempt(run_id=TableMaintenanceRunId(request.run_id), attempt=request.attempt)
         if table.has_recorded(operation, attempt):
             return
         if request.succeeded:

@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
-from context.table_maintenance.application.domain.model.table import TableId
-from context.table_maintenance.application.domain.model.table_maintenance_run import (
-    TableMaintenanceRun,
+from context.table_maintenance.application.domain.model.shared import (
+    MaintenanceOperation,
+    TableId,
     TableMaintenanceRunId,
-    TriggerType,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRun, TriggerType
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_runs_repo import (
     InMemoryTableMaintenanceRunsRepo,
 )

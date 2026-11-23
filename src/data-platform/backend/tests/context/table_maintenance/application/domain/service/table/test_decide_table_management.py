@@ -6,10 +6,10 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from context.table_maintenance.application.domain.model.shared import TableDiscoveryRuleId, TableId
 from context.table_maintenance.application.domain.model.table import (
     InvalidTableTransition,
     Table,
-    TableId,
     TableManagementChange,
     TableName,
     TableStatus,
@@ -18,7 +18,6 @@ from context.table_maintenance.application.domain.model.table_discovery_policy i
     DiscoveryDecision,
     DiscoveryMatch,
     DiscoveryOutcome,
-    TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.service.table import decide_table_management
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED, SAMPLE_POLICY_ID, UNMANAGED

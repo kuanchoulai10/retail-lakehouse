@@ -5,13 +5,13 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
-from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation
-from context.table_maintenance.application.domain.model.table import TableId
-from context.table_maintenance.application.domain.model.table_maintenance_run import (
-    TableMaintenanceRun,
+from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
+    MaintenanceOperation,
+    TableId,
     TableMaintenanceRunId,
-    TriggerType,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRun, TriggerType
 from context.table_maintenance.application.service.table_maintenance_run import table_maintenance_run_output_fields
 
 NOW = datetime(2026, 11, 24, 12, tzinfo=UTC)

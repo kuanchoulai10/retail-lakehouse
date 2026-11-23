@@ -7,13 +7,12 @@ from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.catalog_discovery import (
     CatalogDiscovery,
-    CatalogDiscoveryId,
     CatalogScanFailure,
     CatalogScanFailureReason,
 )
+from context.table_maintenance.application.domain.model.shared import CatalogDiscoveryId, TableId
 from context.table_maintenance.application.domain.model.table import (
     TableChange,
-    TableId,
     TableManagementChange,
     TableName,
     TableStatus,

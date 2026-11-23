@@ -7,11 +7,8 @@ from datetime import UTC, datetime
 import pytest
 
 from base import InvariantViolation
-from context.table_maintenance.application.domain.model.table import (
-    TABLE_METRIC_COUNT_FIELDS,
-    TableId,
-    TableMetrics,
-)
+from context.table_maintenance.application.domain.model.shared import TableId
+from context.table_maintenance.application.domain.model.table import TABLE_METRIC_COUNT_FIELDS, TableMetrics
 
 NOW = datetime(2026, 11, 20, 12, tzinfo=UTC)
 

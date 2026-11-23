@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.application.domain.model.shared import TableDiscoveryPolicyId
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
     StaleDiscoveryPolicyVersion,
     TableDiscoveryPolicy,
-    TableDiscoveryPolicyId,
 )
 from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.port.outbound.table_discovery_policy import (

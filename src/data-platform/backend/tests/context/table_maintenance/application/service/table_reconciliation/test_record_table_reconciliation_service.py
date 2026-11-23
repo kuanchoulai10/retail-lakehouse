@@ -6,13 +6,10 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from context.table_maintenance.application.domain.model.table_maintenance_run import (
-    TableMaintenanceRunId,
-)
+from context.table_maintenance.application.domain.model.shared import TableMaintenanceRunId, TableReconciliationId
 from context.table_maintenance.application.domain.model.table_reconciliation import (
     OperationResult,
     ReconciliationOutcome,
-    TableReconciliationId,
 )
 from context.table_maintenance.application.exceptions import ValidationError
 from context.table_maintenance.application.port.inbound.table_reconciliation import (

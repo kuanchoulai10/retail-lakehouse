@@ -15,6 +15,11 @@ from context.table_maintenance.application.domain.model.shared import (
     OverTargetPartition,
     PolicyTarget,
     PolicyTargetType,
+    TableDiscoveryPolicyId,
+    TableDiscoveryRuleId,
+    TableId,
+    TableMaintenancePolicyId,
+    TableMaintenanceRunId,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -23,7 +28,6 @@ from context.table_maintenance.application.domain.model.table import (
     OperationState,
     RecordedAttempt,
     Table,
-    TableId,
     TableName,
     TableStatus,
 )
@@ -31,13 +35,8 @@ from context.table_maintenance.application.domain.model.table_discovery_policy i
     DiscoveryDecision,
     DiscoveryMatch,
     DiscoveryOutcome,
-    TableDiscoveryPolicyId,
-    TableDiscoveryRuleId,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-    TableMaintenancePolicyId,
-    TableMaintenancePolicyName,
-)
+from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyName
 from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.service.table import apply_discovery_to_known_table
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
@@ -273,7 +272,7 @@ def test_operation_state_round_trips_size_and_attention(repo: TablesSqlRepo):
             last_attempt_at=NOW,
             last_successful_size=ComputeSize.L,
             attention=mark,
-            last_recorded=RecordedAttempt(run_id=RUN_7, attempt=3),
+            last_recorded=RecordedAttempt(run_id=TableMaintenanceRunId(RUN_7), attempt=3),
         ),
         MaintenanceOperation.EXPIRE_SNAPSHOTS: OperationState(last_successful_size=ComputeSize.M, low_use_successes=2),
     }

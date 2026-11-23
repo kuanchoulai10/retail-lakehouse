@@ -9,10 +9,10 @@ import pytest
 from base import InvariantViolation
 from context.table_maintenance.application.domain.model.catalog_discovery import (
     CatalogDiscovery,
-    CatalogDiscoveryId,
     CatalogScanFailure,
     CatalogScanFailureReason,
 )
+from context.table_maintenance.application.domain.model.shared import CatalogDiscoveryId
 
 T0 = datetime(2026, 1, 1, tzinfo=UTC)
 T1 = T0 + timedelta(minutes=10)

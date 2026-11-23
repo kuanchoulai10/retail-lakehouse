@@ -11,12 +11,12 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenancePlan,
     OperationVerdict,
     PlannedOperation,
+    TableId,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
     DEFAULT_OPERATION_COOLDOWNS,
     DEFAULT_PARTITION_SELECTION_SETTINGS,
-    TableId,
     TableStatus,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (

@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.table_maintenance_run import (
-    TableMaintenanceRunId,
-)
+from context.table_maintenance.application.domain.model.shared import TableMaintenanceRunId
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     GetTableMaintenanceRunUseCase,

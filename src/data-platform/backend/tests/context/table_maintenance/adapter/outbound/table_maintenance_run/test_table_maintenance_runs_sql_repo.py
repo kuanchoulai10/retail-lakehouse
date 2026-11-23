@@ -16,19 +16,20 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.sql import
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     SpecFilter,
+    TableId,
+    TableMaintenanceRunId,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation as Op,
 )
-from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
+from context.table_maintenance.application.domain.model.table import Table, TableName
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     FailureClass,
     NextAttempt,
     NextStep,
     RunStatus,
     TableMaintenanceRun,
-    TableMaintenanceRunId,
     TriggerType,
 )
 from context.table_maintenance.application.exceptions import ConflictError

@@ -14,9 +14,6 @@ from context.table_maintenance.application.domain.model.table_reconciliation.rec
 from context.table_maintenance.application.domain.model.table_reconciliation.table_reconciliation import (
     TableReconciliation,
 )
-from context.table_maintenance.application.domain.model.table_reconciliation.table_reconciliation_id import (
-    TableReconciliationId,
-)
 from context.table_maintenance.application.domain.model.table_reconciliation.wake_reason import (
     WakeReason,
 )
@@ -26,6 +23,5 @@ __all__ = [
     "OperationResult",
     "ReconciliationOutcome",
     "TableReconciliation",
-    "TableReconciliationId",
     "WakeReason",
 ]

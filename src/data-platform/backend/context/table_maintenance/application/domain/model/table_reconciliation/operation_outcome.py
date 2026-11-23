@@ -10,8 +10,6 @@ from base import ValueObject
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     Measurement,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRunId,
 )
 from context.table_maintenance.application.domain.model.table_reconciliation.operation_result import (

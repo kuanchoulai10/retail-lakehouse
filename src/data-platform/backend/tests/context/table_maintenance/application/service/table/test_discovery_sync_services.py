@@ -9,23 +9,22 @@ from typing import TYPE_CHECKING
 import pytest
 
 from context.table_maintenance.application.domain.model.catalog_discovery import (
-    CatalogDiscoveryId,
     CatalogScanFailure,
     CatalogScanFailureReason,
 )
-from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation
-from context.table_maintenance.application.domain.model.table import (
-    Table,
+from context.table_maintenance.application.domain.model.shared import (
+    CatalogDiscoveryId,
+    ComputeSize,
+    MaintenanceOperation,
+    TableDiscoveryRuleId,
     TableId,
-    TableName,
-    TableStatus,
 )
+from context.table_maintenance.application.domain.model.table import Table, TableName, TableStatus
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
     DiscoveryMatch,
     DiscoveryPolicyContent,
     TableDiscoveryPolicy,
     TableDiscoveryPolicyName,
-    TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,

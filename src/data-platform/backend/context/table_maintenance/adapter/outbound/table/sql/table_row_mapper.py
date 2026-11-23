@@ -23,6 +23,7 @@ from context.table_maintenance.application.port.outbound.table import (
     TableId,
     TableMaintenancePolicyId,
     TableMaintenancePolicyName,
+    TableMaintenanceRunId,
     TableName,
     TablePriority,
     TableStatus,
@@ -70,11 +71,13 @@ def _decode_attention(data: dict[str, Any] | None) -> AttentionMark | None:
 
 
 def _encode_recorded(attempt: RecordedAttempt | None) -> dict[str, Any] | None:
-    return None if attempt is None else {"run_id": attempt.run_id, "attempt": attempt.attempt}
+    return None if attempt is None else {"run_id": attempt.run_id.value, "attempt": attempt.attempt}
 
 
 def _decode_recorded(data: dict[str, Any] | None) -> RecordedAttempt | None:
-    return None if data is None else RecordedAttempt(run_id=data["run_id"], attempt=data["attempt"])
+    return (
+        None if data is None else RecordedAttempt(run_id=TableMaintenanceRunId(data["run_id"]), attempt=data["attempt"])
+    )
 
 
 def _encode_state(state: OperationState) -> dict[str, Any]:

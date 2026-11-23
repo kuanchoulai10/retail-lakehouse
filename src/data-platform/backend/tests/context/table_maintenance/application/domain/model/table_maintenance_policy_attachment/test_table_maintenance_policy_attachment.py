@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
-from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+from context.table_maintenance.application.domain.model.shared import (
+    PolicyTarget,
+    PolicyTargetType,
     TableMaintenancePolicyId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (

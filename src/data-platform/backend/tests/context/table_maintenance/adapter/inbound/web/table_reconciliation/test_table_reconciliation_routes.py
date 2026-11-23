@@ -12,23 +12,21 @@ from context.table_maintenance.application.domain.model.shared import (
     MeasurementUnit,
     PolicyTarget,
     PolicyTargetType,
+    TableId,
+    TableMaintenancePolicyId,
+    TableMaintenanceRunId,
+    TableReconciliationId,
 )
-from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     MaintenancePolicyContent,
     TableMaintenancePolicy,
-    TableMaintenancePolicyId,
     TableMaintenancePolicyName,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_run import (
-    TableMaintenanceRunId,
 )
 from context.table_maintenance.application.domain.model.table_reconciliation import (
     OperationOutcome,
     OperationResult,
     ReconciliationOutcome,
     TableReconciliation,
-    TableReconciliationId,
     WakeReason,
 )
 from context.table_maintenance.application.service.table_reconciliation import (

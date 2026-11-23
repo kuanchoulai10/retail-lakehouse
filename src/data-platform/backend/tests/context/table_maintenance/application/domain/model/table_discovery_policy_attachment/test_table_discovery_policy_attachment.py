@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
-from context.table_maintenance.application.domain.model.table_discovery_policy import TableDiscoveryPolicyId
+from context.table_maintenance.application.domain.model.shared import (
+    PolicyTarget,
+    PolicyTargetType,
+    TableDiscoveryPolicyId,
+)
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,
 )

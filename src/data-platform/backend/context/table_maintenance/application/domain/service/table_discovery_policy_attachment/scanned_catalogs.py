@@ -7,10 +7,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
-    from context.table_maintenance.application.domain.model.table_discovery_policy import (
-        TableDiscoveryPolicy,
-        TableDiscoveryPolicyId,
-    )
+    from context.table_maintenance.application.domain.model.shared import TableDiscoveryPolicyId
+    from context.table_maintenance.application.domain.model.table_discovery_policy import TableDiscoveryPolicy
     from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
         TableDiscoveryPolicyAttachment,
     )

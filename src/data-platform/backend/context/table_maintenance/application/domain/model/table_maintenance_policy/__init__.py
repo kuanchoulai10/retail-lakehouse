@@ -77,9 +77,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.domain.model.table_maintenance_policy.table_maintenance_policy import (  # noqa: E501
     TableMaintenancePolicy,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_policy.table_maintenance_policy_id import (  # noqa: E501
-    TableMaintenancePolicyId,
-)
 from context.table_maintenance.application.domain.model.table_maintenance_policy.table_maintenance_policy_name import (  # noqa: E501
     TableMaintenancePolicyName,
 )
@@ -113,7 +110,6 @@ __all__ = [
     "ScheduleTrigger",
     "StalePolicyVersion",
     "TableMaintenancePolicy",
-    "TableMaintenancePolicyId",
     "TableMaintenancePolicyName",
     "TableMaintenancePolicyVersion",
 ]

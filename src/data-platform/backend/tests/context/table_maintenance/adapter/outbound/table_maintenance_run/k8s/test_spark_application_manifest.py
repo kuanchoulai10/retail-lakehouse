@@ -14,13 +14,12 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
     VolcanoSettings,
     build_spark_application,
 )
-from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
-from context.table_maintenance.application.domain.model.table import TableId
-from context.table_maintenance.application.domain.model.table_maintenance_run import (
-    TableMaintenanceRun,
+from context.table_maintenance.application.domain.model.shared import (
+    MaintenanceOperation,
+    TableId,
     TableMaintenanceRunId,
-    TriggerType,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRun, TriggerType
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
     SubmitMaintenanceJobGatewayInput,
 )

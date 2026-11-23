@@ -16,10 +16,8 @@ from context.table_maintenance.application.domain.model.table_discovery_policy.t
 )
 
 if TYPE_CHECKING:
+    from context.table_maintenance.application.domain.model.shared import TableDiscoveryRuleId
     from context.table_maintenance.application.domain.model.table import TableName
-    from context.table_maintenance.application.domain.model.table_discovery_policy.table_discovery_rule_id import (
-        TableDiscoveryRuleId,
-    )
 
 _PLATFORM_DEFAULT_DESCRIPTION = (
     "Manages nothing. Attach another discovery policy to a catalog, namespace or table to manage its tables."

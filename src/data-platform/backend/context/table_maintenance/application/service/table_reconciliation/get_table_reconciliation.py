@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.table_reconciliation import (
-    TableReconciliationId,
-)
+from context.table_maintenance.application.domain.model.shared import TableReconciliationId
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table_reconciliation import (
     GetTableReconciliationUseCase,

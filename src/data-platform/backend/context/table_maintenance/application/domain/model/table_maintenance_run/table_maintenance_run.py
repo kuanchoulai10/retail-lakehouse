@@ -12,9 +12,10 @@ from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
     SpecFilter,
+    TableId,
+    TableMaintenanceRunId,
     TablePriority,
 )
-from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run.failure_class import (
     FailureClass,
 )
@@ -29,9 +30,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.op
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run.run_status import (
     RunStatus,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_run.table_maintenance_run_id import (
-    TableMaintenanceRunId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run.trigger_type import (
     TriggerType,

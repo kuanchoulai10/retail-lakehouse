@@ -11,20 +11,16 @@ from base import AggregateRoot, ReadOnlyMapping
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     PolicyTarget,
-)
-from context.table_maintenance.application.domain.model.table import TableId
-from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    TableId,
     TableMaintenancePolicyId,
-    TableMaintenancePolicyName,
+    TableReconciliationId,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyName
 from context.table_maintenance.application.domain.model.table_reconciliation.operation_outcome import (
     OperationOutcome,
 )
 from context.table_maintenance.application.domain.model.table_reconciliation.reconciliation_outcome import (
     ReconciliationOutcome,
-)
-from context.table_maintenance.application.domain.model.table_reconciliation.table_reconciliation_id import (
-    TableReconciliationId,
 )
 from context.table_maintenance.application.domain.model.table_reconciliation.wake_reason import (
     WakeReason,

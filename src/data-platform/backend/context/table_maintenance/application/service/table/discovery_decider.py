@@ -13,11 +13,11 @@ from context.table_maintenance.application.domain.service.table_discovery_policy
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
+    from context.table_maintenance.application.domain.model.shared import TableDiscoveryPolicyId
     from context.table_maintenance.application.domain.model.table import TableName
     from context.table_maintenance.application.domain.model.table_discovery_policy import (
         DiscoveryDecision,
         TableDiscoveryPolicy,
-        TableDiscoveryPolicyId,
     )
     from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
         TableDiscoveryPolicyAttachment,

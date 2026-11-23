@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+from context.table_maintenance.application.domain.model.shared import TableMaintenancePolicyId, TableReconciliationId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     MaintenancePolicyContent,
     TableMaintenancePolicy,
-    TableMaintenancePolicyId,
     TableMaintenancePolicyName,
 )
-from context.table_maintenance.application.domain.model.table_reconciliation import TableReconciliationId
 from context.table_maintenance.application.port.inbound.table_reconciliation import (
     ListTableReconciliationsUseCaseInput,
 )

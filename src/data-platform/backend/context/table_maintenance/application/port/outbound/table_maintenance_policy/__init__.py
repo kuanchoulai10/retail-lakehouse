@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.domain.model.shared import TableMaintenancePolicyId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     MaintenancePolicyContent,
     StalePolicyVersion,
     TableMaintenancePolicy,
-    TableMaintenancePolicyId,
     TableMaintenancePolicyName,
     TableMaintenancePolicyVersion,
 )

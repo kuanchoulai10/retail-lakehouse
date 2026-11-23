@@ -14,8 +14,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from base import EntityId
-    from context.table_maintenance.application.domain.model.shared import PolicyTarget
-    from context.table_maintenance.application.domain.model.table_discovery_policy import TableDiscoveryPolicyId
+    from context.table_maintenance.application.domain.model.shared import PolicyTarget, TableDiscoveryPolicyId
 
 
 class TableDiscoveryPolicyAttachmentsRepo(Repository[TableDiscoveryPolicyAttachment]):

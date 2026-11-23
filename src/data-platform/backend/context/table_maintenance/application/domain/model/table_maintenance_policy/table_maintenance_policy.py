@@ -7,6 +7,7 @@ from datetime import datetime
 from pydantic import PositiveInt
 
 from base import AggregateRoot
+from context.table_maintenance.application.domain.model.shared import TableMaintenancePolicyId
 from context.table_maintenance.application.domain.model.table_maintenance_policy.default_policy_id import (
     DEFAULT_POLICY_ID,
 )
@@ -18,9 +19,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy.stale_policy_version import (
     StalePolicyVersion,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_policy.table_maintenance_policy_id import (
-    TableMaintenancePolicyId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy.table_maintenance_policy_name import (
     TableMaintenancePolicyName,

@@ -13,17 +13,14 @@ from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
     SpecFilter,
+    TableId,
+    TableMaintenanceRunId,
     TablePriority,
 )
-from context.table_maintenance.application.domain.model.table import (
-    Table,
-    TableId,
-    TableName,
-)
+from context.table_maintenance.application.domain.model.table import Table, TableName
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     RunStatus,
     TableMaintenanceRun,
-    TableMaintenanceRunId,
     TriggerType,
 )
 from context.table_maintenance.application.exceptions import (
