@@ -4,20 +4,29 @@ Iceberg's procedure option names, Spark SQL text and the text form of a time are
 written, not what it does, so only the Spark adapter writes them (ADR 0016). The guard flags, in
 every context's ``application/``:
 
-- a string constant equal to an Iceberg ``rewrite_data_files`` option name (``min-input-files``),
-- a string constant holding Spark SQL (a backtick, ``.system.``, `` IS NULL``, a ``DATE '`` or
-  ``TIMESTAMP '`` literal),
-- a call of ``isoformat`` or ``strftime``, which writes a time as text,
-- a function named ``procedure_...``, which spells a procedure's arguments.
+- an Iceberg ``rewrite_data_files`` option name (``min-input-files``), also one joined from pieces
+  (``"min-input" + "-files"``, ``f"min-{x}-files"``), and field names turned into option names
+  with ``.replace("_", "-")``;
+- Spark SQL in a string, also in an f-string or a ``+`` join, matched without regard to case or
+  spacing: a backtick (or ``chr(96)``), ``.system``, ``IS NULL``, a ``DATE '``, ``TIMESTAMP '`` or
+  ``TIMESTAMP_NTZ '`` literal;
+- a time written as text: ``isoformat`` or ``strftime`` named at all (called, passed on, or as a
+  ``getattr`` string), a ``%`` format spec in an f-string, a ``format()`` call, and ``str()``,
+  ``repr()`` or an f-string of a value named like a time (``now``, ``moment``, ``older_than``,
+  ``since``, ``before``, ``cutoff``, ``timestamp``, ``at`` or ``..._at``);
+- a function whose name holds ``procedure``, which spells a procedure's arguments.
 
-Docstrings and other string statements are prose and are not scanned. Table properties
+Docstrings and other string statements are prose and are not scanned, and an error message (an
+f-string under ``raise`` or assigned to ``msg``) may name a time. Table properties
 (``write.target-file-size-bytes``) and snapshot summary keys (``added-data-files``) are Iceberg's
-data, not a call, and are not flagged.
+data, not a call, and are not flagged. A time is recognised by its name, since the guard reads
+syntax, not types.
 """
 
 from __future__ import annotations
 
 import ast
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -25,6 +34,7 @@ import pytest
 from tests.architecture.contexts import BACKEND, context_dir, context_names
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
 ICEBERG_OPTION_NAMES = frozenset(
@@ -50,8 +60,17 @@ ICEBERG_OPTION_NAMES = frozenset(
         "shuffle-partitions-per-file",
     }
 )
-SPARK_SQL_MARKERS = ("`", ".system.", " IS NULL", "DATE '", "TIMESTAMP '", "TIMESTAMP_NTZ '")
+SPARK_SQL_MARKERS = (
+    ("`", re.compile("`")),
+    (".system.", re.compile(r"\.system\b", re.IGNORECASE)),
+    ("IS NULL", re.compile(r"\bis\s+null\b", re.IGNORECASE)),
+    ("DATE '", re.compile(r"\bdate\s*'", re.IGNORECASE)),
+    ("TIMESTAMP '", re.compile(r"\btimestamp\s*'", re.IGNORECASE)),
+    ("TIMESTAMP_NTZ '", re.compile(r"\btimestamp_ntz\s*'", re.IGNORECASE)),
+)
 TIME_TEXT_METHODS = frozenset({"isoformat", "strftime"})
+TIME_NAME = re.compile(r"(^|_)(now|moment|older_than|since|before|cutoff|timestamp|at)$")
+_HOLE = "\x00"
 
 
 def _prose(tree: ast.Module) -> set[int]:
@@ -63,22 +82,125 @@ def _prose(tree: ast.Module) -> set[int]:
     }
 
 
+def _error_messages(tree: ast.Module) -> set[int]:
+    """Return the ids of f-strings that make an error message: under ``raise``, or assigned to ``msg``."""
+    roots: list[ast.AST] = [node for node in ast.walk(tree) if isinstance(node, ast.Raise)]
+    roots += [
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "msg" for t in node.targets)
+    ]
+    return {id(node) for root in roots for node in ast.walk(root) if isinstance(node, ast.JoinedStr)}
+
+
+def _joined(node: ast.expr) -> str | None:
+    """Return the text of an f-string or a ``+`` join of strings, a hole for each part not written out."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.JoinedStr):
+        return "".join(_joined(value) or _HOLE for value in node.values)
+    if isinstance(node, ast.FormattedValue):
+        return _HOLE
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left, right = _joined(node.left), _joined(node.right)
+        if left is None and right is None:
+            return None
+        return (left or _HOLE) + (right or _HOLE)
+    return None
+
+
+def _texts(tree: ast.Module, prose: set[int]) -> Iterator[tuple[int, str]]:
+    """Yield each string the module writes, joined: constants, f-strings and the outermost ``+`` joins."""
+    inner = {
+        id(child)
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.BinOp, ast.JoinedStr))
+        for child in ast.iter_child_nodes(node)
+    }
+    for node in ast.walk(tree):
+        if id(node) in prose or id(node) in inner or not isinstance(node, (ast.Constant, ast.JoinedStr, ast.BinOp)):
+            continue
+        text = _joined(node)
+        if text is not None:
+            yield node.lineno, text
+
+
+def _names_an_option(text: str) -> str | None:
+    """Return the option name ``text`` spells, its holes standing for any text, or None."""
+    if _HOLE not in text:
+        return text if text in ICEBERG_OPTION_NAMES else None
+    parts = text.split(_HOLE)
+    if not any(re.search("[a-z]", part) for part in parts):
+        return None
+    pattern = re.compile(".+".join(re.escape(part) for part in parts))
+    return next((name for name in sorted(ICEBERG_OPTION_NAMES) if pattern.fullmatch(name)), None)
+
+
+def _tail_name(node: ast.expr) -> str:
+    """Return the last name an expression ends in: ``now`` for ``request.now`` or ``now()``."""
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    if isinstance(node, ast.Call):
+        return _tail_name(node.func)
+    if isinstance(node, ast.Subscript):
+        return _tail_name(node.value)
+    return ""
+
+
+def _is_time(node: ast.expr) -> bool:
+    return bool(TIME_NAME.search(_tail_name(node)))
+
+
+def _call_spellings(node: ast.Call) -> Iterator[str]:
+    """Yield what a call spells: a time as text, a backtick or option names from field names."""
+    func = node.func
+    if isinstance(func, ast.Name) and func.id == "format":
+        yield "time written as text with format()"
+    if isinstance(func, ast.Name) and func.id in {"str", "repr"} and node.args and _is_time(node.args[0]):
+        yield f"time written as text with {func.id}()"
+    if isinstance(func, ast.Name) and func.id == "chr" and node.args:
+        arg = node.args[0]
+        if isinstance(arg, ast.Constant) and arg.value == ord("`"):
+            yield "Spark SQL '`' written with chr(96)"
+    if isinstance(func, ast.Attribute) and func.attr == "replace" and len(node.args) == 2:
+        values = [arg.value for arg in node.args if isinstance(arg, ast.Constant)]
+        if values == ["_", "-"]:
+            yield "Iceberg option names spelled with replace('_', '-')"
+
+
 def engine_spellings(source: str) -> list[tuple[int, str]]:
     """Return ``(line, what)`` for each piece of a call's spelling in ``source``."""
     tree = ast.parse(source)
     prose = _prose(tree)
+    messages = _error_messages(tree)
     found: list[tuple[int, str]] = []
+    for line, text in _texts(tree, prose):
+        option = _names_an_option(text)
+        if option is not None:
+            found.append((line, f"Iceberg option name {option!r}"))
+        shown = text.replace(_HOLE, "{}")
+        found.extend(
+            (line, f"Spark SQL {label!r} in {shown!r}") for label, marker in SPARK_SQL_MARKERS if marker.search(text)
+        )
+        if text in TIME_TEXT_METHODS:
+            found.append((line, f"time written as text with {text}()"))
     for node in ast.walk(tree):
-        if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in prose:
-            if node.value in ICEBERG_OPTION_NAMES:
-                found.append((node.lineno, f"Iceberg option name {node.value!r}"))
-            for marker in SPARK_SQL_MARKERS:
-                if marker in node.value:
-                    found.append((node.lineno, f"Spark SQL {marker.strip()!r} in {node.value!r}"))
-        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-            if node.func.attr in TIME_TEXT_METHODS:
-                found.append((node.lineno, f"time written as text with {node.func.attr}()"))
-        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("procedure_"):
+        if isinstance(node, ast.Attribute) and node.attr in TIME_TEXT_METHODS:
+            found.append((node.lineno, f"time written as text with {node.attr}()"))
+        elif isinstance(node, ast.Call):
+            found.extend((node.lineno, what) for what in _call_spellings(node))
+        elif isinstance(node, ast.JoinedStr):
+            for value in node.values:
+                if not isinstance(value, ast.FormattedValue):
+                    continue
+                spec = _joined(value.format_spec) if value.format_spec is not None else None
+                if spec is not None and "%" in spec:
+                    found.append((node.lineno, "time written as text with a format spec"))
+                elif id(node) not in messages and _is_time(value.value):
+                    found.append((node.lineno, "time written as text in an f-string"))
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and "procedure" in node.name:
             found.append((node.lineno, f"procedure argument spelling {node.name}()"))
     return found
 
@@ -109,6 +231,32 @@ def _violations(application: Path) -> list[str]:
 def test_the_detector_flags_each_kind_of_call_spelling(snippet: str, what: str):
     """Each rule catches its own spelling."""
     assert [found for _, found in engine_spellings(snippet) if found.startswith(what)] != []
+
+
+@pytest.mark.parametrize(
+    "snippet",
+    [
+        pytest.param("def _procedure_options(self): pass", id="private-procedure-function"),
+        pytest.param("def iceberg_procedure_args(job): pass", id="procedure-inside-a-name"),
+        pytest.param("TEXT = str(now)", id="str-of-a-time"),
+        pytest.param('TEXT = f"{now}"', id="f-string-of-a-value"),
+        pytest.param('TEXT = f"{now:%Y-%m-%d %H:%M:%S}"', id="f-string-format-spec"),
+        pytest.param('TEXT = format(now, "%Y")', id="format-call"),
+        pytest.param("fmt = datetime.strftime", id="strftime-not-called"),
+        pytest.param('TEXT = getattr(now, "isoformat")()', id="isoformat-by-getattr"),
+        pytest.param('NAMES = {k.replace("_", "-"): v for k, v in options.items()}', id="underscores-to-hyphens"),
+        pytest.param('KEY = "min-input" + "-files"', id="joined-option-name"),
+        pytest.param('KEY = f"min-{x}-files"', id="f-string-option-name"),
+        pytest.param('WHERE = f"{c} is null"', id="lowercase-is-null"),
+        pytest.param("DAY = \"DATE'2026-01-01'\"", id="date-literal-without-space"),
+        pytest.param("AT = \"timestamp '2026-01-01 00:00:00'\"", id="lowercase-timestamp-literal"),
+        pytest.param("TICK = chr(96)", id="backtick-by-chr"),
+        pytest.param('CALL = catalog + ".system" + ".bucket"', id="system-namespace-joined"),
+    ],
+)
+def test_the_detector_has_no_known_bypass(snippet: str):
+    """The ways around each rule a review found are caught too."""
+    assert engine_spellings(snippet) != []
 
 
 def test_the_detector_leaves_data_names_and_prose_alone():

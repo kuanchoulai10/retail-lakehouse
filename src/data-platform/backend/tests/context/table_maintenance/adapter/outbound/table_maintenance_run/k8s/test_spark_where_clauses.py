@@ -36,6 +36,21 @@ def test_one_where_clause_per_spec():
     ]
 
 
+def test_where_clauses_follow_spec_id_whatever_order_the_job_lists_them():
+    """A job that lists its specs out of order still sends the where clauses by spec id, as the runtime expects."""
+    job = RewriteDataFilesJob(
+        target_file_size_bytes=1,
+        partitions=(
+            JobPartitionSpec(spec_id=1, fields=BUCKET, values=((2,),)),
+            JobPartitionSpec(spec_id=0, fields=REGION, values=(("eu",),)),
+        ),
+    )
+    assert spark_where_clauses("iceberg", job) == [
+        "(`region` = 'eu')",
+        "(`iceberg`.system.bucket(8, `id`) = 2)",
+    ]
+
+
 @pytest.mark.parametrize(
     "job",
     [

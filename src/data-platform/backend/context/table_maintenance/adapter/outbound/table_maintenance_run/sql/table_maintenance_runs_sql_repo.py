@@ -40,8 +40,8 @@ _NEWEST_FIRST = (t.c.created_at.desc(), _PLAN_POSITION.desc(), t.c.id.desc())
 class TableMaintenanceRunsSqlRepo(TableMaintenanceRunsRepo):
     """Store TableMaintenanceRun aggregates in a SQL database.
 
-    The columns a run is read or sorted by are real columns; its filters, procedure arguments, metrics and
-    attempts are stored as JSON on the run row.
+    The columns a run is read or sorted by are real columns; its job content, metrics and attempts are
+    stored as JSON on the run row.
     """
 
     def __init__(self, engine: Engine) -> None:

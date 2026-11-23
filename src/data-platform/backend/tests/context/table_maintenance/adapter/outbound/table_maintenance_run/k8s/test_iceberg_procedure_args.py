@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from datetime import UTC, datetime, timedelta, timezone
+
+import pytest
 
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import iceberg_procedure_args
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
@@ -132,3 +135,27 @@ def test_orphan_args_carry_prefix_mismatch_mode():
         "max_concurrent_deletes": 4,
         "prefix_mismatch_mode": "IGNORE",
     }
+
+
+BASE_JOBS = (
+    RewriteDataFilesJob(target_file_size_bytes=536870912),
+    RewriteManifestsJob(),
+    ExpireSnapshotsJob(older_than=NOW, retain_last=1),
+    RemoveOrphanFilesJob(older_than=NOW),
+)
+_CHANGED = {"str": "changed", "int": 7, "bool": True, "datetime": NOW - timedelta(days=1)}
+
+
+def _changed_value(annotation: str):
+    """Return a value of the field's type that differs from what the base job holds."""
+    return _CHANGED[annotation.split("|", maxsplit=1)[0].strip()]
+
+
+@pytest.mark.parametrize("base", BASE_JOBS, ids=lambda job: type(job).__name__)
+def test_every_field_of_a_job_reaches_the_procedure_call(base):
+    """Changing any field of a job, except the partitions the where clauses carry, changes the call's arguments."""
+    for field in dataclasses.fields(base):
+        if field.name == "partitions":
+            continue
+        changed = dataclasses.replace(base, **{field.name: _changed_value(str(field.type))})
+        assert iceberg_procedure_args(changed) != iceberg_procedure_args(base), field.name

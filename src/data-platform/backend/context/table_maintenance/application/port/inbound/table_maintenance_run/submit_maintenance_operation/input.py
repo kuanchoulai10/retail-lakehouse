@@ -10,7 +10,7 @@ from base import UseCaseInput
 class SubmitMaintenanceOperationUseCaseInput(UseCaseInput):
     """Carry the request to submit one attempt of a run's maintenance operation to Spark.
 
-    ``operation`` must be the run's own; the where clauses and the procedure arguments are the run's.
+    ``operation`` must be the run's own; what the job does is the run's content.
     ``size`` is the compute size the attempt runs at.
     """
 
