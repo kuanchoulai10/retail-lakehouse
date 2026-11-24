@@ -223,3 +223,79 @@ Rows per class, from the tables above (duplicates and already-covered rows are c
 * AUTO-full: 3 rows (1.10, 4.4, 4.7).
 * MANUAL: 23 rows (visual 6: 1.9, 1.11, 2.6, 3.10, 4.5, 5.7; infra 7: 1.14, 3.1, 4.1, 5.1, 7.8, 7.10, 7.12; superseded 8: 1.13, 3.11, 4.8, 5.8, 6.1, 6.5, 7.2, 7.11; cdc 1: 4.3; logs 1: 7.7). The 7.1 deploy-change variant is a sub-variant of an automated row and not counted.
 * KCL-105 (not counted): 3.7, 4.6 in the tables plus the titles in Source 8.
+
+## Final mapping (2026-11-24, binding)
+
+Every check above, with the scenario that now checks it on the cluster or the reason it stays manual. Where this differs from the proposal above, this section wins: the marker follows what a scenario waits on (`critical` = API answers only; `full` = it waits for discovery to manage a table, a reconciliation, a scrape or a restart), and every module that attaches or scans works in a catalog of its own.
+
+| # | where it is checked now | marker | note |
+|---|---|---|---|
+| 1.1 | `test_discovery_policies.py::test_the_default_discovery_policy_manages_nothing_and_cannot_change` | critical | the save is sent with the default's unchanged content |
+| 1.2 | `test_discovery_lifecycle.py` | full | the policy-changed scan is checked by its effect (scanned catalog, tables managed), not by listing workflows by id prefix |
+| 1.3 | `test_discovery_lifecycle.py` | full | |
+| 1.4 | `test_discovery_lifecycle.py` | full | |
+| 1.5 | `test_discovery_policies.py::test_a_policy_attaches_to_an_empty_namespace_and_never_to_a_missing_place` | critical | |
+| 1.6 | same | critical | |
+| 1.7 | `test_discovery_unreadable_catalog.py::test_attaching_in_an_unreadable_catalog_is_forbidden` | full | |
+| 1.8 | `test_discovery_unreadable_catalog.py::test_a_catalog_that_turns_unreadable_is_recorded_cannot_access` | full | a policy save rescans at once; no wait for the 600 s schedule |
+| 1.9 | manual | | console copy and placement (visual) |
+| 1.10 | `test_worker_restart_schedules.py` | full | restarts the worker Deployment (ServiceAccount and Role in `e2e/rbac.yaml`) |
+| 1.11 | manual | | console flows, layout and keyboard (visual); its API half is 1.12 |
+| 1.12 | `test_discovery_policies.py::test_saving_a_policy_makes_a_version_and_keeps_its_rule_ids` | critical | |
+| 1.13 | none | | `e2e.sh` retired by KCL-102 |
+| 1.14 | manual | | a fresh cluster's empty state cannot be asserted on a shared long-lived platform; `apps:validate` owns it |
+| 2.1 | `test_effective_policies.py::test_the_nearest_attachment_of_each_kind_applies_and_detaching_falls_back` | critical | the by-uuid answer for a managed sibling is not checked (no table is managed here); by uuid for a table's own policy is in `test_manual_maintenance.py` |
+| 2.2 | same | critical | |
+| 2.3 | `test_effective_policies.py::test_a_place_with_nothing_attached_gets_both_platform_defaults` | critical | |
+| 2.4 | `test_removed_routes.py` | critical | checked by the router's own `{"detail": "Not Found"}` |
+| 2.5 | 404 half: `test_effective_policies.py::test_a_place_the_catalog_does_not_hold_is_not_found`; 403 half: `test_discovery_unreadable_catalog.py` | critical / full | |
+| 2.6 | manual | | console panel (visual) |
+| 2.7 | `test_effective_policies.py::test_an_attachment_whose_table_was_dropped_is_orphaned_and_still_detaches` | critical | waits for the drop's catalog event |
+| 2.8 | `test_removed_routes.py` | critical | |
+| 3.1 | manual | | deployment validation |
+| 3.2 | `test_maintenance_policies.py::test_the_default_policy_has_the_target_state_shape` | critical | values only while the default is at version 1 |
+| 3.3 | `test_maintenance_policies.py::test_the_platform_settings_list_the_four_cooldowns` | critical | |
+| 3.4 | `test_maintenance_policies.py::test_an_option_the_platform_owns_or_does_not_know_is_refused` | critical | |
+| 3.5 | `test_policy_records.py` | full | |
+| 3.6 | `test_policy_records.py` | full | the attached policy is on the table, the nearer level |
+| 3.7 | KCL-105 | | timing |
+| 3.8 | `test_policy_records.py` | full | |
+| 3.9 | `test_policy_records.py` | full | |
+| 3.10 | manual | | editor keyboard use and copy (visual) |
+| 3.11 | none | | gate, not cluster behaviour |
+| 4.1 | manual | | deployment validation |
+| 4.2 | `test_table_information.py::test_the_metrics_match_the_table_and_the_exporter_shows_them` | full | compared with the snapshot summary's totals; three appends, no delete |
+| 4.3 | manual | | needs MySQL, Kafka and the sink, and up to 10 min; its table effect is 4.4 |
+| 4.4 | `test_metric_trends.py` | full | |
+| 4.5 | manual | | console cards and range switching (visual) |
+| 4.6 | KCL-105 | | timing |
+| 4.7 | manual | | stops the shared table-metrics Prometheus and needs a Role in another namespace; the 502 mapping is unit-tested |
+| 4.8 | none | | gate |
+| 5.1 | manual | | deployment validation |
+| 5.2 | `test_table_information.py` (module fixture) | full | |
+| 5.3 | `test_table_information.py::test_schema_versions_are_compared_by_field_id` | full | |
+| 5.4 | same | full | |
+| 5.5 | `test_table_information.py::test_partition_spec_versions_pair_a_changed_transform` | full | |
+| 5.6 | `test_table_information.py::test_each_commit_carries_the_schema_it_was_written_with` | full | |
+| 5.7 | manual | | console tabs at phone width (visual) |
+| 5.8 | none | | gate |
+| 6.1 | none | | `e2e.sh` retired |
+| 6.2 | `test_discovery_lifecycle.py` | full | |
+| 6.3 | `test_policy_records.py` (= 3.6) | full | |
+| 6.4 | `test_policy_records.py` | full | |
+| 6.5 | none | | not a verification |
+| 7.1 | `test_discovery_lifecycle.py` | full | the Helm-value variant stays manual: it changes the shared release |
+| 7.2 | none | | superseded draft |
+| 7.3 | `test_discovery_lifecycle.py` (= 1.2) | full | |
+| 7.4 | `test_policy_records.py` | full | the default's null target is not checked: no table here falls back to the default policy |
+| 7.5 | `test_table_information.py::test_the_table_record_and_the_catalog_answer_for_the_table` | full | `operation_states` lists only attempted operations, so a dry-run table answers `{}` |
+| 7.6 | same | full | |
+| 7.7 | manual | | judging log noise over a deploy window |
+| 7.8 | manual | | deployment |
+| 7.9 | `test_manual_maintenance.py` and each new scenario's `assert_prefixed_ids` | | already covered |
+| 7.10 | KCL-105 | | needs SparkApplications |
+| 7.11 | none | | the feature no longer exists |
+| 7.12 | manual | | deployment validation, `deployment-test` gate |
+| 7.13 | `test_catalog_round_trip.py` | critical | already covered |
+
+Differences between the plans and the code found on the cluster: every policy target answers `table_uuid` (null for a catalog or namespace); a reconciliation's `policy_target` carries only `type` and `path`; `operation_states` holds only operations ever attempted; a table created in any catalog is recorded from its catalog event, so a drop is seen once its event is processed.
