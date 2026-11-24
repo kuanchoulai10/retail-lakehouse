@@ -279,3 +279,28 @@ Rows per class in the source tables (a row split into a full and a critical half
 * MANUAL: 20 rows (visual 5: 1.3, 1.15, 2.10, 4.7, 5.9; infra 4: 1.1, 3.1, 4.1, 5.1; superseded 7: 1.4, 1.16, 2.11, 3.8,
   5.2, 5.10, 6.6; logs 1: 1.12; cost 3: 3.9, 6.1, 6.5).
 * covered by existing scenarios: 7 rows (1.13, 1.14, 2.2, 2.4, 5.4, 5.7, 6.2).
+
+## Final mapping
+
+Written 2026-11-24 once the scenarios landed. Every `AUTO` row above is a scenario except 3.7, which the plan's ruling
+kept manual [cost] (it needs a 300 s attempt deadline that would time out slow jobs in every other scenario).
+
+| scenario | marker | rows it verifies |
+|---|---|---|
+| `test_maintenance_policies.py` (partition selection settings) | critical | 1.2 |
+| `test_removed_routes.py` (four more routes) | critical | 3.2, the 404 halves of 2.8 and 2.12 |
+| `test_maintenance_requests_refused.py` | critical | 4.6, the 404 half of 2.8 |
+| `test_manual_maintenance.py` (jobs, PodGroup, workflow, raise) | full | 2.1, 2.3, 2.6a, 2.8, 2.9, 2.12, 3.5, 4.2, 6.3, 6.4 |
+| `test_partition_cap_and_order.py` | full | 1.5, 1.6, 1.7, 1.8, 2.5 (and KCL-104's 3.9 timing) |
+| `test_partition_quiet_and_max_wait.py` | full | 1.8, 1.9, 1.10 |
+| `test_partition_spec_evolution.py` | full | 1.11 (spec 1's own file count is not asserted: rewritten files go under the current spec) |
+| `test_maintenance_queue.py` | full | 2.6b, 3.3, 3.4, 3.6, 4.3, 4.4, 4.5 |
+| `test_maintenance_cancel.py` | full | 2.7 |
+| `test_reconciliation_triggers.py` | full | 5.3, 5.5, 5.6, 5.8 |
+| `test_scheduled_partition_compaction.py` (commit window 90 s) | full | (existing rows 1.14; the round is shorter) |
+
+Two platform findings came out of the first cluster rounds. The queue scenario found that a raise could replace a job
+the Spark operator was still submitting, after which the old submit created the driver under the shared name and the
+replacement failed; it is fixed (a job with no state reads `SUBMITTING` and is not replaced). The cap scenario found that
+partial progress can drop a partition's commit while the run reads `succeeded`; it is in `docs/agents/known-follow-ups.md`,
+and the scenario turns partial progress off in its own policy.
