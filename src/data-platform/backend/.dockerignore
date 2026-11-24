@@ -12,3 +12,5 @@ e2e/
 *.db
 Dockerfile
 .dockerignore
+e2e.Dockerfile
+requirements-e2e.txt

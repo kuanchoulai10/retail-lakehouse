@@ -82,6 +82,13 @@ repos:
         language: system
         files: ^(uv\.lock|src/data-platform/backend/(pyproject\.toml|requirements\.txt))$
         pass_filenames: false
+      - id: uv-export-backend-e2e
+        alias: backend
+        name: uv export (table-maintenance e2e requirements)
+        entry: uv export --package table-maintenance-backend --locked --no-dev --group e2e --no-emit-project --no-header --quiet -o src/data-platform/backend/requirements-e2e.txt
+        language: system
+        files: ^(uv\.lock|src/data-platform/backend/(pyproject\.toml|requirements-e2e\.txt))$
+        pass_filenames: false
   - repo: local
     hooks:
       - id: eslint-console

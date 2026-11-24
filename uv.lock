@@ -2524,6 +2524,10 @@ dev = [
     { name = "pytest-mock" },
     { name = "ty" },
 ]
+e2e = [
+    { name = "pyiceberg", extra = ["pyiceberg-core"] },
+    { name = "pytest" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -2550,6 +2554,10 @@ dev = [
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-mock", specifier = ">=3" },
     { name = "ty", specifier = ">=0.0.27" },
+]
+e2e = [
+    { name = "pyiceberg", extras = ["pyiceberg-core"] },
+    { name = "pytest", specifier = ">=8" },
 ]
 
 [[package]]

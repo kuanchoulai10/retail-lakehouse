@@ -19,13 +19,16 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "pytest>=8",
+    {include-group = "e2e"},
     "httpx>=0.27",
     "pytest-mock>=3",
     "ty>=0.0.27",
     "import-linter>=2.11",
-    "pyiceberg[pyiceberg-core]",
     "mutmut>=3.8.1",
+]
+e2e = [
+    "pytest>=8",
+    "pyiceberg[pyiceberg-core]",
 ]
 
 [tool.ruff]

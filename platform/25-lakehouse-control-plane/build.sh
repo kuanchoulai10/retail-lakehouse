@@ -39,6 +39,12 @@ build_and_load() {
     --tag "${name}:${tag}" \
     "$@" \
     "${source_dir}" >&2
+  load_image "${name}" "${tag}"
+}
+
+load_image() {
+  local name="$1"
+  local tag="$2"
   if minikube image ls --profile "${KUBE_CONTEXT}" | grep -qxF "docker.io/library/${name}:${tag}"; then
     echo "${name}:${tag} is already on the node" >&2
     return 0
@@ -47,7 +53,13 @@ build_and_load() {
     --profile "${KUBE_CONTEXT}" >&2
 }
 
-BACKEND_TAG="$(source_tag "${BACKEND_DIR}")"
+E2E_SOURCES=(
+  "${BACKEND_DIR}/e2e"
+  "${BACKEND_DIR}/e2e.Dockerfile"
+  "${BACKEND_DIR}/requirements-e2e.txt"
+)
+BACKEND_TAG="$(source_tag "${BACKEND_DIR}" "${E2E_SOURCES[@]/#/:(exclude)}")"
+E2E_TAG="$(source_tag "${BACKEND_DIR}")"
 SPARK_TAG="$(source_tag "${SPARK_DIR}")"
 CONSOLE_SOURCES=(
   "${CONSOLE_DIR}"
@@ -60,7 +72,16 @@ CONSOLE_TAG="$(source_tag "${CONSOLE_SOURCES[@]}")"
 build_and_load table-maintenance-backend "${BACKEND_DIR}" "${BACKEND_TAG}"
 build_and_load table-maintenance-spark "${SPARK_DIR}" "${SPARK_TAG}"
 build_and_load console "${REPO_ROOT}" "${CONSOLE_TAG}" --file "${CONSOLE_DIR}/Dockerfile"
+E2E_CONTEXT="$(mktemp -d)"
+trap 'rm -r -f "${E2E_CONTEXT}"' EXIT
+rsync -a --exclude '__pycache__' --exclude '*.pyc' \
+  "${BACKEND_DIR}/e2e.Dockerfile" "${BACKEND_DIR}/requirements-e2e.txt" "${BACKEND_DIR}/e2e" \
+  "${E2E_CONTEXT}/"
+build_and_load table-maintenance-e2e "${E2E_CONTEXT}" "${E2E_TAG}" \
+  --file "${E2E_CONTEXT}/e2e.Dockerfile" \
+  --build-arg "BACKEND_IMAGE=table-maintenance-backend:${BACKEND_TAG}"
 
 printf 'BACKEND_TAG=%s\n' "${BACKEND_TAG}"
 printf 'SPARK_TAG=%s\n' "${SPARK_TAG}"
 printf 'CONSOLE_TAG=%s\n' "${CONSOLE_TAG}"
+printf 'E2E_TAG=%s\n' "${E2E_TAG}"
