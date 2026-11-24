@@ -13,7 +13,7 @@ from urllib.parse import quote
 import pytest
 from pyarrow import fs
 
-from e2e.support import drop_catalog
+from e2e.support import drop_catalog, remove_prefix
 
 if TYPE_CHECKING:
     import httpx
@@ -47,12 +47,6 @@ def _namespaces(reply: httpx.Response) -> list[list[str]]:
     return [entry["namespace"] for entry in _ok(reply)]
 
 
-def _remove_prefix(s3: fs.S3FileSystem, prefix: str) -> None:
-    """Remove the prefix with its directory marker (``delete_dir_contents`` would keep the marker)."""
-    if s3.get_file_info(prefix).type != fs.FileType.NotFound:
-        s3.delete_dir(prefix)
-
-
 def test_a_catalog_round_trips_through_the_api_to_polaris(
     api: httpx.Client,
     polaris: PolarisClient,
@@ -67,7 +61,7 @@ def test_a_catalog_round_trips_through_the_api_to_polaris(
     prefix = f"{BUCKET}/{catalog}"
     if s3.get_file_info(BUCKET).type == fs.FileType.NotFound:
         s3.create_dir(BUCKET)
-    cleanup.push(f"remove s3://{prefix}/", lambda: _remove_prefix(s3, prefix))
+    cleanup.push(f"remove s3://{prefix}/", lambda: remove_prefix(s3, prefix))
     cleanup.push(f"drop catalog {catalog}", lambda: drop_catalog(polaris, catalog))
 
     _catalog(api, polaris, settings, catalog, base)
@@ -76,7 +70,7 @@ def test_a_catalog_round_trips_through_the_api_to_polaris(
     _generic_table_and_view(api, polaris, catalog, base)
     _deletes(api, polaris, catalog)
 
-    _remove_prefix(s3, prefix)
+    remove_prefix(s3, prefix)
     assert s3.get_file_info(prefix).type == fs.FileType.NotFound, f"s3://{prefix}/ is still there"
 
 

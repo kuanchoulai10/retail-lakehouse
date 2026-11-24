@@ -11,7 +11,7 @@ from pyarrow import fs
 from pyiceberg.catalog import load_catalog
 from temporalio.client import Client
 
-from e2e.support import CleanupStack, E2eSettings, PolarisClient, TemporalSession, unique_suffix
+from e2e.support import CleanupStack, E2eSettings, PlatformApi, PolarisClient, TemporalSession, unique_suffix
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -43,6 +43,12 @@ def api(settings: E2eSettings) -> Iterator[httpx.Client]:
     """Call the table maintenance API."""
     with httpx.Client(base_url=settings.api_url, timeout=60) as client:
         yield client
+
+
+@pytest.fixture(scope="session")
+def platform(api: httpx.Client) -> PlatformApi:
+    """Call the table maintenance API through the scenarios' client."""
+    return PlatformApi(api)
 
 
 @pytest.fixture(scope="session")

@@ -12,8 +12,14 @@ START_TIMEOUT_SECONDS="${START_TIMEOUT_SECONDS:-300}"
 EXIT_TIMEOUT_SECONDS=60
 
 case "${E2E_MARKER}" in
-  critical) E2E_DEADLINE_SECONDS=1200 ;;
-  full) E2E_DEADLINE_SECONDS=7200 ;;
+  critical)
+    E2E_MARKERS="critical"
+    E2E_DEADLINE_SECONDS=1200
+    ;;
+  full)
+    E2E_MARKERS="critical or full"
+    E2E_DEADLINE_SECONDS=7200
+    ;;
   *)
     echo "usage: run.sh critical|full" >&2
     exit 2
@@ -24,7 +30,7 @@ BUILD_OUTPUT="$(KUBE_CONTEXT="${KUBE_CONTEXT}" bash "${SCRIPT_DIR}/../build.sh")
 E2E_TAG="$(sed -n 's/^E2E_TAG=//p' <<<"${BUILD_OUTPUT}")"
 [[ -n "${E2E_TAG}" ]] || { echo "build.sh did not print E2E_TAG" >&2; exit 1; }
 E2E_POD="table-maintenance-e2e-$(openssl rand -hex 4)"
-export E2E_POD E2E_TAG E2E_MARKER E2E_DEADLINE_SECONDS
+export E2E_POD E2E_TAG E2E_MARKERS E2E_DEADLINE_SECONDS
 
 kube() {
   kubectl "$1" "${@:2}" --namespace "${NAMESPACE}" --context "${KUBE_CONTEXT}"
@@ -49,7 +55,7 @@ fail_with_events() {
 }
 
 # shellcheck disable=SC2016
-envsubst '${E2E_POD} ${E2E_TAG} ${E2E_MARKER} ${E2E_DEADLINE_SECONDS}' <"${SCRIPT_DIR}/pod.yaml" \
+envsubst '${E2E_POD} ${E2E_TAG} ${E2E_MARKERS} ${E2E_DEADLINE_SECONDS}' <"${SCRIPT_DIR}/pod.yaml" \
   | kubectl apply -f - --context "${KUBE_CONTEXT}" >/dev/null
 log::info "started ${E2E_POD} (table-maintenance-e2e:${E2E_TAG}, marker ${E2E_MARKER})"
 
