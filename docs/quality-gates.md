@@ -157,7 +157,7 @@ Each gate's own tests live in `tasks/gates/<gate>/<gate>.yml` and run alone as `
 
 ### Nightly
 
-**Nightly runs the tests too slow to run on every merge.** `e2e-full-test` runs `platform/25-lakehouse-control-plane/e2e.sh` end to end. `soak-test` keeps CDC and maintenance running for hours. `resilience-test` kills Kafka, RustFS, Polaris, Temporal or the backend database during a run. `performance-full-test` runs the longer performance suite, console bundle size included, and compares it with previous nights. `dependency-test` tries the next `uv lock --upgrade` and `npm update`. A nightly failure does not block a merge. It opens work for the next day.
+**Nightly runs the tests too slow to run on every merge.** `e2e-full-test` runs every pytest e2e scenario in the cluster (`platform/25-lakehouse-control-plane/e2e/run.sh full`); pre-merge's `e2e-critical-test` runs the `critical` ones when given `KUBE_CONTEXT`. `soak-test` keeps CDC and maintenance running for hours. `resilience-test` kills Kafka, RustFS, Polaris, Temporal or the backend database during a run. `performance-full-test` runs the longer performance suite, console bundle size included, and compares it with previous nights. `dependency-test` tries the next `uv lock --upgrade` and `npm update`. A nightly failure does not block a merge. It opens work for the next day.
 
 ## What Runs Today
 

@@ -17,7 +17,7 @@ Every issue description has exactly these six `##` sections, in this order:
 3. `## 打算怎麼做`: the intended change, as the user will see it. For an issue still under discussion, title it `## 打算怎麼做（候選做法，待討論）`, list the candidate approaches and end with the questions still open.
 4. `## 技術細節`: files, aggregates, API routes, settings and the mechanism the change touches, found by reading the code, not guessed.
 5. `## 需要注意的事`: risks, edge cases, ordering dependencies on other issues, and rules in `CLAUDE.md` files the change must respect or update.
-6. `## 完成條件`: a checklist (`- [ ]`). Include tests and stories; add a minikube check when the backend or cluster behaviour changes. A discussion issue ends with deciding (often as an ADR) and splitting into implementation issues.
+6. `## 完成條件`: a checklist (`- [ ]`). Include tests and stories; add a minikube check when the backend or cluster behaviour changes, and when that check qualifies as an e2e scenario (root `CLAUDE.md`, "Cluster checks become e2e scenarios") the box is the scenario passing on the cluster, named by its file. A discussion issue ends with deciding (often as an ADR) and splitting into implementation issues.
 
 ## Labels, titles and placement
 
