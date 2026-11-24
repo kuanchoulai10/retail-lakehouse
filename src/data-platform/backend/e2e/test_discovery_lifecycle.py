@@ -37,6 +37,10 @@ POLICIES = "/v1/discovery-policies"
 ROWS = pa.schema([pa.field("id", pa.int64())])
 MANAGED = ("t1", "t2", "t3")
 SETTLE_SECONDS = 180
+# A stop ends a reconciliation only once its run is finished. Each managed table's first plan
+# starts a remove_orphan_files run, and the normal queue admits one job at a time, so the last of
+# the four tables' jobs can end several minutes after its stop.
+STOP_SECONDS = 600
 
 
 def _rule(glob: str) -> dict:
@@ -69,7 +73,7 @@ def _wait_stopped(temporal: TemporalSession[Client], table_uuid: str) -> None:
             raise AssertionError(f"{workflow}: {signals_received(temporal, workflow)}")
         return True
 
-    wait_until(stopped, timeout=SETTLE_SECONDS, interval=3, what=f"{workflow} stopped")
+    wait_until(stopped, timeout=STOP_SECONDS, interval=3, what=f"{workflow} stopped")
 
 
 def _save(platform: PlatformApi, name: str, description: str, glob: str) -> dict:
