@@ -35,16 +35,18 @@ def sweep_leftovers(
 ) -> list[str]:
     """Remove everything named by ``OwnedNames``, in the order a scenario's own cleanup uses, and say what went.
 
-    Discovery policies go first and each leftover table (of an e2e namespace or an e2e catalog) is
-    waited on until it is unmanaged, so the
-    platform plans nothing on a table being removed; then the maintenance policies, the tables, the
-    namespaces with their storage, the round trip's catalogs and any catalog storage left without one.
-    Only one e2e run uses a cluster at a time (``run.sh`` refuses a second), so nothing swept is in use.
+    Discovery policies go first, with the default's attachments in e2e catalogs, and each leftover
+    table (of an e2e namespace or an e2e catalog) is waited on until it is unmanaged, so the platform
+    plans nothing on a table being removed; then the maintenance policies and the default's
+    attachments in e2e catalogs, the tables, the namespaces with their storage, the e2e catalogs and
+    any catalog storage left without one. Only one e2e run uses a cluster at a time (``run.sh``
+    refuses a second), so nothing swept is in use.
     """
     removed: list[str] = []
     for policy in _owned_policies(platform, "discovery-policies", OwnedNames.DISCOVERY_POLICY):
         _detach_and_delete(platform, "discovery-policies", policy)
         removed.append(f"discovery policy {policy}")
+    removed += _detach_from_default(platform, "discovery")
     namespaces = [
         found[0] for found in iceberg.list_namespaces() if len(found) == 1 and OwnedNames.NAMESPACE.match(found[0])
     ]
@@ -59,6 +61,7 @@ def sweep_leftovers(
     for policy in _owned_policies(platform, "maintenance-policies", OwnedNames.MAINTENANCE_POLICY):
         _detach_and_delete(platform, "maintenance-policies", policy)
         removed.append(f"maintenance policy {policy}")
+    removed += _detach_from_default(platform, "maintenance")
     for namespace, identifiers in tables.items():
         prefix = namespace_prefix(iceberg.load_namespace_properties(namespace)["location"], namespace)
         for _, table in identifiers:
@@ -81,6 +84,17 @@ def sweep_leftovers(
 def _owned_policies(platform: PlatformApi, kind: str, pattern: re.Pattern[str]) -> list[str]:
     names = [policy["name"] for policy in platform.get(f"/v1/{kind}")["policies"]]
     return [name for name in names if pattern.match(name)]
+
+
+def _detach_from_default(platform: PlatformApi, kind: str) -> list[str]:
+    """Detach the default policy of ``kind`` from every target in an e2e catalog; the default itself stays."""
+    gone: list[str] = []
+    for attachment in platform.get(f"/v1/{kind}-policies/default/attachments")["attachments"]:
+        path = attachment["target"]["path"]
+        if OwnedNames.CATALOG.match(path[0]):
+            platform.call("DELETE", f"/v1/{kind}-policies/default/attachments/{attachment['id']}")
+            gone.append(f"default {kind} policy's attachment {attachment['id']} on {'.'.join(path)}")
+    return gone
 
 
 def _detach_and_delete(platform: PlatformApi, kind: str, policy: str) -> None:

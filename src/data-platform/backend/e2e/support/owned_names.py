@@ -6,6 +6,13 @@ import re
 
 _SUFFIX = "[0-9a-f]{8}"
 _SCENARIO = "[a-z][a-z_]*"
+_SCENARIO_WORD = re.compile(rf"^{_SCENARIO}$")
+
+
+def _word(scenario: str) -> str:
+    if not _SCENARIO_WORD.match(scenario):
+        raise ValueError(f"scenario word {scenario!r} is not {_SCENARIO}, so the sweep would never match its names")
+    return scenario
 
 
 class OwnedNames:
@@ -24,19 +31,19 @@ class OwnedNames:
     @staticmethod
     def namespace(suffix: str, scenario: str) -> str:
         """Return the scenario's namespace in the platform's catalog."""
-        return f"e2e_{suffix}_{scenario}"
+        return f"e2e_{suffix}_{_word(scenario)}"
 
     @staticmethod
     def maintenance_policy(suffix: str, scenario: str) -> str:
         """Return the scenario's maintenance policy."""
-        return f"tm-e2e-{scenario}-{suffix}"
+        return f"tm-e2e-{_word(scenario)}-{suffix}"
 
     @staticmethod
     def discovery_policy(suffix: str, scenario: str) -> str:
         """Return the discovery policy that manages the scenario's namespace."""
-        return f"tm-e2e-{suffix}-{scenario}"
+        return f"tm-e2e-{suffix}-{_word(scenario)}"
 
     @staticmethod
     def catalog(suffix: str, scenario: str) -> str:
         """Return a catalog the scenario creates, stored under ``CATALOGS_BUCKET``."""
-        return f"tm_e2e_catalog_{suffix}_{scenario}"
+        return f"tm_e2e_catalog_{suffix}_{_word(scenario)}"

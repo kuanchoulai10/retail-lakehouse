@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from e2e.support import OwnedNames, assert_prefixed_ids, schedule_exists
+from e2e.support import OwnedNames, assert_prefixed_ids, schedule_exists, wait_until
 
 if TYPE_CHECKING:
     import httpx
@@ -95,6 +95,13 @@ def test_a_policy_attaches_to_an_empty_namespace_and_never_to_a_missing_place(
     assert attached.status_code == 200, attached.text
     assert_prefixed_ids({"da": [attached.json()["id"]]})
     assert _attachment_ids(platform, name) == [attached.json()["id"]]
+    owned_schedule = f"table-discovery:catalog={owned_catalog.name}"
+    wait_until(
+        lambda: schedule_exists(temporal, owned_schedule) or None,
+        timeout=60,
+        interval=2,
+        what=f"{owned_schedule} created",
+    )
 
     missing_catalog = OwnedNames.catalog(suffix, "missing")
     for target in (

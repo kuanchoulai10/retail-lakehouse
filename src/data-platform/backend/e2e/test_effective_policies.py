@@ -155,8 +155,10 @@ def test_a_place_the_catalog_does_not_hold_is_not_found(
     ):
         reply = api.get("/v1/effective-policies", params=place)
         assert reply.status_code == 404, f"{place}: {reply.status_code} {reply.text}"
+        assert reply.json() != {"detail": "Not Found"}, f"{place}: no route answered, not the handler"
     unknown = api.get("/v1/tables/00000000-0000-4000-8000-000000000000/effective-policies")
     assert unknown.status_code == 404, unknown.text
+    assert unknown.json() != {"detail": "Not Found"}, "no route answered, not the handler"
 
 
 def test_an_attachment_whose_table_was_dropped_is_orphaned_and_still_detaches(

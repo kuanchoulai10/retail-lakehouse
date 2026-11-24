@@ -46,3 +46,11 @@ def test_the_names_keep_the_shape_the_scenarios_use():
 def test_names_the_e2e_did_not_give_are_not_its(pattern, name):
     """The platform's own and the retired script's fixed names never match."""
     assert not pattern.match(name)
+
+
+@pytest.mark.parametrize("scenario", ["v2_lifecycle", "Lifecycle", "", "_x"])
+def test_a_scenario_word_the_sweep_could_not_match_is_refused(scenario):
+    """A name the sweep's pattern would not match is never handed out, since nothing would remove what it names."""
+    for build in (OwnedNames.namespace, OwnedNames.maintenance_policy, OwnedNames.discovery_policy, OwnedNames.catalog):
+        with pytest.raises(ValueError, match="scenario word"):
+            build(SUFFIX, scenario)

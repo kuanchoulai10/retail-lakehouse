@@ -61,6 +61,22 @@ def _platform(events: list[str], *, leftovers: bool) -> PlatformApi:
     answers = {
         "/v1/discovery-policies": {"policies": [{"name": "default"}, *([{"name": DISCOVERY}] if leftovers else [])]},
         f"/v1/discovery-policies/{DISCOVERY}/attachments": {"attachments": [{"id": "da-1"}]},
+        "/v1/discovery-policies/default/attachments": {
+            "attachments": [
+                *(
+                    [{"id": "da-d1", "target": {"type": "table", "path": [CATALOG, "lifecycle", "t1"]}}]
+                    if leftovers
+                    else []
+                ),
+                {"id": "da-d2", "target": {"type": "catalog", "path": ["iceberg"]}},
+            ]
+        },
+        "/v1/maintenance-policies/default/attachments": {
+            "attachments": [
+                *([{"id": "pa-d1", "target": {"type": "namespace", "path": [CATALOG, "ns"]}}] if leftovers else []),
+                {"id": "pa-d2", "target": {"type": "namespace", "path": ["iceberg", "inventory"]}},
+            ]
+        },
         "/v1/maintenance-policies": {
             "policies": [{"name": "default"}, *([{"name": MAINTENANCE}] if leftovers else [])]
         },
@@ -141,10 +157,12 @@ def test_what_a_cut_short_run_left_is_removed_in_the_order_its_cleanup_would_hav
     assert events == [
         f"DELETE /v1/discovery-policies/{DISCOVERY}/attachments/da-1",
         f"DELETE /v1/discovery-policies/{DISCOVERY}",
+        "DELETE /v1/discovery-policies/default/attachments/da-d1",
         "describe table-reconciliation:table-uuid=u1",
         "describe table-reconciliation:table-uuid=u2",
         f"DELETE /v1/maintenance-policies/{MAINTENANCE}/attachments/pa-1",
         f"DELETE /v1/maintenance-policies/{MAINTENANCE}",
+        "DELETE /v1/maintenance-policies/default/attachments/pa-d1",
         f"drop table {NS}.tm_e2e_orders",
         f"drop namespace {NS}",
         f"polaris PUT /catalogs/{CATALOG}/catalog-roles/catalog_admin/grants",
@@ -153,7 +171,9 @@ def test_what_a_cut_short_run_left_is_removed_in_the_order_its_cleanup_would_hav
     ]
     assert removed == [
         f"discovery policy {DISCOVERY}",
+        f"default discovery policy's attachment da-d1 on {CATALOG}.lifecycle.t1",
         f"maintenance policy {MAINTENANCE}",
+        f"default maintenance policy's attachment pa-d1 on {CATALOG}.ns",
         f"namespace {NS}",
         f"catalog {CATALOG}",
         f"storage s3://tm-e2e-catalogs/{ORPHAN}/",

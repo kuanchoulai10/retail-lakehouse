@@ -105,3 +105,17 @@ def test_the_reads_a_scenario_revoked_are_granted_back_before_anything_is_delete
         {"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_CONTENT"}},
         {"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_METADATA"}},
     ]
+
+
+def test_a_grant_polaris_refuses_fails_with_its_answer_before_anything_is_deleted():
+    """Without the content grants nothing can be emptied, so the refusal is the error, not "catalog not empty"."""
+
+    def answer(method: str, target: str) -> httpx.Response:
+        if method == "PUT":
+            return httpx.Response(403, json={"error": {"message": "not allowed"}})
+        return httpx.Response(200, json={})
+
+    polaris, seen = _polaris(answer)
+    with pytest.raises(RuntimeError, match=r"granting CATALOG_MANAGE_CONTENT back on rt answered 403: .*not allowed"):
+        drop_catalog(polaris, "rt")
+    assert [call for call in seen if call[0] == "DELETE"] == []

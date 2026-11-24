@@ -19,17 +19,20 @@ def drop_catalog(polaris: PolarisClient, catalog: str) -> None:
 
     The content grants go back on ``catalog_admin`` first, since a scenario may have revoked them
     and Polaris lets nobody empty the catalog without them. Tables are dropped without purging; the
-    scenario removes the catalog's storage prefix itself. Raise ``RuntimeError`` when Polaris keeps the catalog.
+    scenario removes the catalog's storage prefix itself. Raise ``RuntimeError`` when Polaris refuses
+    a grant or keeps the catalog.
     """
     name = _q(catalog)
     if polaris.management("GET", f"/catalogs/{name}").status_code == _GONE:
         return
     for privilege in CONTENT_GRANTS:
-        polaris.management(
+        reply = polaris.management(
             "PUT",
             f"/catalogs/{name}/catalog-roles/catalog_admin/grants",
             {"grant": {"type": "catalog", "privilege": privilege}},
         )
+        if not reply.is_success:
+            raise RuntimeError(f"granting {privilege} back on {catalog} answered {reply.status_code}: {reply.text}")
     for parts in _namespaces_deepest_first(polaris, name, ()):
         namespace = _q(_NAMESPACE_SEPARATOR.join(parts))
         for prefix, kind, suffix in (
