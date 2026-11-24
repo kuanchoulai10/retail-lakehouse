@@ -37,9 +37,18 @@ kube() {
   kubectl "$1" "${@:2}" --namespace "${NAMESPACE}" --context "${KUBE_CONTEXT}"
 }
 
+HOLDER_SELECTOR="app.kubernetes.io/name=table-maintenance-e2e,app.kubernetes.io/component=queue-holder"
+OURS=""
+
+# A queue holder outlives a pod that is killed outright and holds the normal queue until it is
+# deleted; once this run is the only one, every holder is its own.
 # shellcheck disable=SC2329
 cleanup() {
   kube delete pod "${E2E_POD}" --ignore-not-found --wait=false >/dev/null 2>&1 || true
+  if [[ -n "${OURS}" ]]; then
+    kubectl delete podgroups --namespace lakehouse-maintenance-operations --context "${KUBE_CONTEXT}" \
+      --selector "${HOLDER_SELECTOR}" --ignore-not-found --wait=false >/dev/null 2>&1 || true
+  fi
 }
 trap cleanup EXIT
 
@@ -64,6 +73,7 @@ if [[ -n "${ACTIVE}" ]]; then
   trap - EXIT
   exit 1
 fi
+OURS=1
 
 kubectl apply -f "${SCRIPT_DIR}/rbac.yaml" --context "${KUBE_CONTEXT}" >/dev/null
 # shellcheck disable=SC2016
