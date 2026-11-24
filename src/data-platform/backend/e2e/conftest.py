@@ -90,6 +90,7 @@ def s3(settings: E2eSettings) -> fs.S3FileSystem:
         endpoint_override=endpoint,
         scheme=scheme,
         force_virtual_addressing=False,
+        allow_bucket_creation=True,
     )
 
 
