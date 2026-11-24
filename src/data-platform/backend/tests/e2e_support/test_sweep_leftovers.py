@@ -11,7 +11,7 @@ from pyarrow import fs
 from pyiceberg.catalog import Catalog
 from temporalio.client import Client, WorkflowExecutionStatus
 
-from e2e.support import PlatformApi, PolarisClient, TemporalSession, sweep_leftovers
+from e2e.support import KubernetesApi, PlatformApi, PolarisClient, TemporalSession, sweep_leftovers
 
 NS = "e2e_1a2b3c4d_orders"
 DISCOVERY = "tm-e2e-1a2b3c4d-orders"
@@ -117,6 +117,24 @@ def _polaris(events: list[str]) -> PolarisClient:
     )
 
 
+HOLDER = "tm-e2e-holder-9f9f9f9f-maintenance-queue"
+PODGROUPS = "/apis/scheduling.volcano.sh/v1beta1/namespaces/lakehouse-maintenance-operations/podgroups"
+
+
+def _kubernetes(events: list[str], *, leftovers: bool) -> KubernetesApi:
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":
+            assert request.url.params["labelSelector"] == (
+                "app.kubernetes.io/name=table-maintenance-e2e,app.kubernetes.io/component=queue-holder"
+            )
+            names = [HOLDER, "someone-elses"] if leftovers else []
+            return httpx.Response(200, json={"items": [{"metadata": {"name": name}} for name in names]})
+        events.append(f"{request.method} {request.url.path}")
+        return httpx.Response(200, json={})
+
+    return KubernetesApi(httpx.Client(transport=httpx.MockTransport(handle), base_url="https://kubernetes"))
+
+
 def _storage(tmp_path, *paths: str) -> fs.SubTreeFileSystem:
     for path in paths:
         (tmp_path / path).parent.mkdir(parents=True, exist_ok=True)
@@ -133,6 +151,7 @@ def _sweep(tmp_path, events: list[str], *, leftovers: bool, namespaces: list[str
             s3=_storage(tmp_path, *storage),
             polaris=_polaris(events),
             temporal=temporal,
+            kubernetes=_kubernetes(events, leftovers=leftovers),
             catalog="iceberg",
         )
     finally:
@@ -155,6 +174,7 @@ def test_what_a_cut_short_run_left_is_removed_in_the_order_its_cleanup_would_hav
         ],
     )
     assert events == [
+        f"DELETE {PODGROUPS}/{HOLDER}",
         f"DELETE /v1/discovery-policies/{DISCOVERY}/attachments/da-1",
         f"DELETE /v1/discovery-policies/{DISCOVERY}",
         "DELETE /v1/discovery-policies/default/attachments/da-d1",
@@ -170,6 +190,7 @@ def test_what_a_cut_short_run_left_is_removed_in_the_order_its_cleanup_would_hav
         f"polaris DELETE /catalogs/{CATALOG}",
     ]
     assert removed == [
+        f"queue holder {HOLDER}",
         f"discovery policy {DISCOVERY}",
         f"default discovery policy's attachment da-d1 on {CATALOG}.lifecycle.t1",
         f"maintenance policy {MAINTENANCE}",

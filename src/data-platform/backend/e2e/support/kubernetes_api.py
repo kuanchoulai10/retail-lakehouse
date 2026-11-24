@@ -1,7 +1,8 @@
-"""Provide KubernetesApi, the e2e's client for the one Deployment its Role lets it restart."""
+"""Provide KubernetesApi, the e2e's client for the Kubernetes objects its Roles let it read or change."""
 
 from __future__ import annotations
 
+import json
 import os
 import ssl
 from datetime import UTC, datetime
@@ -10,11 +11,15 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 
+from e2e.support.watch_expired import WatchExpired
+
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Callable, Iterator, Mapping
 
 SERVICE_ACCOUNT = Path("/var/run/secrets/kubernetes.io/serviceaccount")
 _RESTARTED_AT = "kubectl.kubernetes.io/restartedAt"
+_GONE = 404
+_EXPIRED = 410
 
 
 def _trust(cafile: str) -> ssl.SSLContext:
@@ -22,7 +27,11 @@ def _trust(cafile: str) -> ssl.SSLContext:
 
 
 class KubernetesApi:
-    """Read and restart a Deployment through the API server, failing with the call and the answer."""
+    """Read, list, watch, create and delete objects by their API path, failing with the call and the answer.
+
+    A path is the object's or collection's path on the API server, for example
+    ``/apis/sparkoperator.k8s.io/v1beta2/namespaces/<ns>/sparkapplications``.
+    """
 
     def __init__(self, http: httpx.Client) -> None:
         """Call the API server ``http`` points at (its ``base_url``, token and CA)."""
@@ -60,6 +69,57 @@ class KubernetesApi:
             "PATCH", _path(namespace, name), patch, headers={"Content-Type": "application/strategic-merge-patch+json"}
         )
         return stamp
+
+    def get(self, path: str) -> dict[str, Any] | None:
+        """Read the object, or ``None`` when it is not there."""
+        reply = self._http.get(path)
+        if reply.status_code == _GONE:
+            return None
+        assert reply.is_success, f"GET {path} answered {reply.status_code}: {reply.text}"
+        return reply.json()
+
+    def list(self, path: str, *, label_selector: str | None = None) -> dict[str, Any]:
+        """List the collection, only the objects matching ``label_selector`` when one is given."""
+        params = {"labelSelector": label_selector} if label_selector else None
+        reply = self._http.get(path, params=params)
+        assert reply.is_success, f"GET {path} answered {reply.status_code}: {reply.text}"
+        return reply.json()
+
+    def create(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Create the object in the collection and return what the API server stored."""
+        return self._call("POST", path, body)
+
+    def delete(self, path: str) -> None:
+        """Delete the object; one already gone is fine."""
+        reply = self._http.delete(path)
+        assert reply.is_success or reply.status_code == _GONE, (
+            f"DELETE {path} answered {reply.status_code}: {reply.text}"
+        )
+
+    def watch(
+        self, path: str, resource_version: str, *, label_selector: str | None = None, timeout_seconds: int = 5
+    ) -> Iterator[dict[str, Any]]:
+        """Yield the collection's events after ``resource_version`` until the server ends the watch.
+
+        The server ends it after ``timeout_seconds``, so a caller can stop between watches. Raise
+        ``WatchExpired`` when the version is too old (410): the caller lists again.
+        """
+        params = {"watch": "true", "resourceVersion": resource_version, "timeoutSeconds": str(timeout_seconds)}
+        if label_selector:
+            params["labelSelector"] = label_selector
+        with self._http.stream("GET", path, params=params, timeout=timeout_seconds + 30) as reply:
+            if reply.status_code == _EXPIRED:
+                raise WatchExpired(path)
+            assert reply.is_success, f"watch {path} answered {reply.status_code}: {reply.read().decode()}"
+            for line in reply.iter_lines():
+                if not line:
+                    continue
+                event = json.loads(line)
+                if event["type"] == "ERROR":
+                    if event["object"].get("code") == _EXPIRED:
+                        raise WatchExpired(path)
+                    raise AssertionError(f"watch {path} ended with {event['object']}")
+                yield event
 
     def _call(
         self, method: str, path: str, body: dict[str, Any] | None = None, headers: dict[str, str] | None = None

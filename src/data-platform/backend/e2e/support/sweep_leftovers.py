@@ -10,6 +10,7 @@ from e2e.support.drop_catalog import drop_catalog
 from e2e.support.drop_table import drop_table
 from e2e.support.namespace_prefix import namespace_prefix
 from e2e.support.owned_names import OwnedNames
+from e2e.support.queue_holder import HOLDER_SELECTOR, PODGROUPS
 from e2e.support.remove_prefix import remove_prefix
 from e2e.support.wait_until_unmanaged import wait_until_unmanaged
 
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
     from pyiceberg.catalog import Catalog
     from temporalio.client import Client
 
+    from e2e.support.kubernetes_api import KubernetesApi
     from e2e.support.platform_api import PlatformApi
     from e2e.support.polaris_client import PolarisClient
     from e2e.support.temporal_session import TemporalSession
@@ -31,18 +33,25 @@ def sweep_leftovers(
     s3: fs.FileSystem,
     polaris: PolarisClient,
     temporal: TemporalSession[Client],
+    kubernetes: KubernetesApi,
     catalog: str,
 ) -> list[str]:
     """Remove everything named by ``OwnedNames``, in the order a scenario's own cleanup uses, and say what went.
 
-    Discovery policies go first, with the default's attachments in e2e catalogs, and each leftover
-    table (of an e2e namespace or an e2e catalog) is waited on until it is unmanaged, so the platform
+    Queue holders go first, since one blocks every maintenance run of its queue. Discovery policies
+    go next, with the default's attachments in e2e catalogs, and each leftover table (of an e2e
+    namespace or an e2e catalog) is waited on until it is unmanaged, so the platform
     plans nothing on a table being removed; then the maintenance policies and the default's
     attachments in e2e catalogs, the tables, the namespaces with their storage, the e2e catalogs and
     any catalog storage left without one. Only one e2e run uses a cluster at a time (``run.sh``
     refuses a second), so nothing swept is in use.
     """
     removed: list[str] = []
+    for holder in kubernetes.list(PODGROUPS, label_selector=HOLDER_SELECTOR)["items"]:
+        name = holder["metadata"]["name"]
+        if OwnedNames.QUEUE_HOLDER.match(name):
+            kubernetes.delete(f"{PODGROUPS}/{name}")
+            removed.append(f"queue holder {name}")
     for policy in _owned_policies(platform, "discovery-policies", OwnedNames.DISCOVERY_POLICY):
         _detach_and_delete(platform, "discovery-policies", policy)
         removed.append(f"discovery policy {policy}")

@@ -13,6 +13,7 @@ from temporalio.client import Client
 from e2e.support import (
     CleanupStack,
     E2eSettings,
+    KubernetesApi,
     OwnedCatalog,
     OwnedNames,
     PlatformApi,
@@ -117,6 +118,12 @@ def temporal(settings: E2eSettings) -> Iterator[TemporalSession[Client]]:
         session.close()
 
 
+@pytest.fixture(scope="session")
+def kubernetes() -> KubernetesApi:
+    """Talk to the API server as the pod's ServiceAccount, within what its Roles allow."""
+    return KubernetesApi.from_service_account()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def leftovers(
     request: pytest.FixtureRequest,
@@ -126,10 +133,17 @@ def leftovers(
     s3: fs.S3FileSystem,
     polaris: PolarisClient,
     temporal: TemporalSession[Client],
+    kubernetes: KubernetesApi,
 ) -> list[str]:
     """Remove what an earlier run that was cut short left, before any scenario starts."""
     removed = sweep_leftovers(
-        platform=platform, iceberg=iceberg, s3=s3, polaris=polaris, temporal=temporal, catalog=settings.catalog
+        platform=platform,
+        iceberg=iceberg,
+        s3=s3,
+        polaris=polaris,
+        temporal=temporal,
+        kubernetes=kubernetes,
+        catalog=settings.catalog,
     )
     capture = request.config.pluginmanager.getplugin("capturemanager")
     with capture.global_and_fixture_disabled():

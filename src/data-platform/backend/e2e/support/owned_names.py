@@ -27,6 +27,7 @@ class OwnedNames:
     MAINTENANCE_POLICY = re.compile(rf"^tm-e2e-{_SCENARIO}-{_SUFFIX}$")
     DISCOVERY_POLICY = re.compile(rf"^tm-e2e-{_SUFFIX}-{_SCENARIO}$")
     CATALOG = re.compile(rf"^tm_e2e_catalog_{_SUFFIX}_{_SCENARIO}$")
+    QUEUE_HOLDER = re.compile(rf"^tm-e2e-holder-{_SUFFIX}-[a-z][a-z-]*$")
 
     @staticmethod
     def namespace(suffix: str, scenario: str) -> str:
@@ -47,3 +48,8 @@ class OwnedNames:
     def catalog(suffix: str, scenario: str) -> str:
         """Return a catalog the scenario creates, stored under ``CATALOGS_BUCKET``."""
         return f"tm_e2e_catalog_{suffix}_{_word(scenario)}"
+
+    @staticmethod
+    def queue_holder(suffix: str, scenario: str) -> str:
+        """Return the scenario's queue holder, a Kubernetes name, so its underscores become hyphens."""
+        return f"tm-e2e-holder-{suffix}-{_word(scenario).replace('_', '-')}"

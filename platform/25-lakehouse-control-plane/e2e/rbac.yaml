@@ -47,3 +47,45 @@ subjects:
   - kind: ServiceAccount
     name: table-maintenance-e2e
     namespace: lakehouse-control-plane
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: table-maintenance-e2e
+  namespace: lakehouse-maintenance-operations
+  labels:
+    app.kubernetes.io/name: table-maintenance-e2e
+    app.kubernetes.io/instance: table-maintenance-e2e
+    app.kubernetes.io/part-of: table-maintenance
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/component: e2e
+rules:
+  - apiGroups: ["sparkoperator.k8s.io"]
+    resources: ["sparkapplications"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["scheduling.volcano.sh"]
+    resources: ["podgroups"]
+    verbs: ["get", "list", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: table-maintenance-e2e
+  namespace: lakehouse-maintenance-operations
+  labels:
+    app.kubernetes.io/name: table-maintenance-e2e
+    app.kubernetes.io/instance: table-maintenance-e2e
+    app.kubernetes.io/part-of: table-maintenance
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/component: e2e
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: table-maintenance-e2e
+subjects:
+  - kind: ServiceAccount
+    name: table-maintenance-e2e
+    namespace: lakehouse-control-plane

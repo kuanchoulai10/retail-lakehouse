@@ -8,7 +8,7 @@ import ssl
 import httpx
 import pytest
 
-from e2e.support import KubernetesApi
+from e2e.support import KubernetesApi, WatchExpired
 
 DEPLOYMENT = "/apis/apps/v1/namespaces/lakehouse-control-plane/deployments/table-maintenance-worker"
 
@@ -63,3 +63,65 @@ def test_the_service_account_gives_the_address_token_and_ca(tmp_path):
     assert seen["base_url"] == "https://10.0.0.1:443"
     assert seen["headers"] == {"Authorization": "Bearer t0ken"}
     assert (seen["verify"], trusted) == (context, [str(tmp_path / "ca.crt")])
+
+
+SPARK_APPS = "/apis/sparkoperator.k8s.io/v1beta2/namespaces/lakehouse-maintenance-operations/sparkapplications"
+
+
+def test_a_missing_object_reads_as_none_and_deleting_it_is_fine():
+    """A 404 means "not there", which a check for absence and an idempotent undo both want."""
+    api, seen = _api(lambda request: httpx.Response(404, json={"reason": "NotFound"}))
+    assert api.get(f"{SPARK_APPS}/tm-rdf-x-a1") is None
+    api.delete(f"{SPARK_APPS}/tm-rdf-x-a1")
+    assert [(method, path) for method, path, _, _ in seen] == [
+        ("GET", f"{SPARK_APPS}/tm-rdf-x-a1"),
+        ("DELETE", f"{SPARK_APPS}/tm-rdf-x-a1"),
+    ]
+
+
+def test_a_listing_selects_by_label_and_a_create_posts_the_object():
+    """The label selector goes to the API server; the created object is what it answers."""
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":
+            assert request.url.params["labelSelector"] == "table-maintenance/run-id"
+            return httpx.Response(200, json={"metadata": {"resourceVersion": "7"}, "items": []})
+        return httpx.Response(201, json={"metadata": {"name": "made"}})
+
+    api, seen = _api(answer)
+    assert api.list(SPARK_APPS, label_selector="table-maintenance/run-id")["metadata"]["resourceVersion"] == "7"
+    assert api.create(SPARK_APPS, {"kind": "SparkApplication"}) == {"metadata": {"name": "made"}}
+    assert seen[1][:2] == ("POST", SPARK_APPS)
+    assert seen[1][3] == {"kind": "SparkApplication"}
+
+
+def test_a_watch_yields_each_event_until_the_server_ends_it():
+    """Events arrive one JSON object per line from the resource version given; the stream ends after its timeout."""
+    lines = [
+        {"type": "ADDED", "object": {"metadata": {"name": "a", "resourceVersion": "8"}}},
+        {"type": "DELETED", "object": {"metadata": {"name": "a", "resourceVersion": "9"}}},
+    ]
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        assert dict(request.url.params) == {
+            "watch": "true",
+            "resourceVersion": "7",
+            "timeoutSeconds": "5",
+            "labelSelector": "table-maintenance/run-id",
+        }
+        return httpx.Response(200, content="".join(json.dumps(line) + "\n" for line in lines).encode())
+
+    api, _ = _api(answer)
+    events = list(api.watch(SPARK_APPS, "7", label_selector="table-maintenance/run-id", timeout_seconds=5))
+    assert [(event["type"], event["object"]["metadata"]["name"]) for event in events] == [
+        ("ADDED", "a"),
+        ("DELETED", "a"),
+    ]
+
+
+def test_a_watch_whose_version_is_too_old_raises_watch_expired():
+    """A 410 ERROR event tells the caller to list again; it is never yielded as an object."""
+    expired = {"type": "ERROR", "object": {"kind": "Status", "code": 410, "reason": "Expired"}}
+    api, _ = _api(lambda request: httpx.Response(200, content=(json.dumps(expired) + "\n").encode()))
+    with pytest.raises(WatchExpired):
+        list(api.watch(SPARK_APPS, "1", timeout_seconds=5))
