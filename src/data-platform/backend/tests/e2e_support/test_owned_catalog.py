@@ -39,7 +39,7 @@ def _polaris(events: list[tuple[str, str, object]]) -> PolarisClient:
             return httpx.Response(200, json={"access_token": "token"})
         body = json.loads(request.content) if request.content else None
         events.append((request.method, request.url.path, body))
-        return httpx.Response(201 if request.method == "POST" else 404, json={})
+        return httpx.Response(201 if request.method in ("POST", "PUT") else 404, json={})
 
     return PolarisClient(
         httpx.Client(transport=httpx.MockTransport(handle)),
@@ -119,4 +119,17 @@ def test_revoking_reads_takes_only_the_content_grants_from_catalog_admin(tmp_pat
     assert events == [
         ("POST", grants, {"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_CONTENT"}}),
         ("POST", grants, {"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_METADATA"}}),
+    ]
+
+
+def test_restoring_reads_grants_back_what_revoking_took(tmp_path):
+    """The same two privileges go back on ``catalog_admin``, so a scenario can make the catalog readable again."""
+    events: list[tuple[str, str, object]] = []
+    owned = _create(tmp_path, events, CleanupStack())
+    events.clear()
+    owned.restore_reads(_polaris(events))
+    grants = f"/api/management/v1/catalogs/{NAME}/catalog-roles/catalog_admin/grants"
+    assert events == [
+        ("PUT", grants, {"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_CONTENT"}}),
+        ("PUT", grants, {"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_METADATA"}}),
     ]

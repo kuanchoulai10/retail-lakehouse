@@ -64,10 +64,17 @@ class OwnedCatalog:
 
     def revoke_reads(self, polaris: PolarisClient) -> None:
         """Take the content grants from ``catalog_admin``, so the platform can no longer read the catalog."""
+        self._change_reads(polaris, "POST", "revoking")
+
+    def restore_reads(self, polaris: PolarisClient) -> None:
+        """Give ``catalog_admin`` the content grants back, so the platform can read the catalog again."""
+        self._change_reads(polaris, "PUT", "granting")
+
+    def _change_reads(self, polaris: PolarisClient, method: str, doing: str) -> None:
         for privilege in CONTENT_GRANTS:
             reply = polaris.management(
-                "POST",
+                method,
                 f"/catalogs/{self.name}/catalog-roles/catalog_admin/grants",
                 {"grant": {"type": "catalog", "privilege": privilege}},
             )
-            assert reply.is_success, f"revoking {privilege} on {self.name} answered {reply.status_code}: {reply.text}"
+            assert reply.is_success, f"{doing} {privilege} on {self.name} answered {reply.status_code}: {reply.text}"
