@@ -677,34 +677,34 @@ wait_for_reconcile_now_record() {
   return 1
 }
 
-compaction_filters() {
+compaction_partitions() {
   api GET "/v1/table-maintenance-runs/$1" \
-    | jq -ce 'if .operation == "rewrite_data_files" then .filters else error("run is not a rewrite_data_files run") end'
+    | jq -ce 'if .operation == "rewrite_data_files" then .partitions else error("run is not a rewrite_data_files run") end'
 }
 
 assert_whole_table_compaction() {
-  local run_id filters
+  local run_id partitions
   (($# > 0)) || { echo "no run to check for whole-table compaction" >&2; return 1; }
   for run_id in "$@"; do
-    filters="$(compaction_filters "${run_id}")" \
+    partitions="$(compaction_partitions "${run_id}")" \
       || { echo "run ${run_id} could not be read, or is not a rewrite_data_files run" >&2; return 1; }
-    [[ "${filters}" == "[]" ]] || { echo "run ${run_id} compacted with where filters: ${filters}" >&2; return 1; }
-    progress "run ${run_id} compacts the whole table (no filters)"
+    [[ "${partitions}" == "[]" ]] || { echo "run ${run_id} compacted selected partitions: ${partitions}" >&2; return 1; }
+    progress "run ${run_id} compacts the whole table (no partitions)"
   done
 }
 
 assert_partition_compaction() {
-  local run_id filters escaped=""
+  local run_id partitions quoted=""
   (($# > 0)) || { echo "no run to check for partition compaction" >&2; return 1; }
   for run_id in "$@"; do
-    filters="$(compaction_filters "${run_id}")" \
+    partitions="$(compaction_partitions "${run_id}")" \
       || { echo "run ${run_id} could not be read, or is not a rewrite_data_files run" >&2; return 1; }
-    check 'length > 0 and all(.[]; (.where // "") != "")' "${filters}" \
-      "run ${run_id} did not compact selected partitions: its filters are empty or hold an empty where"
-    progress "regions filters of run ${run_id}: ${filters}"
-    jq -r '.[].where' <<<"${filters}" | grep -qF "'o\\'neil'" && escaped=1
+    check 'length > 0 and all(.[]; (.partitions | length) > 0)' "${partitions}" \
+      "run ${run_id} did not compact selected partitions: it names no spec, or a spec with no partition"
+    progress "regions partitions of run ${run_id}: ${partitions}"
+    jq -r '.[].partitions[][]' <<<"${partitions}" | grep -qxF "o'neil" && quoted=1
   done
-  [[ -n "${escaped}" ]] || { echo "no regions where filter holds the escaped quote of o'neil" >&2; return 1; }
+  [[ -n "${quoted}" ]] || { echo "no regions run compacted the partition o'neil, whose value holds a quote" >&2; return 1; }
 }
 
 assert_runs_in_plan_order() {
