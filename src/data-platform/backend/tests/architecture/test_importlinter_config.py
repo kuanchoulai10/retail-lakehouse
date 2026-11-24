@@ -26,6 +26,8 @@ REQUIRED_CONTRACTS = {
     "configs-leaf",
     "base-isolation",
     "application-exceptions-leaf",
+    "e2e-black-box",
+    "e2e-not-imported",
 }
 
 
@@ -51,10 +53,10 @@ def test_required_contracts_present():
     assert not missing, f"missing import-linter contracts: {sorted(missing)}"
 
 
-def test_root_packages_are_base_bootstrap_context():
-    """The import-linter root packages are base, bootstrap and context."""
+def test_root_packages_are_base_bootstrap_context_e2e():
+    """The import-linter root packages are base, bootstrap, context and the e2e scenarios."""
     roots = set(_config().get("importlinter", "root_packages").split())
-    assert roots == {"base", "bootstrap", "context"}
+    assert roots == {"base", "bootstrap", "context", "e2e"}
 
 
 def test_contracts_name_no_single_context():

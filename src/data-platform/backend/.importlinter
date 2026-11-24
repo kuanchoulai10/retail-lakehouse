@@ -3,6 +3,7 @@ root_packages =
     base
     bootstrap
     context
+    e2e
 include_external_packages = True
 
 [importlinter:contract:domain-pure]
@@ -173,6 +174,7 @@ source_modules =
 forbidden_modules =
     context
     bootstrap
+    e2e
 
 [importlinter:contract:application-exceptions-leaf]
 name = Application exceptions depend on no other application ring or outer layer
@@ -185,3 +187,23 @@ forbidden_modules =
     context.*.application.service
     context.*.adapter
     bootstrap
+
+[importlinter:contract:e2e-black-box]
+name = The e2e checks the platform from outside and imports none of its code
+type = forbidden
+source_modules =
+    e2e
+forbidden_modules =
+    base
+    bootstrap
+    context
+
+[importlinter:contract:e2e-not-imported]
+name = No platform code imports the e2e scenarios
+type = forbidden
+source_modules =
+    base
+    bootstrap
+    context
+forbidden_modules =
+    e2e
