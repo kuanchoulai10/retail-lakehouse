@@ -144,6 +144,7 @@ class TableMaintenanceWorkflow:
         )
         self._planned_policy = {key: input.plan[key] for key in _PLANNED_POLICY_KEYS}
         self._results: dict[tuple[str, int], OperationResultSignal] = {}
+        self._last_submit_at: dict[str, datetime] = {}
         self._started_attempts: list[tuple[str, int]] = []
         self._settled_attempts: set[tuple[str, int]] = set()
         self._record_failures = 0
@@ -241,9 +242,14 @@ class TableMaintenanceWorkflow:
         return await self._await_outcome(operation, attempt, size, job_name)
 
     async def _submit(self, operation: dict[str, Any], attempt: int, size: str) -> str:
-        """Apply the raises that arrived, then submit the attempt's job and return its name."""
+        """Apply the raises that arrived, then submit the attempt's job and return its name.
+
+        The submit's time is kept as the operation's latest submit, which a replacement moves on
+        while the attempt's queue deadline stays with its first submit.
+        """
         await self._apply_raises()
         name = operation["operation"]
+        self._last_submit_at[name] = workflow.now()
         submitted = await self._activity(
             TableMaintenanceActivity.SUBMIT_MAINTENANCE_OPERATION,
             {"run_id": self._run_of[name], "operation": name, "attempt": attempt, "size": size, "now": _now()},
@@ -263,8 +269,8 @@ class TableMaintenanceWorkflow:
         completed job ends the attempt as any poll would. A poll that cannot read the status keeps the
         replacement wanted for the next poll. So does a job still ``SUBMITTING``: replacing it would let
         the submit under way create a driver under the replacement's name, whose own submit then fails;
-        it is read again ``SUBMITTING_POLL_INTERVAL`` later within the fast window of its submit, at the
-        queued pace after it.
+        it is read again ``SUBMITTING_POLL_INTERVAL`` later within the fast window of its latest submit,
+        at the queued pace after it.
 
         At the queue wait limit the job is polled once more: a driver start read then makes the attempt
         running, with its deadline from that start; a job ``RUNNING`` or ``COMPLETED`` whose start
@@ -321,7 +327,7 @@ class TableMaintenanceWorkflow:
                 return ended
             if requeue_wanted and not at_the_limit:
                 replaced, requeue_wanted, poll_at = await self._requeue_once_submitted(
-                    operation, attempt, size, status, queued=running_since is None, submitted_at=submitted_at
+                    operation, attempt, size, status, queued=running_since is None
                 )
                 if replaced is not None:
                     return replaced
@@ -418,17 +424,17 @@ class TableMaintenanceWorkflow:
         status: dict[str, Any],
         *,
         queued: bool,
-        submitted_at: datetime,
     ) -> tuple[OperationResultSignal | None, bool, datetime | None]:
         """Requeue as ``_requeue_if_pending`` does, unless the job is still being submitted.
 
         Returns what the requeue ended the attempt with, whether the requeue is still wanted, and
         when to poll next (None for the usual pace). A queued job still ``SUBMITTING`` keeps the
         requeue wanted and is read again ``SUBMITTING_POLL_INTERVAL`` later within the fast window of
-        its submit, ``QUEUED_POLL_INTERVAL`` after it, so a stuck submit stays cheap.
+        its latest submit (a replacement's, after a requeue), ``QUEUED_POLL_INTERVAL`` after it, so a
+        stuck submit stays cheap.
         """
         if queued and status["state"] == "SUBMITTING":
-            in_fast_window = workflow.now() - submitted_at < FAST_POLL_WINDOW
+            in_fast_window = workflow.now() - self._last_submit_at[operation["operation"]] < FAST_POLL_WINDOW
             return None, True, workflow.now() + (SUBMITTING_POLL_INTERVAL if in_fast_window else QUEUED_POLL_INTERVAL)
         return await self._requeue_if_pending(operation, attempt, size, status, queued=queued), False, None
 

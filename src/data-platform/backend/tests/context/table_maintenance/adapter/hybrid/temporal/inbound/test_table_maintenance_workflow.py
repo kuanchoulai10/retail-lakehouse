@@ -1758,6 +1758,48 @@ def test_raise_on_a_job_submitting_long_after_its_submit_polls_at_the_queued_pac
     _run(scenario)
 
 
+def test_a_second_raise_on_a_replacement_still_being_submitted_is_read_again_in_5_s():
+    """The fast window runs from the latest submit, so a raise right after a requeue is not held 10 minutes.
+
+    The first raise, 15 minutes into the queue wait, replaces the pending job. A second raise
+    arrives while the replacement is being submitted and finds it still ``SUBMITTING``: it is read
+    again 5 s later, as a raise on a fresh job is, and replaced once it reads pending.
+    """
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.vanish_after_delete[FIRST_APP] = timedelta(0)
+        handle = await h.start_maintenance(COMPACTION)
+        submitting_reads: list[datetime] = []
+
+        async def on_submit(_: dict) -> None:
+            if len(h.fakes.submits) == 2:
+                h.fakes.states[FIRST_APP] = {"state": "SUBMITTING", "error": None}
+                await handle.signal(TableMaintenanceSignal.RAISE_PRIORITY, RaisePrioritySignal("P0"))
+            elif len(h.fakes.submits) == 3:
+                h.fakes.callbacks[(COMPACTION, 1)] = [(1, True, None)]
+
+        async def on_status(app_name: str, at: datetime) -> None:
+            if h.fakes.states.get(app_name) == {"state": "SUBMITTING", "error": None}:
+                submitting_reads.append(at)
+                if len(submitting_reads) == 2:
+                    h.fakes.states.pop(app_name)
+
+        h.fakes.submit_hook = on_submit
+        h.fakes.status_hook = on_status
+        await _raise_after(h, handle, timedelta(minutes=15), priority="P1")
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1)] * 3
+        assert len(submitting_reads) == 2
+        assert timedelta(seconds=5) <= submitting_reads[1] - submitting_reads[0] < timedelta(seconds=6), (
+            submitting_reads
+        )
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+
+    _run(scenario)
+
+
 def test_finish_reports_a_raise_left_unapplied():
     """A raise that arrives after the last operation was awaited is reported to the parent as unapplied."""
 

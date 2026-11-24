@@ -105,6 +105,7 @@ class ScriptedMaintenanceActivities:
         self.raise_reply: dict[str, Any] | None = None
         self.raise_errors: set[int] = set()
         self.raise_hook: Callable[[dict], Awaitable[None]] | None = None
+        self.submit_hook: Callable[[dict], Awaitable[None]] | None = None
         self.vanish_after_delete: dict[str, timedelta] = {}
         self.skips: list[dict] = []
         self.run_priorities: dict[str, str] = {}
@@ -133,6 +134,8 @@ class ScriptedMaintenanceActivities:
         )
         if self.submit_gate is not None:
             await self.submit_gate.wait()
+        if self.submit_hook is not None:
+            await self.submit_hook(request)
         key = (request["operation"], request["attempt"])
         if key in self.submit_errors:
             raise ApplicationError(self.submit_errors[key], type="ConflictError", non_retryable=True)
