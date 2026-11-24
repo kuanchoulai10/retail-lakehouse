@@ -1671,6 +1671,93 @@ def test_requeue_waits_for_the_next_poll_when_the_status_is_unknown():
     _run(scenario)
 
 
+def _submitting_on_raise(h: Harness, reads: int) -> list[datetime]:
+    """Make the job read ``SUBMITTING`` from the raise for ``reads`` status reads, then pending; return their times."""
+    seen: list[datetime] = []
+
+    async def on_raise(_: dict) -> None:
+        h.fakes.states[FIRST_APP] = {"state": "SUBMITTING", "error": None}
+        h.fakes.callbacks[(COMPACTION, 1)] = [(1, True, None)]
+
+    async def on_status(app_name: str, at: datetime) -> None:
+        state = h.fakes.states.get(app_name)
+        if not isinstance(state, dict) or state.get("state") != "SUBMITTING":
+            return
+        if len(seen) == reads:
+            h.fakes.states.pop(app_name)
+        else:
+            seen.append(at)
+
+    h.fakes.raise_hook = on_raise
+    h.fakes.status_hook = on_status
+    return seen
+
+
+def test_raise_waits_for_a_job_still_being_submitted():
+    """A job the cluster is still submitting is not replaced: read again 5 s later, it is replaced once pending.
+
+    Replacing it then would let the submit still under way create a coordinator under the replacement's
+    name, and the replacement's own submit would fail on it.
+    """
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.vanish_after_delete[FIRST_APP] = timedelta(0)
+        submitting = _submitting_on_raise(h, reads=2)
+        handle = await h.start_maintenance(COMPACTION)
+        await _raise_after(h, handle, timedelta(minutes=1))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        commands = await h.commands()
+        names = _names(commands)
+        raised = names.index("raise_maintenance_run_priority")
+        assert names[raised : raised + 8] == [
+            "raise_maintenance_run_priority",
+            "get_maintenance_job_status",
+            "get_maintenance_job_status",
+            "get_maintenance_job_status",
+            "delete_maintenance_job",
+            "get_maintenance_job_status",
+            "get_maintenance_job_processes",
+            "submit_maintenance_operation",
+        ]
+        reads = [at for _, at in commands[raised + 1 : raised + 4]]
+        gaps = [later - earlier for earlier, later in itertools.pairwise(reads)]
+        assert all(timedelta(seconds=5) <= gap < timedelta(seconds=6) for gap in gaps), gaps
+        assert len(submitting) == 2
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1), (COMPACTION, 1)]
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+
+    _run(scenario)
+
+
+def test_raise_on_a_job_submitting_long_after_its_submit_polls_at_the_queued_pace():
+    """Past the fast window a job still being submitted is read at the queued pace, so a stuck submit stays cheap."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.vanish_after_delete[FIRST_APP] = timedelta(0)
+        _submitting_on_raise(h, reads=1)
+        handle = await h.start_maintenance(COMPACTION)
+        await _raise_after(h, handle, timedelta(minutes=15))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        commands = await h.commands()
+        names = _names(commands)
+        raised = names.index("raise_maintenance_run_priority")
+        assert names[raised : raised + 4] == [
+            "raise_maintenance_run_priority",
+            "get_maintenance_job_status",
+            "get_maintenance_job_status",
+            "delete_maintenance_job",
+        ]
+        gap = commands[raised + 2][1] - commands[raised + 1][1]
+        assert timedelta(minutes=10) <= gap < timedelta(minutes=10, seconds=1), gap
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1), (COMPACTION, 1)]
+
+    _run(scenario)
+
+
 def test_finish_reports_a_raise_left_unapplied():
     """A raise that arrives after the last operation was awaited is reported to the parent as unapplied."""
 

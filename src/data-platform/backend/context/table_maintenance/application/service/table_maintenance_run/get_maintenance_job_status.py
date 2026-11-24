@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_KNOWN_STATES = frozenset({"PENDING", "RUNNING", "COMPLETED", "FAILED", "NOT_FOUND"})
+_KNOWN_STATES = frozenset({"SUBMITTING", "PENDING", "RUNNING", "COMPLETED", "FAILED", "NOT_FOUND"})
 _NOT_FOUND = "NOT_FOUND"
 
 

@@ -158,9 +158,9 @@ def test_submit_other_errors_propagate():
 @pytest.mark.parametrize(
     ("status", "expected", "error"),
     [
-        (None, "PENDING", None),
-        ({}, "PENDING", None),
-        ({"applicationState": {"state": ""}}, "PENDING", None),
+        (None, "SUBMITTING", None),
+        ({}, "SUBMITTING", None),
+        ({"applicationState": {"state": ""}}, "SUBMITTING", None),
         ({"applicationState": {"state": "SUBMITTED"}}, "PENDING", None),
         ({"applicationState": {"state": "RUNNING"}}, "RUNNING", None),
         ({"applicationState": {"state": "PENDING_RERUN"}}, "RUNNING", None),
@@ -184,12 +184,12 @@ def test_read_maps_states(status, expected, error):
     assert (out.state, out.error) == (expected, error)
 
 
-def test_read_missing_status_key_is_pending():
-    """An application with no status yet reads as pending."""
+def test_read_missing_status_key_is_submitting():
+    """An application with no status yet is still being submitted: its coordinator may not exist yet."""
     api = MagicMock()
     api.get_namespaced_custom_object.return_value = {}
     out = ReadMaintenanceJobK8sGateway(api, CONFIG).read(ReadMaintenanceJobGatewayInput(*ATTEMPT))
-    assert out.state == "PENDING"
+    assert out.state == "SUBMITTING"
 
 
 def test_read_looks_up_the_application_named_after_the_attempt():

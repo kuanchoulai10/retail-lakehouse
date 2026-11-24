@@ -46,7 +46,12 @@ class ReadMaintenanceJobK8sGateway(ReadMaintenanceJobGateway):
         self,
         input: ReadMaintenanceJobGatewayInput,  # noqa: A002
     ) -> ReadMaintenanceJobGatewayOutput:
-        """Map the SparkApplication state to the port vocabulary."""
+        """Map the SparkApplication state to the port vocabulary.
+
+        No state yet means the operator has not finished submitting the application, so its driver
+        pod may not exist yet: ``SUBMITTING``, which the workflow never replaces. ``SUBMITTED`` and any
+        other waiting state are ``PENDING``.
+        """
         try:
             app = self._api.get_namespaced_custom_object(
                 group=GROUP,
@@ -61,6 +66,8 @@ class ReadMaintenanceJobK8sGateway(ReadMaintenanceJobGateway):
             raise
         application_state = (app.get("status") or {}).get("applicationState") or {}
         state = application_state.get("state") or ""
+        if not state:
+            return ReadMaintenanceJobGatewayOutput("SUBMITTING")
         if state == "COMPLETED":
             return ReadMaintenanceJobGatewayOutput("COMPLETED")
         if state in FAILED_STATES:

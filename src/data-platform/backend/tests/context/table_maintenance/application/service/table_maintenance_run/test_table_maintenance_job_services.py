@@ -434,6 +434,17 @@ def test_job_status_without_a_started_driver_has_no_driver_start(runs_repo, run,
     assert (out.state, out.started_running_at) == ("PENDING", None)
 
 
+def test_job_status_of_a_job_being_submitted_answers(runs_repo, run, read_job):
+    """A job the cluster is still submitting answers ``SUBMITTING``, which the workflow does not replace."""
+    read_job.set_state(RUN_1, "rewrite_data_files", 1, "SUBMITTING")
+
+    out = GetMaintenanceJobStatusService(runs_repo, read_job, ScriptedReadMaintenanceJobProcessesGateway()).execute(
+        _status_input()
+    )
+
+    assert (out.state, out.started_running_at) == ("SUBMITTING", None)
+
+
 def test_job_status_of_a_missing_job_reads_no_pods(runs_repo, run, read_job):
     """A job that is gone reads no pods."""
     pods = ScriptedReadMaintenanceJobProcessesGateway()

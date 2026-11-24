@@ -37,6 +37,7 @@ FAST_POLL_INTERVAL = timedelta(seconds=30)
 FAST_POLL_WINDOW = timedelta(minutes=10)
 SLOW_POLL_INTERVAL = timedelta(minutes=5)
 QUEUED_POLL_INTERVAL = timedelta(minutes=10)
+SUBMITTING_POLL_INTERVAL = timedelta(seconds=5)
 _CALLBACK_GRACE = timedelta(seconds=120)
 _TIMED_OUT = "spark job timed out"
 _MISSING = "spark job missing"
@@ -260,7 +261,10 @@ class TableMaintenanceWorkflow:
         replaced (see ``_requeue``), keeping its submit time and its queue deadline; a driver start
         makes the attempt running; ``RUNNING`` without a start is left alone; and a failed, missing or
         completed job ends the attempt as any poll would. A poll that cannot read the status keeps the
-        replacement wanted for the next poll.
+        replacement wanted for the next poll. So does a job still ``SUBMITTING``: replacing it would let
+        the submit under way create a driver under the replacement's name, whose own submit then fails;
+        it is read again ``SUBMITTING_POLL_INTERVAL`` later within the fast window of its submit, at the
+        queued pace after it.
 
         At the queue wait limit the job is polled once more: a driver start read then makes the attempt
         running, with its deadline from that start; a job ``RUNNING`` or ``COMPLETED`` whose start
@@ -316,9 +320,8 @@ class TableMaintenanceWorkflow:
             if ended is not None:
                 return ended
             if requeue_wanted and not at_the_limit:
-                requeue_wanted = False
-                replaced = await self._requeue_if_pending(
-                    operation, attempt, size, status, queued=running_since is None
+                replaced, requeue_wanted, poll_at = await self._requeue_once_submitted(
+                    operation, attempt, size, status, queued=running_since is None, submitted_at=submitted_at
                 )
                 if replaced is not None:
                     return replaced
@@ -406,6 +409,28 @@ class TableMaintenanceWorkflow:
             reply["priority"],
         )
         return reply
+
+    async def _requeue_once_submitted(
+        self,
+        operation: dict[str, Any],
+        attempt: int,
+        size: str,
+        status: dict[str, Any],
+        *,
+        queued: bool,
+        submitted_at: datetime,
+    ) -> tuple[OperationResultSignal | None, bool, datetime | None]:
+        """Requeue as ``_requeue_if_pending`` does, unless the job is still being submitted.
+
+        Returns what the requeue ended the attempt with, whether the requeue is still wanted, and
+        when to poll next (None for the usual pace). A queued job still ``SUBMITTING`` keeps the
+        requeue wanted and is read again ``SUBMITTING_POLL_INTERVAL`` later within the fast window of
+        its submit, ``QUEUED_POLL_INTERVAL`` after it, so a stuck submit stays cheap.
+        """
+        if queued and status["state"] == "SUBMITTING":
+            in_fast_window = workflow.now() - submitted_at < FAST_POLL_WINDOW
+            return None, True, workflow.now() + (SUBMITTING_POLL_INTERVAL if in_fast_window else QUEUED_POLL_INTERVAL)
+        return await self._requeue_if_pending(operation, attempt, size, status, queued=queued), False, None
 
     async def _requeue_if_pending(
         self, operation: dict[str, Any], attempt: int, size: str, status: dict[str, Any], *, queued: bool
