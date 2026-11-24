@@ -22,7 +22,7 @@ CALLS = [
     ("PUT", "/principal-roles/tm_e2e/catalog-roles/iceberg", {"catalogRole": {"name": "tm_e2e"}}),
     ("PUT", "/principals/tm-e2e/principal-roles", {"principalRole": {"name": "tm_e2e"}}),
     ("PUT", "/principals/tm-e2e/principal-roles", {"principalRole": {"name": "service_admin"}}),
-    ("POST", "/principals/tm-e2e/rotate", None),
+    ("POST", "/principals/tm-e2e/reset", {}),
 ]
 ROTATED = {"principal": {"name": "tm-e2e"}, "credentials": {"clientId": "e2e-id", "clientSecret": "e2e-secret"}}
 
@@ -48,11 +48,11 @@ def _polaris(answer) -> tuple[PolarisClient, list[tuple[str, str, object]]]:
     return client, seen
 
 
-def test_a_fresh_polaris_gets_the_principal_its_roles_and_grant_then_new_credentials():
-    """Every piece is created and assigned in order, and the rotated credentials come back."""
+def test_a_fresh_polaris_gets_the_principal_its_roles_and_grant_then_reset_credentials():
+    """Every piece is created and assigned in order, and the reset credentials come back."""
 
     def answer(method: str, path: str) -> httpx.Response:
-        if path.endswith("/rotate"):
+        if path.endswith("/reset"):
             return httpx.Response(200, json=ROTATED)
         return httpx.Response(201, json={})
 
@@ -61,11 +61,11 @@ def test_a_fresh_polaris_gets_the_principal_its_roles_and_grant_then_new_credent
     assert seen == CALLS
 
 
-def test_what_already_exists_is_kept_and_the_credentials_still_rotate():
-    """A second run finds the principal and roles (409) and only rotates the credentials."""
+def test_what_already_exists_is_kept_and_the_credentials_are_still_reset():
+    """A second run finds the principal and roles (409) and only resets the credentials."""
 
     def answer(method: str, path: str) -> httpx.Response:
-        if path.endswith("/rotate"):
+        if path.endswith("/reset"):
             return httpx.Response(200, json=ROTATED)
         if method == "POST":
             return httpx.Response(409, json={"error": {"message": "already exists"}})
@@ -87,7 +87,7 @@ def test_another_failure_stops_naming_the_call_and_polaris_message():
     polaris, seen = _polaris(answer)
     with pytest.raises(RuntimeError, match=r"PUT /catalogs/iceberg/catalog-roles/tm_e2e/grants answered 500: boom"):
         ensure_principal(polaris, catalog="iceberg")
-    assert not any(path.endswith("/rotate") for _, path, _ in seen)
+    assert not any(path.endswith("/reset") for _, path, _ in seen)
 
 
 def test_main_writes_the_credentials_for_the_owner_only_and_prints_no_secret(tmp_path, capsys):
@@ -96,7 +96,7 @@ def test_main_writes_the_credentials_for_the_owner_only_and_prints_no_secret(tmp
     def handle(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/oauth/tokens"):
             return httpx.Response(200, json={"access_token": "platform-token"})
-        if request.url.path.endswith("/rotate"):
+        if request.url.path.endswith("/reset"):
             return httpx.Response(200, json=ROTATED)
         return httpx.Response(201, json={})
 

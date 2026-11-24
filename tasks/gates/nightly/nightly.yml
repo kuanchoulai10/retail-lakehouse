@@ -16,7 +16,7 @@ tasks:
         - name: KUBE_CONTEXT
     dir: '{{.ROOT_DIR}}'
     cmds:
-      - KUBE_CONTEXT={{.KUBE_CONTEXT}} bash platform/25-lakehouse-control-plane/e2e.sh
+      - KUBE_CONTEXT={{.KUBE_CONTEXT}} bash platform/25-lakehouse-control-plane/e2e/run.sh full
 
   soak-test:
     summary: "Run the platform under steady load for hours and watch for leaks"

@@ -3,8 +3,9 @@
 Run as ``python -m e2e.setup_principal`` in the e2e pod's init container, which alone holds the
 platform's credential. It ensures principal ``tm-e2e``, principal role ``tm_e2e``, catalog role
 ``tm_e2e`` on the platform's catalog with ``CATALOG_MANAGE_CONTENT``, and the ``service_admin``
-principal role (to read back the catalogs a scenario creates through the API), then rotates the
-principal's credentials and writes ``<client_id>:<client_secret>`` to the file the scenarios read.
+principal role (to read back the catalogs a scenario creates through the API), then resets the
+principal's credentials (only a principal may rotate its own; a service admin resets them) and
+writes ``<client_id>:<client_secret>`` to the file the scenarios read.
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ _EXISTS = 409
 
 
 def ensure_principal(polaris: PolarisClient, *, catalog: str, principal: str = "tm-e2e") -> str:
-    """Create or keep the e2e principal and its grants, rotate its credentials and return them."""
+    """Create or keep the e2e principal and its grants, reset its credentials and return them."""
     role = principal.replace("-", "_")
     _create(polaris, "/principals", {"principal": {"name": principal}, "credentialRotationRequired": False})
     _create(polaris, "/principal-roles", {"principalRole": {"name": role}})
@@ -37,7 +38,8 @@ def ensure_principal(polaris: PolarisClient, *, catalog: str, principal: str = "
     _put(polaris, f"/principal-roles/{role}/catalog-roles/{catalog}", {"catalogRole": {"name": role}})
     _put(polaris, f"/principals/{principal}/principal-roles", {"principalRole": {"name": role}})
     _put(polaris, f"/principals/{principal}/principal-roles", {"principalRole": {"name": "service_admin"}})
-    credentials = _checked(polaris.management("POST", f"/principals/{principal}/rotate"), "POST", "rotate")
+    reset = f"/principals/{principal}/reset"
+    credentials = _checked(polaris.management("POST", reset, json={}), "POST", reset)
     secrets = credentials.json()["credentials"]
     return f"{secrets['clientId']}:{secrets['clientSecret']}"
 

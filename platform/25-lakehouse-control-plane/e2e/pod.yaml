@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ${E2E_POD}
+  namespace: lakehouse-control-plane
+  labels:
+    app.kubernetes.io/name: table-maintenance-e2e
+    app.kubernetes.io/instance: ${E2E_POD}
+    app.kubernetes.io/part-of: table-maintenance
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/component: e2e
+    app.kubernetes.io/version: ${E2E_TAG}
+spec:
+  restartPolicy: Never
+  activeDeadlineSeconds: ${E2E_DEADLINE_SECONDS}
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+  volumes:
+    - name: credentials
+      emptyDir:
+        medium: Memory
+  initContainers:
+    - name: principal
+      image: table-maintenance-e2e:${E2E_TAG}
+      imagePullPolicy: Never
+      command: ["python", "-m", "e2e.setup_principal"]
+      envFrom:
+        - configMapRef:
+            name: table-maintenance-config
+      env:
+        - name: GLAC_CATALOG__CREDENTIAL
+          valueFrom:
+            secretKeyRef:
+              name: table-maintenance-polaris-credential
+              key: credential
+        - name: E2E_CATALOG
+          value: iceberg
+        - name: E2E_POLARIS_CREDENTIAL_FILE
+          value: /e2e-credentials/polaris
+      volumeMounts:
+        - name: credentials
+          mountPath: /e2e-credentials
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          memory: 256Mi
+  containers:
+    - name: e2e
+      image: table-maintenance-e2e:${E2E_TAG}
+      imagePullPolicy: Never
+      command: ["python", "-m", "pytest", "e2e", "-p", "no:cacheprovider", "-v", "-m", "${E2E_MARKER}"]
+      envFrom:
+        - configMapRef:
+            name: table-maintenance-config
+        - secretRef:
+            name: table-maintenance-s3
+      env:
+        - name: E2E_API_URL
+          value: http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000
+        - name: E2E_CATALOG
+          value: iceberg
+        - name: E2E_POLARIS_CREDENTIAL_FILE
+          value: /e2e-credentials/polaris
+      volumeMounts:
+        - name: credentials
+          mountPath: /e2e-credentials
+          readOnly: true
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          memory: 1Gi

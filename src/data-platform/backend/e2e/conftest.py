@@ -69,6 +69,7 @@ def iceberg(settings: E2eSettings) -> Catalog:
         warehouse=settings.catalog,
         scope=settings.scope,
         **{
+            "oauth2-server-uri": f"{settings.catalog_uri}/v1/oauth/tokens",
             "s3.endpoint": settings.s3_endpoint,
             "s3.path-style-access": "true",
             "s3.region": settings.s3_region,
