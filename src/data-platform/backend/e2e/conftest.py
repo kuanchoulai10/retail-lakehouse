@@ -8,16 +8,18 @@ from typing import TYPE_CHECKING
 import httpx
 import pytest
 from pyarrow import fs
-from pyiceberg.catalog import load_catalog
 from temporalio.client import Client
 
 from e2e.support import (
     CleanupStack,
     E2eSettings,
+    OwnedCatalog,
+    OwnedNames,
     PlatformApi,
     PolarisClient,
     TemporalSession,
     interrupt_on_sigterm,
+    load_iceberg,
     misfiled_scenarios,
     sweep_leftovers,
     unique_suffix,
@@ -85,22 +87,7 @@ def polaris(settings: E2eSettings) -> Iterator[PolarisClient]:
 @pytest.fixture(scope="session")
 def iceberg(settings: E2eSettings) -> Catalog:
     """Read and write the platform's catalog with PyIceberg as the e2e principal."""
-    return load_catalog(
-        "e2e",
-        type="rest",
-        uri=settings.catalog_uri,
-        credential=settings.polaris_credential,
-        warehouse=settings.catalog,
-        scope=settings.scope,
-        **{
-            "oauth2-server-uri": f"{settings.catalog_uri}/v1/oauth/tokens",
-            "s3.endpoint": settings.s3_endpoint,
-            "s3.path-style-access": "true",
-            "s3.region": settings.s3_region,
-            "s3.access-key-id": settings.s3_access_key_id,
-            "s3.secret-access-key": settings.s3_secret_access_key,
-        },
-    )
+    return load_iceberg(settings, settings.catalog)
 
 
 @pytest.fixture(scope="session")
@@ -151,11 +138,46 @@ def leftovers(
     return removed
 
 
+def _undo(stack: CleanupStack) -> None:
+    errors = stack.run()
+    if errors:
+        pytest.fail("cleanup failed:\n" + "\n".join(errors), pytrace=False)
+
+
 @pytest.fixture
 def cleanup() -> Iterator[CleanupStack]:
     """Undo what the scenario created, newest first, whether it passed or failed."""
     stack = CleanupStack()
     yield stack
-    errors = stack.run()
-    if errors:
-        pytest.fail("cleanup failed:\n" + "\n".join(errors), pytrace=False)
+    _undo(stack)
+
+
+@pytest.fixture(scope="module")
+def module_cleanup() -> Iterator[CleanupStack]:
+    """Undo what a module's shared setup created, after its last scenario."""
+    stack = CleanupStack()
+    yield stack
+    _undo(stack)
+
+
+@pytest.fixture(scope="module")
+def owned_catalog(
+    request: pytest.FixtureRequest,
+    settings: E2eSettings,
+    platform: PlatformApi,
+    polaris: PolarisClient,
+    s3: fs.S3FileSystem,
+    suffix: str,
+    module_cleanup: CleanupStack,
+) -> OwnedCatalog:
+    """Give the module a catalog of its own, named after the module, dropped after its last scenario."""
+    scenario = request.module.__name__.rsplit(".", 1)[-1].removeprefix("test_")
+    return OwnedCatalog.create(
+        platform=platform,
+        polaris=polaris,
+        s3=s3,
+        cleanup=module_cleanup,
+        platform_catalog=settings.catalog,
+        name=OwnedNames.catalog(suffix, scenario),
+        load_iceberg=lambda warehouse: load_iceberg(settings, warehouse),
+    )

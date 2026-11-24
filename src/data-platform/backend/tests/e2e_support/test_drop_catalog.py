@@ -57,6 +57,9 @@ def test_everything_left_is_deleted_children_first_then_the_roles_and_the_catalo
 
     polaris, seen = _polaris(answer)
     drop_catalog(polaris, "rt")
+    writes = [call for call in seen if call[0] != "GET"]
+    grants = MANAGEMENT + "/catalogs/rt/catalog-roles/catalog_admin/grants"
+    assert writes[:2] == [("PUT", grants), ("PUT", grants)]
     assert [call for call in seen if call[0] == "DELETE"] == [
         ("DELETE", CATALOG + "/v1/rt/namespaces/a%1Fb.c/views/v"),
         ("DELETE", CATALOG + "/polaris/v1/rt/namespaces/a%1Fb.c/generic-tables/g"),
@@ -79,3 +82,26 @@ def test_a_catalog_polaris_will_not_delete_fails_with_its_answer():
     polaris, _ = _polaris(answer)
     with pytest.raises(RuntimeError, match=r"catalog rt was not dropped: 400 .*catalog not empty"):
         drop_catalog(polaris, "rt")
+
+
+def test_the_reads_a_scenario_revoked_are_granted_back_before_anything_is_deleted():
+    """A catalog whose content grants were revoked can still be emptied: they come back first."""
+    bodies: list[object] = []
+
+    def answer(method: str, target: str) -> httpx.Response:
+        return httpx.Response(204 if method == "DELETE" else 200, json={})
+
+    polaris, seen = _polaris(answer)
+    original = polaris.management
+
+    def management(method: str, path: str, json=None):
+        if method == "PUT":
+            bodies.append(json)
+        return original(method, path, json)
+
+    polaris.management = management  # ty: ignore[invalid-assignment]
+    drop_catalog(polaris, "rt")
+    assert bodies == [
+        {"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_CONTENT"}},
+        {"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_METADATA"}},
+    ]

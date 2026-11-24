@@ -65,6 +65,7 @@ if [[ -n "${ACTIVE}" ]]; then
   exit 1
 fi
 
+kubectl apply -f "${SCRIPT_DIR}/rbac.yaml" --context "${KUBE_CONTEXT}" >/dev/null
 # shellcheck disable=SC2016
 envsubst '${E2E_POD} ${E2E_TAG} ${E2E_MARKERS} ${E2E_DEADLINE_SECONDS}' <"${SCRIPT_DIR}/pod.yaml" \
   | kubectl apply -f - --context "${KUBE_CONTEXT}" >/dev/null

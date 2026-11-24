@@ -19,7 +19,7 @@ class OwnedNames:
     NAMESPACE = re.compile(rf"^e2e_{_SUFFIX}_{_SCENARIO}$")
     MAINTENANCE_POLICY = re.compile(rf"^tm-e2e-{_SCENARIO}-{_SUFFIX}$")
     DISCOVERY_POLICY = re.compile(rf"^tm-e2e-{_SUFFIX}-{_SCENARIO}$")
-    CATALOG = re.compile(rf"^tm_e2e_catalog_{_SUFFIX}$")
+    CATALOG = re.compile(rf"^tm_e2e_catalog_{_SUFFIX}_{_SCENARIO}$")
 
     @staticmethod
     def namespace(suffix: str, scenario: str) -> str:
@@ -37,6 +37,6 @@ class OwnedNames:
         return f"tm-e2e-{suffix}-{scenario}"
 
     @staticmethod
-    def catalog(suffix: str) -> str:
-        """Return the catalog the round trip creates, stored under ``CATALOGS_BUCKET``."""
-        return f"tm_e2e_catalog_{suffix}"
+    def catalog(suffix: str, scenario: str) -> str:
+        """Return a catalog the scenario creates, stored under ``CATALOGS_BUCKET``."""
+        return f"tm_e2e_catalog_{suffix}_{scenario}"

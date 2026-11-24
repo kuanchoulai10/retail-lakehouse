@@ -56,7 +56,7 @@ def test_a_catalog_round_trips_through_the_api_to_polaris(
     cleanup: CleanupStack,
 ):
     """Every write the API accepts is in Polaris as written, and every delete leaves nothing behind."""
-    catalog = OwnedNames.catalog(suffix)
+    catalog = OwnedNames.catalog(suffix, "round_trip")
     base = f"s3://{BUCKET}/{catalog}"
     prefix = f"{BUCKET}/{catalog}"
     if s3.get_file_info(BUCKET).type == fs.FileType.NotFound:

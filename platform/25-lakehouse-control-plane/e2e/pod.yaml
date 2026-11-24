@@ -14,7 +14,8 @@ spec:
   restartPolicy: Never
   activeDeadlineSeconds: ${E2E_DEADLINE_SECONDS}
   terminationGracePeriodSeconds: 900
-  automountServiceAccountToken: false
+  serviceAccountName: table-maintenance-e2e
+  automountServiceAccountToken: true
   securityContext:
     runAsNonRoot: true
     runAsUser: 10001

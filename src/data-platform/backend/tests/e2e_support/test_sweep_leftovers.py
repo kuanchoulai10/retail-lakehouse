@@ -16,8 +16,8 @@ from e2e.support import PlatformApi, PolarisClient, TemporalSession, sweep_lefto
 NS = "e2e_1a2b3c4d_orders"
 DISCOVERY = "tm-e2e-1a2b3c4d-orders"
 MAINTENANCE = "tm-e2e-orders-1a2b3c4d"
-CATALOG = "tm_e2e_catalog_1a2b3c4d"
-ORPHAN = "tm_e2e_catalog_9f9f9f9f"
+CATALOG = "tm_e2e_catalog_1a2b3c4d_round_trip"
+ORPHAN = "tm_e2e_catalog_9f9f9f9f_lifecycle"
 MANAGEMENT = "/api/management/v1"
 
 
@@ -66,7 +66,9 @@ def _platform(events: list[str], *, leftovers: bool) -> PlatformApi:
         },
         f"/v1/maintenance-policies/{MAINTENANCE}/attachments": {"attachments": [{"id": "pa-1"}]},
         "/v1/tables": [
-            {"catalog": "iceberg", "namespace": NS, "table": "tm_e2e_orders", "status": "unmanaged", "uuid": "u1"}
+            {"catalog": "iceberg", "namespace": NS, "table": "tm_e2e_orders", "status": "unmanaged", "uuid": "u1"},
+            {"catalog": CATALOG, "namespace": "lifecycle", "table": "t", "status": "unmanaged", "uuid": "u2"},
+            {"catalog": "iceberg", "namespace": "inventory", "table": "orders", "status": "managed", "uuid": "u3"},
         ],
         "/v1/catalogs": [{"name": "iceberg"}, *([{"name": CATALOG}] if leftovers else [])],
     }
@@ -140,10 +142,13 @@ def test_what_a_cut_short_run_left_is_removed_in_the_order_its_cleanup_would_hav
         f"DELETE /v1/discovery-policies/{DISCOVERY}/attachments/da-1",
         f"DELETE /v1/discovery-policies/{DISCOVERY}",
         "describe table-reconciliation:table-uuid=u1",
+        "describe table-reconciliation:table-uuid=u2",
         f"DELETE /v1/maintenance-policies/{MAINTENANCE}/attachments/pa-1",
         f"DELETE /v1/maintenance-policies/{MAINTENANCE}",
         f"drop table {NS}.tm_e2e_orders",
         f"drop namespace {NS}",
+        f"polaris PUT /catalogs/{CATALOG}/catalog-roles/catalog_admin/grants",
+        f"polaris PUT /catalogs/{CATALOG}/catalog-roles/catalog_admin/grants",
         f"polaris DELETE /catalogs/{CATALOG}",
     ]
     assert removed == [

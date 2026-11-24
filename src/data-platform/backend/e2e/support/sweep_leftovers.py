@@ -35,7 +35,8 @@ def sweep_leftovers(
 ) -> list[str]:
     """Remove everything named by ``OwnedNames``, in the order a scenario's own cleanup uses, and say what went.
 
-    Discovery policies go first and each leftover table is waited on until it is unmanaged, so the
+    Discovery policies go first and each leftover table (of an e2e namespace or an e2e catalog) is
+    waited on until it is unmanaged, so the
     platform plans nothing on a table being removed; then the maintenance policies, the tables, the
     namespaces with their storage, the round trip's catalogs and any catalog storage left without one.
     Only one e2e run uses a cluster at a time (``run.sh`` refuses a second), so nothing swept is in use.
@@ -51,6 +52,10 @@ def sweep_leftovers(
     for namespace, identifiers in tables.items():
         for _, table in identifiers:
             wait_until_unmanaged(platform, temporal, (catalog, namespace, table))
+    catalogs = [found["name"] for found in platform.get("/v1/catalogs") if OwnedNames.CATALOG.match(found["name"])]
+    for found in platform.get("/v1/tables"):
+        if found["catalog"] in catalogs:
+            wait_until_unmanaged(platform, temporal, (found["catalog"], found["namespace"], found["table"]))
     for policy in _owned_policies(platform, "maintenance-policies", OwnedNames.MAINTENANCE_POLICY):
         _detach_and_delete(platform, "maintenance-policies", policy)
         removed.append(f"maintenance policy {policy}")
@@ -61,11 +66,10 @@ def sweep_leftovers(
         remove_prefix(s3, prefix)
         iceberg.drop_namespace(namespace)
         removed.append(f"namespace {namespace}")
-    for found in platform.get("/v1/catalogs"):
-        if OwnedNames.CATALOG.match(found["name"]):
-            drop_catalog(polaris, found["name"])
-            remove_prefix(s3, f"{OwnedNames.CATALOGS_BUCKET}/{found['name']}")
-            removed.append(f"catalog {found['name']}")
+    for name in catalogs:
+        drop_catalog(polaris, name)
+        remove_prefix(s3, f"{OwnedNames.CATALOGS_BUCKET}/{name}")
+        removed.append(f"catalog {name}")
     selector = fs.FileSelector(OwnedNames.CATALOGS_BUCKET, allow_not_found=True)
     for left in s3.get_file_info(selector):
         if OwnedNames.CATALOG.match(left.base_name):
