@@ -4,7 +4,9 @@ The table is partitioned by ``region``. ``cold`` gets four appends and ``hot`` t
 writer keeps appending to ``hot`` every 15 s, well inside the quiet period. The first check finds
 both waiting for their writes to settle. Once ``cold`` is quiet, a check compacts it alone while
 ``hot`` waits. ``hot`` never goes quiet, so it is compacted only once it has been over the target
-for the longest wait, with the writer still appending: no append fails on a commit conflict.
+for the longest wait, with the writer still appending, and every append commits. An append that a
+maintenance commit beat is tried again on a fresh load (``append_retrying``), as Iceberg's Java
+writers retry; PyIceberg alone would fail it.
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ from e2e.support import (
     BackgroundWriter,
     ManagedTable,
     OwnedNames,
+    append_retrying,
     assert_runs_succeeded,
     reconcile_now,
     require_settings,
@@ -133,7 +136,8 @@ def test_a_quiet_partition_goes_first_and_a_written_one_after_the_longest_wait(
         table.append(pa.Table.from_pylist([{"id": 100 + n, "region": "hot"}], schema=ROWS))
 
     def append_hot(index: int) -> None:
-        regions.load(iceberg).append(pa.Table.from_pylist([{"id": 1000 + index, "region": "hot"}], schema=ROWS))
+        rows = pa.Table.from_pylist([{"id": 1000 + index, "region": "hot"}], schema=ROWS)
+        append_retrying(lambda: regions.load(iceberg), rows)
 
     writer = BackgroundWriter.start(append_hot, every_seconds=WRITE_EVERY_SECONDS)
     cleanup.push("stop the writes to hot", writer.stop)

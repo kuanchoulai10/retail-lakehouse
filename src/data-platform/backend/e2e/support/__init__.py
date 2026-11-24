@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from e2e.support.append_retrying import append_retrying
 from e2e.support.assert_attempts_timed import assert_attempts_timed
 from e2e.support.assert_prefixed_ids import assert_prefixed_ids
 from e2e.support.assert_runs_succeeded import assert_runs_succeeded
@@ -51,6 +52,7 @@ __all__ = [
     "PlatformApi",
     "PolarisClient",
     "TemporalSession",
+    "append_retrying",
     "assert_attempts_timed",
     "assert_prefixed_ids",
     "assert_runs_succeeded",
