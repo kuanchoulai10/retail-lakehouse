@@ -7,13 +7,19 @@ source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/gateway.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-600s}"
+SETTINGS_PROFILE="${SETTINGS_PROFILE:-default}"
+case "${SETTINGS_PROFILE}" in
+  default) PROFILE_VALUES=() ;;
+  e2e) PROFILE_VALUES=(--values "$(dirname "${BASH_SOURCE[0]}")/chart/values-e2e.yaml") ;;
+  *) echo "SETTINGS_PROFILE must be default or e2e, not ${SETTINGS_PROFILE}" >&2; exit 1 ;;
+esac
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTROL_PLANE_NAMESPACE="lakehouse-control-plane"
 OPERATIONS_NAMESPACE="lakehouse-maintenance-operations"
 S3_REGION="$(yq '.catalog.s3Region' "${SCRIPT_DIR}/chart/values.yaml")"
 
-log::on_success "Lakehouse control plane deployed"
+log::on_success "Lakehouse control plane deployed (settings profile: ${SETTINGS_PROFILE})"
 log::on_failure "Lakehouse control plane deployment failed"
 
 fail() {
@@ -118,6 +124,7 @@ CONSOLE_TAG="$(sed -n 's/^CONSOLE_TAG=//p' <<<"${BUILD_OUTPUT}")"
 
 helm upgrade --install table-maintenance "${SCRIPT_DIR}/chart" \
   --namespace "${CONTROL_PLANE_NAMESPACE}" \
+  ${PROFILE_VALUES[@]+"${PROFILE_VALUES[@]}"} \
   --set image.backend.tag="${BACKEND_TAG}" \
   --set image.spark.tag="${SPARK_TAG}" \
   --set image.console.tag="${CONSOLE_TAG}" \

@@ -144,4 +144,6 @@ migrate:
 metrics:
   prometheusUrl: http://table-metrics-prometheus.table-metrics.svc.cluster.local:9090
 
+settingsProfile: default
+
 logLevel: INFO

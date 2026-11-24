@@ -407,6 +407,20 @@ tasks:
     cmds:
       - bash platform/21-polaris/validate.sh
 
+  deploy-lakehouse-control-plane:
+    internal: true
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+        - name: SETTINGS_PROFILE
+          enum: [default, e2e]
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+      SETTINGS_PROFILE: '{{.SETTINGS_PROFILE}}'
+    cmds:
+      - bash platform/25-lakehouse-control-plane/bootstrap.sh
+      - bash platform/25-lakehouse-control-plane/validate.sh
+
   validate-lakehouse-control-plane:
     internal: true
     env:

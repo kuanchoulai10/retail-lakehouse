@@ -1,0 +1,7 @@
+settingsProfile: e2e
+
+worker:
+  queueWaitLimitSeconds: 900
+  rewriteDataFilesCooldownSeconds: 60
+  compactionQuietSeconds: 60
+  compactionMaxQuietWaitSeconds: 180

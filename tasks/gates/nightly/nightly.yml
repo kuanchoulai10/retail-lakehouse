@@ -3,6 +3,10 @@
 version: '3'
 
 includes:
+  apps:
+    taskfile: ../../apps.yml
+    dir: ../../..
+    internal: true
   backend:
     taskfile: ../../../src/data-platform/backend/Taskfile.yml
     dir: ../../../src/data-platform/backend
@@ -16,6 +20,15 @@ tasks:
         - name: KUBE_CONTEXT
     dir: '{{.ROOT_DIR}}'
     cmds:
+      - defer:
+          task: apps:deploy-lakehouse-control-plane
+          vars:
+            KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+            SETTINGS_PROFILE: default
+      - task: apps:deploy-lakehouse-control-plane
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+          SETTINGS_PROFILE: e2e
       - KUBE_CONTEXT={{.KUBE_CONTEXT}} bash platform/25-lakehouse-control-plane/e2e/run.sh full
 
   soak-test:
