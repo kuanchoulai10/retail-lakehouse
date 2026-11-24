@@ -16,7 +16,14 @@ def test_the_location_becomes_bucket_and_key():
 
 @pytest.mark.parametrize(
     "location",
-    ["s3://lake/warehouse/", "s3://lake/warehouse/other/", "s3://lake/e2e_1a2b3c4d_orders_old/", "s3://lake/"],
+    [
+        "s3://lake/warehouse/",
+        "s3://lake/warehouse/other/",
+        "s3://lake/e2e_1a2b3c4d_orders_old/",
+        "s3://lake/warehouse/xe2e_1a2b3c4d_orders/",
+        "s3://lake/",
+        "s3:///e2e_1a2b3c4d_orders/",
+    ],
 )
 def test_a_location_that_does_not_end_in_the_namespace_is_refused(location):
     """A cleanup never removes a prefix wider than the namespace's own directory."""
