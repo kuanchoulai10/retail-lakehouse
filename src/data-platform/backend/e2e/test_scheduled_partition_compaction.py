@@ -1,8 +1,10 @@
 """A scheduled compaction rewrites only the partitions over the policy's target, one named with a quote.
 
 The table is partitioned by ``region``; four appends leave four files in each of ``north`` and
-``o'neil``. A policy that allows one reducible file per partition, checked every 300 s, has the
-platform compact both partitions on a scheduled check once they have been quiet long enough.
+``o'neil``. A policy that allows one reducible file per partition, checked every 300 s and 90 s
+after the first commit not yet checked, has the platform compact both partitions on the check the
+commits' window closes: the window outlasts the quiet period, so the check does not wait for the
+schedule.
 """
 
 from __future__ import annotations
@@ -36,6 +38,7 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.full
 
 SCHEDULE_SECONDS = 300
+COMMIT_WINDOW_SECONDS = 90
 SCHEDULE_TIMEOUT_SECONDS = 120
 RUN_TIMEOUT_SECONDS = 3600
 ACTIVE = ("pending", "queued", "running")
@@ -52,7 +55,10 @@ ROWS = pa.schema([("id", pa.int64()), ("region", pa.string()), ("note", pa.strin
 def _per_partition_compaction(policy: dict) -> dict:
     for operation in ("rewrite_manifests", "expire_snapshots", "remove_orphan_files"):
         policy.pop(operation, None)
-    policy["on"] = {"schedule": {"every_seconds": SCHEDULE_SECONDS}, "catalog_commit": {"debounce_seconds": 60}}
+    policy["on"] = {
+        "schedule": {"every_seconds": SCHEDULE_SECONDS},
+        "catalog_commit": {"debounce_seconds": COMMIT_WINDOW_SECONDS},
+    }
     policy["rewrite_data_files"]["target"]["reducible_files"]["at_most"] = 1
     return policy
 
