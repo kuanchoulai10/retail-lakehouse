@@ -5,11 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from pyiceberg.exceptions import NoSuchNamespaceError, NoSuchTableError
+from pyiceberg.exceptions import NoSuchNamespaceError
 
-from e2e.support.reconciliation_running import reconciliation_running
+from e2e.support.drop_table import drop_table
+from e2e.support.namespace_prefix import namespace_prefix
 from e2e.support.remove_prefix import remove_prefix
 from e2e.support.wait_until import wait_until
+from e2e.support.wait_until_unmanaged import wait_until_unmanaged
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -26,7 +28,7 @@ if TYPE_CHECKING:
     from e2e.support.temporal_session import TemporalSession
 
 DISCOVERY_TIMEOUT_SECONDS = 900
-UNMANAGE_TIMEOUT_SECONDS = 600
+MANAGE_E2E_TABLES = {"attribute": "table_name", "operator": "glob", "values": ["tm_e2e_*"]}
 
 
 @dataclass(frozen=True)
@@ -37,7 +39,8 @@ class ManagedTable:
     the order that keeps the platform from touching a half-removed table: detach and delete the
     discovery policy, wait until the table is unmanaged and its reconciliation stopped, detach and
     delete the maintenance policy, drop the table and remove its storage, remove the namespace's storage (S3 leaves a
-    directory marker for it), drop the namespace.
+    directory marker for it), drop the namespace. The namespace's storage is its own ``location``, refused when it is
+    not the namespace's directory (``namespace_prefix``), since it is removed recursively.
     """
 
     catalog: str
@@ -68,10 +71,10 @@ class ManagedTable:
         """Create the namespace, the table, both policies and their attachments, in that order."""
         iceberg.create_namespace(namespace)
         cleanup.push(f"drop namespace {namespace}", lambda: _drop_namespace(iceberg, namespace))
-        location = iceberg.create_table((namespace, name), schema=schema, partition_spec=partition_spec).location()
-        namespace_prefix = location.removeprefix("s3://").rstrip("/").rsplit("/", 1)[0]
-        cleanup.push(f"remove s3://{namespace_prefix}/", lambda: remove_prefix(s3, namespace_prefix))
-        cleanup.push(f"drop table {namespace}.{name}", lambda: _drop_table(iceberg, s3, (namespace, name)))
+        prefix = namespace_prefix(iceberg.load_namespace_properties(namespace)["location"], namespace)
+        cleanup.push(f"remove s3://{prefix}/", lambda: remove_prefix(s3, prefix))
+        iceberg.create_table((namespace, name), schema=schema, partition_spec=partition_spec)
+        cleanup.push(f"drop table {namespace}.{name}", lambda: drop_table(iceberg, s3, (namespace, name)))
 
         policy_name, description, change = policy
         platform.create_maintenance_policy(policy_name, description, change)
@@ -90,7 +93,7 @@ class ManagedTable:
 
         cleanup.push(
             f"wait until {namespace}.{name} is unmanaged",
-            lambda: _wait_until_unmanaged(platform, temporal, (catalog, namespace, name)),
+            lambda: wait_until_unmanaged(platform, temporal, (catalog, namespace, name)),
         )
         discovery = platform.call(
             "POST",
@@ -102,7 +105,7 @@ class ManagedTable:
                 "rules": [
                     {
                         "outcome": "manage",
-                        "conditions": [{"attribute": "table_name", "operator": "glob", "values": ["tm_e2e_*"]}],
+                        "conditions": [MANAGE_E2E_TABLES],
                     }
                 ],
             },
@@ -110,6 +113,8 @@ class ManagedTable:
         cleanup.push(
             f"delete {discovery_policy}", lambda: platform.call("DELETE", f"/v1/discovery-policies/{discovery_policy}")
         )
+        rules = [(rule["outcome"], rule["conditions"]) for rule in discovery["rules"]]
+        assert rules == [("manage", [MANAGE_E2E_TABLES])], f"{discovery_policy} holds {rules}"
         discovery_attachment_id = platform.attach(
             "discovery-policies", discovery_policy, {"type": "namespace", "path": [catalog, namespace]}
         )
@@ -155,29 +160,6 @@ class ManagedTable:
             interval=10,
             what=f"discovery of {self.namespace}.{self.name}",
         )
-
-
-def _wait_until_unmanaged(
-    platform: PlatformApi, temporal: TemporalSession[Client], place: tuple[str, str, str]
-) -> None:
-    def settled() -> bool | None:
-        found = platform.table(*place)
-        if found is None:
-            return True
-        if found["status"] == "managed" or reconciliation_running(temporal, found["uuid"]):
-            raise AssertionError(f"{found['status']}, reconciliation of {found['uuid']} may still run")
-        return True
-
-    wait_until(settled, timeout=UNMANAGE_TIMEOUT_SECONDS, interval=10, what=f"{'.'.join(place)} unmanaged")
-
-
-def _drop_table(iceberg: Catalog, s3: fs.S3FileSystem, identifier: tuple[str, str]) -> None:
-    try:
-        location = iceberg.load_table(identifier).location()
-    except NoSuchTableError:
-        return
-    iceberg.drop_table(identifier)
-    remove_prefix(s3, location.removeprefix("s3://").rstrip("/"))
 
 
 def _drop_namespace(iceberg: Catalog, namespace: str) -> None:

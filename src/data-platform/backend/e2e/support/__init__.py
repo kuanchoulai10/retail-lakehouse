@@ -3,31 +3,47 @@
 from __future__ import annotations
 
 from e2e.support.assert_attempts_timed import assert_attempts_timed
+from e2e.support.assert_prefixed_ids import assert_prefixed_ids
 from e2e.support.assert_runs_succeeded import assert_runs_succeeded
 from e2e.support.cleanup_stack import CleanupStack
 from e2e.support.drop_catalog import drop_catalog
+from e2e.support.drop_table import drop_table
 from e2e.support.e2e_settings import E2eSettings
+from e2e.support.interrupt_on_sigterm import interrupt_on_sigterm
 from e2e.support.managed_table import ManagedTable
+from e2e.support.misfiled_scenarios import misfiled_scenarios
+from e2e.support.namespace_prefix import namespace_prefix
+from e2e.support.owned_names import OwnedNames
 from e2e.support.platform_api import PlatformApi
 from e2e.support.polaris_client import PolarisClient
 from e2e.support.reconciliation_running import reconciliation_running
 from e2e.support.remove_prefix import remove_prefix
+from e2e.support.sweep_leftovers import sweep_leftovers
 from e2e.support.temporal_session import TemporalSession
 from e2e.support.unique_suffix import unique_suffix
 from e2e.support.wait_until import wait_until
+from e2e.support.wait_until_unmanaged import wait_until_unmanaged
 
 __all__ = [
     "CleanupStack",
     "E2eSettings",
     "ManagedTable",
+    "OwnedNames",
     "PlatformApi",
     "PolarisClient",
     "TemporalSession",
     "assert_attempts_timed",
+    "assert_prefixed_ids",
     "assert_runs_succeeded",
     "drop_catalog",
+    "drop_table",
+    "interrupt_on_sigterm",
+    "misfiled_scenarios",
+    "namespace_prefix",
     "reconciliation_running",
     "remove_prefix",
+    "sweep_leftovers",
     "unique_suffix",
     "wait_until",
+    "wait_until_unmanaged",
 ]

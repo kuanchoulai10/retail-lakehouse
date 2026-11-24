@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from e2e.support import CleanupStack
 
 
@@ -37,3 +39,19 @@ def test_runs_each_action_once():
     stack.run()
     assert stack.run() == []
     assert done == ["table"]
+
+
+def test_an_interrupt_lets_the_rest_run_then_stops_the_session():
+    """A SIGTERM that lands in one undo still runs every other undo, then interrupts with what was left."""
+    done: list[str] = []
+    stack = CleanupStack()
+    stack.push("namespace", lambda: done.append("namespace"))
+
+    def interrupted() -> None:
+        raise KeyboardInterrupt
+
+    stack.push("table", interrupted)
+    stack.push("policy", lambda: done.append("policy"))
+    with pytest.raises(KeyboardInterrupt, match=r"table: interrupted"):
+        stack.run()
+    assert done == ["policy", "namespace"]

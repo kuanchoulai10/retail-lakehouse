@@ -18,7 +18,9 @@ from pyiceberg.types import LongType, NestedField, StringType
 
 from e2e.support import (
     ManagedTable,
+    OwnedNames,
     assert_attempts_timed,
+    assert_prefixed_ids,
     assert_runs_succeeded,
     reconciliation_running,
     wait_until,
@@ -86,12 +88,16 @@ def test_a_scheduled_compaction_rewrites_the_partitions_over_the_target(
         temporal=temporal,
         cleanup=cleanup,
         catalog=settings.catalog,
-        namespace=f"e2e_{suffix}_regions",
+        namespace=OwnedNames.namespace(suffix, "regions"),
         name="tm_e2e_regions",
         schema=SCHEMA,
         partition_spec=SPEC,
-        policy=(f"tm-e2e-regions-{suffix}", "e2e: scheduled per-partition compaction", _per_partition_compaction),
-        discovery_policy=f"tm-e2e-{suffix}-regions",
+        policy=(
+            OwnedNames.maintenance_policy(suffix, "regions"),
+            "e2e: scheduled per-partition compaction",
+            _per_partition_compaction,
+        ),
+        discovery_policy=OwnedNames.discovery_policy(suffix, "regions"),
     )
 
     async def discovery_schedule(client: Client) -> bool:
@@ -142,6 +148,7 @@ def test_a_scheduled_compaction_rewrites_the_partitions_over_the_target(
         "path": [settings.catalog, regions.namespace, regions.name],
         "table_uuid": uuid,
     }
+    assert_prefixed_ids({"pa": [regions.maintenance_attachment_id], "da": [regions.discovery_attachment_id]})
     assert discovery["policy_name"] == regions.discovery_policy["name"]
     assert discovery["attachment_id"] == regions.discovery_attachment_id
     assert discovery["target"] == {

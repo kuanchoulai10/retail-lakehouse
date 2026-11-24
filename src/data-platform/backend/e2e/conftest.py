@@ -11,7 +11,17 @@ from pyarrow import fs
 from pyiceberg.catalog import load_catalog
 from temporalio.client import Client
 
-from e2e.support import CleanupStack, E2eSettings, PlatformApi, PolarisClient, TemporalSession, unique_suffix
+from e2e.support import (
+    CleanupStack,
+    E2eSettings,
+    PlatformApi,
+    PolarisClient,
+    TemporalSession,
+    interrupt_on_sigterm,
+    misfiled_scenarios,
+    sweep_leftovers,
+    unique_suffix,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -24,6 +34,14 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "critical: a scenario that finishes in minutes, for pre-merge")
     config.addinivalue_line("markers", "full: a scenario of the full round, for nightly")
     config.option.strict_markers = True
+    interrupt_on_sigterm()
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Refuse a scenario that is not exactly one kind: an unmarked one would never run."""
+    problems = misfiled_scenarios((item.nodeid, {marker.name for marker in item.iter_markers()}) for item in items)
+    if problems:
+        raise pytest.UsageError("every e2e scenario is marked critical or full:\n" + "\n".join(problems))
 
 
 @pytest.fixture(scope="session")
@@ -110,6 +128,27 @@ def temporal(settings: E2eSettings) -> Iterator[TemporalSession[Client]]:
         yield session
     finally:
         session.close()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def leftovers(
+    request: pytest.FixtureRequest,
+    settings: E2eSettings,
+    platform: PlatformApi,
+    iceberg: Catalog,
+    s3: fs.S3FileSystem,
+    polaris: PolarisClient,
+    temporal: TemporalSession[Client],
+) -> list[str]:
+    """Remove what an earlier run that was cut short left, before any scenario starts."""
+    removed = sweep_leftovers(
+        platform=platform, iceberg=iceberg, s3=s3, polaris=polaris, temporal=temporal, catalog=settings.catalog
+    )
+    capture = request.config.pluginmanager.getplugin("capturemanager")
+    with capture.global_and_fixture_disabled():
+        for line in removed:
+            print(f"removed what an earlier run left: {line}")  # noqa: T201 - the run's log says what it removed
+    return removed
 
 
 @pytest.fixture

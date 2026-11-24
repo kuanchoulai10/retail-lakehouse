@@ -9,7 +9,6 @@ for, and the records, the catalog API and Temporal agree on what happened.
 
 from __future__ import annotations
 
-import re
 import time
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -24,7 +23,9 @@ from pyiceberg.types import DoubleType, LongType, NestedField, StringType, Times
 
 from e2e.support import (
     ManagedTable,
+    OwnedNames,
     assert_attempts_timed,
+    assert_prefixed_ids,
     assert_runs_succeeded,
     reconciliation_running,
     wait_until,
@@ -43,8 +44,6 @@ EXPIRE_AGE_SECONDS = 60
 RUN_TIMEOUT_SECONDS = 3600
 RECONCILE_TIMEOUT_SECONDS = 300
 ACTIVE = ("pending", "queued", "running")
-PREFIXED = re.compile(r"^(?P<prefix>[a-z]{2,8})-[0-7][0-9a-hjkmnp-tv-z]{25}$")
-
 SCHEMA = Schema(
     NestedField(1, "id", LongType(), required=False),
     NestedField(2, "customer", StringType(), required=False),
@@ -109,12 +108,16 @@ def test_a_manual_request_runs_the_four_operations_of_one_plan(
         temporal=temporal,
         cleanup=cleanup,
         catalog=settings.catalog,
-        namespace=f"e2e_{suffix}_orders",
+        namespace=OwnedNames.namespace(suffix, "orders"),
         name="tm_e2e_orders",
         schema=SCHEMA,
         partition_spec=SPEC,
-        policy=(f"tm-e2e-orders-{suffix}", "e2e: manual runs only, lowered target values", _manual_runs_only),
-        discovery_policy=f"tm-e2e-{suffix}-orders",
+        policy=(
+            OwnedNames.maintenance_policy(suffix, "orders"),
+            "e2e: manual runs only, lowered target values",
+            _manual_runs_only,
+        ),
+        discovery_policy=OwnedNames.discovery_policy(suffix, "orders"),
     )
     table = orders.load(iceberg)
     for n in range(1, 21):
@@ -191,7 +194,7 @@ def test_a_manual_request_runs_the_four_operations_of_one_plan(
     assert reconciliation_running(temporal, uuid)
     assert compaction["execution_ref"] == f"table-maintenance:table-uuid={uuid}"
     _assert_found_by_table(temporal, uuid)
-    _assert_prefixed(
+    assert_prefixed_ids(
         {
             "mr": [run["run_id"] for run in manual],
             "rc": [record["reconciliation_id"] for record in reconciliations],
@@ -253,12 +256,3 @@ def _assert_found_by_table(temporal: TemporalSession[Client], uuid: str) -> None
         interval=5,
         what=f'TableUuid = "{uuid}" finding {sorted(wanted)}',
     )
-
-
-def _assert_prefixed(ids: dict[str, list[str]]) -> None:
-    """Every id the API returned is <prefix>-<26 base32 characters> with the prefix of its kind (ADR 0011)."""
-    for prefix, values in ids.items():
-        assert values, f"no {prefix} id to check"
-        for value in values:
-            shaped = PREFIXED.match(value)
-            assert shaped and shaped["prefix"] == prefix, f"{value} is not {prefix}-<26 base32 characters>"

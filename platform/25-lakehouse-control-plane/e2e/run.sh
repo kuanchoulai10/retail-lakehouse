@@ -10,6 +10,7 @@ E2E_MARKER="${1:-}"
 NAMESPACE="lakehouse-control-plane"
 START_TIMEOUT_SECONDS="${START_TIMEOUT_SECONDS:-300}"
 EXIT_TIMEOUT_SECONDS=60
+GRACE_SECONDS=900
 
 case "${E2E_MARKER}" in
   critical)
@@ -54,6 +55,16 @@ fail_with_events() {
   exit 1
 }
 
+ACTIVE="$(kubectl get pods --selector app.kubernetes.io/name=table-maintenance-e2e --output json \
+  --namespace "${NAMESPACE}" --context "${KUBE_CONTEXT}" | jq -r '[.items[]
+  | select(.status.phase == "Pending" or .status.phase == "Running") | .metadata.name] | join(" ")')"
+if [[ -n "${ACTIVE}" ]]; then
+  echo "another e2e run is still going on ${KUBE_CONTEXT} (${ACTIVE}): runs share the tm-e2e principal" \
+    "and each run removes the names an earlier one left, so wait until it ends" >&2
+  trap - EXIT
+  exit 1
+fi
+
 # shellcheck disable=SC2016
 envsubst '${E2E_POD} ${E2E_TAG} ${E2E_MARKERS} ${E2E_DEADLINE_SECONDS}' <"${SCRIPT_DIR}/pod.yaml" \
   | kubectl apply -f - --context "${KUBE_CONTEXT}" >/dev/null
@@ -77,8 +88,26 @@ for ((waited = 0; waited < START_TIMEOUT_SECONDS; waited += 2)); do
 done
 [[ -n "${STARTED}" ]] || fail_with_events "${E2E_POD} did not start its scenarios within ${START_TIMEOUT_SECONDS}s"
 
+e2e_state() {
+  local pod
+  pod="$(pod_json 2>/dev/null)" || { echo gone; return; }
+  jq -r '.status.containerStatuses[]? | select(.name == "e2e")
+    | if .state.terminated then "terminated" else "running" end' <<<"${pod}"
+}
+
 kube logs "${E2E_POD}" --container principal
-kube logs "${E2E_POD}" --container e2e --follow
+FOLLOW_UNTIL=$((SECONDS + E2E_DEADLINE_SECONDS + GRACE_SECONDS))
+SINCE=""
+while :; do
+  kube logs "${E2E_POD}" --container e2e --follow ${SINCE:+--since-time "${SINCE}"} || true
+  STATE="$(e2e_state)"
+  [[ "${STATE}" != "gone" ]] || fail_with_events "${E2E_POD} was deleted before its scenarios ended"
+  [[ "${STATE}" != "terminated" ]] || break
+  ((SECONDS < FOLLOW_UNTIL)) || fail_with_events "${E2E_POD} still runs past its deadline and grace period"
+  SINCE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  log::info "the log of ${E2E_POD} ended while its scenarios still run; following it again"
+  sleep 2
+done
 
 EXIT_CODE=""
 for ((waited = 0; waited < EXIT_TIMEOUT_SECONDS; waited += 2)); do
