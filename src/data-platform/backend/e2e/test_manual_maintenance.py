@@ -2,9 +2,11 @@
 
 The table gets 20 single-row appends and a delete, so it has many small files and many snapshots.
 A dry-run policy keeps the platform from maintaining it on its own; once its last write is older
-than the policy's snapshot age, a manual request runs the four operations of one plan. Afterwards
-the table has fewer files and snapshots, the storage holds no more objects than the runs account
-for, and the records, the catalog API and Temporal agree on what happened.
+than the policy's snapshot age, a manual request runs the four operations of one plan. While it
+runs, a watch on the Spark jobs sees one job of the table at a time, the first job's PodGroup and
+pods are read, the plan is raised to P1 and a reconcile is asked for. Afterwards the table has
+fewer files and snapshots, the storage holds no more objects than the runs account for, and the
+records, the catalog API and Temporal agree on what happened.
 """
 
 from __future__ import annotations
@@ -24,9 +26,11 @@ from pyiceberg.types import DoubleType, LongType, NestedField, StringType, Times
 from e2e.support import (
     ManagedTable,
     OwnedNames,
+    SparkJobWatch,
     assert_attempts_timed,
     assert_prefixed_ids,
     assert_runs_succeeded,
+    job_pod_group,
     reconciliation_running,
     wait_until,
 )
@@ -35,7 +39,7 @@ if TYPE_CHECKING:
     from pyiceberg.catalog import Catalog
     from temporalio.client import Client
 
-    from e2e.support import CleanupStack, E2eSettings, PlatformApi, TemporalSession
+    from e2e.support import CleanupStack, E2eSettings, KubernetesApi, PlatformApi, TemporalSession
 
 pytestmark = pytest.mark.full
 
@@ -44,6 +48,9 @@ EXPIRE_AGE_SECONDS = 60
 RUN_TIMEOUT_SECONDS = 3600
 RECONCILE_TIMEOUT_SECONDS = 300
 ACTIVE = ("pending", "queued", "running")
+CODES = {"rewrite_data_files": "rdf", "rewrite_manifests": "rm", "expire_snapshots": "es", "remove_orphan_files": "rof"}
+OPERATIONS_NAMESPACE = "/api/v1/namespaces/lakehouse-maintenance-operations"
+RUN_ID = "table-maintenance/run-id"
 SCHEMA = Schema(
     NestedField(1, "id", LongType(), required=False),
     NestedField(2, "customer", StringType(), required=False),
@@ -86,6 +93,60 @@ def _settled_manual_plan(platform: PlatformApi, table_uuid: str, before: set[str
     return runs
 
 
+def _first_sight(platform: PlatformApi, table_uuid: str, before: set[str]) -> list[dict]:
+    manual = [r for r in platform.runs(table_uuid) if r["run_id"] not in before and r["trigger"] == "manual"]
+    if len(manual) < len(PLAN):
+        raise AssertionError(f"manual runs so far: {[(r['operation'], r['status']) for r in manual]}")
+    return sorted(manual, key=lambda run: PLAN.index(run["operation"]))
+
+
+def _running_job(kubernetes: KubernetesApi, run_id: str) -> tuple[dict, list[dict]]:
+    """Return the run's PodGroup and pods once its driver runs."""
+    pods = kubernetes.list(f"{OPERATIONS_NAMESPACE}/pods", label_selector=f"{RUN_ID}={run_id}")["items"]
+    drivers = [pod for pod in pods if pod["metadata"]["labels"].get("spark-role") == "driver"]
+    if not drivers or drivers[0]["status"].get("phase") != "Running":
+        raise AssertionError(f"no running driver of {run_id}: {[pod['metadata']['name'] for pod in pods]}")
+    app = drivers[0]["metadata"]["labels"]["sparkoperator.k8s.io/app-name"]
+    group = job_pod_group(kubernetes, app)
+    assert group is not None, f"no PodGroup of {app}"
+    return group, pods
+
+
+def _assert_job_scheduled_by_volcano(group: dict, pods: list[dict]) -> None:
+    """The PodGroup carries the queue, the class and the size's resources; the pods carry no class."""
+    assert group["spec"]["queue"] == "table-maintenance", group["spec"]
+    assert group["spec"]["priorityClassName"] == "table-maintenance-p3", group["spec"]
+    assert group["spec"]["minResources"] == {"cpu": "2", "memory": "2304Mi"}, group["spec"]
+    for pod in pods:
+        assert pod["spec"]["schedulerName"] == "volcano", pod["metadata"]["name"]
+        assert "priorityClassName" not in pod["spec"], pod["metadata"]["name"]
+    [driver] = [pod for pod in pods if pod["metadata"]["labels"].get("spark-role") == "driver"]
+    [container] = [c for c in driver["spec"]["containers"] if c["name"] == "spark-kubernetes-driver"]
+    assert container["terminationMessagePolicy"] == "FallbackToLogsOnError", container
+    assert container["resources"]["requests"]["memory"] == "1152Mi", container["resources"]
+
+
+def _running_maintenance(temporal: TemporalSession[Client], uuid: str) -> list[str]:
+    query = f'TableUuid = "{uuid}" AND ExecutionStatus = "Running" AND WorkflowType = "TableMaintenanceWorkflow"'
+
+    async def found(client: Client) -> list[str]:
+        return [execution.id async for execution in client.list_workflows(query)]
+
+    return temporal.run(found)
+
+
+def _assert_one_job_at_a_time(jobs: SparkJobWatch, manual: list[dict]) -> None:
+    """The table never had two Spark jobs, one being deleted included; each run's job is named after the run."""
+    ids = {run["run_id"] for run in manual}
+    assert jobs.order(ids) == [run["run_id"] for run in manual]
+    assert jobs.most_at_once(ids) == 1
+    names = jobs.names(ids)
+    for run in manual:
+        last = run["attempts"][-1]
+        suffix = run["run_id"].removeprefix("mr-")
+        assert names[run["run_id"]] == last["job_name"] == f"tm-{CODES[run['operation']]}-{suffix}-a{last['attempt']}"
+
+
 def _objects_under(s3: fs.S3FileSystem, prefix: str) -> int:
     selector = fs.FileSelector(prefix, recursive=True, allow_not_found=True)
     return sum(1 for info in s3.get_file_info(selector) if info.type == fs.FileType.File)
@@ -96,11 +157,12 @@ def test_a_manual_request_runs_the_four_operations_of_one_plan(
     iceberg: Catalog,
     s3: fs.S3FileSystem,
     temporal: TemporalSession[Client],
+    kubernetes: KubernetesApi,
     settings: E2eSettings,
     suffix: str,
     cleanup: CleanupStack,
 ):
-    """The manual runs are one plan run in order, compact the whole table, and leave it smaller."""
+    """The manual runs are one plan run in order, one job at a time, compact the whole table, and leave it smaller."""
     orders = ManagedTable.create(
         platform=platform,
         iceberg=iceberg,
@@ -143,13 +205,36 @@ def test_a_manual_request_runs_the_four_operations_of_one_plan(
         ("discovery", orders.discovery_policy["name"], orders.discovery_attachment_id),
     ]
 
+    jobs = SparkJobWatch.start(kubernetes)
+    cleanup.push("stop watching the Spark jobs", jobs.stop)
     platform.call("POST", f"/v1/tables/{uuid}/maintenance", {"operations": list(PLAN)})
+    first = wait_until(
+        lambda: _first_sight(platform, uuid, before), timeout=120, interval=1, what=f"the manual runs of {uuid}"
+    )
+    assert [run["status"] for run in first[1:]] == ["pending"] * 3, [(r["operation"], r["status"]) for r in first]
+
+    group, pods = wait_until(
+        lambda: _running_job(kubernetes, first[0]["run_id"]),
+        timeout=RUN_TIMEOUT_SECONDS,
+        interval=2,
+        what=f"the driver of {first[0]['run_id']} running",
+    )
+    _assert_job_scheduled_by_volcano(group, pods)
+    platform.call("POST", f"/v1/tables/{uuid}/maintenance", {"operations": ["rewrite_data_files"], "priority": "P1"})
+    recorded = {record["reconciliation_id"] for record in platform.get(f"/v1/tables/{uuid}/reconciliations")}
+    platform.call("POST", f"/v1/tables/{uuid}/reconcile")
+    assert wait_until(
+        lambda: _running_maintenance(temporal, uuid) or None, timeout=60, interval=2, what=f"{uuid}'s maintenance"
+    ) == [f"table-maintenance:table-uuid={uuid}"]
+    _assert_summarized(temporal, uuid, orders.name)
+
     runs = wait_until(
         lambda: _settled_manual_plan(platform, uuid, before),
         timeout=RUN_TIMEOUT_SECONDS,
         interval=15,
         what=f"the manual plan of {uuid}",
     )
+    jobs.stop()
     assert_runs_succeeded(runs)
     assert_attempts_timed(runs)
     manual = sorted((run for run in runs if run["trigger"] == "manual"), key=lambda run: PLAN.index(run["operation"]))
@@ -158,6 +243,12 @@ def test_a_manual_request_runs_the_four_operations_of_one_plan(
     assert len({run["created_at"] for run in manual}) == 1, [run["created_at"] for run in manual]
     for previous, run in zip(manual, manual[1:], strict=False):
         assert _at(run["started_at"]) >= _at(previous["finished_at"]), (previous, run)
+    assert manual[0]["priority"] in ("P1", "P3"), manual[0]["priority"]
+    assert [run["priority"] for run in manual[1:]] == ["P1"] * 3, [run["priority"] for run in manual]
+    for run in manual:
+        assert run["metrics"], f"{run['operation']} reported no procedure metrics"
+        assert not run["metrics"].get("completed_without_callback"), run
+    _assert_one_job_at_a_time(jobs, manual)
     [compaction] = [run for run in manual if run["operation"] == "rewrite_data_files"]
     assert platform.get(f"/v1/table-maintenance-runs/{compaction['run_id']}")["partitions"] == []
 
@@ -168,19 +259,20 @@ def test_a_manual_request_runs_the_four_operations_of_one_plan(
         and sorted((o["operation"], o["run_id"]) for o in record["operations"] if o["result"] == "started") == started
         for record in reconciliations
     ), f"no reconciliation links the manual runs {started}"
+    for record in reconciliations:
+        assert platform.get(f"/v1/table-reconciliations/{record['reconciliation_id']}") == record
 
-    wait_until(lambda: _quiet(platform, uuid), timeout=RUN_TIMEOUT_SECONDS, interval=15, what=f"{uuid} quiet")
-    recorded = {record["reconciliation_id"] for record in platform.get(f"/v1/tables/{uuid}/reconciliations")}
-    platform.call("POST", f"/v1/tables/{uuid}/reconcile")
-
-    def reconciled_now() -> bool | None:
+    def reconciled_now() -> dict | None:
         records = platform.get(f"/v1/tables/{uuid}/reconciliations")
-        found = any(
-            r["reconciliation_id"] not in recorded and r["wake_reasons"].get("reconcile_now", 0) >= 1 for r in records
-        )
-        return True if found else None
+        found = [
+            r for r in records if r["reconciliation_id"] not in recorded and r["wake_reasons"].get("reconcile_now", 0)
+        ]
+        return found[0] if found else None
 
-    wait_until(reconciled_now, timeout=RECONCILE_TIMEOUT_SECONDS, interval=5, what=f"a reconcile-now record of {uuid}")
+    now = wait_until(reconciled_now, timeout=RECONCILE_TIMEOUT_SECONDS, interval=5, what=f"{uuid}'s reconcile-now")
+    last_finished = max(_at(run["finished_at"]) for run in manual)
+    assert _at(now["reconciled_at"]) >= last_finished, (now["reconciled_at"], last_finished)
+    assert _running_maintenance(temporal, uuid) == []
 
     table = orders.load(iceberg)
     files_after = table.inspect.files().num_rows
@@ -241,6 +333,22 @@ def _assert_catalog_api_agrees(
     commits = [_at(item["committed_at"]) for item in platform.get(f"/v1/tables/{uuid}/commits", limit=1000)["items"]]
     assert commits, "no commits"
     assert commits[0] == max(commits), "commits are not newest first"
+
+
+def _assert_summarized(temporal: TemporalSession[Client], uuid: str, table: str) -> None:
+    """The maintenance execution lists every operation of the plan, in its search attribute and its summary."""
+
+    async def described(client: Client) -> tuple[list[str], str | None]:
+        description = await client.get_workflow_handle(f"table-maintenance:table-uuid={uuid}").describe()
+        return [
+            str(value) for value in description.search_attributes.get("MaintenanceOperations") or []
+        ], await description.static_summary()
+
+    operations, summary = temporal.run(described)
+    assert operations == list(PLAN), operations
+    assert summary is not None, "the maintenance execution has no summary"
+    assert table in summary, summary
+    assert summary.endswith(" · " + ", ".join(PLAN)), summary
 
 
 def _assert_found_by_table(temporal: TemporalSession[Client], uuid: str) -> None:

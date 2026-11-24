@@ -11,6 +11,7 @@ from e2e.support.drop_catalog import drop_catalog
 from e2e.support.drop_table import drop_table
 from e2e.support.e2e_settings import E2eSettings
 from e2e.support.interrupt_on_sigterm import interrupt_on_sigterm
+from e2e.support.job_pod_group import job_pod_group
 from e2e.support.kubernetes_api import KubernetesApi
 from e2e.support.load_iceberg import load_iceberg
 from e2e.support.managed_table import ManagedTable
@@ -21,6 +22,7 @@ from e2e.support.owned_names import OwnedNames
 from e2e.support.platform_api import PlatformApi
 from e2e.support.polaris_client import PolarisClient
 from e2e.support.queue_holder import QueueHolder
+from e2e.support.reconcile_now import reconcile_now
 from e2e.support.reconciliation_running import reconciliation_running
 from e2e.support.remove_prefix import remove_prefix
 from e2e.support.require_settings import require_settings
@@ -55,9 +57,11 @@ __all__ = [
     "drop_catalog",
     "drop_table",
     "interrupt_on_sigterm",
+    "job_pod_group",
     "load_iceberg",
     "misfiled_scenarios",
     "namespace_prefix",
+    "reconcile_now",
     "reconciliation_running",
     "remove_prefix",
     "schedule_exists",

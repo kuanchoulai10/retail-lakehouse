@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 import pytest
@@ -83,3 +84,21 @@ def test_an_option_the_platform_owns_or_does_not_know_is_refused(
 def _delete_if_present(api: httpx.Client, path: str) -> None:
     reply = api.delete(path)
     assert reply.status_code in (204, 404), f"DELETE {path} answered {reply.status_code}: {reply.text}"
+
+
+def test_the_partition_selection_settings_are_the_deployed_ones(platform: PlatformApi):
+    """Partition selection sits between the cooldowns and discovery, with the values the pods were given."""
+    groups = platform.get("/v1/platform-settings")["groups"]
+    assert [group["key"] for group in groups] == [
+        "execution_capacity",
+        "compute_sizes",
+        "cooldown_and_backoff",
+        "partition_selection",
+        "discovery",
+    ]
+    [selection] = [group for group in groups if group["key"] == "partition_selection"]
+    deployed = {
+        f"maintenance_compaction_{key}": int(os.environ[f"GLAC_MAINTENANCE_COMPACTION_{key.upper()}"])
+        for key in ("partitions_per_job", "quiet_seconds", "max_quiet_wait_seconds")
+    }
+    assert {item["key"]: item["value"] for item in selection["items"]} == deployed

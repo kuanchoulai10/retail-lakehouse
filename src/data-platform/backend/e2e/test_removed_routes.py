@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.critical
 
 TABLE = "00000000-0000-4000-8000-000000000000"
+RUN = "mr-01jd0000000000000000000000"
 REMOVED = [
     ("GET", "/v1/maintenance-policies/default/mappings"),
     ("PUT", "/v1/maintenance-policies/default/mappings"),
@@ -21,6 +22,10 @@ REMOVED = [
     ("GET", "/v1/discovery-rules"),
     ("GET", "/v1/discovery-rules/catalogs"),
     ("GET", "/v1/compaction-rounds"),
+    ("GET", "/v1/compaction-rounds/cr-01jd0000000000000000000000"),
+    ("GET", "/v1/scheduler-settings"),
+    ("GET", f"/v1/tables/{TABLE}/compaction-candidates"),
+    ("POST", f"/v1/table-maintenance-runs/{RUN}/operations/rewrite_data_files/result"),
     ("GET", f"/v1/tables/{TABLE}/health"),
     ("GET", f"/v1/tables/{TABLE}/storage"),
 ]
