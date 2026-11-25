@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import TableMaintenanceRunId
-from context.table_maintenance.application.domain.model.table_maintenance_run import RunStatus
+from context.table_maintenance.application.domain.model.table_maintenance_run import RunStatusName
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     SkipTableMaintenanceRunUseCase,
@@ -36,7 +36,7 @@ class SkipTableMaintenanceRunService(SkipTableMaintenanceRunUseCase):
         run = self._runs_repo.get(TableMaintenanceRunId(request.run_id))
         if run is None:
             raise NotFoundError(f"maintenance run {request.run_id} not found")
-        skipped = run.status is RunStatus.PENDING
+        skipped = run.status is RunStatusName.PENDING
         if skipped:
             with translate_domain_errors():
                 run.skip(request.reason, request.now)

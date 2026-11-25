@@ -29,7 +29,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     NextAttempt,
     NextStep,
     RewriteDataFilesJobContent,
-    RunStatus,
+    RunStatusName,
     TableMaintenanceRun,
     TriggerType,
 )
@@ -219,7 +219,7 @@ def test_update_persists(repo: TableMaintenanceRunsSqlRepo):
     repo.update(run)
     loaded = repo.get(run.id)
     assert loaded is not None
-    assert loaded.status is RunStatus.FAILED
+    assert loaded.status is RunStatusName.FAILED
     assert loaded.error == "boom"
     assert loaded.finished_at == NOW + timedelta(hours=1)
     assert loaded.attempts == run.attempts

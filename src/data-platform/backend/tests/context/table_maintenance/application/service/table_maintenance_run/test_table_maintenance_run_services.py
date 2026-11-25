@@ -25,7 +25,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     FailureClass,
     NextAttempt,
     NextStep,
-    RunStatus,
+    RunStatusName,
     TableMaintenanceRun,
     TriggerType,
 )
@@ -126,7 +126,7 @@ def test_create_run_persists_a_pending_run(creator, runs_repo, table, now):
         TriggerType.SCHEDULED,
         "wf-run-1",
     )
-    assert (stored.operation, stored.status) == (RDF, RunStatus.PENDING)
+    assert (stored.operation, stored.status) == (RDF, RunStatusName.PENDING)
     assert (stored.started_at, stored.finished_at, stored.attempts) == (None, None, ())
     assert stored.created_at == now
 
@@ -145,7 +145,7 @@ def test_create_stores_every_run_of_the_plan_at_one_time(creator, runs_repo, tab
     assert out.run_ids == (RUN_1, RUN_2)
     first, second = (runs_repo.get(TableMaintenanceRunId(r)) for r in (RUN_1, RUN_2))
     assert (first.operation, second.operation) == (RDF, OPS.EXPIRE_SNAPSHOTS)
-    assert {first.status, second.status} == {RunStatus.PENDING}
+    assert {first.status, second.status} == {RunStatusName.PENDING}
     assert first.created_at == second.created_at == now
     assert second.content == ExpireSnapshotsJobContent.from_primitives(EXPIRY)
 
@@ -156,7 +156,7 @@ def test_create_saves_one_operation_with_its_content(creator, runs_repo, table, 
     stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
     assert stored.operation is OPS.EXPIRE_SNAPSHOTS
     assert stored.content == ExpireSnapshotsJobContent.from_primitives(EXPIRY)
-    assert stored.status is RunStatus.PENDING
+    assert stored.status is RunStatusName.PENDING
 
 
 def test_create_run_records_its_priority(creator, runs_repo, table, now):
@@ -268,7 +268,7 @@ def test_create_run_is_idempotent_by_id(creator, runs_repo, table, now):
     again = creator.execute(_create_input(now + timedelta(hours=1), trigger="manual"))
     assert again.run_ids == (RUN_1,)
     stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
-    assert (stored.trigger, stored.status, stored.created_at) == (TriggerType.SCHEDULED, RunStatus.QUEUED, now)
+    assert (stored.trigger, stored.status, stored.created_at) == (TriggerType.SCHEDULED, RunStatusName.QUEUED, now)
     assert len(runs_repo.items) == 1
 
 
@@ -410,7 +410,7 @@ def test_record_result_updates_run_and_table_backoff(recorder, started_run, tabl
     later = now + timedelta(minutes=5)
     out = _record(recorder, later, succeeded=False, error="OOM")
     assert (out.run_id, out.status) == (RUN_1, "failed")
-    assert (started_run.status, started_run.error, started_run.finished_at) == (RunStatus.FAILED, "OOM", later)
+    assert (started_run.status, started_run.error, started_run.finished_at) == (RunStatusName.FAILED, "OOM", later)
     state = table.operation_state(RDF)
     assert (state.consecutive_failures, state.last_attempt_at) == (1, later)
 
@@ -438,7 +438,7 @@ def test_record_result_stale_attempt_is_ignored(recorder, started_run, table, no
     started_run.start_attempt(2, "tm-rdf-run1-a2", now, size=ComputeSize.S)
     out = _record(recorder, now, attempt=1, succeeded=False, error="late")
     assert out.status == "queued"
-    assert started_run.status is RunStatus.QUEUED
+    assert started_run.status is RunStatusName.QUEUED
     assert table.operation_state(RDF).consecutive_failures == 0
 
 
@@ -459,7 +459,7 @@ def test_record_result_for_dropped_table_still_updates_run(recorder, started_run
     """A result for a dropped table still updates the run and leaves the table alone."""
     table.mark_dropped(now)
     out = _record(recorder, now)
-    assert started_run.status is RunStatus.SUCCEEDED
+    assert started_run.status is RunStatusName.SUCCEEDED
     assert out.status == "succeeded"
     assert table.operation_states == {}
 
@@ -489,7 +489,7 @@ def test_recording_an_attempt_of_a_run_still_pending_changes_nothing(recorder, r
     out = _record(recorder, now, attempt=1, succeeded=False, error="cancelled", ended_by="cancelled")
     assert (out.status, out.failure_class, out.next_step) == ("pending", None, None)
     assert saves == []
-    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).status is RunStatus.PENDING
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).status is RunStatusName.PENDING
 
 
 # --- callback ---
@@ -654,7 +654,7 @@ def test_skip_skips_a_pending_run(runs_repo, table, log, now):
     assert log == [("runs.update", RUN_1)]
     assert (out.run_id, out.status, out.skipped) == (RUN_1, "skipped", True)
     stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
-    assert (stored.status, stored.skip_reason) == (RunStatus.SKIPPED, SKIP_REASON)
+    assert (stored.status, stored.skip_reason) == (RunStatusName.SKIPPED, SKIP_REASON)
     assert stored.finished_at == now + timedelta(minutes=1)
 
 
@@ -664,7 +664,7 @@ def test_skip_leaves_a_started_run_alone(runs_repo, started_run, log, now):
     out = _skip(runs_repo, now)
     assert log == []
     assert (out.status, out.skipped) == ("queued", False)
-    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).status is RunStatus.QUEUED
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).status is RunStatusName.QUEUED
 
 
 def test_skip_repeated_leaves_the_skipped_run_alone(runs_repo, table, log, now):

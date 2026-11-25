@@ -11,7 +11,7 @@ from context.table_maintenance.application.domain.model.shared import ComputeSiz
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     AttemptStatus,
     OperationAttempt,
-    RunStatus,
+    RunStatusName,
 )
 
 T0 = datetime(2026, 10, 24, tzinfo=UTC)
@@ -24,7 +24,7 @@ def _an_attempt(status: object = AttemptStatus.QUEUED) -> OperationAttempt:
 def test_an_attempt_takes_only_an_attempt_status():
     """An attempt is queued, running, succeeded or failed; the run-only statuses are refused."""
     assert {s.value for s in AttemptStatus} == {"queued", "running", "succeeded", "failed"}
-    for refused in ("pending", "skipped", RunStatus.PENDING, RunStatus.SKIPPED):
+    for refused in ("pending", "skipped", RunStatusName.PENDING, RunStatusName.SKIPPED):
         with pytest.raises(InvariantViolation):
             _an_attempt(status=refused)
 

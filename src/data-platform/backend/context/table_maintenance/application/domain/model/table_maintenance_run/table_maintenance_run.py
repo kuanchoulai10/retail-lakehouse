@@ -33,8 +33,8 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.jo
 from context.table_maintenance.application.domain.model.table_maintenance_run.status.invalid_run_transition import (
     InvalidRunTransition,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_run.status.run_status import (
-    RunStatus,
+from context.table_maintenance.application.domain.model.table_maintenance_run.status.run_status_name import (
+    RunStatusName,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run.trigger_type import (
     TriggerType,
@@ -47,11 +47,11 @@ if TYPE_CHECKING:
         NextAttempt,
     )
 
-_IN_FLIGHT = frozenset({RunStatus.QUEUED, RunStatus.RUNNING})
+_IN_FLIGHT = frozenset({RunStatusName.QUEUED, RunStatusName.RUNNING})
 
-_TERMINAL = frozenset({RunStatus.SUCCEEDED, RunStatus.FAILED, RunStatus.SKIPPED})
+_TERMINAL = frozenset({RunStatusName.SUCCEEDED, RunStatusName.FAILED, RunStatusName.SKIPPED})
 
-_NEVER_STARTED = frozenset({RunStatus.PENDING, RunStatus.SKIPPED})
+_NEVER_STARTED = frozenset({RunStatusName.PENDING, RunStatusName.SKIPPED})
 
 
 def _misplaced_content(operation: MaintenanceOperation, content: MaintenanceJobContent) -> str | None:
@@ -79,7 +79,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
     created_at: datetime
     execution_ref: str
     priority: TablePriority = TablePriority.P3
-    status: RunStatus = RunStatus.PENDING
+    status: RunStatusName = RunStatusName.PENDING
     content: MaintenanceJobContent
     metrics: ReadOnlyMapping[str, Any] = Field(default_factory=dict)
     error: str | None = None
@@ -106,7 +106,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
 
     @model_validator(mode="after")
     def _a_skip_reason_only_when_skipped(self) -> TableMaintenanceRun:
-        if (self.skip_reason is not None) != (self.status is RunStatus.SKIPPED):
+        if (self.skip_reason is not None) != (self.status is RunStatusName.SKIPPED):
             msg = f"a run has a skip reason exactly when it is skipped: run {self.id} is {self.status}"
             raise ValueError(msg)
         return self
@@ -203,7 +203,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             return
         self._require_startable(attempt)
         self._assign_together(
-            status=RunStatus.QUEUED,
+            status=RunStatusName.QUEUED,
             finished_at=None,
             error=None,
             metrics={},
@@ -252,7 +252,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
                 )
             return
         self._assign_together(
-            status=RunStatus.RUNNING,
+            status=RunStatusName.RUNNING,
             attempts=self._with_attempt(
                 attempt,
                 status=AttemptStatus.RUNNING,
@@ -291,7 +291,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         """
         self._finish(
             attempt,
-            RunStatus.SUCCEEDED,
+            RunStatusName.SUCCEEDED,
             now,
             started_running_at=started_running_at,
             metrics=dict(metrics),
@@ -321,7 +321,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         """
         self._finish(
             attempt,
-            RunStatus.FAILED,
+            RunStatusName.FAILED,
             now,
             started_running_at=started_running_at,
             metrics={},
@@ -334,15 +334,15 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
 
     def skip(self, reason: str, now: datetime) -> None:
         """Skip a run that never started, saying why."""
-        if self.status is not RunStatus.PENDING:
+        if self.status is not RunStatusName.PENDING:
             msg = f"cannot skip run {self.id} in status {self.status}"
             raise InvalidRunTransition(msg)
-        self._assign_together(status=RunStatus.SKIPPED, skip_reason=reason, finished_at=now)
+        self._assign_together(status=RunStatusName.SKIPPED, skip_reason=reason, finished_at=now)
 
     @property
     def _ended(self) -> bool:
         """Return whether nothing more happens to the run: succeeded, skipped, or failed with no retry."""
-        if self.status is RunStatus.FAILED:
+        if self.status is RunStatusName.FAILED:
             next_step = self.attempts[-1].next_step if self.attempts else None
             return next_step is None or not next_step.retries
         return self.status in _TERMINAL
@@ -359,7 +359,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
     def _finish(
         self,
         attempt: int,
-        status: RunStatus,
+        status: RunStatusName,
         now: datetime,
         *,
         started_running_at: datetime | None,
@@ -404,7 +404,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         return min(max(value, lower), max(upper, lower))
 
     def _require_startable(self, attempt: int) -> None:
-        startable = self.status in (RunStatus.PENDING, RunStatus.FAILED)
+        startable = self.status in (RunStatusName.PENDING, RunStatusName.FAILED)
         if attempt != self.current_attempt + 1 or not startable:
             msg = (
                 f"cannot start attempt {attempt} of run {self.id} "

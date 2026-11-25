@@ -23,7 +23,7 @@ from context.table_maintenance.application.domain.model.table import Table, Tabl
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     ExpireSnapshotsJobContent,
     RewriteDataFilesJobContent,
-    RunStatus,
+    RunStatusName,
     TableMaintenanceRun,
     TriggerType,
 )
@@ -260,7 +260,7 @@ def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(runs_re
         )
     )
     stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
-    assert (stored.status, len(stored.attempts)) == (RunStatus.FAILED, 1)
+    assert (stored.status, len(stored.attempts)) == (RunStatusName.FAILED, 1)
     working = SubmitMaintenanceOperationService(runs_repo, tables_repo, submit_job)
     out = _submit(working, now, attempt=2)
     assert out.job_name == f"job-{RUN_1}-rewrite_data_files-2"
@@ -597,7 +597,7 @@ def test_submit_does_not_overwrite_a_run_cancelled_during_the_submit(tables_repo
     out = _submit(submitter, now)
     assert out.job_name == "job-cancelled"
     stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
-    assert stored.status is RunStatus.FAILED
+    assert stored.status is RunStatusName.FAILED
     assert [(a.attempt, a.job_name) for a in stored.attempts] == [(1, None)]
 
 

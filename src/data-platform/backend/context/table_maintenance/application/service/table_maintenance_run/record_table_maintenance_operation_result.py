@@ -26,7 +26,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     FailureEvidence,
     InvalidRunTransition,
     NextStep,
-    RunStatus,
+    RunStatusName,
 )
 from context.table_maintenance.application.domain.service.table import fits_smaller_size
 from context.table_maintenance.application.domain.service.table_maintenance_run import (
@@ -125,7 +125,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         if run is None:
             raise NotFoundError(f"maintenance run {request.run_id} not found")
         require_run_operation(run, operation)
-        if run.status is RunStatus.PENDING:
+        if run.status is RunStatusName.PENDING:
             return _output(run, None)
         with translate_domain_errors():
             if request.attempt < run.current_attempt:
