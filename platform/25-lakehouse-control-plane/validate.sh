@@ -23,8 +23,8 @@ for namespace in "${NAMESPACE}" lakehouse-maintenance-operations; do
     --context "${KUBE_CONTEXT}"
 done
 
-for deployment in table-maintenance-db table-maintenance-api table-maintenance-worker \
-  table-maintenance-event-consumer console; do
+for deployment in table-maintenance-api table-maintenance-worker \
+  table-maintenance-event-consumer table-maintenance-console; do
   kubectl rollout status "deployment/${deployment}" \
     --namespace "${NAMESPACE}" \
     --timeout "${TIMEOUT}" \
@@ -177,7 +177,7 @@ CONSUMER_GROUP="$(kubectl exec kafka-cluster-dual-role-0 \
 awk '$2 == "polaris-catalog-events" && $7 != "-" && $7 != "" {found = 1} END {exit !found}' <<<"${CONSUMER_GROUP}"
 
 gateway::assert_routes_allowed "${NAMESPACE}"
-gateway::assert_route_accepted "${NAMESPACE}" console
+gateway::assert_route_accepted "${NAMESPACE}" table-maintenance-console
 for path in /console /console/ /console/catalogs; do
   PAGE="$(gateway::curl "${path}" -fsSL)"
   grep -qF '<div id="root">' <<<"${PAGE}" \

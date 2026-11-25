@@ -146,26 +146,30 @@
         }
       }
     },
-    "postgres": {
+    "database": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "image": {
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "name": {
           "type": "string"
         },
         "user": {
           "type": "string"
         },
-        "database": {
-          "type": "string"
-        },
-        "storage": {
-          "type": "string"
-        },
-        "secretName": {
+        "existingSecret": {
           "type": "string"
         },
         "secretKey": {
+          "type": "string"
+        },
+        "clientImage": {
           "type": "string"
         }
       }

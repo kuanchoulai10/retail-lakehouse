@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: table-maintenance-db
+  namespace: lakehouse-control-plane
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: table-maintenance-db
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: table-maintenance
+    app.kubernetes.io/managed-by: kubectl
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+      app.kubernetes.io/instance: table-maintenance-db
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres
+        app.kubernetes.io/instance: table-maintenance-db
+        app.kubernetes.io/component: database
+        app.kubernetes.io/part-of: table-maintenance
+        app.kubernetes.io/managed-by: kubectl
+        app.kubernetes.io/version: "17.11-alpine"
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17.11-alpine
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_USER
+              value: table_maintenance
+            - name: POSTGRES_DB
+              value: table_maintenance
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: table-maintenance-db
+                  key: password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - name: postgres
+              containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "table_maintenance", "-d", "table_maintenance"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "table_maintenance", "-d", "table_maintenance"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 6
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: table-maintenance-db

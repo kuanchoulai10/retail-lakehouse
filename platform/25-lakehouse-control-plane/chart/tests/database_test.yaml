@@ -1,0 +1,71 @@
+suite: the chart connects to a database it does not run
+release:
+  name: table-maintenance
+  namespace: lakehouse-control-plane
+set:
+  image.backend.tag: t
+  image.spark.tag: t
+  image.console.tag: t
+tests:
+  - it: no database objects in the chart
+    documentSelector:
+      path: kind
+      value: PersistentVolumeClaim
+      skipEmptyTemplates: true
+    asserts:
+      - hasDocuments: {count: 0}
+
+  - it: no database workload in the chart
+    documentSelector:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: database
+      skipEmptyTemplates: true
+    asserts:
+      - hasDocuments: {count: 0}
+
+  - it: every app container reaches the database the values name
+    set:
+      database: {host: pg.example, port: 6543, name: tm, user: u, existingSecret: s, secretKey: k}
+    asserts:
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: GLAC_POSTGRES__DB_URL, value: "postgresql+psycopg://u:$(DB_PASSWORD)@pg.example:6543/tm"}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: DB_PASSWORD, valueFrom: {secretKeyRef: {name: s, key: k}}}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: GLAC_POSTGRES__DB_URL, value: "postgresql+psycopg://u:$(DB_PASSWORD)@pg.example:6543/tm"}
+        template: templates/worker.yaml
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: GLAC_POSTGRES__DB_URL, value: "postgresql+psycopg://u:$(DB_PASSWORD)@pg.example:6543/tm"}
+        template: templates/event-consumer.yaml
+
+  - it: the migrate Job reaches the same database and waits for its host
+    set:
+      database: {host: pg.example, port: 6543, name: tm, user: u, existingSecret: s, secretKey: k}
+    template: templates/migrate-job.yaml
+    asserts:
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: GLAC_POSTGRES__DB_URL, value: "postgresql+psycopg://u:$(DB_PASSWORD)@pg.example:6543/tm"}
+      - matchRegex:
+          path: "spec.template.spec.initContainers[0].command[2]"
+          pattern: 'pg_isready -h pg\.example -p 6543 -U u -d tm'
+
+  - it: the schema wait points at the database and needs no migrate Job
+    set:
+      database: {host: pg.example, port: 6543, name: tm, user: u, existingSecret: s, secretKey: k, clientImage: "postgres:18-alpine"}
+      migrate.enabled: false
+    template: templates/api.yaml
+    documentSelector: {path: kind, value: Deployment}
+    asserts:
+      - equal: {path: "spec.template.spec.initContainers[0].name", value: wait-for-schema}
+      - equal: {path: "spec.template.spec.initContainers[0].image", value: "postgres:18-alpine"}
+      - matchRegex: {path: "spec.template.spec.initContainers[0].command[2]", pattern: 'psql -h pg\.example -p 6543 -U u -d tm '}
+      - equal: {path: "spec.template.spec.initContainers[0].env[0].valueFrom.secretKeyRef", value: {name: s, key: k}}

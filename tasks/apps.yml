@@ -63,6 +63,7 @@ tasks:
       # - TIMEOUT=10s bash platform/20-jaeger-trino/validate.sh
       - TIMEOUT=10s bash platform/20-polaris-db/validate.sh
       - TIMEOUT=10s bash platform/20-temporal-db/validate.sh
+      - TIMEOUT=10s bash platform/20-table-maintenance-db/validate.sh
       - TIMEOUT=10s bash platform/21-polaris/validate.sh
       - TIMEOUT=10s bash platform/21-temporal/validate.sh
       - TIMEOUT=10s bash platform/21-kafka-debezium-mysql-connector/validate.sh
@@ -108,6 +109,7 @@ tasks:
       # - bash platform/20-jaeger-trino/bootstrap.sh
       - bash platform/20-polaris-db/bootstrap.sh
       - bash platform/20-temporal-db/bootstrap.sh
+      - bash platform/20-table-maintenance-db/bootstrap.sh
       - bash platform/20-kafka-cluster/validate.sh
       - bash platform/20-rustfs/validate.sh
       - bash platform/20-mysql/validate.sh
@@ -115,6 +117,7 @@ tasks:
       # - bash platform/20-jaeger-trino/validate.sh
       - bash platform/20-polaris-db/validate.sh
       - bash platform/20-temporal-db/validate.sh
+      - bash platform/20-table-maintenance-db/validate.sh
       - bash platform/21-polaris/bootstrap.sh
       - bash platform/21-polaris/validate.sh
       - bash platform/21-temporal/bootstrap.sh
@@ -230,6 +233,9 @@ tasks:
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-temporal
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-table-maintenance-db
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-lakehouse-control-plane
@@ -434,6 +440,13 @@ tasks:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
       - bash platform/26-table-metrics-prometheus/validate.sh
+
+  validate-table-maintenance-db:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash platform/20-table-maintenance-db/validate.sh
 
   validate-temporal-db:
     internal: true

@@ -17,13 +17,7 @@ spec:
       {{- include "table-maintenance.podSecurity" . | nindent 6 }}
       {{- include "table-maintenance.podScheduling" (dict "root" . "role" .Values.migrate) | nindent 6 }}
       initContainers:
-        - name: wait-for-db
-          image: {{ .Values.postgres.image }}
-          imagePullPolicy: IfNotPresent
-          command:
-            - sh
-            - -c
-            - until pg_isready -h table-maintenance-db -U {{ .Values.postgres.user }} -d {{ .Values.postgres.database }}; do sleep 2; done
+        {{- include "table-maintenance.waitForDatabase" . | nindent 8 }}
       containers:
         - name: migrate
           image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.backend) }}

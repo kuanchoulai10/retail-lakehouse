@@ -63,3 +63,10 @@ tests:
       spark.serviceAccount.create: false
     asserts:
       - notFailedTemplate: {}
+
+  - it: no database secret
+    set:
+      database.existingSecret: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: "database.existingSecret is required: the chart creates no password Secret; bootstrap.sh of platform/20-table-maintenance-db does"

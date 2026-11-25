@@ -26,13 +26,14 @@ image:
     tag: ""
     digest: ""
 
-postgres:
-  image: postgres:17.11-alpine
+database:
+  host: table-maintenance-db
+  port: 5432
+  name: table_maintenance
   user: table_maintenance
-  database: table_maintenance
-  storage: 5Gi
-  secretName: table-maintenance-db
+  existingSecret: table-maintenance-db
   secretKey: password
+  clientImage: postgres:17.11-alpine
 
 secrets:
   catalogCredential: table-maintenance-polaris-credential

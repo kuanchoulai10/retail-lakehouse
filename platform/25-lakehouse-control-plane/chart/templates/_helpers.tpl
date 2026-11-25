@@ -88,10 +88,10 @@ helm.sh/chart: {{ include "table-maintenance.chart" .root }}
 - name: DB_PASSWORD
   valueFrom:
     secretKeyRef:
-      name: {{ .Values.postgres.secretName }}
-      key: {{ .Values.postgres.secretKey }}
+      name: {{ .Values.database.existingSecret }}
+      key: {{ .Values.database.secretKey }}
 - name: GLAC_POSTGRES__DB_URL
-  value: postgresql+psycopg://{{ .Values.postgres.user }}:$(DB_PASSWORD)@table-maintenance-db:5432/{{ .Values.postgres.database }}
+  value: postgresql+psycopg://{{ .Values.database.user }}:$(DB_PASSWORD)@{{ .Values.database.host }}:{{ .Values.database.port }}/{{ .Values.database.name }}
 {{- end -}}
 
 {{- define "table-maintenance.appEnv" -}}
@@ -103,21 +103,31 @@ helm.sh/chart: {{ include "table-maintenance.chart" .root }}
       key: credential
 {{- end -}}
 
+{{- define "table-maintenance.waitForDatabase" -}}
+- name: wait-for-db
+  image: {{ .Values.database.clientImage }}
+  imagePullPolicy: IfNotPresent
+  command:
+    - sh
+    - -c
+    - until pg_isready -h {{ .Values.database.host }} -p {{ .Values.database.port }} -U {{ .Values.database.user }} -d {{ .Values.database.name }}; do sleep 2; done
+{{- end -}}
+
 {{- define "table-maintenance.waitForSchema" -}}
 - name: wait-for-schema
-  image: {{ .Values.postgres.image }}
+  image: {{ .Values.database.clientImage }}
   imagePullPolicy: IfNotPresent
   env:
     - name: PGPASSWORD
       valueFrom:
         secretKeyRef:
-          name: {{ .Values.postgres.secretName }}
-          key: {{ .Values.postgres.secretKey }}
+          name: {{ .Values.database.existingSecret }}
+          key: {{ .Values.database.secretKey }}
   command:
     - sh
     - -c
     - >-
-      until [ "$(psql -h table-maintenance-db -U {{ .Values.postgres.user }} -d {{ .Values.postgres.database }} -tAc "select (select count(*) from table_maintenance_policies where name = 'default') + (select count(*) from table_discovery_policies where id = 'dp-00000000000000000000000000')")" = "2" ]; do
+      until [ "$(psql -h {{ .Values.database.host }} -p {{ .Values.database.port }} -U {{ .Values.database.user }} -d {{ .Values.database.name }} -tAc "select (select count(*) from table_maintenance_policies where name = 'default') + (select count(*) from table_discovery_policies where id = 'dp-00000000000000000000000000')")" = "2" ]; do
       echo "waiting for the migrate job to seed the schema"; sleep 3; done
 {{- end -}}
 
@@ -237,6 +247,9 @@ annotations:
 {{- end -}}
 
 {{- define "table-maintenance.validateValues" -}}
+{{- if not .Values.database.existingSecret }}
+{{- fail "database.existingSecret is required: the chart creates no password Secret; bootstrap.sh of platform/20-table-maintenance-db does" }}
+{{- end }}
 {{- if and .Values.console.enabled (not .Values.api.enabled) }}
 {{- fail "console.enabled needs api.enabled: the console sends /console/api to the API" }}
 {{- end }}

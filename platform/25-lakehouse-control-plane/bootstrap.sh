@@ -55,22 +55,6 @@ for namespace in "${CONTROL_PLANE_NAMESPACE}" "${OPERATIONS_NAMESPACE}"; do
 done
 gateway::allow_routes "${CONTROL_PLANE_NAMESPACE}"
 
-EXISTING_DB_SECRET="$(kubectl get secret table-maintenance-db \
-  --ignore-not-found \
-  -o name \
-  --namespace "${CONTROL_PLANE_NAMESPACE}" \
-  --context "${KUBE_CONTEXT}")"
-if [[ -z "${EXISTING_DB_SECRET}" ]]; then
-  DB_PASSWORD="$(openssl rand -hex 24)"
-  [[ -n "${DB_PASSWORD}" ]] || fail "generated an empty database password"
-  printf '%s' "${DB_PASSWORD}" \
-    | kubectl create secret generic table-maintenance-db \
-      --from-file=password=/dev/stdin \
-      --namespace "${CONTROL_PLANE_NAMESPACE}" \
-      --context "${KUBE_CONTEXT}" >/dev/null
-  unset DB_PASSWORD
-fi
-
 POLARIS_CREDENTIALS="$(kubectl get secret polaris-bootstrap-secret \
   -o jsonpath='{.data.credentials}' \
   --namespace lakehouse-catalog \
