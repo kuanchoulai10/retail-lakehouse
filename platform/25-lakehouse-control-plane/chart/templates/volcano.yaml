@@ -1,25 +1,29 @@
-{{- range $queue := list .Values.volcano.queues.maintenance .Values.volcano.queues.urgent }}
+{{- if .Values.volcano.create }}
+{{- $queues := list (dict "name" (include "table-maintenance.volcano.queue" .) "queue" .Values.volcano.queues.maintenance) (dict "name" (include "table-maintenance.volcano.urgentQueue" .) "queue" .Values.volcano.queues.urgent) }}
+{{- range $queues }}
 ---
 apiVersion: scheduling.volcano.sh/v1beta1
 kind: Queue
 metadata:
-  name: {{ $queue.name }}
+  name: {{ .name }}
   labels:
     {{- include "table-maintenance.labels" (dict "root" $ "component" "scheduling") | nindent 4 }}
 spec:
   capability:
-    cpu: {{ $queue.capability.cpu | quote }}
-    memory: {{ $queue.capability.memory | quote }}
+    cpu: {{ .queue.capability.cpu | quote }}
+    memory: {{ .queue.capability.memory | quote }}
 {{- end }}
+{{- $prefix := include "table-maintenance.volcano.priorityClassPrefix" . }}
 {{- range $priority, $value := .Values.volcano.priorities }}
 ---
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
 metadata:
-  name: {{ $.Values.volcano.priorityClassPrefix }}-{{ lower $priority }}
+  name: {{ $prefix }}-{{ lower $priority }}
   labels:
     {{- include "table-maintenance.labels" (dict "root" $ "component" "scheduling") | nindent 4 }}
 value: {{ $value | int64 }}
 preemptionPolicy: Never
 globalDefault: false
+{{- end }}
 {{- end }}

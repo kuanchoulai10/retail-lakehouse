@@ -80,23 +80,27 @@ spark:
       executorInstances: 1
 
 volcano:
+  create: true
   queues:
     maintenance:
-      name: table-maintenance
+      name: ""
       capability:
         cpu: "2"
         memory: 5017Mi
     urgent:
-      name: table-maintenance-urgent
+      name: ""
       capability:
         cpu: "2"
         memory: 5017Mi
-  priorityClassPrefix: table-maintenance
+  priorityClassPrefix: ""
   priorities:
     P0: 1000003
     P1: 1000002
     P2: 1000001
     P3: 1000000
+
+rbac:
+  create: true
 
 api:
   enabled: true

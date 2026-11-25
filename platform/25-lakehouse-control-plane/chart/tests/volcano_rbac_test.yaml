@@ -1,0 +1,79 @@
+suite: Volcano and RBAC can be left to someone else, and their names follow the release
+templates:
+  - templates/volcano.yaml
+  - templates/rbac.yaml
+  - templates/configmap.yaml
+release:
+  name: table-maintenance
+  namespace: lakehouse-control-plane
+set:
+  image.backend.tag: t
+  image.spark.tag: t
+  image.console.tag: t
+tests:
+  - it: volcano.create false renders no Queue and no PriorityClass but still names the queues
+    set:
+      volcano.create: false
+    asserts:
+      - hasDocuments: {count: 0}
+        template: templates/volcano.yaml
+      - equal: {path: data.GLAC_SPARK__VOLCANO__QUEUE, value: table-maintenance}
+        template: templates/configmap.yaml
+      - equal: {path: data.GLAC_SPARK__VOLCANO__PRIORITY_CLASS_PREFIX, value: table-maintenance}
+        template: templates/configmap.yaml
+
+  - it: default release keeps today's Volcano names
+    template: templates/volcano.yaml
+    asserts:
+      - hasDocuments: {count: 6}
+      - equal: {path: metadata.name, value: table-maintenance}
+        documentIndex: 0
+      - equal: {path: metadata.name, value: table-maintenance-urgent}
+        documentIndex: 1
+      - equal: {path: metadata.name, value: table-maintenance-p0}
+        documentIndex: 2
+      - equal: {path: metadata.name, value: table-maintenance-p3}
+        documentIndex: 5
+
+  - it: queue and class names follow the release
+    release:
+      name: tm2
+    asserts:
+      - equal: {path: metadata.name, value: tm2-table-maintenance}
+        template: templates/volcano.yaml
+        documentIndex: 0
+      - equal: {path: metadata.name, value: tm2-table-maintenance-urgent}
+        template: templates/volcano.yaml
+        documentIndex: 1
+      - equal: {path: metadata.name, value: tm2-table-maintenance-p0}
+        template: templates/volcano.yaml
+        documentIndex: 2
+      - equal: {path: data.GLAC_SPARK__VOLCANO__QUEUE, value: tm2-table-maintenance}
+        template: templates/configmap.yaml
+      - equal: {path: data.GLAC_SPARK__VOLCANO__URGENT_QUEUE, value: tm2-table-maintenance-urgent}
+        template: templates/configmap.yaml
+      - equal: {path: data.GLAC_SPARK__VOLCANO__PRIORITY_CLASS_PREFIX, value: tm2-table-maintenance}
+        template: templates/configmap.yaml
+
+  - it: names given in values win
+    set:
+      volcano.queues.maintenance.name: shared-maint
+      volcano.queues.urgent.name: shared-urgent
+      volcano.priorityClassPrefix: shared
+    asserts:
+      - equal: {path: metadata.name, value: shared-maint}
+        template: templates/volcano.yaml
+        documentIndex: 0
+      - equal: {path: metadata.name, value: shared-p1}
+        template: templates/volcano.yaml
+        documentIndex: 3
+      - equal: {path: data.GLAC_SPARK__VOLCANO__URGENT_QUEUE, value: shared-urgent}
+        template: templates/configmap.yaml
+
+  - it: rbac.create false renders no Role and no RoleBinding but keeps the ServiceAccounts
+    set:
+      rbac.create: false
+    template: templates/rbac.yaml
+    asserts:
+      - hasDocuments: {count: 2}
+      - isKind: {of: ServiceAccount}

@@ -1,0 +1,65 @@
+suite: contradictory values are refused before install
+templates:
+  - templates/validate.yaml
+release:
+  name: table-maintenance
+  namespace: lakehouse-control-plane
+set:
+  image.backend.tag: t
+  image.spark.tag: t
+  image.console.tag: t
+tests:
+  - it: the defaults pass
+    asserts:
+      - notFailedTemplate: {}
+
+  - it: console without the API
+    set:
+      api.enabled: false
+      worker.enabled: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "console.enabled needs api.enabled: the console sends /console/api to the API"
+
+  - it: worker without the API
+    set:
+      api.enabled: false
+      console.enabled: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "worker.enabled needs api.enabled: Spark jobs send their results to the API"
+
+  - it: event consumer replicas
+    set:
+      eventConsumer.replicas: 2
+    asserts:
+      - failedTemplate:
+          errorPattern: "eventConsumer.replicas must be 0 or 1: Polaris events are consumed by one consumer"
+
+  - it: event consumer may be scaled to zero
+    set:
+      eventConsumer.replicas: 0
+    asserts:
+      - notFailedTemplate: {}
+
+  - it: worker serviceAccount without a name
+    set:
+      worker.serviceAccount.create: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "worker.serviceAccount.name is required when worker.serviceAccount.create is false"
+
+  - it: spark serviceAccount without a name
+    set:
+      spark.serviceAccount.create: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "spark.serviceAccount.name is required when spark.serviceAccount.create is false"
+
+  - it: a turned-off worker needs no ServiceAccount names
+    set:
+      worker.enabled: false
+      worker.serviceAccount.create: false
+      spark.serviceAccount.create: false
+    asserts:
+      - notFailedTemplate: {}

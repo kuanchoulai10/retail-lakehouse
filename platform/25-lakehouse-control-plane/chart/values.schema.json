@@ -1,0 +1,1023 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "global": {
+      "type": "object"
+    },
+    "nameOverride": {
+      "type": "string"
+    },
+    "fullnameOverride": {
+      "type": "string"
+    },
+    "commonLabels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    "env": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "envFrom": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "secretMounts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "secretName": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "secretName",
+          "path"
+        ]
+      }
+    },
+    "extraManifests": {
+      "type": "array",
+      "items": {
+        "type": [
+          "string",
+          "object"
+        ]
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "registry": {
+          "type": "string"
+        },
+        "pullPolicy": {
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        },
+        "backend": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "digest": {
+              "type": "string"
+            }
+          }
+        },
+        "spark": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "digest": {
+              "type": "string"
+            }
+          }
+        },
+        "console": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "digest": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "postgres": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        },
+        "database": {
+          "type": "string"
+        },
+        "storage": {
+          "type": "string"
+        },
+        "secretName": {
+          "type": "string"
+        },
+        "secretKey": {
+          "type": "string"
+        }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "catalogCredential": {
+          "type": "string"
+        },
+        "s3": {
+          "type": "string"
+        }
+      }
+    },
+    "namespaces": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "controlPlane": {
+          "type": "string"
+        },
+        "maintenanceOperations": {
+          "type": "string"
+        }
+      }
+    },
+    "temporal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        }
+      }
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "managementUri": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "s3Endpoint": {
+          "type": "string"
+        },
+        "s3PathStyleAccess": {
+          "type": "boolean"
+        },
+        "s3Region": {
+          "type": "string"
+        }
+      }
+    },
+    "kafka": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bootstrapServers": {
+          "type": "string"
+        },
+        "topic": {
+          "type": "string"
+        }
+      }
+    },
+    "spark": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "serviceAccount": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "create": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            },
+            "annotations": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "sparkVersion": {
+          "type": "string"
+        },
+        "icebergVersion": {
+          "type": "string"
+        },
+        "sizes": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "S": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "driverMemory": {
+                  "type": "string"
+                },
+                "executorMemory": {
+                  "type": "string"
+                },
+                "executorInstances": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "M": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "driverMemory": {
+                  "type": "string"
+                },
+                "executorMemory": {
+                  "type": "string"
+                },
+                "executorInstances": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "L": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "driverMemory": {
+                  "type": "string"
+                },
+                "executorMemory": {
+                  "type": "string"
+                },
+                "executorInstances": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "volcano": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": {
+          "type": "boolean"
+        },
+        "queues": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "maintenance": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "capability": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "cpu": {
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "memory": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "urgent": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "capability": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "cpu": {
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    },
+                    "memory": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "priorityClassPrefix": {
+          "type": "string"
+        },
+        "priorities": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "P0": {
+              "type": "integer"
+            },
+            "P1": {
+              "type": "integer"
+            },
+            "P2": {
+              "type": "integer"
+            },
+            "P3": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "rbac": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": {
+          "type": "boolean"
+        }
+      }
+    },
+    "api": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "podAnnotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tolerations": {
+          "type": "array"
+        },
+        "affinity": {
+          "type": "object"
+        },
+        "env": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "envFrom": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "secretMounts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "secretName": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "secretName",
+              "path"
+            ]
+          }
+        },
+        "resources": {
+          "type": "object"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rootPath": {
+          "type": "string"
+        },
+        "gateway": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "namespace": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "podAnnotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tolerations": {
+          "type": "array"
+        },
+        "affinity": {
+          "type": "object"
+        },
+        "env": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "envFrom": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "secretMounts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "secretName": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "secretName",
+              "path"
+            ]
+          }
+        },
+        "resources": {
+          "type": "object"
+        },
+        "discoveryIntervalSeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attemptDeadlineSeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxAttempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "queueWaitLimitSeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rewriteDataFilesCooldownSeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rewriteManifestsCooldownSeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expireSnapshotsCooldownSeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removeOrphanFilesIntervalSeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failureBackoffCapSeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "compactionPartitionsPerJob": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "compactionQuietSeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "compactionMaxQuietWaitSeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "serviceAccount": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "create": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            },
+            "annotations": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "eventConsumer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "podAnnotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tolerations": {
+          "type": "array"
+        },
+        "affinity": {
+          "type": "object"
+        },
+        "env": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "envFrom": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "secretMounts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "secretName": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "secretName",
+              "path"
+            ]
+          }
+        },
+        "resources": {
+          "type": "object"
+        }
+      }
+    },
+    "console": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "podAnnotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tolerations": {
+          "type": "array"
+        },
+        "affinity": {
+          "type": "object"
+        },
+        "env": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "envFrom": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "secretMounts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "secretName": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "secretName",
+              "path"
+            ]
+          }
+        },
+        "resources": {
+          "type": "object"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gateway": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "namespace": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "migrate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "podAnnotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tolerations": {
+          "type": "array"
+        },
+        "affinity": {
+          "type": "object"
+        },
+        "env": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "envFrom": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "secretMounts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "secretName": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "secretName",
+              "path"
+            ]
+          }
+        },
+        "resources": {
+          "type": "object"
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prometheusUrl": {
+          "type": "string"
+        }
+      }
+    },
+    "settingsProfile": {
+      "enum": [
+        "default",
+        "e2e"
+      ]
+    },
+    "logLevel": {
+      "enum": [
+        "DEBUG",
+        "INFO",
+        "WARNING",
+        "ERROR",
+        "CRITICAL"
+      ]
+    }
+  }
+}

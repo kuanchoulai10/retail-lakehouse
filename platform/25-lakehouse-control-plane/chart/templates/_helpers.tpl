@@ -223,3 +223,33 @@ annotations:
   {{- end }}
 {{- end }}
 {{- end -}}
+
+{{- define "table-maintenance.volcano.queue" -}}
+{{- default (include "table-maintenance.fullname" .) .Values.volcano.queues.maintenance.name }}
+{{- end -}}
+
+{{- define "table-maintenance.volcano.urgentQueue" -}}
+{{- default (include "table-maintenance.suffixed" (dict "root" . "suffix" "urgent")) .Values.volcano.queues.urgent.name }}
+{{- end -}}
+
+{{- define "table-maintenance.volcano.priorityClassPrefix" -}}
+{{- default (include "table-maintenance.fullname" .) .Values.volcano.priorityClassPrefix }}
+{{- end -}}
+
+{{- define "table-maintenance.validateValues" -}}
+{{- if and .Values.console.enabled (not .Values.api.enabled) }}
+{{- fail "console.enabled needs api.enabled: the console sends /console/api to the API" }}
+{{- end }}
+{{- if and .Values.worker.enabled (not .Values.api.enabled) }}
+{{- fail "worker.enabled needs api.enabled: Spark jobs send their results to the API" }}
+{{- end }}
+{{- if gt (int .Values.eventConsumer.replicas) 1 }}
+{{- fail "eventConsumer.replicas must be 0 or 1: Polaris events are consumed by one consumer" }}
+{{- end }}
+{{- if and .Values.worker.enabled (not .Values.worker.serviceAccount.create) (not .Values.worker.serviceAccount.name) }}
+{{- fail "worker.serviceAccount.name is required when worker.serviceAccount.create is false" }}
+{{- end }}
+{{- if and .Values.worker.enabled (not .Values.spark.serviceAccount.create) (not .Values.spark.serviceAccount.name) }}
+{{- fail "spark.serviceAccount.name is required when spark.serviceAccount.create is false" }}
+{{- end }}
+{{- end -}}

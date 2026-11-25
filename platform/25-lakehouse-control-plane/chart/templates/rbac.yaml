@@ -13,6 +13,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 {{- end }}
+{{- if .Values.rbac.create }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -44,6 +45,7 @@ subjects:
   - kind: ServiceAccount
     name: {{ include "table-maintenance.worker.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
+{{- end }}
 {{- if .Values.spark.serviceAccount.create }}
 ---
 apiVersion: v1
@@ -58,6 +60,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 {{- end }}
+{{- if .Values.rbac.create }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -89,4 +92,5 @@ subjects:
   - kind: ServiceAccount
     name: {{ include "table-maintenance.spark.serviceAccountName" . }}
     namespace: {{ .Values.namespaces.maintenanceOperations }}
+{{- end }}
 {{- end }}

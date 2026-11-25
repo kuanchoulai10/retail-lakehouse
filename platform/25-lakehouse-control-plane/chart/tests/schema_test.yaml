@@ -1,0 +1,51 @@
+suite: values the chart does not know are refused, naming the key
+templates:
+  - templates/configmap.yaml
+release:
+  name: table-maintenance
+  namespace: lakehouse-control-plane
+set:
+  image.backend.tag: t
+  image.spark.tag: t
+  image.console.tag: t
+tests:
+  - it: unknown top-level key
+    set:
+      replica: 2
+    asserts:
+      - failedTemplate:
+          errorPattern: "replica"
+
+  - it: unknown role key
+    set:
+      worker.replica: 2
+    asserts:
+      - failedTemplate:
+          errorPattern: "replica"
+
+  - it: wrong type
+    set:
+      api.replicas: two
+    asserts:
+      - failedTemplate:
+          errorPattern: "replicas"
+
+  - it: unknown image key
+    set:
+      image.backend.tags: x
+    asserts:
+      - failedTemplate:
+          errorPattern: "tags"
+
+  - it: a secretMount without its path
+    set:
+      secretMounts: [{name: ca, secretName: ca-bundle}]
+    asserts:
+      - failedTemplate:
+          errorPattern: "path"
+
+  - it: the e2e overlay is known values
+    values:
+      - ../values-e2e.yaml
+    asserts:
+      - notFailedTemplate: {}
