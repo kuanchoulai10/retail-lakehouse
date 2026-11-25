@@ -95,7 +95,8 @@ class TableMaintenanceWorkflow:
     cancellation while a run waits out the backoff before its retry, with no attempt in flight,
     cancels that run itself (``cancel_maintenance_run``; a failed cancel is logged), and so does one
     that arrives while a failed attempt is recorded: that record runs to its end first, and a reply that
-    retries is followed by the cancel of the run. So a run never stays waiting to retry. The first
+    retries is followed by the cancel of the run. So a run never stays waiting to retry. A cancel while
+    a successful attempt is recorded lets that record end too, and cancels no run. The first
     attempt runs at the plan's start size.
     Recording a failed attempt names how it ended and returns what follows it: an
     out-of-memory failure is retried at the next size, other failures at the same size, and a
@@ -221,12 +222,12 @@ class TableMaintenanceWorkflow:
     async def _record_outcome(self, outcome: OperationResultSignal) -> dict[str, Any]:
         """Record the attempt's outcome and return the reply, empty when it was not recorded.
 
-        A failure's record runs to its end even when the workflow is cancelled meanwhile, and the cancel
-        goes on once it ended: a reply that retries left the run waiting to retry, with no attempt in flight
-        whose record could end it, so the run is cancelled first (``cancel_maintenance_run``).
+        The record runs to its end even when the workflow is cancelled meanwhile, and the cancel goes on
+        once it ended: a record the cancel dropped would leave the run, submitted and so never skipped,
+        queued or running for good. A success's record ended the run, and its reply never retries. A
+        failure's reply that retries left the run waiting to retry, with no attempt in flight whose record
+        could end it, so the run is cancelled first (``cancel_maintenance_run``).
         """
-        if outcome.succeeded:
-            return await self._record(outcome) or {}
         reply, cancelled = await _to_the_end_noting_a_cancel(self._record(outcome))
         decision = reply or {}
         if cancelled:
@@ -846,13 +847,8 @@ def _message(error: ActivityError) -> str:
 
 async def _to_the_end[T](work: Coroutine[Any, Any, T]) -> T:
     """Run ``work`` to its end even when the workflow is cancelled again while it runs."""
-    task = asyncio.ensure_future(work)
-    while True:
-        try:
-            return await asyncio.shield(task)
-        except asyncio.CancelledError:
-            if task.cancelled():
-                raise
+    result, _cancelled = await _to_the_end_noting_a_cancel(work)
+    return result
 
 
 async def _to_the_end_noting_a_cancel[T](work: Coroutine[Any, Any, T]) -> tuple[T, bool]:

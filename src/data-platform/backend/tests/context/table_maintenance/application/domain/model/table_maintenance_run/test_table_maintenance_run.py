@@ -1214,6 +1214,7 @@ def test_a_failed_latest_attempt_reads_its_run_status(status, finished_at, attem
         (RunStatusName.RETRY_WAITING, None, (_attempt(1),)),
         (RunStatusName.RETRY_WAITING, None, (_attempt(1, next_step=NextStep.NOT_RETRIED),)),
         (RunStatusName.RETRY_WAITING, None, (_attempt(1, AttemptStatus.QUEUED),)),
+        (RunStatusName.RETRY_WAITING, None, (_attempt(1, next_step=NextStep.CANCELLED),)),
         (RunStatusName.CANCELLED, _now(1), (_attempt(1),)),
         (RunStatusName.CANCELLED, _now(1), (_attempt(1, AttemptStatus.RUNNING),)),
         (RunStatusName.SUCCEEDED, _now(1), (_retrying(1),)),

@@ -2507,8 +2507,11 @@ async def _cancel_reached_the_workflow(h: Harness) -> bool:
     )
 
 
-async def _cancel_while_recording_the_first_failure(h: Harness, reply: dict, *, succeeded: bool = False) -> None:
+async def _cancel_while_recording_the_first_attempt(h: Harness, reply: dict, *, succeeded: bool = False) -> None:
     """End run 1's first attempt, and cancel the workflow inside its record, holding it until the cancel is seen.
+
+    The time-skipping test server gives no way to cancel between a record's schedule and its pickup, so the
+    cancel lands inside the record: a record not shielded from it is cancel-requested, which the tests check.
 
     The record replies ``reply``. The workflow is waited for until it ends cancelled.
     """
@@ -2534,7 +2537,7 @@ def test_a_cancel_while_a_retrying_failure_is_recorded_cancels_the_waiting_run()
     """
 
     async def scenario(h: Harness) -> None:
-        await _cancel_while_recording_the_first_failure(
+        await _cancel_while_recording_the_first_attempt(
             h, {"status": "retry_waiting", "failure_class": "other", "next_step": "retry_same"}
         )
 
@@ -2551,7 +2554,7 @@ def test_a_cancel_while_a_failure_that_does_not_retry_is_recorded_cancels_no_run
     """A cancel during the record of a failure that ends the run lets the record end; no run is cancelled on top."""
 
     async def scenario(h: Harness) -> None:
-        await _cancel_while_recording_the_first_failure(
+        await _cancel_while_recording_the_first_attempt(
             h, {"status": "failed", "failure_class": "other", "next_step": "not_retried"}
         )
 
@@ -2564,12 +2567,17 @@ def test_a_cancel_while_a_failure_that_does_not_retry_is_recorded_cancels_no_run
     _run(scenario)
 
 
-def test_a_cancel_while_a_success_is_recorded_cancels_no_run():
-    """A cancel during the record of a success ends the workflow without cancelling the run."""
+def test_a_cancel_while_a_success_is_recorded_lets_the_record_end_and_cancels_no_run():
+    """A cancel during the record of a success lets the record end, then ends the workflow without cancelling the run.
+
+    A record the cancel dropped would leave the run, submitted and so never skipped, in flight for good.
+    """
 
     async def scenario(h: Harness) -> None:
-        await _cancel_while_recording_the_first_failure(h, {"status": "succeeded"}, succeeded=True)
+        await _cancel_while_recording_the_first_attempt(h, {"status": "succeeded"}, succeeded=True)
 
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+        assert not await _cancel_requested_for_an_activity(h)
         assert h.fakes.cancels == []
         assert [s["run_id"] for s in h.fakes.skips] == [RUN_IDS[1]]
         assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
