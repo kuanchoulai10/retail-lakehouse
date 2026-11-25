@@ -42,6 +42,11 @@ kubectl wait "job/table-maintenance-migrate-${RELEASE_REVISION}" \
   --namespace "${NAMESPACE}" \
   --context "${KUBE_CONTEXT}"
 
+helm test table-maintenance \
+  --namespace "${NAMESPACE}" \
+  --kube-context "${KUBE_CONTEXT}" \
+  --timeout "${HELM_TEST_TIMEOUT:-120s}"
+
 QUEUE_KEYS="GLAC_SPARK__VOLCANO__QUEUE GLAC_SPARK__VOLCANO__URGENT_QUEUE"
 for key in ${QUEUE_KEYS}; do
   queue="$(kubectl get configmap table-maintenance-config \

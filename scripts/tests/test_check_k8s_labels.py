@@ -5,6 +5,8 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import yaml
+
 _SPEC = importlib.util.spec_from_file_location(
     "check_k8s_labels", Path(__file__).resolve().parents[1] / "check_k8s_labels.py"
 )
@@ -187,3 +189,45 @@ def test_strimzi_connect_without_pod_version_is_reported():
     """KafkaConnect pods carry spec.version as their version label."""
     violations = check_document(strimzi("KafkaConnect", "4.0.0", None, []), "f.yaml")
     assert violations == ["f.yaml: KafkaConnect/k pod template labels is missing version"]
+
+
+def test_version_matches_the_tag_of_an_image_pinned_by_digest():
+    """A digest pins the image; the tag before it is still the version, also behind a registry port."""
+    containers = [{"name": "api", "image": "reg.example:5000/table-maintenance-backend:1.2@sha256:abc"}]
+    assert check_document(deployment(pod_labels={**LABELS, VERSION: "1.2"}, containers=containers), "f.yaml") == []
+    untagged = [{"name": "api", "image": "reg.example:5000/table-maintenance-backend@sha256:abc"}]
+    assert (
+        "is not the tag of any container image ()"
+        in check_document(deployment(pod_labels={**LABELS, VERSION: "1.2"}, containers=untagged), "f.yaml")[0]
+    )
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+CI_VALUES = sorted((REPO_ROOT / check_k8s_labels.CHART / "ci").glob("*-values.yaml"))
+
+
+def test_rendered_chart_renders_each_ci_values_file():
+    """The chart is checked once per scenario in its ci/ folder, each named by its file."""
+    rendered = check_k8s_labels.rendered_chart(REPO_ROOT)
+    assert [path.name for path in CI_VALUES] == [
+        "default-values.yaml",
+        "external-values.yaml",
+        "minimal-values.yaml",
+        "renamed-values.yaml",
+    ]
+    assert [source for source, _ in rendered] == [
+        f"{check_k8s_labels.CHART} (rendered with ci/{path.name})" for path in CI_VALUES
+    ]
+    for source, text in rendered:
+        assert "kind: Deployment" in text, source
+
+
+def test_every_ci_scenario_passes_the_label_check():
+    """Every scenario the chart supports renders objects that follow the label standard."""
+    violations = [
+        violation
+        for source, text in check_k8s_labels.rendered_chart(REPO_ROOT)
+        for doc in yaml.safe_load_all(text)
+        for violation in check_document(doc, source)
+    ]
+    assert violations == []

@@ -9,7 +9,8 @@ DaemonSet / Service selectors use only app.kubernetes.io/{name,instance,componen
 and instance, and match the pod template.
 
 Scope: every platform/**/*.yaml we write (third-party Helm values, vendored charts, CRD bundles,
-on-hold waves and patches of third-party objects are excluded) plus the rendered wave-25 chart.
+on-hold waves and patches of third-party objects are excluded) plus the wave-25 chart, rendered once
+for each of its ci/*-values.yaml scenarios.
 """
 
 from __future__ import annotations
@@ -67,9 +68,7 @@ def _selector_violations(selector: dict, pod_labels: dict | None, where: str) ->
 
 
 def _image_tag(image: str) -> str | None:
-    if "@" in image:
-        return None
-    name, _, tag = image.rpartition(":")
+    name, _, tag = image.partition("@")[0].rpartition(":")
     return tag if name and "/" not in tag else None
 
 
@@ -139,34 +138,42 @@ def manifest_files(root: Path) -> list[Path]:
     return sorted(root / path for path in tracked if path.endswith(".yaml") and not EXCLUDED.match(path))
 
 
-def rendered_chart(root: Path) -> str:
-    """Render the wave-25 chart with placeholder image tags."""
-    return subprocess.run(
-        [
-            "helm",
-            "template",
-            "table-maintenance",
-            str(root / CHART),
-            "--namespace",
-            "lakehouse-control-plane",
-            "--set",
-            "image.backend.tag=check",
-            "--set",
-            "image.spark.tag=check",
-            "--set",
-            "image.console.tag=check",
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout
+def rendered_chart(root: Path) -> list[tuple[str, str]]:
+    """Render the wave-25 chart once per scenario in its ci/ folder, with placeholder image tags."""
+    return [
+        (
+            f"{CHART} (rendered with ci/{values.name})",
+            subprocess.run(
+                [
+                    "helm",
+                    "template",
+                    "table-maintenance",
+                    str(root / CHART),
+                    "--namespace",
+                    "lakehouse-control-plane",
+                    "--values",
+                    str(values),
+                    "--set",
+                    "image.backend.tag=check",
+                    "--set",
+                    "image.spark.tag=check",
+                    "--set",
+                    "image.console.tag=check",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout,
+        )
+        for values in sorted((root / CHART / "ci").glob("*-values.yaml"))
+    ]
 
 
 def main() -> int:
     """Check every authored manifest and the rendered chart; return the exit code."""
     root = Path(__file__).resolve().parents[1]
     sources = [(str(path.relative_to(root)), path.read_text()) for path in manifest_files(root)]
-    sources.append((f"{CHART} (rendered)", rendered_chart(root)))
+    sources += rendered_chart(root)
     violations = [
         violation
         for source, text in sources

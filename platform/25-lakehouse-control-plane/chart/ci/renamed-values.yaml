@@ -1,0 +1,4 @@
+fullnameOverride: tm-ci
+nameOverride: maint
+commonLabels:
+  retail-lakehouse.io/team: data

@@ -1,0 +1,89 @@
+image:
+  registry: registry.example:5000
+  backend:
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+imagePullSecrets:
+  - name: registry-credentials
+rbac:
+  create: false
+volcano:
+  create: false
+  queues:
+    maintenance:
+      name: shared-maintenance
+    urgent:
+      name: shared-urgent
+  priorityClassPrefix: shared
+database:
+  host: postgres.databases.svc.cluster.local
+  port: 6432
+  name: maintenance
+  user: maintenance_app
+  existingSecret: maintenance-db-credentials
+  secretKey: app-password
+spark:
+  serviceAccount:
+    create: false
+    name: spark-jobs
+worker:
+  serviceAccount:
+    create: false
+    name: maintenance-worker
+  env:
+    - name: GLAC_LOG_FORMAT
+      value: json
+  secretMounts:
+    - name: kube-ca
+      secretName: kube-ca-bundle
+      path: /etc/kube-ca
+  nodeSelector:
+    retail-lakehouse.io/pool: maintenance
+  tolerations:
+    - key: retail-lakehouse.io/maintenance
+      operator: Exists
+      effect: NoSchedule
+env:
+  - name: HTTPS_PROXY
+    value: http://proxy.example:3128
+envFrom:
+  - secretRef:
+      name: proxy-credentials
+secretMounts:
+  - name: ca
+    secretName: corporate-ca
+    path: /etc/ssl/corporate
+api:
+  replicas: 2
+  podAnnotations:
+    retail-lakehouse.io/scrape: "true"
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: api
+eventConsumer:
+  replicas: 0
+  nodeSelector:
+    retail-lakehouse.io/pool: maintenance
+migrate:
+  nodeSelector:
+    retail-lakehouse.io/pool: maintenance
+console:
+  podLabels:
+    retail-lakehouse.io/exposed: "true"
+  nodeSelector:
+    retail-lakehouse.io/pool: web
+extraManifests:
+  - |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: {{ include "table-maintenance.fullname" . }}-extra
+      labels:
+        {{- include "table-maintenance.labels" (dict "root" . "component" "extra") | nindent 8 }}
+    data:
+      note: rendered by extraManifests

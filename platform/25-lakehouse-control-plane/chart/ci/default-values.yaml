@@ -1,0 +1,7 @@
+image:
+  backend:
+    tag: ci
+  spark:
+    tag: ci
+  console:
+    tag: ci
