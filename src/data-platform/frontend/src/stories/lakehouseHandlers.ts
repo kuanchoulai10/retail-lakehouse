@@ -55,6 +55,7 @@ import {
 } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
 import { getListViewsMockHandler } from "@/api/generated/views/views.msw";
 import {
+  CANCELLED_RUN,
   CATALOGS,
   COMMITS,
   DISCOVERY_POLICIES,
@@ -84,6 +85,7 @@ import {
   RECONCILIATIONS,
   RETAIL,
   RETAIL_TABLES,
+  RETRY_WAITING_RUN,
   RUNS,
   SALES_TABLES,
   SCANNED_CATALOGS,
@@ -148,7 +150,7 @@ export function lakehouseHandlers() {
     getListTableMaintenanceRunsMockHandler(RUNS),
     // Every run of the story data by its id, the older one the list never returns included; any other id is gone.
     getGetTableMaintenanceRunMockHandler(({ params }) => {
-      const runs = [...RUNS, ESCALATED_RUN, PARTITION_SCOPE_RUN, OLDER_RUN, QUEUE_TIMEOUT_RUN, inFlightRun(), pendingRun()];
+      const runs = [...RUNS, ESCALATED_RUN, PARTITION_SCOPE_RUN, OLDER_RUN, QUEUE_TIMEOUT_RUN, RETRY_WAITING_RUN, CANCELLED_RUN, inFlightRun(), pendingRun()];
       const run = runs.find((r) => r.run_id === params.runId);
       if (run === undefined) throw HttpResponse.json({ detail: `run ${params.runId} not found` }, { status: 404 });
       return run;

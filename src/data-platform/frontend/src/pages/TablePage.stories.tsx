@@ -22,6 +22,8 @@ import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageSc
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
 import { DESKTOP, PHONE } from "@/stories/phone";
 import {
+  CANCELLED_RUN,
+  CANCELLED_RUN_ID,
   DRY_RUN_DEFAULT_MAINTENANCE,
   effectivePolicies,
   ESCALATED_RUN,
@@ -41,6 +43,8 @@ import {
   QUEUE_TIMEOUT_RUN,
   QUEUE_TIMEOUT_RUN_ID,
   queuedRun,
+  RETRY_WAITING_RUN,
+  RETRY_WAITING_RUN_ID,
   SCHEDULED_ORPHANS_RUN_ID,
   SCHEDULED_RECONCILIATION_ID,
   SCHEDULED_RUN_ID,
@@ -458,6 +462,31 @@ export const MaintenanceQueueTimeout: Story = {
     const panel = await openedRun(canvasElement, "Rewrite data files");
     await expect(panel.getByText("Waited too long in the queue")).toBeVisible();
     await expect(panel.getByText("Queued 24h 0m")).toBeVisible();
+  },
+};
+
+export const MaintenanceRetryWaiting: Story = {
+  args: { route: maintenanceRoute(RETRY_WAITING_RUN_ID) },
+  globals: DESKTOP,
+  beforeEach({ msw }) {
+    msw.use(getListTableMaintenanceRunsMockHandler([RETRY_WAITING_RUN]));
+  },
+  play: async ({ canvasElement }) => {
+    const panel = await openedRun(canvasElement, "Expire snapshots");
+    await expect(panel.getByText("Retry waiting")).toBeVisible();
+    await expect(panel.getByText("Retrying at the same size")).toBeVisible();
+  },
+};
+
+export const MaintenanceCancelled: Story = {
+  args: { route: maintenanceRoute(CANCELLED_RUN_ID) },
+  globals: DESKTOP,
+  beforeEach({ msw }) {
+    msw.use(getListTableMaintenanceRunsMockHandler([CANCELLED_RUN]));
+  },
+  play: async ({ canvasElement }) => {
+    const panel = await openedRun(canvasElement, "Rewrite data files");
+    await expect(panel.getByText("Cancelled")).toBeVisible();
   },
 };
 

@@ -1,4 +1,5 @@
 import { StatusBadge as StatusPill } from "@retail-lakehouse/design-system";
+import { sentenceCase } from "@/lib/sentenceCase";
 import { statusTone } from "@/lib/statusTone";
 
 interface Props {
@@ -7,5 +8,5 @@ interface Props {
 
 export function StatusBadge({ status }: Props) {
   const lower = status.toLowerCase();
-  return <StatusPill status={statusTone(lower)}>{lower.charAt(0).toUpperCase() + lower.slice(1)}</StatusPill>;
+  return <StatusPill status={statusTone(lower)}>{sentenceCase(lower)}</StatusPill>;
 }

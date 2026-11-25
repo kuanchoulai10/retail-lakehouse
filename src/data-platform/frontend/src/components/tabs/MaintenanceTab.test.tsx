@@ -136,6 +136,32 @@ const SKIPPED_RUN = run({
   attempts: [],
 });
 
+// The first attempt failed; the run waits out its backoff before the second.
+const RETRY_WAITING_RUN = run({
+  run_id: "mr-retry-waiting",
+  operation: "expire_snapshots",
+  status: "retry_waiting",
+  finished_at: null,
+  attempts: [
+    attempt({
+      status: "failed",
+      failure_class: "other",
+      error: "snapshot store unreachable",
+      next_step: "retry_same",
+      next_size: "S",
+    }),
+  ],
+});
+
+// Cancelled by the user while its first attempt was running.
+const CANCELLED_RUN = run({
+  run_id: "mr-cancelled",
+  operation: "remove_orphan_files",
+  status: "cancelled",
+  finished_at: "2026-10-31T10:00:40Z",
+  attempts: [attempt({ status: "failed", finished_at: "2026-10-31T10:00:40Z", next_step: "not_retried" })],
+});
+
 const OLDER_RUN_ID = "mr-older";
 const OLDER_RUN = run({ run_id: OLDER_RUN_ID, operation: "expire_snapshots", trigger: "scheduled" });
 
@@ -313,6 +339,15 @@ describe("MaintenanceTab", () => {
     expect(within(panel).getByText("No attempt yet. This run waits for the runs before it.")).toBeInTheDocument();
     expect(within(panel).queryByRole("list", { name: "Attempts" })).not.toBeInTheDocument();
     expect(within(panel).getByText("Started").nextElementSibling).toHaveTextContent(/^—$/);
+  });
+
+  it("shows a run waiting to retry and a cancelled run in the list", async () => {
+    calls = stubCatalogApi({ [`GET ${RUNS_PATH}`]: () => jsonResponse([RETRY_WAITING_RUN, CANCELLED_RUN]) });
+    renderTab();
+    const table = await screen.findByRole("table", { name: "Maintenance runs, newest first" });
+    const [waiting, cancelled] = within(table).getAllByRole("row").slice(1) as [HTMLElement, HTMLElement];
+    expect(within(waiting).getByText("Retry waiting")).toHaveClass("bg-notice-container");
+    expect(within(cancelled).getByText("Cancelled")).toBeInTheDocument();
   });
 
   it("says why a skipped run was skipped", async () => {

@@ -45,8 +45,12 @@ describe("anyRunInFlight", () => {
     expect(anyRunInFlight([run("succeeded", ["succeeded"]), run("pending")])).toBe(true);
   });
 
-  it("is false for a skipped run", () => {
-    expect(anyRunInFlight([run("skipped")])).toBe(false);
+  it("keeps polling while a run waits to retry", () => {
+    expect(anyRunInFlight([run("succeeded"), run("retry_waiting", ["failed"])])).toBe(true);
+  });
+
+  it.each(["skipped", "cancelled"])("is false for a %s run", (status) => {
+    expect(anyRunInFlight([run(status)])).toBe(false);
   });
 
   it.each(["pending", "queued", "running"])("is true for a finished run with a %s attempt", (status) => {

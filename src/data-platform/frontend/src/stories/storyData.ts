@@ -844,6 +844,62 @@ export const QUEUE_TIMEOUT_RUN = runOfAttempts(
   "2026-11-19T02:00:00Z",
 );
 
+export const RETRY_WAITING_RUN_ID = "mr-01m7bk9d30ff8e5hn7a2xk4b6d";
+export const CANCELLED_RUN_ID = "mr-01m7bk9d30ff8e5hn7a2xk4b6e";
+
+// An expiry whose first attempt failed: the run waits out its backoff before the second attempt.
+export const RETRY_WAITING_RUN = endedRun(
+  RETRY_WAITING_RUN_ID,
+  "expire_snapshots",
+  [
+    attemptAtM({
+      attempt: 1,
+      size: "S",
+      status: "failed",
+      started_at: "2026-11-19T02:00:00Z",
+      started_running_at: "2026-11-19T02:00:10Z",
+      finished_at: "2026-11-19T02:00:50Z",
+      failure_class: "other",
+      error: "snapshot store unreachable",
+      next_step: "retry_same",
+      next_size: "S",
+      job_name: "tm-orders-expire-wait-a1",
+    }),
+  ],
+  {
+    trigger: "manual",
+    status: "retry_waiting",
+    created_at: "2026-11-19T02:00:00Z",
+    finished_at: null,
+    settings: { older_than: "2026-11-14T02:00:00+00:00", retain_last: 5 },
+  },
+);
+
+// A compaction cancelled while its first attempt was running.
+export const CANCELLED_RUN = endedRun(
+  CANCELLED_RUN_ID,
+  "rewrite_data_files",
+  [
+    attemptAtM({
+      attempt: 1,
+      size: "S",
+      status: "failed",
+      started_at: "2026-11-19T03:00:00Z",
+      started_running_at: "2026-11-19T03:00:10Z",
+      finished_at: "2026-11-19T03:01:30Z",
+      next_step: "not_retried",
+      job_name: "tm-orders-rewrite-cancel-a1",
+    }),
+  ],
+  {
+    trigger: "manual",
+    status: "cancelled",
+    created_at: "2026-11-19T03:00:00Z",
+    finished_at: "2026-11-19T03:01:30Z",
+    settings: { target_file_size_bytes: 134217728 },
+  },
+);
+
 export const DEFAULT_DISCOVERY_POLICY_ID = "dp-00000000000000000000000000";
 export const SALES_TABLES_POLICY_ID = "dp-01m7s6c3tqee0rhg00xry2zqqv";
 
