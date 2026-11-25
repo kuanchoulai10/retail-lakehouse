@@ -14,11 +14,11 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import
 if TYPE_CHECKING:
     from temporalio.client import Client
 
-    from bootstrap.configs import AppSettings
+    from bootstrap.configs import WorkerSettings
     from bootstrap.container.use_cases import UseCases
 
 
-def build_activities(use_cases: UseCases, client: Client, settings: AppSettings) -> Activities:
+def build_activities(use_cases: UseCases, client: Client, settings: WorkerSettings) -> Activities:
     """Build the activities; ``client`` is the worker's own, on the worker's loop."""
     return Activities(
         reconciliation=TableReconciliationActivities(
@@ -29,9 +29,9 @@ def build_activities(use_cases: UseCases, client: Client, settings: AppSettings)
             issue_reconciliation_id=use_cases.issue_table_reconciliation_id,
             issue_run_ids=use_cases.issue_table_maintenance_run_ids,
             client=client,
-            attempt_deadline_seconds=settings.maintenance_attempt_deadline_seconds,
-            max_attempts=settings.maintenance_max_attempts,
-            queue_wait_limit_seconds=settings.maintenance_queue_wait_limit_seconds,
+            attempt_deadline_seconds=settings.maintenance.attempt_deadline_seconds,
+            max_attempts=settings.maintenance.max_attempts,
+            queue_wait_limit_seconds=settings.maintenance.queue_wait_limit_seconds,
         ),
         maintenance=TableMaintenanceActivities(
             record_result=use_cases.record_table_maintenance_operation_result,

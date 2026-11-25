@@ -7,19 +7,18 @@ from typing import TYPE_CHECKING, Any
 from pyarrow.fs import S3FileSystem
 
 if TYPE_CHECKING:
-    from bootstrap.configs import AppSettings
+    from bootstrap.configs import CatalogSettings
 
 HTTP_PREFIX = "http://"
 HTTPS_PREFIX = "https://"
 
 
-def build_event_log_filesystem(settings: AppSettings) -> S3FileSystem:
+def build_event_log_filesystem(catalog: CatalogSettings) -> S3FileSystem:
     """Return the object-store file system that holds the Spark event logs: the catalog's, path style.
 
     The catalog's S3 keys are used when they are set; otherwise the AWS environment chain
     supplies them (the worker gets them from its S3 Secret).
     """
-    catalog = settings.catalog
     endpoint = catalog.s3_endpoint
     scheme = "http" if endpoint.startswith(HTTP_PREFIX) else "https"
     options: dict[str, Any] = {

@@ -11,7 +11,7 @@ from bootstrap.container import build_api_app, build_engine, run_migrations
 from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
     AsyncLoopBridge,
 )
-from tests.bootstrap.container.container_support import sqlite_settings
+from tests.bootstrap.container.container_support import sqlite_api_settings
 
 if TYPE_CHECKING:
     from kubernetes.client import CustomObjectsApi
@@ -29,9 +29,9 @@ async def _connect(_: TemporalSettings) -> MagicMock:
 
 def test_api_builds_and_serves_without_a_kubeconfig(tmp_path):
     """The API builds on SQLite without a kubeconfig and serves health requests and no longer serves presets."""
-    settings = sqlite_settings()
-    settings.sqlite.path = str(tmp_path / "tm.db")
-    run_migrations(build_engine(settings))
+    settings = sqlite_api_settings()
+    settings.database.sqlite.path = str(tmp_path / "tm.db")
+    run_migrations(build_engine(settings.database))
     bridge = AsyncLoopBridge()
     try:
         app = build_api_app(settings, bridge, connect=_connect, k8s_api_factory=_no_kubeconfig)
@@ -47,9 +47,9 @@ def test_api_builds_and_serves_without_a_kubeconfig(tmp_path):
 
 def test_api_mounts_both_contexts(tmp_path):
     """The API serves the table maintenance routes and the catalog routes on one app."""
-    settings = sqlite_settings()
-    settings.sqlite.path = str(tmp_path / "tm.db")
-    run_migrations(build_engine(settings))
+    settings = sqlite_api_settings()
+    settings.database.sqlite.path = str(tmp_path / "tm.db")
+    run_migrations(build_engine(settings.database))
     bridge = AsyncLoopBridge()
     try:
         app = build_api_app(settings, bridge, connect=_connect, k8s_api_factory=_no_kubeconfig)
@@ -64,10 +64,10 @@ def test_api_mounts_both_contexts(tmp_path):
 
 def test_api_serves_its_docs_under_the_configured_root_path(tmp_path):
     """The configured API root path reaches the app: the OpenAPI server is the prefix, unprefixed routes still serve."""
-    settings = sqlite_settings()
-    settings.sqlite.path = str(tmp_path / "tm.db")
-    settings.api.root_path = "/api"
-    run_migrations(build_engine(settings))
+    settings = sqlite_api_settings()
+    settings.database.sqlite.path = str(tmp_path / "tm.db")
+    settings.http.root_path = "/api"
+    run_migrations(build_engine(settings.database))
     bridge = AsyncLoopBridge()
     try:
         app = build_api_app(settings, bridge, connect=_connect, k8s_api_factory=_no_kubeconfig)
@@ -84,14 +84,17 @@ def test_api_serves_its_docs_under_the_configured_root_path(tmp_path):
 
 def test_api_serves_the_platform_settings_it_was_started_with_and_no_secret(tmp_path):
     """GET /v1/platform-settings reports the running values and nothing of the deployment's secrets."""
-    settings = sqlite_settings(
-        maintenance_attempt_deadline_seconds=900,
-        maintenance_max_attempts=4,
+    settings = sqlite_api_settings(
         catalog={"credential": "root:cat4log", "s3_secret_access_key": "SKSECRET"},
-        postgres={"db_url": "postgresql+psycopg://tm:s3cr3t-pass@db:5432/tm"},
+        database={
+            "backend": "sqlite",
+            "sqlite": {"path": ":memory:"},
+            "postgres": {"db_url": "postgresql+psycopg://tm:s3cr3t-pass@db:5432/tm"},
+        },
+        maintenance={"attempt_deadline_seconds": 900, "max_attempts": 4},
     )
-    settings.sqlite.path = str(tmp_path / "tm.db")
-    run_migrations(build_engine(settings))
+    settings.database.sqlite.path = str(tmp_path / "tm.db")
+    run_migrations(build_engine(settings.database))
     bridge = AsyncLoopBridge()
     try:
         app = build_api_app(settings, bridge, connect=_connect, k8s_api_factory=_no_kubeconfig)

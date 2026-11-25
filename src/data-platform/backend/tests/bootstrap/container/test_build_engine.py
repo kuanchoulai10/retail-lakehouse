@@ -9,8 +9,8 @@ from pydantic import SecretStr
 from sqlalchemy import inspect
 
 from bootstrap.configs import (
-    AppSettings,
     DatabaseBackend,
+    DatabaseSettings,
     PostgresSettings,
     SqliteSettings,
 )
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 def test_postgres_engine_enables_pool_pre_ping_without_connecting():
     """The Postgres engine pre-pings pooled connections and does not connect when built."""
-    settings = AppSettings(
+    settings = DatabaseSettings(
         postgres=PostgresSettings(db_url=SecretStr("postgresql+psycopg://u:p@localhost:1/db"), pool_size=3)
     )
 
@@ -38,14 +38,14 @@ def test_postgres_engine_enables_pool_pre_ping_without_connecting():
 
 
 def test_postgres_without_url_fails_fast():
-    """Building a Postgres engine without a database URL raises a ValueError naming the setting."""
-    with pytest.raises(ValueError, match="GLAC_POSTGRES__DB_URL"):
-        build_engine(AppSettings())
+    """Building a Postgres engine without a database URL raises a ValueError naming the variable that sets it."""
+    with pytest.raises(ValueError, match="GLAC_DATABASE__POSTGRES__DB_URL"):
+        build_engine(DatabaseSettings())
 
 
 def test_sqlite_in_memory_engine_shares_one_database():
     """An in-memory SQLite engine shares one database and creates the schema."""
-    settings = AppSettings(database_backend=DatabaseBackend.SQLITE, sqlite=SqliteSettings(path=":memory:"))
+    settings = DatabaseSettings(backend=DatabaseBackend.SQLITE, sqlite=SqliteSettings(path=":memory:"))
 
     engine = build_engine(settings)
     create_schema(engine)
@@ -56,7 +56,7 @@ def test_sqlite_in_memory_engine_shares_one_database():
 def test_sqlite_file_engine(tmp_path: Path):
     """A file-backed SQLite engine creates the database file."""
     path = tmp_path / "tm.db"
-    settings = AppSettings(database_backend=DatabaseBackend.SQLITE, sqlite=SqliteSettings(path=str(path)))
+    settings = DatabaseSettings(backend=DatabaseBackend.SQLITE, sqlite=SqliteSettings(path=str(path)))
 
     create_schema(build_engine(settings))
 

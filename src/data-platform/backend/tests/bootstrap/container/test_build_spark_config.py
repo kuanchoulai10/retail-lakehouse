@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from bootstrap.configs import AppSettings, CatalogSettings, SparkSettings, SparkSizeSettings, SparkVolcanoSettings
+from bootstrap.configs import CatalogSettings, SparkSettings, SparkSizeSettings, SparkVolcanoSettings, WorkerSettings
 from bootstrap.container import build_spark_config
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     SparkK8sConfig,
@@ -13,7 +13,7 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
 
 def test_spark_config_combines_spark_and_catalog_settings():
     """The Spark config combines the Spark and catalog settings."""
-    settings = AppSettings(
+    settings = WorkerSettings(
         catalog=CatalogSettings(
             uri="http://polaris:8181/api/catalog",
             scope="PRINCIPAL_ROLE:X",
@@ -44,7 +44,7 @@ def test_spark_config_combines_spark_and_catalog_settings():
         ),
     )
 
-    assert build_spark_config(settings) == SparkK8sConfig(
+    assert build_spark_config(settings.spark, settings.catalog) == SparkK8sConfig(
         image="spark:1",
         service_account="sa",
         catalog_uri="http://polaris:8181/api/catalog",
@@ -76,7 +76,7 @@ def test_spark_config_combines_spark_and_catalog_settings():
 
 def test_default_spark_settings_match_the_runtime_defaults():
     """The default Spark settings give the expected namespace, Spark and Iceberg versions."""
-    config = build_spark_config(AppSettings())
+    config = build_spark_config(SparkSettings(), CatalogSettings())
 
     assert config.namespace == "lakehouse-maintenance-operations"
     assert config.spark_version == "4.0.0"
@@ -89,7 +89,7 @@ def test_default_spark_settings_match_the_runtime_defaults():
 
 def test_default_sizes_reach_the_spark_config():
     """With no settings the config holds the default S, M and L memory."""
-    assert build_spark_config(AppSettings()).sizes == {
+    assert build_spark_config(SparkSettings(), CatalogSettings()).sizes == {
         "S": SparkSizeResources(driver_memory="768m", executor_memory="768m", executor_instances=1),
         "M": SparkSizeResources(driver_memory="1g", executor_memory="1536m", executor_instances=1),
         "L": SparkSizeResources(driver_memory="1536m", executor_memory="2g", executor_instances=1),
@@ -100,11 +100,11 @@ def test_volcano_settings_reach_the_spark_config():
     """The Volcano queue names and class prefix come through to the config."""
     volcano = SparkVolcanoSettings(queue="q", urgent_queue="uq", priority_class_prefix="pc")
 
-    config = build_spark_config(AppSettings(spark=SparkSettings(volcano=volcano)))
+    config = build_spark_config(SparkSettings(volcano=volcano), CatalogSettings())
 
     assert config.volcano == VolcanoSettings(queue="q", urgent_queue="uq", priority_class_prefix="pc")
 
 
 def test_default_volcano_settings_reach_the_spark_config():
     """With no settings the config holds the default queues and prefix."""
-    assert build_spark_config(AppSettings()).volcano == VolcanoSettings()
+    assert build_spark_config(SparkSettings(), CatalogSettings()).volcano == VolcanoSettings()

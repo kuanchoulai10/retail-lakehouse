@@ -57,7 +57,7 @@ def test_consumer_runs_until_stopped_and_closes_the_source():
         build_repositories(sqlite_engine()), fake_gateways(), platform_settings=platform_settings(), clock=lambda: NOW
     )
 
-    run_event_consumer(use_cases, source, stop)
+    run_event_consumer(use_cases.process_table_hint, source, stop)
 
     assert source.committed == [7, 8]
     assert source.closed is True

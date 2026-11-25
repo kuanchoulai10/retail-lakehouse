@@ -21,14 +21,14 @@ if TYPE_CHECKING:
     from kubernetes.client import CustomObjectsApi
     from temporalio.client import Client
 
-    from bootstrap.configs import AppSettings, TemporalSettings
+    from bootstrap.configs import ApiSettings, TemporalSettings
     from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
         AsyncLoopBridge,
     )
 
 
 def build_api_app(
-    settings: AppSettings,
+    settings: ApiSettings,
     bridge: AsyncLoopBridge,
     *,
     connect: Callable[[TemporalSettings], Awaitable[Client]] = connect_temporal,
@@ -40,5 +40,5 @@ def build_api_app(
     return create_api_app(
         lambda app: register_routes(app, build_web_use_cases(use_cases)),
         lambda app: register_catalog_routes(app, build_catalog_web_use_cases(polaris)),
-        root_path=settings.api.root_path,
+        root_path=settings.http.root_path,
     )

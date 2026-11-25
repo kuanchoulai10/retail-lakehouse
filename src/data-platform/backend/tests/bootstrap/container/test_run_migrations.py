@@ -42,7 +42,7 @@ def _use_cases(engine):
 
 def test_schema_has_no_preset_table():
     """Migrating creates no table for the removed presets."""
-    engine = build_engine(sqlite_settings())
+    engine = build_engine(sqlite_settings().database)
 
     run_migrations(engine)
 
@@ -51,7 +51,7 @@ def test_schema_has_no_preset_table():
 
 def test_run_migrations_seeds_default_policy():
     """Migrating creates the default policy once, at version 1."""
-    engine = build_engine(sqlite_settings())
+    engine = build_engine(sqlite_settings().database)
 
     run_migrations(engine)
     run_migrations(engine)
@@ -64,7 +64,7 @@ def test_run_migrations_seeds_default_policy():
 
 def test_run_migrations_seeds_the_default_policy_under_its_fixed_id():
     """The seeded default policy has the fixed id ``mp-00000000000000000000000000``."""
-    engine = build_engine(sqlite_settings())
+    engine = build_engine(sqlite_settings().database)
 
     run_migrations(engine)
 
@@ -74,7 +74,7 @@ def test_run_migrations_seeds_the_default_policy_under_its_fixed_id():
 
 def test_migrate_seeds_the_default_discovery_policy():
     """Migrating twice leaves one discovery policy: the default, at version 1 with the platform content."""
-    engine = build_engine(sqlite_settings())
+    engine = build_engine(sqlite_settings().database)
 
     run_migrations(engine)
     run_migrations(engine)
@@ -91,7 +91,7 @@ def test_migrate_seeds_the_default_discovery_policy():
 
 def test_migrate_again_keeps_the_schema_and_the_defaults():
     """A second migrate of a migrated database changes nothing: every table and both defaults stay as they were."""
-    engine = build_engine(sqlite_settings())
+    engine = build_engine(sqlite_settings().database)
     run_migrations(engine)
     tables = set(inspect(engine).get_table_names())
 
@@ -107,7 +107,7 @@ def test_migrate_again_keeps_the_schema_and_the_defaults():
 
 def test_migrate_logs_what_happened_to_both_defaults(caplog: pytest.LogCaptureFixture):
     """The log says whether each default policy was created or kept."""
-    engine = build_engine(sqlite_settings())
+    engine = build_engine(sqlite_settings().database)
 
     with caplog.at_level(logging.INFO, logger="bootstrap.container.run_migrations"):
         run_migrations(engine)

@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 SCANNED_DIRS = (*PROJECT_PACKAGES, "tests")
-SCANNED_FILES = ("entrypoint.py",)
+SCANNED_FILES: tuple[str, ...] = ()
 SKIPPED_PARTS = {"__pycache__", ".venv"}
 
 

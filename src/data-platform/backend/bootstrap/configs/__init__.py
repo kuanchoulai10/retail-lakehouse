@@ -3,14 +3,11 @@
 from __future__ import annotations
 
 from bootstrap.configs.api_settings import ApiSettings
-from bootstrap.configs.app_settings import AppSettings
 from bootstrap.configs.catalog_settings import CatalogSettings
-from bootstrap.configs.component import Component
 from bootstrap.configs.database_backend import DatabaseBackend
 from bootstrap.configs.database_settings import DatabaseSettings
 from bootstrap.configs.discovery_settings import DiscoverySettings
 from bootstrap.configs.event_consumer_settings import EventConsumerSettings
-from bootstrap.configs.get_settings import get_settings
 from bootstrap.configs.http_settings import HttpSettings
 from bootstrap.configs.kafka_settings import KafkaSettings
 from bootstrap.configs.load_role_settings import load_role_settings
@@ -33,9 +30,7 @@ from bootstrap.configs.worker_settings import WorkerSettings
 
 __all__ = [
     "ApiSettings",
-    "AppSettings",
     "CatalogSettings",
-    "Component",
     "DatabaseBackend",
     "DatabaseSettings",
     "DiscoverySettings",
@@ -56,7 +51,6 @@ __all__ = [
     "TemporalSettings",
     "UnknownSettingError",
     "WorkerSettings",
-    "get_settings",
     "load_role_settings",
     "reject_unknown_environment",
     "setting_paths",

@@ -8,7 +8,6 @@ import signal
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
-from bootstrap.configs import get_settings
 from bootstrap.container import (
     apply_worker_startup,
     build_activities,
@@ -33,7 +32,7 @@ if TYPE_CHECKING:
     from temporalio.client import Client
     from temporalio.worker import Worker
 
-    from bootstrap.configs import AppSettings, TemporalSettings
+    from bootstrap.configs import TemporalSettings, WorkerSettings
     from bootstrap.container import UseCases
 
 logger = logging.getLogger(__name__)
@@ -49,7 +48,7 @@ def install_signal_stop(callback: Callable[[], None]) -> None:
 
 
 async def run_worker(  # noqa: PLR0913
-    settings: AppSettings,
+    settings: WorkerSettings,
     *,
     bridge_factory: Callable[[], AsyncLoopBridge] = AsyncLoopBridge,
     use_cases_builder: Callable[..., UseCases] = build_connected_use_cases,
@@ -98,8 +97,7 @@ async def run_worker(  # noqa: PLR0913
         await asyncio.to_thread(bridge.close)
 
 
-def main() -> None:
+def main(settings: WorkerSettings) -> None:
     """Run the Temporal worker component."""
-    settings = get_settings()
     configure_logging(settings.log_level)
     asyncio.run(run_worker(settings))

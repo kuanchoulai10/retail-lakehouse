@@ -9,10 +9,12 @@ from context.table_maintenance.adapter.inbound.event_consumer import run_consume
 if TYPE_CHECKING:
     import threading
 
-    from bootstrap.container.use_cases import UseCases
     from context.table_maintenance.adapter.inbound.event_consumer import EventSource
+    from context.table_maintenance.application.port.inbound.table import ProcessTableHintUseCase
 
 
-def run_event_consumer(use_cases: UseCases, source: EventSource, stop_event: threading.Event) -> None:
+def run_event_consumer(
+    process_table_hint: ProcessTableHintUseCase, source: EventSource, stop_event: threading.Event
+) -> None:
     """Feed the Polaris events to the table hint use case until stopped."""
-    run_consumer_loop(source, use_cases.process_table_hint, stop_event)
+    run_consumer_loop(source, process_table_hint, stop_event)

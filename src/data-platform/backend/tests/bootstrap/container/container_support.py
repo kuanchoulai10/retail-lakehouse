@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from bootstrap.configs import AppSettings, DatabaseBackend, SqliteSettings
+from bootstrap.configs import ApiSettings, EventConsumerSettings, WorkerSettings
 from bootstrap.container import Gateways, build_engine, build_platform_settings
 from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from tests.context.table_maintenance.fakes.fake_read_maintenance_job_gateway import (
@@ -53,19 +53,27 @@ if TYPE_CHECKING:
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
 
 
-def sqlite_settings(**overrides: Any) -> AppSettings:  # noqa: ANN401
-    """Return settings that use an in-memory SQLite database."""
-    values: dict[str, Any] = {
-        "database_backend": DatabaseBackend.SQLITE,
-        "sqlite": SqliteSettings(path=":memory:"),
-        **overrides,
-    }
-    return AppSettings.model_validate(values)
+IN_MEMORY_SQLITE: dict[str, Any] = {"backend": "sqlite", "sqlite": {"path": ":memory:"}}
+
+
+def sqlite_settings(**overrides: Any) -> WorkerSettings:  # noqa: ANN401
+    """Return worker settings that use an in-memory SQLite database."""
+    return WorkerSettings.model_validate({"database": IN_MEMORY_SQLITE, **overrides})
+
+
+def sqlite_api_settings(**overrides: Any) -> ApiSettings:  # noqa: ANN401
+    """Return API settings that use an in-memory SQLite database."""
+    return ApiSettings.model_validate({"database": IN_MEMORY_SQLITE, **overrides})
+
+
+def sqlite_event_consumer_settings(**overrides: Any) -> EventConsumerSettings:  # noqa: ANN401
+    """Return event consumer settings that use an in-memory SQLite database."""
+    return EventConsumerSettings.model_validate({"database": IN_MEMORY_SQLITE, **overrides})
 
 
 def sqlite_engine() -> Engine:
     """Return an in-memory SQLite engine with the control-plane schema."""
-    engine = build_engine(sqlite_settings())
+    engine = build_engine(sqlite_settings().database)
     create_schema(engine)
     return engine
 

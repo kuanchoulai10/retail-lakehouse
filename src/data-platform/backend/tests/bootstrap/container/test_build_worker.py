@@ -84,9 +84,7 @@ def test_activities_carry_the_callback_url_and_the_attempt_settings():
     """The activity groups are built with the callback URL and the attempt deadline and attempt limit."""
     activities = _activities(
         callback_base_url="http://api:8000",
-        maintenance_attempt_deadline_seconds=120,
-        maintenance_max_attempts=4,
-        maintenance_queue_wait_limit_seconds=600,
+        maintenance={"attempt_deadline_seconds": 120, "max_attempts": 4, "queue_wait_limit_seconds": 600},
     )
 
     assert isinstance(activities.reconciliation, TableReconciliationActivities)

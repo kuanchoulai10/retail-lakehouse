@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from kubernetes.client import CoreV1Api, CustomObjectsApi
     from temporalio.client import Client
 
-    from bootstrap.configs import AppSettings, TemporalSettings
+    from bootstrap.configs import ServiceSettings, TemporalSettings
     from bootstrap.container.use_cases import UseCases
     from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
         AsyncLoopBridge,
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 
 def build_connected_use_cases(
-    settings: AppSettings,
+    settings: ServiceSettings,
     bridge: AsyncLoopBridge,
     *,
     connect: Callable[[TemporalSettings], Awaitable[Client]] = connect_temporal,
@@ -55,10 +55,10 @@ def build_connected_use_cases(
         catalog_factory=build_catalog_factory(settings.catalog),
     )
     return build_use_cases(
-        build_repositories(build_engine(settings)),
+        build_repositories(build_engine(settings.database)),
         gateways,
         size_memory=build_size_memory(settings.spark),
-        cooldowns=build_operation_cooldowns(settings),
-        partition_selection=build_partition_selection_settings(settings),
+        cooldowns=build_operation_cooldowns(settings.maintenance),
+        partition_selection=build_partition_selection_settings(settings.maintenance),
         platform_settings=build_platform_settings(settings),
     )

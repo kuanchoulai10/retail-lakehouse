@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from bootstrap.configs import AppSettings, DatabaseBackend, SqliteSettings
+from bootstrap.configs import ApiSettings
 from bootstrap.container.build_api_app import build_api_app
 from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
     AsyncLoopBridge,
@@ -39,12 +39,8 @@ def build_openapi_document() -> dict[str, Any]:
     The root path is pinned empty so the document the console is generated from does
     not depend on where the API is deployed.
     """
-    settings = AppSettings.model_validate(
-        {
-            "database_backend": DatabaseBackend.SQLITE,
-            "sqlite": SqliteSettings(path=":memory:"),
-            "api": {"root_path": ""},
-        }
+    settings = ApiSettings.model_validate(
+        {"database": {"backend": "sqlite", "sqlite": {"path": ":memory:"}}, "http": {"root_path": ""}}
     )
     bridge = AsyncLoopBridge()
     try:

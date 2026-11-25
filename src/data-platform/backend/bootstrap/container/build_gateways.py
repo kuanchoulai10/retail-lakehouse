@@ -45,14 +45,14 @@ if TYPE_CHECKING:
     from pyiceberg.catalog import Catalog
     from temporalio.client import Client
 
-    from bootstrap.configs import AppSettings
+    from bootstrap.configs import ServiceSettings
     from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
         AsyncLoopBridge,
     )
 
 
 def build_gateways(
-    settings: AppSettings,
+    settings: ServiceSettings,
     *,
     client: Client,
     bridge: AsyncLoopBridge,
@@ -66,13 +66,13 @@ def build_gateways(
     gateways run every call on that loop. The event log file system is built on first use,
     so a component that never reads an event log never builds it.
     """
-    spark_config = build_spark_config(settings)
+    spark_config = build_spark_config(settings.spark, settings.catalog)
     return Gateways(
         read_table_metadata=ReadTableMetadataPyIcebergGateway(catalog_factory),
         send_table_change=SendTableChangeTemporalGateway(client, bridge),
         send_discovery_request=SendDiscoveryRequestTemporalGateway(client, bridge),
         sync_discovery_schedules=SyncDiscoverySchedulesTemporalGateway(
-            client, bridge, interval=timedelta(seconds=settings.discovery_interval_seconds)
+            client, bridge, interval=timedelta(seconds=settings.discovery.interval_seconds)
         ),
         send_maintenance_result=SendMaintenanceResultTemporalGateway(client, bridge),
         submit_maintenance_job=SubmitMaintenanceJobK8sGateway(k8s_api, spark_config),
@@ -85,6 +85,6 @@ def build_gateways(
             httpx.Client(timeout=settings.metrics.query_timeout_seconds),
         ),
         read_maintenance_event_log=ReadMaintenanceEventLogS3Gateway(
-            lambda: build_event_log_filesystem(settings), event_log_base(settings)
+            lambda: build_event_log_filesystem(settings.catalog), event_log_base(settings.spark)
         ),
     )

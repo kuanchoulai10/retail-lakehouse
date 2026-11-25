@@ -24,6 +24,7 @@ from bootstrap.container.build_polaris_http_client import build_polaris_http_cli
 from bootstrap.container.build_repositories import build_repositories
 from bootstrap.container.build_size_memory import build_size_memory
 from bootstrap.container.build_spark_config import build_spark_config
+from bootstrap.container.build_table_hint_use_case import build_table_hint_use_case
 from bootstrap.container.build_use_cases import build_use_cases
 from bootstrap.container.build_web_use_cases import build_web_use_cases
 from bootstrap.container.build_worker import WORKFLOWS, build_worker
@@ -67,6 +68,7 @@ __all__ = [
     "build_repositories",
     "build_size_memory",
     "build_spark_config",
+    "build_table_hint_use_case",
     "build_use_cases",
     "build_web_use_cases",
     "build_worker",

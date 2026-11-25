@@ -171,7 +171,7 @@ def test_the_platform_settings_report_the_values_they_are_given():
         fake_gateways(),
         clock=lambda: NOW,
         platform_settings=build_platform_settings(
-            sqlite_settings(maintenance_attempt_deadline_seconds=900, maintenance_max_attempts=6)
+            sqlite_settings(maintenance={"attempt_deadline_seconds": 900, "max_attempts": 6})
         ),
     )
 

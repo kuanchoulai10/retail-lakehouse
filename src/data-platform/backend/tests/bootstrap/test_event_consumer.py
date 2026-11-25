@@ -20,7 +20,7 @@ from tests.bootstrap.container.container_support import (
     fake_gateways,
     platform_settings,
     sqlite_engine,
-    sqlite_settings,
+    sqlite_event_consumer_settings,
 )
 
 if TYPE_CHECKING:
@@ -76,10 +76,10 @@ class OnFirstPollSource(EventSource):
         self.closed = True
 
 
-def _use_cases(settings: Any, bridge: Any) -> Any:  # noqa: ANN401
+def _process_table_hint(settings: Any, bridge: Any) -> Any:  # noqa: ANN401
     return build_use_cases(
         build_repositories(sqlite_engine()), fake_gateways(), platform_settings=platform_settings(), clock=lambda: NOW
-    )
+    ).process_table_hint
 
 
 def test_sigterm_sets_the_stop_event_and_closes_source_and_bridge():
@@ -93,12 +93,12 @@ def test_sigterm_sets_the_stop_event_and_closes_source_and_bridge():
         sources.append((servers, topic))
         return source
 
-    settings = sqlite_settings()
+    settings = sqlite_event_consumer_settings()
     run_event_consumer_process(
         settings,
         stop_event=stop_event,
         bridge_factory=lambda: cast("AsyncLoopBridge", bridge),
-        use_cases_builder=_use_cases,
+        use_case_builder=_process_table_hint,
         source_factory=source_factory,
     )
 
@@ -120,13 +120,41 @@ def test_injected_stop_closes_the_bridge():
     source = OnFirstPollSource(_fire_first_callback)
 
     run_event_consumer_process(
-        sqlite_settings(),
+        sqlite_event_consumer_settings(),
         stop_event=stop_event,
         bridge_factory=lambda: cast("AsyncLoopBridge", bridge),
-        use_cases_builder=_use_cases,
+        use_case_builder=_process_table_hint,
         source_factory=lambda *_: source,
         install_stop=callbacks.append,
     )
 
     assert stop_event.is_set()
     assert bridge.closed is True
+
+
+def test_the_event_consumer_builds_only_the_table_hint_use_case():
+    """The process hands its own settings to the use case builder and reads Kafka from them."""
+    built: list[Any] = []
+    sources: list[tuple[str, str]] = []
+    settings = sqlite_event_consumer_settings(kafka={"bootstrap_servers": "broker:9092", "topic": "events"})
+
+    def builder(given: Any, bridge: Any) -> Any:  # noqa: ANN401
+        built.append(given)
+        return _process_table_hint(given, bridge)
+
+    def source_factory(servers: str, topic: str) -> EventSource:
+        sources.append((servers, topic))
+        return OnFirstPollSource(stop_event.set)
+
+    stop_event = threading.Event()
+    run_event_consumer_process(
+        settings,
+        stop_event=stop_event,
+        bridge_factory=lambda: cast("AsyncLoopBridge", FakeBridge()),
+        use_case_builder=builder,
+        source_factory=source_factory,
+        install_stop=lambda _: None,
+    )
+
+    assert built == [settings]
+    assert sources == [("broker:9092", "events")]

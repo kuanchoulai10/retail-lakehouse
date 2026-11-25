@@ -36,8 +36,8 @@ if TYPE_CHECKING:
 def test_connects_the_gateway_client_on_the_bridge_loop(tmp_path):
     """The Temporal client is connected on the async loop bridge and the use cases work."""
     settings = sqlite_settings()
-    settings.sqlite.path = str(tmp_path / "tm.db")
-    run_migrations(build_engine(settings))
+    settings.database.sqlite.path = str(tmp_path / "tm.db")
+    run_migrations(build_engine(settings.database))
     connected: list[tuple[str, str]] = []
     client = MagicMock(name="client")
 
@@ -64,7 +64,7 @@ def test_connects_the_gateway_client_on_the_bridge_loop(tmp_path):
 def test_the_recorder_knows_each_size_s_memory(tmp_path):
     """The operation result recorder is given each size's memory, so it can step a table down."""
     settings = sqlite_settings()
-    settings.sqlite.path = str(tmp_path / "tm.db")
+    settings.database.sqlite.path = str(tmp_path / "tm.db")
 
     async def connect(_temporal: TemporalSettings):
         return MagicMock(name="client")
@@ -83,9 +83,9 @@ def test_the_recorder_knows_each_size_s_memory(tmp_path):
 def test_the_planner_reads_the_cooldowns_the_settings_say(tmp_path):
     """The planner reads the cooldowns and the backoff cap the worker and the api are given."""
     settings = sqlite_settings(
-        maintenance_failure_backoff_cap_seconds=7200, maintenance_rewrite_data_files_cooldown_seconds=60
+        maintenance={"failure_backoff_cap_seconds": 7200, "rewrite_data_files_cooldown_seconds": 60}
     )
-    settings.sqlite.path = str(tmp_path / "tm.db")
+    settings.database.sqlite.path = str(tmp_path / "tm.db")
 
     async def connect(_temporal: TemporalSettings):
         return MagicMock(name="client")
@@ -98,7 +98,7 @@ def test_the_planner_reads_the_cooldowns_the_settings_say(tmp_path):
 
     planner = use_cases.plan_table_maintenance
     assert isinstance(planner, PlanTableMaintenanceService)
-    expected = build_operation_cooldowns(settings)
+    expected = build_operation_cooldowns(settings.maintenance)
     assert expected.failure_backoff_cap == timedelta(hours=2)
     assert expected.rewrite_data_files == timedelta(seconds=60)
     assert planner._cooldowns == expected  # noqa: SLF001
@@ -106,8 +106,8 @@ def test_the_planner_reads_the_cooldowns_the_settings_say(tmp_path):
 
 def test_the_planner_reads_the_partition_selection_the_settings_say(tmp_path):
     """The planner reads the partition selection the worker and the api are given."""
-    settings = sqlite_settings(maintenance_compaction_quiet_seconds=0)
-    settings.sqlite.path = str(tmp_path / "tm.db")
+    settings = sqlite_settings(maintenance={"compaction_quiet_seconds": 0})
+    settings.database.sqlite.path = str(tmp_path / "tm.db")
 
     async def connect(_temporal: TemporalSettings):
         return MagicMock(name="client")
@@ -120,7 +120,7 @@ def test_the_planner_reads_the_partition_selection_the_settings_say(tmp_path):
 
     planner = use_cases.plan_table_maintenance
     assert isinstance(planner, PlanTableMaintenanceService)
-    expected = build_partition_selection_settings(settings)
+    expected = build_partition_selection_settings(settings.maintenance)
     assert expected.quiet_period == timedelta(0)
     assert planner._partition_selection == expected  # noqa: SLF001
 
@@ -128,7 +128,7 @@ def test_the_planner_reads_the_partition_selection_the_settings_say(tmp_path):
 def test_the_planner_saves_the_metrics_in_sql(tmp_path):
     """The built plan service keeps the table metrics in the SQL store."""
     settings = sqlite_settings()
-    settings.sqlite.path = str(tmp_path / "tm.db")
+    settings.database.sqlite.path = str(tmp_path / "tm.db")
 
     async def connect(_temporal: TemporalSettings):
         return MagicMock(name="client")
@@ -146,8 +146,8 @@ def test_the_planner_saves_the_metrics_in_sql(tmp_path):
 
 def test_the_platform_settings_page_reads_the_settings_the_components_run_on(tmp_path):
     """The listed platform settings are the ones the same settings give the worker's and the api's services."""
-    settings = sqlite_settings(maintenance_max_attempts=4, maintenance_failure_backoff_cap_seconds=7200)
-    settings.sqlite.path = str(tmp_path / "tm.db")
+    settings = sqlite_settings(maintenance={"max_attempts": 4, "failure_backoff_cap_seconds": 7200})
+    settings.database.sqlite.path = str(tmp_path / "tm.db")
 
     async def connect(_temporal: TemporalSettings):
         return MagicMock(name="client")

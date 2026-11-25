@@ -11,7 +11,7 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
 )
 
 if TYPE_CHECKING:
-    from bootstrap.configs import AppSettings, SparkSizeSettings
+    from bootstrap.configs import CatalogSettings, SparkSettings, SparkSizeSettings
 
 
 def _resources(size: SparkSizeSettings) -> SparkSizeResources:
@@ -22,10 +22,8 @@ def _resources(size: SparkSizeSettings) -> SparkSizeResources:
     )
 
 
-def build_spark_config(settings: AppSettings) -> SparkK8sConfig:
+def build_spark_config(spark: SparkSettings, catalog: CatalogSettings) -> SparkK8sConfig:
     """Combine the Spark and catalog settings into the SparkApplication config."""
-    spark = settings.spark
-    catalog = settings.catalog
     return SparkK8sConfig(
         image=spark.image,
         service_account=spark.service_account,
