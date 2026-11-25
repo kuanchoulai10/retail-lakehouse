@@ -11,6 +11,10 @@ includes:
     taskfile: ../../../src/data-platform/backend/Taskfile.yml
     dir: ../../../src/data-platform/backend
     internal: true
+  chart:
+    taskfile: ../../../platform/25-lakehouse-control-plane/Taskfile.yml
+    dir: ../../../platform/25-lakehouse-control-plane
+    internal: true
 
 tasks:
   e2e-full-test:
@@ -47,11 +51,12 @@ tasks:
       - cmd: echo "TODO:// longer load on maintenance, catalog API and console bundle size, compared with previous nights"
 
   mutation-test:
-    summary: "Run mutmut over the whole backend except the workflows and list the survivors (does not block)"
+    summary: "Run mutmut over the whole backend except the workflows, then mutate the wave-25 chart, and list the survivors"
     cmds:
       - task: backend:mutation-test
         vars:
           MUTANTS: '*'
+      - task: chart:mutation-test
 
   dependency-test:
     summary: "Check compatibility with newer dependencies"

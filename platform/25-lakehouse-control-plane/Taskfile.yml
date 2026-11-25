@@ -26,6 +26,11 @@ tasks:
             helm template table-maintenance chart --namespace lakehouse-control-plane --values "${values}" >/dev/null
           done
 
+  mutation-test:
+    desc: "Break the wave-25 chart's templates and schema one way at a time and list the mutants its helm-unittest suites miss"
+    cmds:
+      - cmd: uv run --no-project --with pyyaml python ../../scripts/mutate_chart.py chart
+
   security-test:
     desc: "Scan the wave-25 chart's rendered manifests"
     cmds:
