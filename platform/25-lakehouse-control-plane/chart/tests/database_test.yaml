@@ -29,7 +29,7 @@ tests:
     asserts:
       - contains:
           path: "spec.template.spec.containers[0].env"
-          content: {name: GLAC_POSTGRES__DB_URL, value: "postgresql+psycopg://u:$(DB_PASSWORD)@pg.example:6543/tm"}
+          content: {name: GLAC_DATABASE__POSTGRES__DB_URL, value: "postgresql+psycopg://u:$(DB_PASSWORD)@pg.example:6543/tm"}
         template: templates/api.yaml
         documentSelector: {path: kind, value: Deployment}
       - contains:
@@ -39,11 +39,11 @@ tests:
         documentSelector: {path: kind, value: Deployment}
       - contains:
           path: "spec.template.spec.containers[0].env"
-          content: {name: GLAC_POSTGRES__DB_URL, value: "postgresql+psycopg://u:$(DB_PASSWORD)@pg.example:6543/tm"}
+          content: {name: GLAC_DATABASE__POSTGRES__DB_URL, value: "postgresql+psycopg://u:$(DB_PASSWORD)@pg.example:6543/tm"}
         template: templates/worker.yaml
       - contains:
           path: "spec.template.spec.containers[0].env"
-          content: {name: GLAC_POSTGRES__DB_URL, value: "postgresql+psycopg://u:$(DB_PASSWORD)@pg.example:6543/tm"}
+          content: {name: GLAC_DATABASE__POSTGRES__DB_URL, value: "postgresql+psycopg://u:$(DB_PASSWORD)@pg.example:6543/tm"}
         template: templates/event-consumer.yaml
 
   - it: the migrate Job reaches the same database and waits for its host
@@ -53,7 +53,7 @@ tests:
     asserts:
       - contains:
           path: "spec.template.spec.containers[0].env"
-          content: {name: GLAC_POSTGRES__DB_URL, value: "postgresql+psycopg://u:$(DB_PASSWORD)@pg.example:6543/tm"}
+          content: {name: GLAC_DATABASE__POSTGRES__DB_URL, value: "postgresql+psycopg://u:$(DB_PASSWORD)@pg.example:6543/tm"}
       - matchRegex:
           path: "spec.template.spec.initContainers[0].command[2]"
           pattern: 'pg_isready -h pg\.example -p 6543 -U u -d tm'

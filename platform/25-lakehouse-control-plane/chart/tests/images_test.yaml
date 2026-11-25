@@ -37,7 +37,8 @@ tests:
       image.spark.digest: sha256:def
     template: templates/configmap.yaml
     asserts:
-      - equal: {path: data.GLAC_SPARK__IMAGE, value: "reg.example/table-maintenance-spark:0.1.0@sha256:def"}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^  image: reg\.example/table\-maintenance\-spark:0\.1\.0@sha256:def$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-worker-config}
 
   - it: console image follows the same rule
     set:

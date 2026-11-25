@@ -47,13 +47,14 @@ helm test table-maintenance \
   --kube-context "${KUBE_CONTEXT}" \
   --timeout "${HELM_TEST_TIMEOUT:-120s}"
 
-QUEUE_KEYS="GLAC_SPARK__VOLCANO__QUEUE GLAC_SPARK__VOLCANO__URGENT_QUEUE"
-for key in ${QUEUE_KEYS}; do
-  queue="$(kubectl get configmap table-maintenance-config \
-    --output "jsonpath={.data.${key}}" \
-    --namespace "${NAMESPACE}" \
-    --context "${KUBE_CONTEXT}")"
-  [[ -n "${queue}" ]] || { echo "${key} is not set in table-maintenance-config" >&2; exit 1; }
+WORKER_CONFIG="$(kubectl get configmap table-maintenance-worker-config \
+  --output 'jsonpath={.data.config\.yaml}' \
+  --namespace "${NAMESPACE}" \
+  --context "${KUBE_CONTEXT}")"
+for key in queue urgent_queue; do
+  queue="$(yq ".spark.volcano.${key}" <<<"${WORKER_CONFIG}")"
+  [[ -n "${queue}" && "${queue}" != "null" ]] \
+    || { echo "spark.volcano.${key} is not set in table-maintenance-worker-config" >&2; exit 1; }
   kubectl wait "queue.scheduling.volcano.sh/${queue}" \
     --for jsonpath='{.status.state}'=Open \
     --timeout 60s \
@@ -65,11 +66,9 @@ for key in ${QUEUE_KEYS}; do
     || { echo "queue ${queue} capability memory is ${queue_memory}, expected 5017Mi" >&2; exit 1; }
 done
 
-PRIORITY_CLASS_PREFIX="$(kubectl get configmap table-maintenance-config \
-  --output jsonpath='{.data.GLAC_SPARK__VOLCANO__PRIORITY_CLASS_PREFIX}' \
-  --namespace "${NAMESPACE}" \
-  --context "${KUBE_CONTEXT}")"
-[[ -n "${PRIORITY_CLASS_PREFIX}" ]] || { echo "GLAC_SPARK__VOLCANO__PRIORITY_CLASS_PREFIX is not set in table-maintenance-config" >&2; exit 1; }
+PRIORITY_CLASS_PREFIX="$(yq '.spark.volcano.priority_class_prefix' <<<"${WORKER_CONFIG}")"
+[[ -n "${PRIORITY_CLASS_PREFIX}" && "${PRIORITY_CLASS_PREFIX}" != "null" ]] \
+  || { echo "spark.volcano.priority_class_prefix is not set in table-maintenance-worker-config" >&2; exit 1; }
 for priority in p0 p1 p2 p3; do
   preemption_policy="$(kubectl get "priorityclass/${PRIORITY_CLASS_PREFIX}-${priority}" \
     --output jsonpath='{.preemptionPolicy}' \

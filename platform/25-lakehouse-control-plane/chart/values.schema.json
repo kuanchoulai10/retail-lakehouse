@@ -198,54 +198,6 @@
         }
       }
     },
-    "temporal": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "address": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        }
-      }
-    },
-    "catalog": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "uri": {
-          "type": "string"
-        },
-        "managementUri": {
-          "type": "string"
-        },
-        "scope": {
-          "type": "string"
-        },
-        "s3Endpoint": {
-          "type": "string"
-        },
-        "s3PathStyleAccess": {
-          "type": "boolean"
-        },
-        "s3Region": {
-          "type": "string"
-        }
-      }
-    },
-    "kafka": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "bootstrapServers": {
-          "type": "string"
-        },
-        "topic": {
-          "type": "string"
-        }
-      }
-    },
     "spark": {
       "type": "object",
       "additionalProperties": false,
@@ -267,12 +219,6 @@
               }
             }
           }
-        },
-        "sparkVersion": {
-          "type": "string"
-        },
-        "icebergVersion": {
-          "type": "string"
         },
         "sizes": {
           "type": "object",
@@ -430,6 +376,9 @@
         "enabled": {
           "type": "boolean"
         },
+        "config": {
+          "type": "object"
+        },
         "replicas": {
           "type": "integer",
           "minimum": 0
@@ -550,6 +499,9 @@
         "enabled": {
           "type": "boolean"
         },
+        "config": {
+          "type": "object"
+        },
         "replicas": {
           "type": "integer",
           "minimum": 0
@@ -642,54 +594,6 @@
         "resources": {
           "type": "object"
         },
-        "discoveryIntervalSeconds": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "attemptDeadlineSeconds": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "maxAttempts": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "queueWaitLimitSeconds": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "rewriteDataFilesCooldownSeconds": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "rewriteManifestsCooldownSeconds": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "expireSnapshotsCooldownSeconds": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "removeOrphanFilesIntervalSeconds": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "failureBackoffCapSeconds": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "compactionPartitionsPerJob": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "compactionQuietSeconds": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "compactionMaxQuietWaitSeconds": {
-          "type": "integer",
-          "minimum": 0
-        },
         "terminationGracePeriodSeconds": {
           "type": "integer",
           "minimum": 0
@@ -720,6 +624,9 @@
       "properties": {
         "enabled": {
           "type": "boolean"
+        },
+        "config": {
+          "type": "object"
         },
         "replicas": {
           "type": "integer",
@@ -939,6 +846,9 @@
         "enabled": {
           "type": "boolean"
         },
+        "config": {
+          "type": "object"
+        },
         "labels": {
           "type": "object",
           "additionalProperties": {
@@ -1029,14 +939,35 @@
         }
       }
     },
-    "metrics": {
+    "maintenance": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "prometheusUrl": {
-          "type": "string"
+        "attemptDeadlineSeconds": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "maxAttempts": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "queueWaitLimitSeconds": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
         }
       }
+    },
+    "config": {
+      "type": "object"
     },
     "settingsProfile": {
       "enum": [
@@ -1046,6 +977,7 @@
     },
     "logLevel": {
       "enum": [
+        "",
         "DEBUG",
         "INFO",
         "WARNING",

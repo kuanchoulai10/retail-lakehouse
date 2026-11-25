@@ -17,7 +17,7 @@ esac
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTROL_PLANE_NAMESPACE="lakehouse-control-plane"
 OPERATIONS_NAMESPACE="lakehouse-maintenance-operations"
-S3_REGION="$(yq '.catalog.s3Region' "${SCRIPT_DIR}/chart/values.yaml")"
+S3_REGION="dummy-region"
 
 log::on_success "Lakehouse control plane deployed (settings profile: ${SETTINGS_PROFILE})"
 log::on_failure "Lakehouse control plane deployment failed"
@@ -79,8 +79,6 @@ S3_SECRET_ACCESS_KEY="$(kubectl get secret rustfs-secret \
   | base64 -d)"
 [[ -n "${S3_ACCESS_KEY_ID}" ]] || fail "rustfs-secret has an empty RUSTFS_ACCESS_KEY"
 [[ -n "${S3_SECRET_ACCESS_KEY}" ]] || fail "rustfs-secret has an empty RUSTFS_SECRET_KEY"
-[[ -n "${S3_REGION}" && "${S3_REGION}" != "null" ]] \
-  || fail "chart values have no catalog.s3Region"
 for value in "${POLARIS_CLIENT_ID}" "${POLARIS_CLIENT_SECRET}" \
   "${S3_ACCESS_KEY_ID}" "${S3_SECRET_ACCESS_KEY}"; do
   [[ "${value}" != *[\"\\]* ]] || fail "a credential contains a quote or a backslash"
@@ -112,6 +110,7 @@ helm upgrade --install table-maintenance "${SCRIPT_DIR}/chart" \
   --set-string image.backend.tag="${BACKEND_TAG}" \
   --set-string image.spark.tag="${SPARK_TAG}" \
   --set-string image.console.tag="${CONSOLE_TAG}" \
+  --set-string config.catalog.s3_region="${S3_REGION}" \
   --wait \
   --wait-for-jobs \
   --timeout "${TIMEOUT}" \

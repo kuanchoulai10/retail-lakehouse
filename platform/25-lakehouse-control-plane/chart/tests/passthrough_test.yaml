@@ -18,11 +18,11 @@ tests:
       env: [{name: G, value: g}]
       worker.env: [{name: W, value: w}]
     asserts:
-      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 6}
+      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 5}
         template: templates/worker.yaml
-      - equal: {path: "spec.template.spec.containers[0].env[4]", value: {name: G, value: g}}
+      - equal: {path: "spec.template.spec.containers[0].env[3]", value: {name: G, value: g}}
         template: templates/worker.yaml
-      - equal: {path: "spec.template.spec.containers[0].env[5]", value: {name: W, value: w}}
+      - equal: {path: "spec.template.spec.containers[0].env[4]", value: {name: W, value: w}}
         template: templates/worker.yaml
       - contains: {path: "spec.template.spec.containers[0].env", content: {name: G, value: g}}
         template: templates/api.yaml
@@ -38,18 +38,18 @@ tests:
     template: templates/api.yaml
     documentSelector: {path: kind, value: Deployment}
     asserts:
-      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 7}
-      - equal: {path: "spec.template.spec.containers[0].env[5]", value: {name: X, value: role}}
-      - equal: {path: "spec.template.spec.containers[0].env[6]", value: {name: Y, value: "y"}}
+      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 5}
+      - equal: {path: "spec.template.spec.containers[0].env[3]", value: {name: X, value: role}}
+      - equal: {path: "spec.template.spec.containers[0].env[4]", value: {name: Y, value: "y"}}
 
   - it: an entry named like one of the chart's own replaces it in place
     set:
-      api.env: [{name: GLAC_API__ROOT_PATH, value: /maintenance-api}]
+      api.env: [{name: GLAC_CATALOG__CREDENTIAL, value: "id:secret"}]
     template: templates/api.yaml
     documentSelector: {path: kind, value: Deployment}
     asserts:
-      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 5}
-      - equal: {path: "spec.template.spec.containers[0].env[1]", value: {name: GLAC_API__ROOT_PATH, value: /maintenance-api}}
+      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 3}
+      - equal: {path: "spec.template.spec.containers[0].env[2]", value: {name: GLAC_CATALOG__CREDENTIAL, value: "id:secret"}}
 
   - it: a role env name the worker shares with the global layer is one entry on the worker too
     set:
@@ -57,9 +57,9 @@ tests:
       worker.env: [{name: X, value: role}]
       migrate.env: [{name: X, value: migrate}]
     asserts:
-      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 5}
+      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 4}
         template: templates/worker.yaml
-      - equal: {path: "spec.template.spec.containers[0].env[4]", value: {name: X, value: role}}
+      - equal: {path: "spec.template.spec.containers[0].env[3]", value: {name: X, value: role}}
         template: templates/worker.yaml
 
   - it: envFrom layers follow the chart's own sources
@@ -69,9 +69,9 @@ tests:
     template: templates/api.yaml
     documentSelector: {path: kind, value: Deployment}
     asserts:
-      - lengthEqual: {path: "spec.template.spec.containers[0].envFrom", count: 4}
-      - equal: {path: "spec.template.spec.containers[0].envFrom[2]", value: {secretRef: {name: global-extra}}}
-      - equal: {path: "spec.template.spec.containers[0].envFrom[3]", value: {configMapRef: {name: api-extra}}}
+      - lengthEqual: {path: "spec.template.spec.containers[0].envFrom", count: 3}
+      - equal: {path: "spec.template.spec.containers[0].envFrom[1]", value: {secretRef: {name: global-extra}}}
+      - equal: {path: "spec.template.spec.containers[0].envFrom[2]", value: {configMapRef: {name: api-extra}}}
 
   - it: env and envFrom reach the console too
     set:
@@ -97,6 +97,7 @@ tests:
       - equal:
           path: spec.template.spec.volumes
           value:
+            - {name: config, configMap: {name: table-maintenance-api-config}}
             - {name: secret-global-ca, secret: {secretName: ca-bundle}}
             - {name: secret-role-tls, secret: {secretName: api-tls}}
             - {name: secret-role-ca, secret: {secretName: api-ca}}
@@ -105,6 +106,7 @@ tests:
       - equal:
           path: "spec.template.spec.containers[0].volumeMounts"
           value:
+            - {name: config, mountPath: /etc/glac, readOnly: true}
             - {name: secret-global-ca, mountPath: /etc/ca, readOnly: true}
             - {name: secret-role-tls, mountPath: /etc/tls, readOnly: true}
             - {name: secret-role-ca, mountPath: /etc/api-ca, readOnly: true}
@@ -113,14 +115,15 @@ tests:
       - equal:
           path: spec.template.spec.volumes
           value:
+            - {name: config, configMap: {name: table-maintenance-worker-config}}
             - {name: secret-global-ca, secret: {secretName: ca-bundle}}
         template: templates/worker.yaml
 
-  - it: no secretMounts render no volumes
+  - it: no secretMounts leave only the settings file
     template: templates/worker.yaml
     asserts:
-      - notExists: {path: spec.template.spec.volumes}
-      - notExists: {path: "spec.template.spec.containers[0].volumeMounts"}
+      - equal: {path: spec.template.spec.volumes, value: [{name: config, configMap: {name: table-maintenance-worker-config}}]}
+      - equal: {path: "spec.template.spec.containers[0].volumeMounts", value: [{name: config, mountPath: /etc/glac, readOnly: true}]}
 
   - it: extraManifests render with templating, as strings or objects
     set:

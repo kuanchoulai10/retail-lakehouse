@@ -13,7 +13,7 @@ spec:
       {{- include "table-maintenance.selectorLabels" (dict "root" . "component" "api") | nindent 6 }}
   template:
     metadata:
-      {{- include "table-maintenance.podMetadata" (merge (dict "checksum" (include (print $.Template.BasePath "/configmap.yaml") . | sha256sum)) $labels) | nindent 6 }}
+      {{- include "table-maintenance.podMetadata" (merge (dict "checksum" (include "table-maintenance.roleConfig" (dict "root" . "role" "api") | sha256sum)) $labels) | nindent 6 }}
     spec:
       automountServiceAccountToken: false
       {{- include "table-maintenance.podSecurity" . | nindent 6 }}
@@ -24,11 +24,11 @@ spec:
         - name: api
           image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.backend) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            {{- include "table-maintenance.roleArgs" (dict "root" . "role" "api") | nindent 12 }}
           env:
             {{- include "table-maintenance.env" (dict "root" . "role" .Values.api "own" (include "table-maintenance.api.env" .)) | nindent 12 }}
           envFrom:
-            - configMapRef:
-                name: {{ include "table-maintenance.config.fullname" . }}
             - secretRef:
                 name: {{ .Values.secrets.s3 }}
             {{- include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.api) | nindent 12 }}
@@ -47,17 +47,19 @@ spec:
               port: http
             initialDelaySeconds: 20
             periodSeconds: 10
-          {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.api) }}
           volumeMounts:
+            {{- include "table-maintenance.configVolumeMount" . | nindent 12 }}
+            {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.api) }}
             {{- . | nindent 12 }}
-          {{- end }}
+            {{- end }}
           {{- include "table-maintenance.containerSecurity" . | nindent 10 }}
           resources:
             {{- toYaml .Values.api.resources | nindent 12 }}
-      {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.api) }}
       volumes:
+        {{- include "table-maintenance.configVolume" (dict "root" . "role" "api") | nindent 8 }}
+        {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.api) }}
         {{- . | nindent 8 }}
-      {{- end }}
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service

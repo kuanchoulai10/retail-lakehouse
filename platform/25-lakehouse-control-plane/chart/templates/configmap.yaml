@@ -1,55 +1,17 @@
+{{- range $role := splitList " " (include "table-maintenance.backendRoles" .) }}
+{{- $context := dict "root" $ "role" $role }}
+{{- if include "table-maintenance.roleConfig.enabled" $context }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "table-maintenance.config.fullname" . }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "table-maintenance.roleConfig.fullname" $context }}
+  namespace: {{ $.Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" . "component" "config") | nindent 4 }}
-    retail-lakehouse.io/settings-profile: {{ .Values.settingsProfile | quote }}
+    {{- include "table-maintenance.labels" (dict "root" $ "component" "config") | nindent 4 }}
+    retail-lakehouse.io/settings-profile: {{ $.Values.settingsProfile | quote }}
 data:
-  GLAC_DATABASE_BACKEND: postgres
-  GLAC_LOG_LEVEL: {{ .Values.logLevel | quote }}
-  GLAC_TEMPORAL__ADDRESS: {{ .Values.temporal.address | quote }}
-  GLAC_TEMPORAL__NAMESPACE: {{ .Values.temporal.namespace | quote }}
-  GLAC_CATALOG__URI: {{ .Values.catalog.uri | quote }}
-  GLAC_CATALOG__MANAGEMENT_URI: {{ .Values.catalog.managementUri | quote }}
-  GLAC_CATALOG__SCOPE: {{ .Values.catalog.scope | quote }}
-  GLAC_CATALOG__S3_ENDPOINT: {{ .Values.catalog.s3Endpoint | quote }}
-  GLAC_CATALOG__S3_PATH_STYLE_ACCESS: {{ .Values.catalog.s3PathStyleAccess | quote }}
-  GLAC_CATALOG__S3_REGION: {{ .Values.catalog.s3Region | quote }}
-  GLAC_KAFKA__BOOTSTRAP_SERVERS: {{ .Values.kafka.bootstrapServers | quote }}
-  GLAC_KAFKA__TOPIC: {{ .Values.kafka.topic | quote }}
-  GLAC_METRICS__PROMETHEUS_URL: {{ .Values.metrics.prometheusUrl | quote }}
-  GLAC_SPARK__IMAGE: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.spark) | quote }}
-  GLAC_SPARK__IMAGE_PULL_POLICY: {{ .Values.image.pullPolicy | quote }}
-  GLAC_SPARK__SERVICE_ACCOUNT: {{ include "table-maintenance.spark.serviceAccountName" . | quote }}
-  GLAC_SPARK__CATALOG_CREDENTIAL_SECRET: {{ .Values.secrets.catalogCredential | quote }}
-  GLAC_SPARK__S3_SECRET_NAME: {{ .Values.secrets.s3 | quote }}
-  GLAC_SPARK__NAMESPACE: {{ .Values.namespaces.maintenanceOperations | quote }}
-  GLAC_SPARK__SPARK_VERSION: {{ .Values.spark.sparkVersion | quote }}
-  GLAC_SPARK__ICEBERG_VERSION: {{ .Values.spark.icebergVersion | quote }}
-  GLAC_SPARK__VOLCANO__QUEUE: {{ include "table-maintenance.volcano.queue" . | quote }}
-  GLAC_SPARK__VOLCANO__URGENT_QUEUE: {{ include "table-maintenance.volcano.urgentQueue" . | quote }}
-  GLAC_SPARK__VOLCANO__PRIORITY_CLASS_PREFIX: {{ include "table-maintenance.volcano.priorityClassPrefix" . | quote }}
-  GLAC_SPARK__SIZE_S__DRIVER_MEMORY: {{ .Values.spark.sizes.S.driverMemory | quote }}
-  GLAC_SPARK__SIZE_S__EXECUTOR_MEMORY: {{ .Values.spark.sizes.S.executorMemory | quote }}
-  GLAC_SPARK__SIZE_S__EXECUTOR_INSTANCES: {{ .Values.spark.sizes.S.executorInstances | quote }}
-  GLAC_SPARK__SIZE_M__DRIVER_MEMORY: {{ .Values.spark.sizes.M.driverMemory | quote }}
-  GLAC_SPARK__SIZE_M__EXECUTOR_MEMORY: {{ .Values.spark.sizes.M.executorMemory | quote }}
-  GLAC_SPARK__SIZE_M__EXECUTOR_INSTANCES: {{ .Values.spark.sizes.M.executorInstances | quote }}
-  GLAC_SPARK__SIZE_L__DRIVER_MEMORY: {{ .Values.spark.sizes.L.driverMemory | quote }}
-  GLAC_SPARK__SIZE_L__EXECUTOR_MEMORY: {{ .Values.spark.sizes.L.executorMemory | quote }}
-  GLAC_SPARK__SIZE_L__EXECUTOR_INSTANCES: {{ .Values.spark.sizes.L.executorInstances | quote }}
-  GLAC_CALLBACK_BASE_URL: http://{{ include "table-maintenance.api.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.api.port }}
-  GLAC_DISCOVERY_INTERVAL_SECONDS: {{ .Values.worker.discoveryIntervalSeconds | quote }}
-  GLAC_MAINTENANCE_ATTEMPT_DEADLINE_SECONDS: {{ .Values.worker.attemptDeadlineSeconds | quote }}
-  GLAC_MAINTENANCE_MAX_ATTEMPTS: {{ .Values.worker.maxAttempts | quote }}
-  GLAC_MAINTENANCE_QUEUE_WAIT_LIMIT_SECONDS: {{ .Values.worker.queueWaitLimitSeconds | quote }}
-  GLAC_MAINTENANCE_REWRITE_DATA_FILES_COOLDOWN_SECONDS: {{ .Values.worker.rewriteDataFilesCooldownSeconds | quote }}
-  GLAC_MAINTENANCE_REWRITE_MANIFESTS_COOLDOWN_SECONDS: {{ .Values.worker.rewriteManifestsCooldownSeconds | quote }}
-  GLAC_MAINTENANCE_EXPIRE_SNAPSHOTS_COOLDOWN_SECONDS: {{ .Values.worker.expireSnapshotsCooldownSeconds | quote }}
-  GLAC_MAINTENANCE_REMOVE_ORPHAN_FILES_INTERVAL_SECONDS: {{ .Values.worker.removeOrphanFilesIntervalSeconds | quote }}
-  GLAC_MAINTENANCE_FAILURE_BACKOFF_CAP_SECONDS: {{ .Values.worker.failureBackoffCapSeconds | quote }}
-  GLAC_MAINTENANCE_COMPACTION_PARTITIONS_PER_JOB: {{ .Values.worker.compactionPartitionsPerJob | quote }}
-  GLAC_MAINTENANCE_COMPACTION_QUIET_SECONDS: {{ .Values.worker.compactionQuietSeconds | quote }}
-  GLAC_MAINTENANCE_COMPACTION_MAX_QUIET_WAIT_SECONDS: {{ .Values.worker.compactionMaxQuietWaitSeconds | quote }}
+  config.yaml: |
+    {{- include "table-maintenance.roleConfig" $context | nindent 4 }}
+{{- end }}
+{{- end }}

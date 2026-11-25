@@ -43,8 +43,121 @@
 {{- include "table-maintenance.suffixed" (dict "root" . "suffix" "console") }}
 {{- end -}}
 
-{{- define "table-maintenance.config.fullname" -}}
-{{- include "table-maintenance.suffixed" (dict "root" . "suffix" "config") }}
+{{- define "table-maintenance.backendRoles" -}}
+api worker eventConsumer migrate
+{{- end -}}
+
+{{- define "table-maintenance.roleSuffix" -}}
+{{- get (dict "api" "api" "worker" "worker" "eventConsumer" "event-consumer" "migrate" "migrate") . }}
+{{- end -}}
+
+{{- define "table-maintenance.roleConfig.fullname" -}}
+{{- include "table-maintenance.suffixed" (dict "root" .root "suffix" (printf "%s-config" (include "table-maintenance.roleSuffix" .role))) }}
+{{- end -}}
+
+{{- define "table-maintenance.roleConfig.enabled" -}}
+{{- $values := .root.Values }}
+{{- if eq .role "migrate" }}
+{{- if or $values.migrate.enabled $values.api.enabled $values.worker.enabled $values.eventConsumer.enabled }}true{{ end }}
+{{- else if (get $values .role).enabled }}true
+{{- end }}
+{{- end -}}
+
+{{- define "table-maintenance.roleKeys" -}}
+{{- $service := list "log_level" "database" "temporal" "catalog" "spark" "maintenance" "discovery" "metrics" }}
+{{- $keys := dict
+  "api" (append $service "http")
+  "worker" (append $service "callback_base_url")
+  "eventConsumer" (list "log_level" "database" "temporal" "catalog" "kafka")
+  "migrate" (list "log_level" "database") }}
+{{- get $keys . | join " " }}
+{{- end -}}
+
+{{- define "table-maintenance.sharedOnlyKeys" -}}
+maintenance discovery spark
+{{- end -}}
+
+{{- define "table-maintenance.chartConfig" -}}
+{{- $values := .Values }}
+{{- $spark := dict
+  "image" (include "table-maintenance.image" (dict "root" . "image" $values.image.spark))
+  "image_pull_policy" $values.image.pullPolicy
+  "service_account" (include "table-maintenance.spark.serviceAccountName" .)
+  "catalog_credential_secret" $values.secrets.catalogCredential
+  "s3_secret_name" $values.secrets.s3
+  "namespace" $values.namespaces.maintenanceOperations
+  "volcano" (dict
+    "queue" (include "table-maintenance.volcano.queue" .)
+    "urgent_queue" (include "table-maintenance.volcano.urgentQueue" .)
+    "priority_class_prefix" (include "table-maintenance.volcano.priorityClassPrefix" .)) }}
+{{- range $size, $key := dict "S" "size_s" "M" "size_m" "L" "size_l" }}
+{{- $given := index ($values.spark.sizes | default dict) $size | default dict }}
+{{- $out := dict }}
+{{- range $from, $to := dict "driverMemory" "driver_memory" "executorMemory" "executor_memory" "executorInstances" "executor_instances" }}
+{{- $value := index $given $from }}
+{{- if not (kindIs "invalid" $value) }}
+{{- $_ := set $out $to $value }}
+{{- end }}
+{{- end }}
+{{- if $out }}
+{{- $_ := set $spark $key $out }}
+{{- end }}
+{{- end }}
+{{- $config := dict
+  "database" (dict "backend" "postgres")
+  "spark" $spark
+  "callback_base_url" (printf "http://%s.%s.svc.cluster.local:%v" (include "table-maintenance.api.fullname" .) .Release.Namespace $values.api.port)
+  "http" (dict "root_path" $values.api.rootPath) }}
+{{- $maintenance := dict }}
+{{- range $from, $to := dict "attemptDeadlineSeconds" "attempt_deadline_seconds" "maxAttempts" "max_attempts" "queueWaitLimitSeconds" "queue_wait_limit_seconds" }}
+{{- $value := index ($values.maintenance | default dict) $from }}
+{{- if not (kindIs "invalid" $value) }}
+{{- $_ := set $maintenance $to $value }}
+{{- end }}
+{{- end }}
+{{- if $maintenance }}
+{{- $_ := set $config "maintenance" $maintenance }}
+{{- end }}
+{{- with $values.logLevel }}
+{{- $_ := set $config "log_level" . }}
+{{- end }}
+{{- toYaml $config }}
+{{- end -}}
+
+{{- define "table-maintenance.roleConfig" -}}
+{{- $root := .root }}
+{{- $merged := mergeOverwrite (dict)
+  (include "table-maintenance.chartConfig" $root | fromYaml)
+  (deepCopy ($root.Values.config | default dict))
+  (deepCopy ((get $root.Values .role).config | default dict)) }}
+{{- $out := dict }}
+{{- range splitList " " (include "table-maintenance.roleKeys" .role) }}
+{{- if hasKey $merged . }}
+{{- $_ := set $out . (get $merged .) }}
+{{- end }}
+{{- end }}
+{{- toYaml $out }}
+{{- end -}}
+
+{{- define "table-maintenance.configFile" -}}
+/etc/glac/config.yaml
+{{- end -}}
+
+{{- define "table-maintenance.roleArgs" -}}
+- {{ include "table-maintenance.roleSuffix" .role }}
+- --config-file={{ include "table-maintenance.configFile" . }}
+{{- end -}}
+
+{{- define "table-maintenance.configVolumeMount" -}}
+- name: config
+  mountPath: /etc/glac
+  readOnly: true
+{{- end -}}
+
+{{- define "table-maintenance.configVolume" -}}
+- name: config
+  configMap:
+    name: {{ include "table-maintenance.roleConfig.fullname" . }}
 {{- end -}}
 
 {{- define "table-maintenance.worker.serviceAccountName" -}}
@@ -90,7 +203,7 @@ helm.sh/chart: {{ include "table-maintenance.chart" .root }}
     secretKeyRef:
       name: {{ .Values.database.existingSecret }}
       key: {{ .Values.database.secretKey }}
-- name: GLAC_POSTGRES__DB_URL
+- name: GLAC_DATABASE__POSTGRES__DB_URL
   value: postgresql+psycopg://{{ .Values.database.user }}:$(DB_PASSWORD)@{{ .Values.database.host }}:{{ .Values.database.port }}/{{ .Values.database.name }}
 {{- end -}}
 
@@ -169,28 +282,18 @@ securityContext:
 {{- end -}}
 
 {{- define "table-maintenance.api.env" -}}
-- name: GLAC_COMPONENT
-  value: api
-- name: GLAC_API__ROOT_PATH
-  value: {{ .Values.api.rootPath | quote }}
 {{ include "table-maintenance.appEnv" . }}
 {{- end -}}
 
 {{- define "table-maintenance.worker.env" -}}
-- name: GLAC_COMPONENT
-  value: worker
 {{ include "table-maintenance.appEnv" . }}
 {{- end -}}
 
 {{- define "table-maintenance.eventConsumer.env" -}}
-- name: GLAC_COMPONENT
-  value: event_consumer
 {{ include "table-maintenance.appEnv" . }}
 {{- end -}}
 
 {{- define "table-maintenance.migrate.env" -}}
-- name: GLAC_COMPONENT
-  value: migrate
 {{ include "table-maintenance.dbEnv" . }}
 {{- end -}}
 
@@ -306,5 +409,26 @@ annotations:
 {{- end }}
 {{- if and .Values.worker.enabled (not .Values.spark.serviceAccount.create) (not .Values.spark.serviceAccount.name) }}
 {{- fail "spark.serviceAccount.name is required when spark.serviceAccount.create is false" }}
+{{- end }}
+{{- $roles := splitList " " (include "table-maintenance.backendRoles" .) }}
+{{- $sharedOnly := splitList " " (include "table-maintenance.sharedOnlyKeys" .) }}
+{{- $anyRole := list }}
+{{- range $roles }}
+{{- $anyRole = concat $anyRole (splitList " " (include "table-maintenance.roleKeys" .)) }}
+{{- end }}
+{{- range $key, $_ := .Values.config }}
+{{- if not (has $key $anyRole) }}
+{{- fail (printf "config.%s is not a setting of any role" $key) }}
+{{- end }}
+{{- end }}
+{{- range $role := $roles }}
+{{- $keys := splitList " " (include "table-maintenance.roleKeys" $role) }}
+{{- range $key, $_ := (get $.Values $role).config }}
+{{- if has $key $sharedOnly }}
+{{- fail (printf "%s.config.%s must be set in config, not per role: the platform settings page shows it" $role $key) }}
+{{- else if not (has $key $keys) }}
+{{- fail (printf "%s.config.%s is not a setting of %s" $role $key $role) }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- end -}}

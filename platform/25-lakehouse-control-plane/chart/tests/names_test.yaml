@@ -37,8 +37,9 @@ tests:
       - equal: {path: metadata.name, value: table-maintenance-console}
         template: templates/console.yaml
         documentSelector: {path: kind, value: Service}
-      - equal: {path: metadata.name, value: table-maintenance-config}
+      - equal: {path: metadata.name, value: table-maintenance-worker-config}
         template: templates/configmap.yaml
+        documentIndex: 1
       - equal: {path: metadata.name, value: table-maintenance-worker}
         template: templates/rbac.yaml
         documentIndex: 0
@@ -70,14 +71,13 @@ tests:
       - equal: {path: "spec.rules[0].backendRefs[0].name", value: tm2-table-maintenance-console}
         template: templates/console.yaml
         documentSelector: {path: kind, value: HTTPRoute}
-      - equal: {path: metadata.name, value: tm2-table-maintenance-config}
+      - equal: {path: metadata.name, value: tm2-table-maintenance-worker-config}
         template: templates/configmap.yaml
-      - equal:
-          path: data.GLAC_CALLBACK_BASE_URL
-          value: http://tm2-table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000
-        template: templates/configmap.yaml
-      - equal: {path: data.GLAC_SPARK__SERVICE_ACCOUNT, value: tm2-table-maintenance-spark}
-        template: templates/configmap.yaml
+        documentIndex: 1
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^callback_base_url: http://tm2\-table\-maintenance\-api\.lakehouse\-control\-plane\.svc\.cluster\.local:8000$'}
+        documentSelector: {path: metadata.name, value: tm2-table-maintenance-worker-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^  service_account: tm2\-table\-maintenance\-spark$'}
+        documentSelector: {path: metadata.name, value: tm2-table-maintenance-worker-config}
       - equal: {path: metadata.name, value: tm2-table-maintenance-worker}
         template: templates/rbac.yaml
         documentIndex: 0
@@ -90,14 +90,22 @@ tests:
       - equal: {path: "subjects[0].name", value: tm2-table-maintenance-spark}
         template: templates/rbac.yaml
         documentIndex: 5
-      - equal: {path: "spec.template.spec.containers[0].envFrom[0].configMapRef.name", value: tm2-table-maintenance-config}
+      - contains:
+          path: spec.template.spec.volumes
+          content: {name: config, configMap: {name: tm2-table-maintenance-api-config}}
         template: templates/api.yaml
         documentSelector: {path: kind, value: Deployment}
-      - equal: {path: "spec.template.spec.containers[0].envFrom[0].configMapRef.name", value: tm2-table-maintenance-config}
+      - contains:
+          path: spec.template.spec.volumes
+          content: {name: config, configMap: {name: tm2-table-maintenance-worker-config}}
         template: templates/worker.yaml
-      - equal: {path: "spec.template.spec.containers[0].envFrom[0].configMapRef.name", value: tm2-table-maintenance-config}
+      - contains:
+          path: spec.template.spec.volumes
+          content: {name: config, configMap: {name: tm2-table-maintenance-event-consumer-config}}
         template: templates/event-consumer.yaml
-      - equal: {path: "spec.template.spec.containers[0].envFrom[0].configMapRef.name", value: tm2-table-maintenance-config}
+      - contains:
+          path: spec.template.spec.volumes
+          content: {name: config, configMap: {name: tm2-table-maintenance-migrate-config}}
         template: templates/migrate-job.yaml
 
   - it: the API port and name reach every reference to the API
@@ -107,10 +115,8 @@ tests:
     set:
       api.port: 9000
     asserts:
-      - equal:
-          path: data.GLAC_CALLBACK_BASE_URL
-          value: http://tm2-table-maintenance-api.other-ns.svc.cluster.local:9000
-        template: templates/configmap.yaml
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^callback_base_url: http://tm2\-table\-maintenance\-api\.other\-ns\.svc\.cluster\.local:9000$'}
+        documentSelector: {path: metadata.name, value: tm2-table-maintenance-worker-config}
       - equal: {path: "spec.rules[0].backendRefs[0].port", value: 9000}
         template: templates/api.yaml
         documentSelector: {path: kind, value: HTTPRoute}
@@ -135,8 +141,9 @@ tests:
         documentSelector: {path: kind, value: Deployment}
       - equal: {path: metadata.name, value: tm-worker}
         template: templates/worker.yaml
-      - equal: {path: metadata.name, value: tm-config}
+      - equal: {path: metadata.name, value: tm-worker-config}
         template: templates/configmap.yaml
+        documentIndex: 1
 
   - it: nameOverride changes the name label
     set:

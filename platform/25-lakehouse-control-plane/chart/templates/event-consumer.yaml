@@ -15,7 +15,7 @@ spec:
       {{- include "table-maintenance.selectorLabels" (dict "root" . "component" "event-consumer") | nindent 6 }}
   template:
     metadata:
-      {{- include "table-maintenance.podMetadata" (merge (dict "checksum" (include (print $.Template.BasePath "/configmap.yaml") . | sha256sum)) $labels) | nindent 6 }}
+      {{- include "table-maintenance.podMetadata" (merge (dict "checksum" (include "table-maintenance.roleConfig" (dict "root" . "role" "eventConsumer") | sha256sum)) $labels) | nindent 6 }}
     spec:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 60
@@ -27,21 +27,25 @@ spec:
         - name: event-consumer
           image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.backend) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            {{- include "table-maintenance.roleArgs" (dict "root" . "role" "eventConsumer") | nindent 12 }}
           env:
             {{- include "table-maintenance.env" (dict "root" . "role" .Values.eventConsumer "own" (include "table-maintenance.eventConsumer.env" .)) | nindent 12 }}
+          {{- with include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.eventConsumer) | trim }}
           envFrom:
-            - configMapRef:
-                name: {{ include "table-maintenance.config.fullname" . }}
-            {{- include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.eventConsumer) | nindent 12 }}
-          {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.eventConsumer) }}
-          volumeMounts:
             {{- . | nindent 12 }}
           {{- end }}
+          volumeMounts:
+            {{- include "table-maintenance.configVolumeMount" . | nindent 12 }}
+            {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.eventConsumer) }}
+            {{- . | nindent 12 }}
+            {{- end }}
           {{- include "table-maintenance.containerSecurity" . | nindent 10 }}
           resources:
             {{- toYaml .Values.eventConsumer.resources | nindent 12 }}
-      {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.eventConsumer) }}
       volumes:
+        {{- include "table-maintenance.configVolume" (dict "root" . "role" "eventConsumer") | nindent 8 }}
+        {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.eventConsumer) }}
         {{- . | nindent 8 }}
-      {{- end }}
+        {{- end }}
 {{- end }}

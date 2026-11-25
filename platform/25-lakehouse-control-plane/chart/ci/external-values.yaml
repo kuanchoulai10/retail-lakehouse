@@ -30,8 +30,8 @@ worker:
     create: false
     name: maintenance-worker
   env:
-    - name: GLAC_LOG_FORMAT
-      value: json
+    - name: GLAC_LOG_LEVEL
+      value: DEBUG
   secretMounts:
     - name: kube-ca
       secretName: kube-ca-bundle
