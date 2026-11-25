@@ -15,6 +15,7 @@ spec:
     metadata:
       {{- include "table-maintenance.podMetadata" (merge (dict "checksum" (include "table-maintenance.roleConfig" (dict "root" . "role" "api") | sha256sum)) $labels) | nindent 6 }}
     spec:
+      enableServiceLinks: false
       automountServiceAccountToken: false
       {{- include "table-maintenance.podSecurity" . | nindent 6 }}
       {{- include "table-maintenance.podScheduling" (dict "root" . "role" .Values.api) | nindent 6 }}

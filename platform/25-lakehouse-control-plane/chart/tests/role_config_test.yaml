@@ -228,3 +228,70 @@ tests:
     template: templates/configmap.yaml
     asserts:
       - hasDocuments: {count: 2}
+
+  - it: maintenance cannot be set for the worker alone through its env
+    set:
+      worker.env: [{name: GLAC_MAINTENANCE__MAX_ATTEMPTS, value: "9"}]
+    template: templates/validate.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: "worker.env GLAC_MAINTENANCE__MAX_ATTEMPTS must be set in config, not per role: the platform settings page shows it"
+
+  - it: Spark cannot be set for the API alone through its env, in any case
+    set:
+      api.env: [{name: glac_spark__size_l__executor_memory, value: 9g}]
+    template: templates/validate.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: "api.env glac_spark__size_l__executor_memory must be set in config, not per role: the platform settings page shows it"
+
+  - it: discovery cannot be set for the event consumer alone through its env
+    set:
+      eventConsumer.env: [{name: GLAC_DISCOVERY__INTERVAL_SECONDS, value: "60"}]
+    template: templates/validate.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: "eventConsumer.env GLAC_DISCOVERY__INTERVAL_SECONDS must be set in config, not per role: the platform settings page shows it"
+
+  - it: a role's own env for another block is fine
+    set:
+      worker.env: [{name: GLAC_LOG_LEVEL, value: DEBUG}]
+    template: templates/validate.yaml
+    asserts:
+      - notFailedTemplate: {}
+
+  - it: a secret in config fails before install, so no ConfigMap holds it
+    set:
+      config.catalog.credential: id:secret
+    template: templates/validate.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: "config.catalog.credential is a secret: it comes from the environment, not the settings file"
+
+  - it: a secret in a role's config fails before install
+    set:
+      api.config.database.postgres.db_url: postgresql://u:p@h/d
+    template: templates/validate.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: "api.config.database.postgres.db_url is a secret: it comes from the environment, not the settings file"
+
+  - it: an S3 key in config fails before install
+    set:
+      eventConsumer.config.catalog.s3_secret_access_key: k
+    template: templates/validate.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: "eventConsumer.config.catalog.s3_secret_access_key is a secret: it comes from the environment, not the settings file"
+
+  - it: the backend pods get no service links, which would be GLAC_ variables under a release named glac
+    asserts:
+      - equal: {path: spec.template.spec.enableServiceLinks, value: false}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal: {path: spec.template.spec.enableServiceLinks, value: false}
+        template: templates/worker.yaml
+      - equal: {path: spec.template.spec.enableServiceLinks, value: false}
+        template: templates/event-consumer.yaml
+      - equal: {path: spec.template.spec.enableServiceLinks, value: false}
+        template: templates/migrate-job.yaml

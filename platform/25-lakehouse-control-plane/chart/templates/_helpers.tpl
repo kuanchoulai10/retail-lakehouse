@@ -426,6 +426,37 @@ annotations:
 {{- fail (printf "config.%s is not a setting of any role" $key) }}
 {{- end }}
 {{- end }}
+{{- $secrets := list (list "database" "postgres" "db_url") (list "catalog" "credential") (list "catalog" "s3_access_key_id") (list "catalog" "s3_secret_access_key") }}
+{{- $sources := list (list "config" .Values.config) }}
+{{- range $roles }}
+{{- $sources = append $sources (list (printf "%s.config" .) (get $.Values .).config) }}
+{{- end }}
+{{- range $source := $sources }}
+{{- range $path := $secrets }}
+{{- $node := index $source 1 | default dict }}
+{{- $found := true }}
+{{- range $path }}
+{{- if and $found (kindIs "map" $node) (hasKey $node .) }}
+{{- $node = index $node . }}
+{{- else }}
+{{- $found = false }}
+{{- end }}
+{{- end }}
+{{- if and $found (not (kindIs "invalid" $node)) }}
+{{- fail (printf "%s.%s is a secret: it comes from the environment, not the settings file" (index $source 0) (join "." $path)) }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- range $role := $roles }}
+{{- range (get $.Values $role).env }}
+{{- $given := .name | toString }}
+{{- range $sharedOnly }}
+{{- if hasPrefix (printf "GLAC_%s__" (upper .)) (upper $given) }}
+{{- fail (printf "%s.env %s must be set in config, not per role: the platform settings page shows it" $role $given) }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- range $role := $roles }}
 {{- $keys := splitList " " (include "table-maintenance.roleKeys" $role) }}
 {{- range $key, $_ := (get $.Values $role).config }}

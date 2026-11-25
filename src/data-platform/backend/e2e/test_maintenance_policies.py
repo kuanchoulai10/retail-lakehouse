@@ -86,7 +86,11 @@ def _delete_if_present(api: httpx.Client, path: str) -> None:
 
 
 def test_the_partition_selection_settings_are_the_deployed_ones(platform: PlatformApi, settings: E2eSettings):
-    """Partition selection sits between the cooldowns and discovery, showing what the worker was given."""
+    """Partition selection sits between the cooldowns and discovery, showing every value the worker was given.
+
+    The worker runs the backend's default for what its settings file leaves out, so under the default
+    profile only the group's keys are compared; the e2e profile sets two of its values.
+    """
     groups = platform.get("/v1/platform-settings")["groups"]
     assert [group["key"] for group in groups] == [
         "execution_capacity",
@@ -105,5 +109,4 @@ def test_the_partition_selection_settings_are_the_deployed_ones(platform: Platfo
         for key, value in settings.worker_maintenance.items()
         if key.startswith("compaction_")
     }
-    assert given, "the e2e profile shortens the compaction waits, so the worker's settings file sets some"
     assert {key: shown[key] for key in given} == given

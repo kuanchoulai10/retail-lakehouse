@@ -15,6 +15,7 @@ spec:
     metadata:
       {{- include "table-maintenance.podMetadata" (merge (dict "checksum" (include "table-maintenance.roleConfig" (dict "root" . "role" "worker") | sha256sum)) $labels) | nindent 6 }}
     spec:
+      enableServiceLinks: false
       serviceAccountName: {{ include "table-maintenance.worker.serviceAccountName" . }}
       terminationGracePeriodSeconds: {{ .Values.worker.terminationGracePeriodSeconds }}
       {{- include "table-maintenance.podSecurity" . | nindent 6 }}

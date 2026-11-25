@@ -12,6 +12,7 @@ spec:
     metadata:
       {{- include "table-maintenance.podMetadata" $labels | nindent 6 }}
     spec:
+      enableServiceLinks: false
       restartPolicy: OnFailure
       automountServiceAccountToken: false
       {{- include "table-maintenance.podSecurity" . | nindent 6 }}
