@@ -5,23 +5,23 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
-from context.table_maintenance.application.domain.model.table_maintenance_run.expire_snapshots_job_content import (
+from context.table_maintenance.application.domain.model.table_maintenance_run.job_content.expire_snapshots_job_content import (  # noqa: E501
     ExpireSnapshotsJobContent,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_run.remove_orphan_files_job_content import (  # noqa: E501
+from context.table_maintenance.application.domain.model.table_maintenance_run.job_content.remove_orphan_files_job_content import (  # noqa: E501
     RemoveOrphanFilesJobContent,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_run.rewrite_data_files_job_content import (
+from context.table_maintenance.application.domain.model.table_maintenance_run.job_content.rewrite_data_files_job_content import (  # noqa: E501
     RewriteDataFilesJobContent,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_run.rewrite_manifests_job_content import (
+from context.table_maintenance.application.domain.model.table_maintenance_run.job_content.rewrite_manifests_job_content import (  # noqa: E501
     RewriteManifestsJobContent,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from context.table_maintenance.application.domain.model.table_maintenance_run.maintenance_job_content import (
+    from context.table_maintenance.application.domain.model.table_maintenance_run.job_content.maintenance_job_content import (  # noqa: E501
         MaintenanceJobContent,
     )
 

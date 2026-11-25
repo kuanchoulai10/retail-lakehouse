@@ -15,22 +15,22 @@ from context.table_maintenance.application.domain.model.shared import (
     TableMaintenanceRunId,
     TablePriority,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_run.failure_class import (
+from context.table_maintenance.application.domain.model.table_maintenance_run.attempt.failure_class import (
     FailureClass,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_run.invalid_run_transition import (
-    InvalidRunTransition,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_run.maintenance_job_content import (
-    MaintenanceJobContent,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_run.next_step import (
+from context.table_maintenance.application.domain.model.table_maintenance_run.attempt.next_step import (
     NextStep,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_run.operation_attempt import (
+from context.table_maintenance.application.domain.model.table_maintenance_run.attempt.operation_attempt import (
     OperationAttempt,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_run.run_status import (
+from context.table_maintenance.application.domain.model.table_maintenance_run.job_content.maintenance_job_content import (  # noqa: E501
+    MaintenanceJobContent,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_run.status.invalid_run_transition import (
+    InvalidRunTransition,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_run.status.run_status import (
     RunStatus,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run.trigger_type import (
@@ -40,7 +40,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.tr
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from context.table_maintenance.application.domain.model.table_maintenance_run.next_attempt import (
+    from context.table_maintenance.application.domain.model.table_maintenance_run.attempt.next_attempt import (
         NextAttempt,
     )
 

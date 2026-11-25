@@ -6,7 +6,7 @@ from pydantic import model_validator
 
 from base import ValueObject
 from context.table_maintenance.application.domain.model.shared import ComputeSize
-from context.table_maintenance.application.domain.model.table_maintenance_run.next_step import (
+from context.table_maintenance.application.domain.model.table_maintenance_run.attempt.next_step import (
     NextStep,
 )
 
