@@ -23,16 +23,22 @@ spec:
     - name: credentials
       emptyDir:
         medium: Memory
+    - name: worker-config
+      configMap:
+        name: table-maintenance-worker-config
   initContainers:
     - name: principal
       image: table-maintenance-e2e:${E2E_TAG}
       imagePullPolicy: Never
       command: ["python", "-m", "e2e.setup_principal"]
-      envFrom:
-        - configMapRef:
-            name: table-maintenance-config
       env:
-        - name: GLAC_CATALOG__CREDENTIAL
+        - name: E2E_CATALOG_URI
+          value: http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/catalog
+        - name: E2E_MANAGEMENT_URI
+          value: http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/management/v1
+        - name: E2E_CATALOG_SCOPE
+          value: PRINCIPAL_ROLE:ALL
+        - name: E2E_CATALOG_CREDENTIAL
           valueFrom:
             secretKeyRef:
               name: table-maintenance-polaris-credential
@@ -56,13 +62,25 @@ spec:
       imagePullPolicy: Never
       command: ["python", "-m", "pytest", "e2e", "-p", "no:cacheprovider", "-v", "-m", "${E2E_MARKERS}"]
       envFrom:
-        - configMapRef:
-            name: table-maintenance-config
         - secretRef:
             name: table-maintenance-s3
       env:
         - name: E2E_API_URL
           value: http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000
+        - name: E2E_CATALOG_URI
+          value: http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/catalog
+        - name: E2E_MANAGEMENT_URI
+          value: http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/management/v1
+        - name: E2E_CATALOG_SCOPE
+          value: PRINCIPAL_ROLE:ALL
+        - name: E2E_S3_ENDPOINT
+          value: http://rustfs.object-storage.svc.cluster.local:9000
+        - name: E2E_TEMPORAL_ADDRESS
+          value: temporal-frontend.temporal.svc.cluster.local:7233
+        - name: E2E_TEMPORAL_NAMESPACE
+          value: default
+        - name: E2E_WORKER_CONFIG_FILE
+          value: /etc/glac/config.yaml
         - name: E2E_CATALOG
           value: iceberg
         - name: E2E_POLARIS_CREDENTIAL_FILE
@@ -70,6 +88,9 @@ spec:
       volumeMounts:
         - name: credentials
           mountPath: /e2e-credentials
+          readOnly: true
+        - name: worker-config
+          mountPath: /etc/glac
           readOnly: true
       resources:
         requests:

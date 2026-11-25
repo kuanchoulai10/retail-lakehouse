@@ -104,10 +104,10 @@ def test_main_writes_the_credentials_for_the_owner_only_and_prints_no_secret(tmp
     main(
         {
             "E2E_POLARIS_CREDENTIAL_FILE": str(target),
-            "GLAC_CATALOG__URI": "http://polaris:8181/api/catalog",
-            "GLAC_CATALOG__MANAGEMENT_URI": "http://polaris:8181/api/management/v1",
-            "GLAC_CATALOG__CREDENTIAL": "root:root-secret",
-            "GLAC_CATALOG__SCOPE": "PRINCIPAL_ROLE:ALL",
+            "E2E_CATALOG_URI": "http://polaris:8181/api/catalog",
+            "E2E_MANAGEMENT_URI": "http://polaris:8181/api/management/v1",
+            "E2E_CATALOG_CREDENTIAL": "root:root-secret",
+            "E2E_CATALOG_SCOPE": "PRINCIPAL_ROLE:ALL",
             "E2E_CATALOG": "iceberg",
         },
         http_factory=lambda: httpx.Client(transport=httpx.MockTransport(handle)),

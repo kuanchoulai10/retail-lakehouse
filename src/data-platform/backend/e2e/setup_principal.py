@@ -70,10 +70,10 @@ def main(environ: Mapping[str, str] = os.environ, http_factory: Callable[[], htt
     with http_factory() as http:
         polaris = PolarisClient(
             http,
-            catalog_uri=environ["GLAC_CATALOG__URI"],
-            management_uri=environ["GLAC_CATALOG__MANAGEMENT_URI"],
-            credential=environ["GLAC_CATALOG__CREDENTIAL"],
-            scope=environ["GLAC_CATALOG__SCOPE"],
+            catalog_uri=environ["E2E_CATALOG_URI"],
+            management_uri=environ["E2E_MANAGEMENT_URI"],
+            credential=environ["E2E_CATALOG_CREDENTIAL"],
+            scope=environ["E2E_CATALOG_SCOPE"],
         )
         credential = ensure_principal(polaris, catalog=environ["E2E_CATALOG"])
     target.touch(mode=0o600, exist_ok=True)

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 import pytest
@@ -12,7 +11,7 @@ from e2e.support import OwnedNames, assert_prefixed_ids
 if TYPE_CHECKING:
     import httpx
 
-    from e2e.support import CleanupStack, PlatformApi
+    from e2e.support import CleanupStack, E2eSettings, PlatformApi
 
 pytestmark = pytest.mark.critical
 
@@ -86,8 +85,8 @@ def _delete_if_present(api: httpx.Client, path: str) -> None:
     assert reply.status_code in (204, 404), f"DELETE {path} answered {reply.status_code}: {reply.text}"
 
 
-def test_the_partition_selection_settings_are_the_deployed_ones(platform: PlatformApi):
-    """Partition selection sits between the cooldowns and discovery, with the values the pods were given."""
+def test_the_partition_selection_settings_are_the_deployed_ones(platform: PlatformApi, settings: E2eSettings):
+    """Partition selection sits between the cooldowns and discovery, showing what the worker was given."""
     groups = platform.get("/v1/platform-settings")["groups"]
     assert [group["key"] for group in groups] == [
         "execution_capacity",
@@ -97,8 +96,14 @@ def test_the_partition_selection_settings_are_the_deployed_ones(platform: Platfo
         "discovery",
     ]
     [selection] = [group for group in groups if group["key"] == "partition_selection"]
-    deployed = {
-        f"maintenance_compaction_{key}": int(os.environ[f"GLAC_MAINTENANCE_COMPACTION_{key.upper()}"])
-        for key in ("partitions_per_job", "quiet_seconds", "max_quiet_wait_seconds")
+    shown = {item["key"]: item["value"] for item in selection["items"]}
+    assert set(shown) == {
+        f"maintenance_compaction_{key}" for key in ("partitions_per_job", "quiet_seconds", "max_quiet_wait_seconds")
     }
-    assert {item["key"]: item["value"] for item in selection["items"]} == deployed
+    given = {
+        f"maintenance_{key}": value
+        for key, value in settings.worker_maintenance.items()
+        if key.startswith("compaction_")
+    }
+    assert given, "the e2e profile shortens the compaction waits, so the worker's settings file sets some"
+    assert {key: shown[key] for key in given} == given
