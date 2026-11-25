@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import Field
+
+from bootstrap.configs.http_settings import HttpSettings
+from bootstrap.configs.service_settings import ServiceSettings
 
 
-class ApiSettings(BaseModel):
-    """HTTP API settings.
+class ApiSettings(ServiceSettings):
+    """The settings of ``glac api``."""
 
-    ``root_path`` is the public prefix a proxy strips before forwarding, for example
-    ``/api`` behind the platform gateway (``GLAC_API__ROOT_PATH``). It only moves the
-    docs and the OpenAPI ``servers`` entry; empty means the API is served at the root.
-    """
-
-    root_path: str = ""
+    http: HttpSettings = Field(default_factory=HttpSettings)

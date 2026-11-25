@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from bootstrap.configs.settings_block import SettingsBlock
 
 
-class TemporalSettings(BaseModel):
+class TemporalSettings(SettingsBlock):
     """Temporal frontend address and namespace.
 
     The task queue is the domain constant ``TASK_QUEUE``, not a setting: workflows,

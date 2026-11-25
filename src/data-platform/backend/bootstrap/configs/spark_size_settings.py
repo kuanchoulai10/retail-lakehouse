@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from bootstrap.configs.settings_block import SettingsBlock
 
 
-class SparkSizeSettings(BaseModel):
+class SparkSizeSettings(SettingsBlock):
     """Memory and executor count of one Spark size; cores stay at the Spark settings' values."""
 
     driver_memory: str

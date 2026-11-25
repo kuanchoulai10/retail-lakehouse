@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 
 import pytest
+from pydantic import ValidationError
 
 from bootstrap.configs import AppSettings, CatalogSettings, Component, DatabaseBackend, TemporalSettings
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
@@ -116,13 +117,12 @@ def test_secrets_are_not_rendered(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_task_queue_is_not_configurable(monkeypatch: pytest.MonkeyPatch):
-    """The Temporal task queue is fixed and offered by no setting."""
+    """The Temporal task queue is fixed and offered by no setting; naming one is refused."""
     monkeypatch.setenv("GLAC_TEMPORAL__TASK_QUEUE", "other")
 
-    settings = AppSettings()
-
     assert "task_queue" not in TemporalSettings.model_fields
-    assert not hasattr(settings.temporal, "task_queue")
+    with pytest.raises(ValidationError):
+        AppSettings()
 
 
 def test_attempt_deadline_defaults_to_six_hours():

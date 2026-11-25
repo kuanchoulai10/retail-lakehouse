@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from bootstrap.configs.settings_block import SettingsBlock
 
 
-class KafkaSettings(BaseModel):
+class KafkaSettings(SettingsBlock):
     """Kafka brokers and the Polaris catalog events topic."""
 
     bootstrap_servers: str = "kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"

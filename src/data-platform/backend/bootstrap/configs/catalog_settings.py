@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, SecretStr
+from pydantic import SecretStr
+
+from bootstrap.configs.settings_block import SettingsBlock
 
 
-class CatalogSettings(BaseModel):
+class CatalogSettings(SettingsBlock):
     """Polaris access shared by PyIceberg, the Spark jobs and the catalog context.
 
     ``uri`` is the catalog API base (Iceberg REST and the OAuth token endpoint) and

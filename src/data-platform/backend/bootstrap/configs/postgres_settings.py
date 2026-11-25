@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, SecretStr
+from pydantic import SecretStr
+
+from bootstrap.configs.settings_block import SettingsBlock
 
 
-class PostgresSettings(BaseModel):
+class PostgresSettings(SettingsBlock):
     """PostgreSQL connection and pool configuration.
 
     ``db_url`` is a SQLAlchemy URL with the psycopg 3 driver, such as

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from bootstrap.configs.settings_block import SettingsBlock
 
 
-class MetricsSettings(BaseModel):
+class MetricsSettings(SettingsBlock):
     """Where the table metric trends are read from (``GLAC_METRICS__PROMETHEUS_URL``) and how long a query may take.
 
     ``query_timeout_seconds`` bounds each phase of a request on its own (connect, read, write, pool), not the

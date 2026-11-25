@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from bootstrap.configs.settings_block import SettingsBlock
 
 
-class SparkVolcanoSettings(BaseModel):
+class SparkVolcanoSettings(SettingsBlock):
     """Volcano queues and priority classes the maintenance SparkApplications are scheduled in.
 
     A P0 job goes to ``urgent_queue``, every other priority to ``queue``; the priority class

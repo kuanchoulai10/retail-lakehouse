@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, model_validator
 
+from bootstrap.configs.settings_block import SettingsBlock
 from bootstrap.configs.spark_size_settings import SparkSizeSettings
 from bootstrap.configs.spark_volcano_settings import SparkVolcanoSettings
 
@@ -16,7 +17,7 @@ SIZE_DEFAULTS: dict[str, dict[str, Any]] = {
 }
 
 
-class SparkSettings(BaseModel):
+class SparkSettings(SettingsBlock):
     """Settings of the maintenance SparkApplications.
 
     The catalog URI, scope and S3 endpoint come from the catalog settings. The two

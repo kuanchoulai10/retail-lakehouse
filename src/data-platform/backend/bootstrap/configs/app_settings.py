@@ -5,10 +5,10 @@ from __future__ import annotations
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from bootstrap.configs.api_settings import ApiSettings
 from bootstrap.configs.catalog_settings import CatalogSettings
 from bootstrap.configs.component import Component
 from bootstrap.configs.database_backend import DatabaseBackend
+from bootstrap.configs.http_settings import HttpSettings
 from bootstrap.configs.kafka_settings import KafkaSettings
 from bootstrap.configs.metrics_settings import MetricsSettings
 from bootstrap.configs.postgres_settings import PostgresSettings
@@ -38,7 +38,7 @@ class AppSettings(BaseSettings):
     kafka: KafkaSettings = Field(default_factory=KafkaSettings)
     metrics: MetricsSettings = Field(default_factory=MetricsSettings)
     spark: SparkSettings = Field(default_factory=SparkSettings)
-    api: ApiSettings = Field(default_factory=ApiSettings)
+    api: HttpSettings = Field(default_factory=HttpSettings)
     callback_base_url: str = "http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000"
     discovery_interval_seconds: int = 600
     maintenance_attempt_deadline_seconds: int = 21600

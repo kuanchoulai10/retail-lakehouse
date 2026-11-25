@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from bootstrap.configs.settings_block import SettingsBlock
 
 
-class SqliteSettings(BaseModel):
+class SqliteSettings(SettingsBlock):
     """SQLite configuration for local and development use.
 
     ``path`` is the database file; ``:memory:`` keeps one in-memory database shared
