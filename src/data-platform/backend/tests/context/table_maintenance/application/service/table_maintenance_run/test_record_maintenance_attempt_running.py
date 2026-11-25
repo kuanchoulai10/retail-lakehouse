@@ -107,4 +107,4 @@ def test_record_running_of_another_operation_is_a_conflict(runs_repo, queued_run
     """A report naming an operation the run does not run is refused as a conflict and changes nothing."""
     with pytest.raises(ConflictError, match=f"run {RUN_1} does not run expire_snapshots"):
         RecordMaintenanceAttemptRunningService(runs_repo).execute(_input(now, operation="expire_snapshots"))
-    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).status.value == "queued"
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).status.name.value == "queued"

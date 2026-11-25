@@ -22,11 +22,12 @@ from context.table_maintenance.application.domain.model.table import (
 from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyName
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     AttemptEnding,
+    AttemptStatus,
     ContainerExit,
     FailureEvidence,
     InvalidRunTransition,
     NextStep,
-    RunStatusName,
+    PendingRunStatus,
 )
 from context.table_maintenance.application.domain.service.table import fits_smaller_size
 from context.table_maintenance.application.domain.service.table_maintenance_run import (
@@ -106,8 +107,9 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         """Classify and decide the attempt, update the run, then the table.
 
         Two aggregates are updated in sequence, not atomically: the run is saved
-        first, then the table. A replay of an outcome the run already holds reads
-        nothing and returns what the run holds for that attempt, but still brings
+        first, then the table. A replay of an outcome the attempt already holds,
+        whatever the run went on to (waiting to retry or cancelled), reads nothing
+        and returns what the run holds for that attempt, but still brings
         the table up to date, so a retry after a crash between the two saves
         loses no table update; the table takes each attempt in once. A stale
         lower attempt changes nothing. A result naming an operation other than
@@ -125,7 +127,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         if run is None:
             raise NotFoundError(f"maintenance run {request.run_id} not found")
         require_run_operation(run, operation)
-        if run.status is RunStatusName.PENDING:
+        if run.status == PendingRunStatus():
             return _output(run, None)
         with translate_domain_errors():
             if request.attempt < run.current_attempt:
@@ -297,8 +299,11 @@ def _started_attempt(run: TableMaintenanceRun, attempt: int) -> OperationAttempt
 
 
 def _already_recorded(run: TableMaintenanceRun, request: RecordTableMaintenanceOperationResultUseCaseInput) -> bool:
-    outcome = "succeeded" if request.succeeded else "failed"
-    return run.current_attempt == request.attempt and run.status.value == outcome
+    """Tell whether the run's current attempt already ended as the request says, whatever the run went on to."""
+    if run.current_attempt != request.attempt:
+        return False
+    outcome = AttemptStatus.SUCCEEDED if request.succeeded else AttemptStatus.FAILED
+    return run.attempts[-1].status is outcome
 
 
 def _output(
@@ -306,7 +311,7 @@ def _output(
 ) -> RecordTableMaintenanceOperationResultUseCaseOutput:
     return RecordTableMaintenanceOperationResultUseCaseOutput(
         run_id=run.id.value,
-        status=run.status.value,
+        status=run.status.name.value,
         failure_class=_value(record.failure_class) if record else None,
         next_step=_value(record.next_step) if record else None,
         next_size=_value(record.next_size) if record else None,

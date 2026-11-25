@@ -21,14 +21,22 @@ from context.table_maintenance.application.domain.model.shared import (
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     AttemptStatus,
+    CancelledRunStatus,
     ExpireSnapshotsJobContent,
+    FailedRunStatus,
     FailureClass,
     InvalidRunTransition,
     NextAttempt,
     NextStep,
     OperationAttempt,
+    PendingRunStatus,
+    QueuedRunStatus,
+    RetryWaitingRunStatus,
     RewriteDataFilesJobContent,
+    RunningRunStatus,
     RunStatusName,
+    SkippedRunStatus,
+    SucceededRunStatus,
     TableMaintenanceRun,
     TriggerType,
 )
@@ -88,7 +96,7 @@ def test_a_new_run_is_pending_with_no_attempt():
     run = _run()
     assert (run.operation, run.status, run.attempts, run.started_at, run.finished_at) == (
         Op.EXPIRE_SNAPSHOTS,
-        RunStatusName.PENDING,
+        PendingRunStatus(),
         (),
         None,
         None,
@@ -99,7 +107,7 @@ def test_the_first_attempt_queues_and_starts_the_run():
     """The first submit queues the run and its attempt, which carries its job, and starts the run."""
     run = _run()
     run.start_attempt(1, "tm-es-x-a1", _now(1), size=ComputeSize.S)
-    assert (run.status, run.started_at) == (RunStatusName.QUEUED, _now(1))
+    assert (run.status, run.started_at) == (QueuedRunStatus(), _now(1))
     assert (run.attempts[0].status, run.attempts[0].job_name) == (AttemptStatus.QUEUED, "tm-es-x-a1")
 
 
@@ -127,15 +135,15 @@ def test_success_finishes_the_run_with_the_procedure_numbers():
     run.start_attempt(1, None, _now(1), size=ComputeSize.S)
     run.succeed(1, {"deleted_data_files_count": 3}, _now(5), started_running_at=_now(2), event_log_finished=True)
     assert (run.status, run.metrics, run.finished_at, run.error) == (
-        RunStatusName.SUCCEEDED,
+        SucceededRunStatus(),
         {"deleted_data_files_count": 3},
         _now(5),
         None,
     )
 
 
-def test_a_failure_with_a_retry_reads_failed_until_the_next_attempt():  # known follow-up, pinned
-    """A run whose failed attempt will be retried reads failed until the retry queues it."""
+def test_a_failure_with_a_retry_waits_until_the_next_attempt():
+    """A run whose failed attempt will be retried waits to retry, unfinished, until the retry queues it."""
     run = _run()
     run.start_attempt(1, None, _now(1), size=ComputeSize.S)
     run.fail(
@@ -147,16 +155,16 @@ def test_a_failure_with_a_retry_reads_failed_until_the_next_attempt():  # known 
         event_log_finished=None,
         next_attempt=NextAttempt(step=NextStep.RETRY_SAME, size=ComputeSize.S),
     )
-    assert run.status is RunStatusName.FAILED
+    assert (run.status, run.finished_at) == (RetryWaitingRunStatus(), None)
     run.start_attempt(2, None, _now(3), size=ComputeSize.S)
-    assert (run.status, run.finished_at) == (RunStatusName.QUEUED, None)
+    assert (run.status, run.finished_at) == (QueuedRunStatus(), None)
 
 
 def test_a_pending_run_is_skipped_with_its_reason():
     """A pending run is skipped with its reason in skip_reason, not in error."""
     run = _run()
     run.skip(STOPPED, _now(1))
-    assert (run.status, run.skip_reason, run.error, run.finished_at) == (RunStatusName.SKIPPED, STOPPED, None, _now(1))
+    assert (run.status, run.skip_reason, run.error, run.finished_at) == (SkippedRunStatus(), STOPPED, None, _now(1))
 
 
 def test_a_started_run_cannot_be_skipped():
@@ -272,7 +280,7 @@ def test_a_skip_reason_goes_exactly_with_a_skipped_run(status, skip_reason, atte
     ],
 )
 def test_a_finish_time_goes_exactly_with_a_terminal_status(status, finished_at, attempts):
-    """A succeeded, failed or skipped run has a finish time, and a pending, queued or running one has none."""
+    """A succeeded, failed, skipped or cancelled run has a finish time; a pending, queued or running one has none."""
     with pytest.raises(InvariantViolation, match="finish time"):
         _with(_run(), status=status, finished_at=finished_at, attempts=attempts)
 
@@ -290,8 +298,8 @@ def test_a_finish_time_goes_exactly_with_a_terminal_status(status, finished_at, 
         (RunStatusName.PENDING, None, (_attempt(1, AttemptStatus.QUEUED),)),
     ],
 )
-def test_the_status_is_the_latest_attempts_or_pending_or_skipped_without_one(status, finished_at, attempts):
-    """A run with attempts reads its latest attempt's status; a run without one is pending or skipped."""
+def test_the_status_is_the_latest_attempts_or_pending_skipped_or_cancelled_without_one(status, finished_at, attempts):
+    """A run with attempts reads its latest attempt's status; a run without one is pending, skipped or cancelled."""
     with pytest.raises(InvariantViolation, match="latest attempt's status|has no attempt"):
         _with(_run(), status=status, finished_at=finished_at, attempts=attempts)
 
@@ -299,7 +307,7 @@ def test_the_status_is_the_latest_attempts_or_pending_or_skipped_without_one(sta
 def test_a_skipped_run_without_attempts_is_valid():
     """A run skipped before it started has no attempt, and that is consistent."""
     run = _with(_run(), status=RunStatusName.SKIPPED, skip_reason=STOPPED, finished_at=_now(1))
-    assert (run.status, run.attempts) == (RunStatusName.SKIPPED, ())
+    assert (run.status, run.attempts) == (SkippedRunStatus(), ())
 
 
 def test_a_run_needs_an_operation():
@@ -326,7 +334,7 @@ def test_create_records_its_operation_and_starts_pending():
     run = _run(COMPACTION)
     assert (run.operation, run.status, run.created_at, run.finished_at) == (
         COMPACTION,
-        RunStatusName.PENDING,
+        PendingRunStatus(),
         _now(),
         None,
     )
@@ -350,14 +358,14 @@ def test_create_rejects_an_empty_execution_ref():
 def test_the_run_status_follows_its_attempt():
     """The run goes pending, queued, running, then succeeded and finished."""
     run = _run(COMPACTION)
-    assert run.status is RunStatusName.PENDING
+    assert run.status == PendingRunStatus()
     run.start_attempt(1, "app-1", _now(1), size=ComputeSize.S)
-    assert run.status is RunStatusName.QUEUED
+    assert run.status == QueuedRunStatus()
     run.record_attempt_running(1, _now(1), _now(1))
-    assert run.status is RunStatusName.RUNNING
+    assert run.status == RunningRunStatus()
     assert run.finished_at is None
     run.succeed(1, {"files": 3}, _now(2))
-    assert run.status is RunStatusName.SUCCEEDED
+    assert run.status == SucceededRunStatus()
     assert run.finished_at == _now(2)
 
 
@@ -366,7 +374,7 @@ def test_a_failed_attempt_fails_and_finishes_the_run():
     run = _run(COMPACTION)
     run.start_attempt(1, "a", _now(1), size=ComputeSize.S)
     run.fail(1, "boom", _now(4))
-    assert (run.status, run.finished_at, run.error) == (RunStatusName.FAILED, _now(4), "boom")
+    assert (run.status, run.finished_at, run.error) == (FailedRunStatus(), _now(4), "boom")
 
 
 def test_the_run_reads_the_status_of_its_latest_attempt():
@@ -376,9 +384,9 @@ def test_the_run_reads_the_status_of_its_latest_attempt():
     run.record_attempt_running(1, _now(2), _now(2))
     run.fail(1, "boom", _now(3), next_attempt=_retry())
     run.start_attempt(2, "a2", _now(4), size=ComputeSize.S)
-    assert run.status is RunStatusName.QUEUED
+    assert run.status == QueuedRunStatus()
     run.record_attempt_running(2, _now(5), _now(5))
-    assert run.status is RunStatusName.RUNNING
+    assert run.status == RunningRunStatus()
     assert [a.status for a in run.attempts] == [AttemptStatus.FAILED, AttemptStatus.RUNNING]
 
 
@@ -415,26 +423,26 @@ def test_stale_attempt_result_ignored():
     """A result for an earlier attempt does not change the current attempt."""
     run = _run()
     run.start_attempt(1, "a1", _now(1), size=ComputeSize.S)
-    run.fail(1, "boom", _now(2))
+    run.fail(1, "boom", _now(2), next_attempt=_retry())
     run.start_attempt(2, "a2", _now(3), size=ComputeSize.S)
     run.succeed(1, {"x": 1}, _now(4))
     run.fail(1, "late", _now(4))
-    assert run.status is RunStatusName.QUEUED
+    assert run.status == QueuedRunStatus()
     assert len(run.attempts) == 2
     assert run.attempts[-1].job_name == "a2"
 
 
 def test_retry_clears_previous_outcome():
-    """Starting a new attempt clears the run's error, finish time and metrics; the run keeps its start."""
+    """Starting a new attempt clears the run's error and metrics, and it has no finish time; it keeps its start."""
     run = _run(COMPACTION)
     run.start_attempt(1, "a1", _now(1), size=ComputeSize.S)
-    run.fail(1, "boom", _now(2))
-    assert run.finished_at == _now(2)
+    run.fail(1, "boom", _now(2), next_attempt=_retry())
+    assert run.error == "boom"
     run.start_attempt(2, "a2", _now(3), size=ComputeSize.S)
     assert run.error is None and run.finished_at is None and run.metrics == {}
     assert run.started_at == _now(1)
     assert run.attempts[1].started_at == _now(3)
-    assert run.status is RunStatusName.QUEUED
+    assert run.status == QueuedRunStatus()
 
 
 def test_start_attempt_idempotent_and_guarded():
@@ -462,7 +470,7 @@ def test_duplicate_result_is_idempotent():
     run.succeed(1, metrics, _now(2))
     metrics["files"] = 99
     run.succeed(1, {"files": 5}, _now(3))
-    assert run.status is RunStatusName.SUCCEEDED
+    assert run.status == SucceededRunStatus()
     assert run.metrics == {"files": 2}
     assert run.finished_at == _now(2)
     with pytest.raises(InvalidRunTransition):
@@ -709,7 +717,7 @@ def _queued_run() -> TableMaintenanceRun:
 def test_a_submitted_attempt_is_queued():
     """A submitted attempt and its run wait in the queue until the job runs."""
     run = _queued_run()
-    assert run.status is RunStatusName.QUEUED
+    assert run.status == QueuedRunStatus()
     assert run.attempts[0].status is AttemptStatus.QUEUED
     assert run.attempts[0].started_running_at is None
     assert not run.attempts[0].finished
@@ -728,7 +736,7 @@ def test_record_running_moves_queued_to_running():
     """Recording that the driver runs moves the attempt and the run to running."""
     run = _queued_run()
     run.record_attempt_running(1, _now(3), _now(4))
-    assert run.status is RunStatusName.RUNNING
+    assert run.status == RunningRunStatus()
     assert run.attempts[0].status is AttemptStatus.RUNNING
     assert run.attempts[0].started_running_at == _now(3)
 
@@ -759,7 +767,7 @@ def test_a_result_fills_a_missing_running_time():
     """A result carrying the running time records it on an attempt that never got one."""
     run = _queued_run()
     run.succeed(1, {}, _now(5), started_running_at=_now(3))
-    assert run.status is RunStatusName.SUCCEEDED
+    assert run.status == SucceededRunStatus()
     assert run.attempts[0].started_running_at == _now(3)
 
 
@@ -776,7 +784,7 @@ def test_record_running_on_a_finished_attempt_only_fills_the_time():
     run = _queued_run()
     run.fail(1, "boom", _now(5))
     run.record_attempt_running(1, _now(9), _now(10))
-    assert run.status is RunStatusName.FAILED
+    assert run.status == FailedRunStatus()
     assert run.attempts[0].status is AttemptStatus.FAILED
     assert run.attempts[0].started_running_at == _now(5)
     run.record_attempt_running(1, _now(2), _now(10))
@@ -786,10 +794,10 @@ def test_record_running_on_a_finished_attempt_only_fills_the_time():
 def test_record_running_of_a_lower_attempt_is_a_no_op():
     """A running report for an earlier attempt changes nothing."""
     run = _queued_run()
-    run.fail(1, "boom", _now(2))
+    run.fail(1, "boom", _now(2), next_attempt=_retry())
     run.start_attempt(2, "job-2", _now(3), size=ComputeSize.S)
     run.record_attempt_running(1, _now(4), _now(5))
-    assert run.status is RunStatusName.QUEUED
+    assert run.status == QueuedRunStatus()
     assert [a.started_running_at for a in run.attempts] == [None, None]
 
 
@@ -807,7 +815,7 @@ def test_queued_attempt_can_fail_without_running():
     """An attempt can fail while still queued, with no running time."""
     run = _queued_run()
     run.fail(1, "queue wait limit", _now(5))
-    assert run.status is RunStatusName.FAILED
+    assert run.status == FailedRunStatus()
     assert run.attempts[0].started_running_at is None
 
 
@@ -825,7 +833,7 @@ def test_a_result_earlier_than_the_submit_still_records_a_running_time_within_th
     """A result stamped before the submit (clock skew) is accepted; the running time is the submit time."""
     run = _queued_run()
     run.succeed(1, {}, _now(1) - timedelta(seconds=5), started_running_at=_now(3))
-    assert run.status is RunStatusName.SUCCEEDED
+    assert run.status == SucceededRunStatus()
     assert run.attempts[0].started_running_at == _now(1)
 
 
@@ -902,12 +910,12 @@ def test_a_failed_run_that_will_not_retry_is_not_raised(next_attempt, retried_fi
 
 
 @pytest.mark.parametrize("step", [NextStep.RETRY_SAME, NextStep.RETRY_LARGER])
-def test_a_failed_run_waiting_for_its_retry_is_raised(step):
-    """During the backoff before a retry the run reads failed and has a finish time, but a raise still lands."""
+def test_a_run_waiting_for_its_retry_is_raised(step):
+    """During the backoff before a retry the run waits to retry, with no finish time, and a raise lands."""
     run = _run()
     run.start_attempt(1, "job-1", _now(1), size=ComputeSize.S)
     run.fail(1, "boom", _now(2), next_attempt=NextAttempt(step=step, size=ComputeSize.M))
-    assert (run.status, run.finished_at) == (RunStatusName.FAILED, _now(2))
+    assert (run.status, run.finished_at) == (RetryWaitingRunStatus(), None)
 
     assert run.raise_priority(TablePriority.P0) is True
     assert run.priority is TablePriority.P0
@@ -920,7 +928,7 @@ def test_a_queued_or_running_run_is_raised(running):
     run.start_attempt(1, "job-1", _now(1), size=ComputeSize.S)
     if running:
         run.record_attempt_running(1, _now(2), _now(2))
-    assert run.status is (RunStatusName.RUNNING if running else RunStatusName.QUEUED)
+    assert run.status == (RunningRunStatus() if running else QueuedRunStatus())
     assert run.raise_priority(TablePriority.P0) is True
     assert run.priority is TablePriority.P0
 
@@ -946,3 +954,260 @@ def test_an_attempt_needs_a_size():
     """An attempt always runs at a size; one without is refused."""
     with pytest.raises(InvariantViolation, match="size"):
         OperationAttempt(attempt=1, size=None, status=AttemptStatus.QUEUED, started_at=_now())  # ty: ignore[invalid-argument-type]
+
+
+# --- waiting to retry and cancelling ---
+
+CANCELLED_BY_WORKFLOW = "the maintenance workflow was cancelled"
+
+
+def _running_run() -> TableMaintenanceRun:
+    run = _run(COMPACTION)
+    run.start_attempt(1, "job-1", _now(1), size=ComputeSize.S)
+    run.record_attempt_running(1, _now(2), _now(2))
+    return run
+
+
+def _waiting_run() -> TableMaintenanceRun:
+    run = _running_run()
+    run.fail(1, "boom", _now(3), next_attempt=_retry())
+    return run
+
+
+def _cancelled_run() -> TableMaintenanceRun:
+    run = _running_run()
+    run.cancel_attempt(1, CANCELLED_BY_WORKFLOW, _now(3))
+    return run
+
+
+def _succeeded_run() -> TableMaintenanceRun:
+    run = _running_run()
+    run.succeed(1, {}, _now(3))
+    return run
+
+
+def _failed_run() -> TableMaintenanceRun:
+    run = _running_run()
+    run.fail(1, "boom", _now(3))
+    return run
+
+
+def _skipped_run() -> TableMaintenanceRun:
+    run = _run(COMPACTION)
+    run.skip(STOPPED, _now(1))
+    return run
+
+
+def test_a_failure_that_retries_leaves_the_run_waiting_with_no_finish_time():
+    """A failed attempt with a retry to follow leaves the run waiting, unfinished, with the attempt's error."""
+    run = _running_run()
+    run.fail(1, "boom", _now(3), next_attempt=NextAttempt(step=NextStep.RETRY_SAME, size=ComputeSize.S))
+    assert run.status == RetryWaitingRunStatus()
+    assert (run.finished_at, run.error) == (None, "boom")
+    assert (run.attempts[-1].status, run.attempts[-1].finished_at) == (AttemptStatus.FAILED, _now(3))
+
+
+@pytest.mark.parametrize(
+    "next_attempt",
+    [
+        None,
+        NextAttempt(step=NextStep.ATTEMPTS_USED),
+        NextAttempt(step=NextStep.NOT_RETRIED),
+        NextAttempt(step=NextStep.NEEDS_ATTENTION),
+        NextAttempt(step=NextStep.STILL_RUNNING),
+    ],
+)
+def test_a_failure_that_does_not_retry_fails_the_run(next_attempt):
+    """A failed attempt with no retry to follow fails and finishes the run."""
+    run = _running_run()
+    run.fail(1, "boom", _now(3), next_attempt=next_attempt)
+    assert (run.status, run.finished_at) == (FailedRunStatus(), _now(3))
+
+
+def test_a_waiting_run_starts_its_next_attempt_queued():
+    """The retry of a waiting run queues it again and clears the failed attempt's outcome from the run."""
+    run = _waiting_run()
+    run.start_attempt(2, "job-2", _now(4), size=ComputeSize.M)
+    assert (run.status, run.finished_at, run.error) == (QueuedRunStatus(), None, None)
+    assert [a.status for a in run.attempts] == [AttemptStatus.FAILED, AttemptStatus.QUEUED]
+
+
+def test_a_failed_run_cannot_start_another_attempt():
+    """A run that failed with no retry to follow has ended: no attempt follows it."""
+    run = _failed_run()
+    with pytest.raises(InvalidRunTransition):
+        run.start_attempt(2, "job-2", _now(4), size=ComputeSize.S)
+    assert len(run.attempts) == 1
+
+
+def test_a_replayed_failure_of_a_waiting_run_changes_nothing():
+    """Recording the waiting run's failure again keeps the run waiting with the first failure."""
+    run = _waiting_run()
+    before = run.model_dump()
+    run.fail(1, "again", _now(5))
+    assert run.model_dump() == before
+
+
+def test_a_waiting_run_refuses_a_success_of_its_failed_attempt():
+    """The failed attempt of a waiting run cannot succeed afterwards."""
+    run = _waiting_run()
+    with pytest.raises(InvalidRunTransition):
+        run.succeed(1, {}, _now(5))
+    assert run.status == RetryWaitingRunStatus()
+
+
+@pytest.mark.parametrize("running", [False, True])
+def test_cancelling_the_attempt_in_flight_cancels_the_run(running):
+    """A cancel of the queued or running attempt fails it as cancelled and cancels and finishes the run."""
+    run = _run(COMPACTION)
+    run.start_attempt(1, "job-1", _now(1), size=ComputeSize.S)
+    if running:
+        run.record_attempt_running(1, _now(2), _now(2))
+    run.cancel_attempt(1, CANCELLED_BY_WORKFLOW, _now(3), started_running_at=_now(2), event_log_finished=False)
+    assert (run.status, run.finished_at, run.error, run.metrics) == (
+        CancelledRunStatus(),
+        _now(3),
+        CANCELLED_BY_WORKFLOW,
+        {},
+    )
+    assert run.attempts[-1] == OperationAttempt(
+        attempt=1,
+        size=ComputeSize.S,
+        status=AttemptStatus.FAILED,
+        started_at=_now(1),
+        job_name="job-1",
+        started_running_at=_now(2),
+        finished_at=_now(3),
+        failure_class=FailureClass.CANCELLED,
+        error=CANCELLED_BY_WORKFLOW,
+        event_log_finished=False,
+        next_step=NextStep.CANCELLED,
+    )
+
+
+def test_cancelling_an_earlier_or_recorded_attempt_changes_nothing():
+    """A cancel of an earlier attempt, or of one already recorded, leaves the run as it is."""
+    retried = _waiting_run()
+    retried.start_attempt(2, "job-2", _now(4), size=ComputeSize.S)
+    before = retried.model_dump()
+    retried.cancel_attempt(1, CANCELLED_BY_WORKFLOW, _now(5))
+    assert retried.model_dump() == before
+    cancelled = _cancelled_run()
+    before = cancelled.model_dump()
+    cancelled.cancel_attempt(1, "again", _now(5))
+    assert cancelled.model_dump() == before
+
+
+def test_cancel_attempt_refuses_a_finished_attempt_and_an_unstarted_one():
+    """A succeeded attempt cannot be cancelled, nor one that was never started."""
+    run = _succeeded_run()
+    with pytest.raises(InvalidRunTransition):
+        run.cancel_attempt(1, CANCELLED_BY_WORKFLOW, _now(5))
+    assert run.status == SucceededRunStatus()
+    with pytest.raises(InvalidRunTransition):
+        _run().cancel_attempt(1, CANCELLED_BY_WORKFLOW, _now(5))
+
+
+@pytest.mark.parametrize("make", [_waiting_run, _run], ids=["retry_waiting", "pending"])
+def test_a_waiting_run_is_cancelled_without_an_attempt(make):
+    """A run with no attempt in flight, waiting to retry or not started, is cancelled and finished."""
+    run = make()
+    attempts = run.attempts
+    run.cancel(_now(5))
+    assert (run.status, run.finished_at, run.attempts) == (CancelledRunStatus(), _now(5), attempts)
+
+
+@pytest.mark.parametrize("running", [False, True])
+def test_cancel_refuses_a_run_in_flight(running):
+    """A run whose attempt is in flight is cancelled through that attempt, not as a whole."""
+    run = _run(COMPACTION)
+    run.start_attempt(1, "job-1", _now(1), size=ComputeSize.S)
+    if running:
+        run.record_attempt_running(1, _now(2), _now(2))
+    before = run.model_dump()
+    with pytest.raises(InvalidRunTransition, match="cancel_attempt"):
+        run.cancel(_now(3))
+    assert run.model_dump() == before
+
+
+@pytest.mark.parametrize("make", [_succeeded_run, _failed_run, _skipped_run, _cancelled_run])
+def test_cancel_refuses_a_finished_run(make):
+    """A run that has ended cannot be cancelled."""
+    run = make()
+    before = run.model_dump()
+    with pytest.raises(InvalidRunTransition):
+        run.cancel(_now(5))
+    assert run.model_dump() == before
+
+
+def test_a_cancelled_run_is_not_raised():
+    """A cancelled run has ended, so it keeps its priority."""
+    run = _cancelled_run()
+    assert run.raise_priority(TablePriority.P0) is False
+    assert run.priority is TablePriority.P3
+
+
+def test_a_cancelled_run_without_attempts_is_valid():
+    """A run cancelled before it started has no attempt, and that is consistent."""
+    run = _with(_run(), status=RunStatusName.CANCELLED, finished_at=_now(1))
+    assert (run.status, run.attempts) == (CancelledRunStatus(), ())
+
+
+def _retrying(n: int) -> OperationAttempt:
+    """Return attempt ``n``, failed, with a retry at the same size to follow."""
+    return _attempt(n, next_step=NextStep.RETRY_SAME, next_size=ComputeSize.S)
+
+
+@pytest.mark.parametrize(
+    ("status", "finished_at", "attempts"),
+    [
+        (RunStatusName.RETRY_WAITING, None, (_retrying(1),)),
+        (RunStatusName.CANCELLED, _now(1), (_attempt(1, next_step=NextStep.CANCELLED),)),
+        (RunStatusName.CANCELLED, _now(1), (_retrying(1),)),
+        (RunStatusName.FAILED, _now(1), (_retrying(1),)),
+        (RunStatusName.FAILED, _now(1), (_attempt(1, next_step=NextStep.CANCELLED),)),
+    ],
+    ids=[
+        "waiting",
+        "cancelled",
+        "cancelled-while-waiting",
+        "an-old-failed-run-with-a-retry",
+        "an-old-failed-run-that-was-cancelled",
+    ],
+)
+def test_a_failed_latest_attempt_reads_its_run_status(status, finished_at, attempts):
+    """A failed latest attempt reads waiting when it retries, cancelled when cancelled; a run stored failed loads."""
+    run = _with(_run(), status=status, finished_at=finished_at, attempts=attempts)
+    assert run.status.name is status
+
+
+@pytest.mark.parametrize(
+    ("status", "finished_at", "attempts"),
+    [
+        (RunStatusName.RETRY_WAITING, None, ()),
+        (RunStatusName.RETRY_WAITING, None, (_attempt(1),)),
+        (RunStatusName.RETRY_WAITING, None, (_attempt(1, next_step=NextStep.NOT_RETRIED),)),
+        (RunStatusName.RETRY_WAITING, None, (_attempt(1, AttemptStatus.QUEUED),)),
+        (RunStatusName.CANCELLED, _now(1), (_attempt(1),)),
+        (RunStatusName.CANCELLED, _now(1), (_attempt(1, AttemptStatus.RUNNING),)),
+        (RunStatusName.SUCCEEDED, _now(1), (_retrying(1),)),
+    ],
+)
+def test_waiting_and_cancelled_must_agree_with_the_latest_attempt(status, finished_at, attempts):
+    """A waiting run's latest attempt failed and retries; a cancelled run's was cancelled or retries, or it has none."""
+    with pytest.raises(InvariantViolation, match="latest attempt's status|has no attempt"):
+        _with(_run(), status=status, finished_at=finished_at, attempts=attempts)
+
+
+@pytest.mark.parametrize(
+    ("status", "finished_at", "attempts"),
+    [
+        (RunStatusName.RETRY_WAITING, _now(1), (_retrying(1),)),
+        (RunStatusName.CANCELLED, None, (_attempt(1, next_step=NextStep.CANCELLED),)),
+        (RunStatusName.CANCELLED, None, ()),
+    ],
+)
+def test_a_waiting_run_has_no_finish_time_and_a_cancelled_one_has_one(status, finished_at, attempts):
+    """Waiting to retry has not ended, so it has no finish time; a cancelled run has ended and has one."""
+    with pytest.raises(InvariantViolation, match="finish time"):
+        _with(_run(), status=status, finished_at=finished_at, attempts=attempts)

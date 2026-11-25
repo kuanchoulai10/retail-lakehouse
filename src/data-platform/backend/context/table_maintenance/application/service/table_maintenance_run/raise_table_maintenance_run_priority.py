@@ -32,7 +32,7 @@ class RaiseTableMaintenanceRunPriorityService(RaiseTableMaintenanceRunPriorityUs
     ) -> RaiseTableMaintenanceRunPriorityUseCaseOutput:
         """Raise the run to the priority asked for, or to its table's priority when none is named.
 
-        A pending run, a run in flight and a failed run with a retry to follow take the raise. The run is
+        A pending run, a run in flight and a run waiting to retry take the raise. The run is
         saved only when it was raised: an equal or lower priority, a run that has ended, or no priority for a
         table that no longer exists changes nothing.
         """

@@ -48,6 +48,6 @@ class RecordMaintenanceAttemptRunningService(RecordMaintenanceAttemptRunningUseC
         self._runs_repo.update(run)
         record = run.attempt_record(request.attempt)
         return RecordMaintenanceAttemptRunningUseCaseOutput(
-            status=run.status.value,
+            status=run.status.name.value,
             started_running_at=record.started_running_at if record else None,
         )

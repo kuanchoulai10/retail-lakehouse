@@ -219,7 +219,7 @@ def test_update_persists(repo: TableMaintenanceRunsSqlRepo):
     repo.update(run)
     loaded = repo.get(run.id)
     assert loaded is not None
-    assert loaded.status is RunStatusName.FAILED
+    assert loaded.status.name is RunStatusName.FAILED
     assert loaded.error == "boom"
     assert loaded.finished_at == NOW + timedelta(hours=1)
     assert loaded.attempts == run.attempts
@@ -508,3 +508,99 @@ def test_a_status_that_disagrees_with_the_attempts_is_refused_on_load():
     }
     with pytest.raises(InvariantViolation, match="latest attempt's status"):
         TableMaintenanceRunRowMapper.to_aggregate(cast("RowMapping", row))
+
+
+def _in_flight(run: TableMaintenanceRun) -> TableMaintenanceRun:
+    run.start_attempt(1, "job-1", NOW, size=ComputeSize.S)
+    return run
+
+
+def _running(run: TableMaintenanceRun) -> TableMaintenanceRun:
+    _in_flight(run).record_attempt_running(1, NOW, NOW + timedelta(minutes=1))
+    return run
+
+
+def _skipped(run: TableMaintenanceRun) -> TableMaintenanceRun:
+    run.skip("the table's maintenance stopped before this run started", NOW)
+    return run
+
+
+def _ended(run: TableMaintenanceRun, end: str) -> TableMaintenanceRun:
+    at = NOW + timedelta(minutes=2)
+    _running(run)
+    if end == "retry":
+        run.fail(1, "boom", at, next_attempt=NextAttempt(step=NextStep.RETRY_SAME, size=ComputeSize.S))
+    elif end == "fail":
+        run.fail(1, "boom", at, failure_class=FailureClass.OOM, next_attempt=NextAttempt(step=NextStep.ATTEMPTS_USED))
+    elif end == "cancel":
+        run.cancel_attempt(1, "the maintenance workflow was cancelled", at, event_log_finished=False)
+    else:
+        run.succeed(1, {"deleted_data_files_count": 2}, at, event_log_finished=True)
+    return run
+
+
+_IN_STATUS = {
+    RunStatusName.PENDING: lambda run: run,
+    RunStatusName.QUEUED: _in_flight,
+    RunStatusName.RUNNING: _running,
+    RunStatusName.RETRY_WAITING: lambda run: _ended(run, "retry"),
+    RunStatusName.SUCCEEDED: lambda run: _ended(run, "succeed"),
+    RunStatusName.FAILED: lambda run: _ended(run, "fail"),
+    RunStatusName.SKIPPED: _skipped,
+    RunStatusName.CANCELLED: lambda run: _ended(run, "cancel"),
+}
+
+
+@pytest.mark.parametrize("name", list(RunStatusName))
+def test_every_status_survives_the_database(repo: TableMaintenanceRunsSqlRepo, engine: Engine, name: RunStatusName):
+    """A run saved in any of the eight statuses loads back equal, its status stored as its name."""
+    run = _IN_STATUS[name](_run(R1))
+    assert run.status.name is name
+    repo.create(run)
+    loaded = repo.get(TableMaintenanceRunId(R1))
+    assert loaded == run
+    assert loaded is not None
+    assert (loaded.status, loaded.finished_at) == (run.status, run.finished_at)
+    assert loaded.model_dump() == run.model_dump()
+    with engine.connect() as conn:
+        assert conn.execute(text("select status from table_maintenance_runs")).scalar_one() == name.value
+
+
+def test_a_run_cancelled_before_it_started_survives_the_database(repo: TableMaintenanceRunsSqlRepo):
+    """A run cancelled while pending loads back cancelled, with no attempt."""
+    run = _run(R1)
+    run.cancel(NOW)
+    repo.create(run)
+    assert repo.get(TableMaintenanceRunId(R1)) == run
+
+
+@pytest.mark.parametrize("next_step", ["retry_same", "cancelled"])
+def test_an_old_failed_row_still_loads_as_failed(next_step: str):
+    """A row stored failed before a run could wait to retry or be cancelled still loads, as failed."""
+    row = {
+        "id": R1,
+        "table_uuid": "u1",
+        "execution_ref": f"wf-{R1}",
+        "trigger": "scheduled",
+        "operation": "expire_snapshots",
+        "priority": "P3",
+        "status": "failed",
+        "error": "boom",
+        "skip_reason": None,
+        "content_json": job_content(Op.EXPIRE_SNAPSHOTS).to_primitives(),
+        "metrics_json": {},
+        "attempts_json": [
+            {
+                **_STORED_ATTEMPT,
+                "status": "failed",
+                "finished_at": NOW.isoformat(),
+                "error": "boom",
+                "next_step": next_step,
+                "next_size": "S" if next_step == "retry_same" else None,
+            }
+        ],
+        "created_at": NOW,
+        "finished_at": NOW,
+    }
+    run = TableMaintenanceRunRowMapper.to_aggregate(cast("RowMapping", row))
+    assert run.status.name is RunStatusName.FAILED

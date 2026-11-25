@@ -22,6 +22,8 @@ from context.table_maintenance.application.domain.model.shared import (
 from context.table_maintenance.application.domain.model.table import Table, TableName
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     ExpireSnapshotsJobContent,
+    NextAttempt,
+    NextStep,
     RewriteDataFilesJobContent,
     RunStatusName,
     TableMaintenanceRun,
@@ -260,7 +262,7 @@ def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(runs_re
         )
     )
     stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
-    assert (stored.status, len(stored.attempts)) == (RunStatusName.FAILED, 1)
+    assert (stored.status.name, len(stored.attempts)) == (RunStatusName.RETRY_WAITING, 1)
     working = SubmitMaintenanceOperationService(runs_repo, tables_repo, submit_job)
     out = _submit(working, now, attempt=2)
     assert out.job_name == f"job-{RUN_1}-rewrite_data_files-2"
@@ -307,7 +309,7 @@ def test_retried_submit_after_a_lost_record_still_records_the_attempt(submitter,
 def test_submit_next_attempt_uses_a_new_job_name(submitter, run, submit_job, now):
     """The next attempt submits a job with a new name."""
     _submit(submitter, now)
-    run.fail(1, "boom", now)
+    run.fail(1, "boom", now, next_attempt=NextAttempt(step=NextStep.RETRY_SAME, size=ComputeSize.S))
     out = _submit(submitter, now, attempt=2)
     assert out.job_name == f"job-{RUN_1}-rewrite_data_files-2"
     assert len(submit_job.jobs) == 2
@@ -597,7 +599,7 @@ def test_submit_does_not_overwrite_a_run_cancelled_during_the_submit(tables_repo
     out = _submit(submitter, now)
     assert out.job_name == "job-cancelled"
     stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
-    assert stored.status is RunStatusName.FAILED
+    assert stored.status.name is RunStatusName.RETRY_WAITING
     assert [(a.attempt, a.job_name) for a in stored.attempts] == [(1, None)]
 
 

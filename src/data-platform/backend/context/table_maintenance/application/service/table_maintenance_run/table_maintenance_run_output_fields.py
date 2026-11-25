@@ -43,7 +43,7 @@ def table_maintenance_run_output_fields(run: TableMaintenanceRun) -> dict[str, A
         "trigger": run.trigger.value,
         "priority": run.priority.value,
         "operation": run.operation.value,
-        "status": run.status.value,
+        "status": run.status.name.value,
         "content": run.content.to_primitives(),
         "metrics": dict(run.metrics),
         "error": run.error,

@@ -21,6 +21,7 @@ from context.table_maintenance.application.domain.model.shared import (
 from context.table_maintenance.application.domain.model.table import AppliedPolicyRef, Table, TableName
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     FailureClass,
+    NextAttempt,
     NextStep,
     TableMaintenanceRun,
     TriggerType,
@@ -106,7 +107,7 @@ def _run(runs_repo, table, now, *sizes: ComputeSize) -> TableMaintenanceRun:
     )
     for attempt, size in enumerate(sizes, start=1):
         if attempt > 1:
-            run.fail(attempt - 1, "earlier", now)
+            run.fail(attempt - 1, "earlier", now, next_attempt=NextAttempt(step=NextStep.RETRY_SAME, size=size))
         run.start_attempt(attempt, f"job-{attempt}", now, size=size)
     runs_repo.create(run)
     return run
@@ -434,6 +435,55 @@ def test_another_operation_is_a_conflict(recorder, runs_repo, tables_repo, evide
     _run(runs_repo, table, now, ComputeSize.S)
     with pytest.raises(ConflictError, match=f"run {RUN_1} does not run expire_snapshots"):
         _record(recorder, now, operation="expire_snapshots")
-    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).status.value == "queued"
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).status.name.value == "queued"
     assert evidence.calls == []
     assert tables_repo.get(TableId("u-1")).operation_states == {}
+
+
+def test_a_replayed_failure_of_a_waiting_run_is_already_recorded(
+    recorder, runs_repo, tables_repo, table, evidence, event_log, log, now
+):
+    """The same failure recorded twice leaves the run waiting to retry, saved once, read once, counted once."""
+    _run(runs_repo, table, now, ComputeSize.S)
+    evidence.set_evidence(RUN_1, "rewrite_data_files", 1, _evidence())
+    track_calls(runs_repo, "update", "runs.update", log, lambda r: r.id.value)
+    first = _record(recorder, now)
+    second = _record(recorder, now + timedelta(minutes=1), error="replayed")
+    assert first == second
+    assert (second.status, second.next_step) == ("retry_waiting", "retry_larger")
+    assert log == [("runs.update", RUN_1)]
+    assert (len(evidence.calls), len(event_log.calls)) == (1, 1)
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).error == OOM
+    assert tables_repo.get(TableId("u-1")).operation_state(RDF).consecutive_failures == 1
+
+
+def test_a_replayed_failure_of_a_run_cancelled_while_waiting_is_already_recorded(
+    recorder, runs_repo, tables_repo, table, log, now
+):
+    """A failure replayed after the waiting run was cancelled answers cancelled and saves nothing."""
+    _run(runs_repo, table, now, ComputeSize.S)
+    _record(recorder, now)
+    run = runs_repo.get(TableMaintenanceRunId(RUN_1))
+    run.cancel(now + timedelta(minutes=1))
+    runs_repo.update(run)
+    track_calls(runs_repo, "update", "runs.update", log, lambda r: r.id.value)
+    out = _record(recorder, now + timedelta(minutes=2))
+    assert (out.status, out.next_step) == ("cancelled", "retry_larger")
+    assert log == []
+    assert tables_repo.get(TableId("u-1")).operation_state(RDF).consecutive_failures == 1
+
+
+def test_a_failure_that_retries_answers_retry_waiting(recorder, runs_repo, table, now):
+    """A failure with a retry to follow leaves the run waiting to retry, with no finish time."""
+    _run(runs_repo, table, now, ComputeSize.S)
+    out = _record(recorder, now)
+    assert out.status == "retry_waiting"
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).finished_at is None
+
+
+def test_a_failure_that_does_not_retry_answers_failed(recorder, runs_repo, table, now):
+    """A failure with no retry to follow fails and finishes the run."""
+    _run(runs_repo, table, now, ComputeSize.S)
+    out = _record(recorder, now, error="boom", max_attempts=1)
+    assert (out.status, out.next_step) == ("failed", "attempts_used")
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).finished_at == now

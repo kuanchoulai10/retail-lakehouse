@@ -33,6 +33,12 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.jo
 from context.table_maintenance.application.domain.model.table_maintenance_run.status.invalid_run_transition import (
     InvalidRunTransition,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_run.status.pending_run_status import (
+    PendingRunStatus,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_run.status.run_status_field import (
+    RunStatusField,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_run.status.run_status_name import (
     RunStatusName,
 )
@@ -46,12 +52,9 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table_maintenance_run.attempt.next_attempt import (
         NextAttempt,
     )
-
-_IN_FLIGHT = frozenset({RunStatusName.QUEUED, RunStatusName.RUNNING})
-
-_TERMINAL = frozenset({RunStatusName.SUCCEEDED, RunStatusName.FAILED, RunStatusName.SKIPPED})
-
-_NEVER_STARTED = frozenset({RunStatusName.PENDING, RunStatusName.SKIPPED})
+    from context.table_maintenance.application.domain.model.table_maintenance_run.status.run_status import (
+        RunStatus,
+    )
 
 
 def _misplaced_content(operation: MaintenanceOperation, content: MaintenanceJobContent) -> str | None:
@@ -61,12 +64,34 @@ def _misplaced_content(operation: MaintenanceOperation, content: MaintenanceJobC
     return None
 
 
+def _statuses_agreeing_with(latest: OperationAttempt | None) -> frozenset[RunStatusName]:
+    """Return the run statuses that agree with the run's latest attempt, or with its having none.
+
+    A run with no attempt is pending, skipped or cancelled. A failed attempt with a retry to follow leaves the
+    run waiting to retry, or cancelled when it was cancelled while it waited; a cancelled attempt leaves it
+    cancelled. A run stored before those two statuses existed reads failed for either, so failed agrees with
+    every failed attempt. Any other attempt gives the run its own status.
+    """
+    if latest is None:
+        return frozenset({RunStatusName.PENDING, RunStatusName.SKIPPED, RunStatusName.CANCELLED})
+    if latest.status is not AttemptStatus.FAILED:
+        return frozenset({RunStatusName(latest.status.value)})
+    if latest.next_step is not None and latest.next_step.retries:
+        return frozenset({RunStatusName.RETRY_WAITING, RunStatusName.CANCELLED, RunStatusName.FAILED})
+    if latest.next_step is NextStep.CANCELLED:
+        return frozenset({RunStatusName.CANCELLED, RunStatusName.FAILED})
+    return frozenset({RunStatusName.FAILED})
+
+
 class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
     """Track one maintenance operation against a table, its attempts as its timeline.
 
-    ``status`` is the run's one status: pending until the first attempt is submitted, then the status of
-    its latest attempt, or skipped when it never started. A run whose attempt failed and will be retried
-    reads failed, with a finish time, until the next attempt is submitted. ``content`` is what every
+    ``status`` is the run's one status, a ``RunStatus`` that says which changes it allows and what each
+    leads to; every change of status asks it first. A run is pending until its first attempt is submitted,
+    then queued and running with its attempt. A failed attempt with a retry to follow leaves the run
+    waiting to retry, with no finish time, until the next attempt is submitted; one with none fails it.
+    The run ends succeeded, failed, cancelled, or skipped when it never started, and has a finish time
+    exactly when it has ended. ``content`` is what every
     attempt does: the settings of its operation and, for a compaction, the partitions it rewrites (none
     means the whole table). ``metrics`` holds the numbers the job returned. ``error`` is the latest
     failure's error and ``skip_reason`` why a skipped run never started.
@@ -79,7 +104,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
     created_at: datetime
     execution_ref: str
     priority: TablePriority = TablePriority.P3
-    status: RunStatusName = RunStatusName.PENDING
+    status: RunStatusField = PendingRunStatus()
     content: MaintenanceJobContent
     metrics: ReadOnlyMapping[str, Any] = Field(default_factory=dict)
     error: str | None = None
@@ -106,35 +131,34 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
 
     @model_validator(mode="after")
     def _a_skip_reason_only_when_skipped(self) -> TableMaintenanceRun:
-        if (self.skip_reason is not None) != (self.status is RunStatusName.SKIPPED):
-            msg = f"a run has a skip reason exactly when it is skipped: run {self.id} is {self.status}"
+        if (self.skip_reason is not None) != (self.status.name is RunStatusName.SKIPPED):
+            msg = f"a run has a skip reason exactly when it is skipped: run {self.id} is {self.status.name}"
             raise ValueError(msg)
         return self
 
     @model_validator(mode="after")
     def _a_finish_time_only_when_terminal(self) -> TableMaintenanceRun:
-        if (self.finished_at is not None) != (self.status in _TERMINAL):
+        if (self.finished_at is not None) != self.status.is_terminal:
             msg = (
-                f"a run has a finish time exactly when it is succeeded, failed or skipped: "
-                f"run {self.id} is {self.status}"
+                f"a run has a finish time exactly when it has ended (succeeded, failed, skipped or cancelled): "
+                f"run {self.id} is {self.status.name}"
             )
             raise ValueError(msg)
         return self
 
     @model_validator(mode="after")
     def _status_is_the_latest_attempts(self) -> TableMaintenanceRun:
-        if not self.attempts:
-            if self.status not in _NEVER_STARTED:
-                msg = f"run {self.id} has no attempt, so it is pending or skipped, not {self.status}"
-                raise ValueError(msg)
-        elif self.status.value != self.attempts[-1].status.value:
-            latest = self.attempts[-1]
+        latest = self.attempts[-1] if self.attempts else None
+        if self.status.name in _statuses_agreeing_with(latest):
+            return self
+        if latest is None:
+            msg = f"run {self.id} has no attempt, so it is pending, skipped or cancelled, not {self.status.name}"
+        else:
             msg = (
-                f"a run reads its latest attempt's status: run {self.id} is {self.status}, "
-                f"attempt {latest.attempt} is {latest.status}"
+                f"a run reads its latest attempt's status: run {self.id} is {self.status.name}, "
+                f"attempt {latest.attempt} is {latest.status} with next step {latest.next_step}"
             )
-            raise ValueError(msg)
-        return self
+        raise ValueError(msg)
 
     @classmethod
     def create(
@@ -194,16 +218,20 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
 
         The attempt stays queued until ``record_attempt_running`` says its coordinator runs. Starting the
         attempt that is already queued or running is a no-op, except that a given ``job_name`` is
-        attached when none is recorded yet. A new attempt clears the previous attempt's outcome from the
-        run.
+        attached when none is recorded yet. A pending run starts its first attempt and a run waiting to
+        retry its next one; no other run starts one. A new attempt clears the previous attempt's outcome
+        from the run.
         """
-        if attempt == self.current_attempt and self.status in _IN_FLIGHT:
+        if attempt == self.current_attempt and self.status.is_in_flight:
             if job_name is not None:
                 self.attach_job_name(attempt, job_name)
             return
-        self._require_startable(attempt)
+        queued = self.status.start_attempt()
+        if attempt != self.current_attempt + 1:
+            msg = f"cannot start attempt {attempt} of run {self.id}: its next attempt is {self.current_attempt + 1}"
+            raise InvalidRunTransition(msg)
         self._assign_together(
-            status=RunStatusName.QUEUED,
+            status=queued,
             finished_at=None,
             error=None,
             metrics={},
@@ -219,11 +247,10 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         """Raise the run to ``priority`` and tell whether it was raised.
 
         Only a priority that outranks the run's raises it, and only while the run has not ended; an equal
-        or lower one, or an ended run, changes nothing. A run ends when it succeeded, was skipped, or failed
-        with no retry to follow; a run waiting out the backoff before its retry still takes a raise, so the
-        retry submits at the new priority.
+        or lower one, or an ended run, changes nothing. A run ends when it succeeded, failed, was cancelled
+        or was skipped; a run waiting to retry still takes a raise, so the retry submits at the new priority.
         """
-        if self._ended or not priority.outranks(self.priority):
+        if self.status.is_terminal or not priority.outranks(self.priority):
             return False
         self.priority = priority
         return True
@@ -252,7 +279,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
                 )
             return
         self._assign_together(
-            status=RunStatusName.RUNNING,
+            status=self.status.mark_running(),
             attempts=self._with_attempt(
                 attempt,
                 status=AttemptStatus.RUNNING,
@@ -262,10 +289,10 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
 
     def attach_job_name(self, attempt: int, job_name: str) -> None:
         """Record the job of the queued or running attempt; repeating the same name is a no-op."""
-        if attempt != self.current_attempt or self.status not in _IN_FLIGHT:
+        if attempt != self.current_attempt or not self.status.is_in_flight:
             msg = (
                 f"cannot attach a job to attempt {attempt} of run {self.id} "
-                f"(status {self.status}, attempts {self.current_attempt})"
+                f"(status {self.status.name}, attempts {self.current_attempt})"
             )
             raise InvalidRunTransition(msg)
         current = self.attempts[-1].job_name
@@ -287,11 +314,16 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
     ) -> None:
         """Record that an attempt succeeded, with the numbers the procedure returned; nothing follows it.
 
-        ``started_running_at`` fills the attempt's running time when it has none.
+        Recording the success again, or a result of an earlier attempt, is a no-op. ``started_running_at``
+        fills the attempt's running time when it has none.
         """
-        self._finish(
-            attempt,
-            RunStatusName.SUCCEEDED,
+        record = self._current_record(attempt)
+        if record is None or record.status is AttemptStatus.SUCCEEDED:
+            return
+        self._end_attempt(
+            record,
+            self.status.succeed(),
+            AttemptStatus.SUCCEEDED,
             now,
             started_running_at=started_running_at,
             metrics=dict(metrics),
@@ -315,13 +347,19 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
     ) -> None:
         """Record that an attempt failed, why, and what follows it when that is decided.
 
-        The run reads failed, with a finish time, even when a retry follows; the retry's
-        ``start_attempt`` queues it again. ``started_running_at`` fills the attempt's running time when
-        it has none.
+        A retry to follow leaves the run waiting to retry, with no finish time, until ``start_attempt``
+        queues the next attempt; with none the run fails and finishes. Recording a failure of an attempt
+        already failed, or a result of an earlier attempt, is a no-op. ``started_running_at`` fills the
+        attempt's running time when it has none.
         """
-        self._finish(
-            attempt,
-            RunStatusName.FAILED,
+        record = self._current_record(attempt)
+        if record is None or record.status is AttemptStatus.FAILED:
+            return
+        retries = next_attempt is not None and next_attempt.step.retries
+        self._end_attempt(
+            record,
+            self.status.fail(retries=retries),
+            AttemptStatus.FAILED,
             now,
             started_running_at=started_running_at,
             metrics={},
@@ -332,20 +370,54 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             next_size=next_attempt.size if next_attempt else None,
         )
 
+    def cancel_attempt(
+        self,
+        attempt: int,
+        error: str,
+        now: datetime,
+        *,
+        started_running_at: datetime | None = None,
+        event_log_finished: bool | None = None,
+    ) -> None:
+        """Record that the attempt in flight was cancelled: it failed as cancelled, and the run is cancelled.
+
+        Cancelling an attempt already failed, or an earlier attempt, is a no-op. ``started_running_at``
+        fills the attempt's running time when it has none.
+        """
+        record = self._current_record(attempt)
+        if record is None or record.status is AttemptStatus.FAILED:
+            return
+        self._end_attempt(
+            record,
+            self.status.cancel(),
+            AttemptStatus.FAILED,
+            now,
+            started_running_at=started_running_at,
+            metrics={},
+            error=error,
+            failure_class=FailureClass.CANCELLED,
+            event_log_finished=event_log_finished,
+            next_step=NextStep.CANCELLED,
+            next_size=None,
+        )
+
+    def cancel(self, now: datetime) -> None:
+        """Cancel a run with no attempt in flight: one still pending or waiting to retry.
+
+        A run whose attempt is queued or running is cancelled through that attempt, with
+        ``cancel_attempt``; a run that has ended cannot be cancelled.
+        """
+        if self.status.is_in_flight:
+            msg = (
+                f"run {self.id} has attempt {self.current_attempt} in flight ({self.status.name}): "
+                f"cancel it with cancel_attempt"
+            )
+            raise InvalidRunTransition(msg)
+        self._assign_together(status=self.status.cancel(), finished_at=now)
+
     def skip(self, reason: str, now: datetime) -> None:
         """Skip a run that never started, saying why."""
-        if self.status is not RunStatusName.PENDING:
-            msg = f"cannot skip run {self.id} in status {self.status}"
-            raise InvalidRunTransition(msg)
-        self._assign_together(status=RunStatusName.SKIPPED, skip_reason=reason, finished_at=now)
-
-    @property
-    def _ended(self) -> bool:
-        """Return whether nothing more happens to the run: succeeded, skipped, or failed with no retry."""
-        if self.status is RunStatusName.FAILED:
-            next_step = self.attempts[-1].next_step if self.attempts else None
-            return next_step is None or not next_step.retries
-        return self.status in _TERMINAL
+        self._assign_together(status=self.status.skip(), skip_reason=reason, finished_at=now)
 
     def _current_record(self, attempt: int) -> OperationAttempt | None:
         """Return the current attempt when ``attempt`` is it, None for an earlier one; refuse a later one."""
@@ -356,10 +428,11 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             raise InvalidRunTransition(msg)
         return self.attempts[-1]
 
-    def _finish(
+    def _end_attempt(
         self,
-        attempt: int,
-        status: RunStatusName,
+        record: OperationAttempt,
+        status: RunStatus,
+        attempt_status: AttemptStatus,
         now: datetime,
         *,
         started_running_at: datetime | None,
@@ -367,20 +440,18 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         error: str | None,
         **outcome: object,
     ) -> None:
-        record = self._current_record(attempt)
-        if record is None or self.status is status:
-            return
-        if self.status not in _IN_FLIGHT:
-            msg = f"cannot mark run {self.id} {status} from status {self.status}"
-            raise InvalidRunTransition(msg)
+        """End the attempt ``record`` as ``attempt_status`` and move the run to ``status``.
+
+        The run gets a finish time only when ``status`` ends it, and loses the one it had otherwise.
+        """
         self._assign_together(
             status=status,
-            finished_at=now,
+            finished_at=now if status.is_terminal else None,
             metrics=metrics,
             error=error,
             attempts=self._with_attempt(
-                attempt,
-                status=AttemptStatus(status.value),
+                record.attempt,
+                status=attempt_status,
                 finished_at=now,
                 started_running_at=self._running_time(record, started_running_at, now),
                 error=error,
@@ -402,12 +473,3 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
     def _clamp(value: datetime, lower: datetime, upper: datetime) -> datetime:
         """Return ``value`` within ``lower`` and ``upper``, and never below ``lower`` when ``upper`` is earlier."""
         return min(max(value, lower), max(upper, lower))
-
-    def _require_startable(self, attempt: int) -> None:
-        startable = self.status in (RunStatusName.PENDING, RunStatusName.FAILED)
-        if attempt != self.current_attempt + 1 or not startable:
-            msg = (
-                f"cannot start attempt {attempt} of run {self.id} "
-                f"(status {self.status}, attempts {self.current_attempt})"
-            )
-            raise InvalidRunTransition(msg)
