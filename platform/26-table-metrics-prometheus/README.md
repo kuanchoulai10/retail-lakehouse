@@ -24,7 +24,7 @@ kubectl rollout restart deployment/table-metrics-prometheus --namespace table-me
 
 ## Reader
 
-The table maintenance API reads `query_range` from `http://table-metrics-prometheus.table-metrics.svc.cluster.local:9090` (`metrics.prometheusUrl` in the wave 25 chart, rendered as `GLAC_METRICS__PROMETHEUS_URL`). Wave 26 runs after wave 25, which holds the API it scrapes.
+The table maintenance API reads `query_range` from `http://table-metrics-prometheus.table-metrics.svc.cluster.local:9090` (the backend's default for `metrics.prometheus_url`, set with `config.metrics.prometheus_url` in the wave 25 chart). Wave 26 runs after wave 25, which holds the API it scrapes.
 
 ## Deploy
 

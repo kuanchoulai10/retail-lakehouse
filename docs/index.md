@@ -16,7 +16,7 @@ A self-hosted retail lakehouse that runs end-to-end on a single Mac, built to sh
 === "Software Engineering (DDD)"
 
     - **Strict Clean Architecture, enforced in CI.** `import-linter` blocks any dependency that crosses layers in the wrong direction (`adapter` to `application` to `domain`, no skipping).
-    - **Single image, three roles.** The same container runs as API, Scheduler, or Outbox publisher depending on the `GLAC_COMPONENT` env var, following 12-factor.
+    - **Single image, one subcommand per role.** The same image runs as the API, the Temporal worker, the catalog event consumer or the schema migration (`glac api|worker|event-consumer|migrate`), each reading its own settings file and refusing a setting it does not take.
     - **Full DDD building blocks.** `AggregateRoot`, `ValueObject`, `DomainEvent`, `Repository`, and `Gateway` paired with an explicit outbound port-adapter naming convention (`{Aggregate}{Tech}Repo`, `{Verb}{Noun}{Tech}Gateway`).
 
 === "Data Engineering"
