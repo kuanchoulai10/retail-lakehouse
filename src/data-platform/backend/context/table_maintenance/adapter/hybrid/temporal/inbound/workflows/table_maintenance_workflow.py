@@ -48,6 +48,8 @@ _STARTED_STATES = frozenset({"RUNNING", "COMPLETED"})
 _PLANNED_POLICY_KEYS = ("policy_id", "policy_name", "policy_version", "policy_target")
 _NOT_REACHED = "the table's maintenance stopped before this run started"
 _PENDING = "pending"
+_RETRY_WAITING = "retry_waiting"
+_RETRYING_STEPS = frozenset({MaintenanceNextStep.RETRY_SAME, MaintenanceNextStep.RETRY_LARGER})
 
 
 @workflow.defn(name=TABLE_MAINTENANCE_WORKFLOW)
@@ -91,8 +93,10 @@ class TableMaintenanceWorkflow:
     the attempt it interrupts the same way, without a bound and even if another
     cancel arrives meanwhile, before the run reports; recording that attempt cancels the run. A
     cancellation while a run waits out the backoff before its retry, with no attempt in flight,
-    cancels that run itself (``cancel_maintenance_run``; a failed cancel is logged), so a run never
-    stays waiting to retry. The first attempt runs at the plan's start size.
+    cancels that run itself (``cancel_maintenance_run``; a failed cancel is logged), and so does one
+    that arrives while a failed attempt is recorded: that record runs to its end first, and a reply that
+    retries is followed by the cancel of the run. So a run never stays waiting to retry. The first
+    attempt runs at the plan's start size.
     Recording a failed attempt names how it ended and returns what follows it: an
     out-of-memory failure is retried at the next size, other failures at the same size, and a
     failure that needs a person, is not retried or may still be running ends the run at once; a
@@ -200,7 +204,7 @@ class TableMaintenanceWorkflow:
             outcome = await self._run_attempt(operation, attempt, size)
             if (outcome.operation, outcome.attempt) in self._settled_attempts:
                 return
-            decision = await self._record(outcome) or {}
+            decision = await self._record_outcome(outcome)
             if outcome.succeeded:
                 return
             if decision.get("status") == _PENDING:
@@ -213,6 +217,23 @@ class TableMaintenanceWorkflow:
                 size = decision.get("next_size") or size
             if attempt < self._policy.max_attempts:
                 await self._wait_to_retry(outcome.operation, attempt)
+
+    async def _record_outcome(self, outcome: OperationResultSignal) -> dict[str, Any]:
+        """Record the attempt's outcome and return the reply, empty when it was not recorded.
+
+        A failure's record runs to its end even when the workflow is cancelled meanwhile, and the cancel
+        goes on once it ended: a reply that retries left the run waiting to retry, with no attempt in flight
+        whose record could end it, so the run is cancelled first (``cancel_maintenance_run``).
+        """
+        if outcome.succeeded:
+            return await self._record(outcome) or {}
+        reply, cancelled = await _to_the_end_noting_a_cancel(self._record(outcome))
+        decision = reply or {}
+        if cancelled:
+            if _retries(decision):
+                await self._cancel_waiting_run(outcome.operation)
+            raise asyncio.CancelledError
+        return decision
 
     async def _wait_to_retry(self, name: str, attempt: int) -> None:
         """Wait out the backoff after ``attempt``; a cancel meanwhile cancels the run of ``name``, then goes on.
@@ -832,6 +853,24 @@ async def _to_the_end[T](work: Coroutine[Any, Any, T]) -> T:
         except asyncio.CancelledError:
             if task.cancelled():
                 raise
+
+
+async def _to_the_end_noting_a_cancel[T](work: Coroutine[Any, Any, T]) -> tuple[T, bool]:
+    """Run ``work`` to its end even when the workflow is cancelled while it runs, and tell whether it was."""
+    task = asyncio.ensure_future(work)
+    cancelled = False
+    while True:
+        try:
+            return await asyncio.shield(task), cancelled
+        except asyncio.CancelledError:
+            if task.cancelled():
+                raise
+            cancelled = True
+
+
+def _retries(decision: dict[str, Any]) -> bool:
+    """Tell whether a record's reply left the run waiting to retry."""
+    return decision.get("status") == _RETRY_WAITING or decision.get("next_step") in _RETRYING_STEPS
 
 
 def _raise_if_cancelled(error: ActivityError) -> None:

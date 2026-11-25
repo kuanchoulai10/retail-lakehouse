@@ -2498,6 +2498,85 @@ def test_a_failed_cancel_during_the_retry_wait_still_ends_the_workflow():
     _run(scenario)
 
 
+async def _cancel_reached_the_workflow(h: Harness) -> bool:
+    """Tell whether the workflow finished a workflow task after the cancel request: it has seen the cancel."""
+    events = list((await h.client.get_workflow_handle(WORKFLOW_ID).fetch_history()).events)
+    requested = [i for i, e in enumerate(events) if e.HasField("workflow_execution_cancel_requested_event_attributes")]
+    return bool(requested) and any(
+        event.HasField("workflow_task_completed_event_attributes") for event in events[requested[0] :]
+    )
+
+
+async def _cancel_while_recording_the_first_failure(h: Harness, reply: dict, *, succeeded: bool = False) -> None:
+    """End run 1's first attempt, and cancel the workflow inside its record, holding it until the cancel is seen.
+
+    The record replies ``reply``. The workflow is waited for until it ends cancelled.
+    """
+    h.fakes.callbacks = {(COMPACTION, 1): [(1, succeeded, None if succeeded else "boom")]}
+    h.fakes.record_replies = {(COMPACTION, 1): reply}
+
+    async def hook(request: dict) -> None:
+        if (request["operation"], request["attempt"]) == (COMPACTION, 1):
+            await h.client.get_workflow_handle(WORKFLOW_ID).cancel()
+            await eventually(lambda: _cancel_reached_the_workflow(h), bool, timeout=REAL_TIMEOUT_SECONDS)
+
+    h.fakes.record_hook = hook
+    handle = await h.start_maintenance(COMPACTION, EXPIRE)
+    with pytest.raises(WorkflowFailureError) as caught:
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+    assert isinstance(caught.value.cause, CancelledError)
+
+
+def test_a_cancel_while_a_retrying_failure_is_recorded_cancels_the_waiting_run():
+    """A cancel during the record of a failure that retries lets the record end, then cancels the run it left waiting.
+
+    The record is not cancelled, no retry is submitted, the run never reached is skipped and the parent is told.
+    """
+
+    async def scenario(h: Harness) -> None:
+        await _cancel_while_recording_the_first_failure(
+            h, {"status": "retry_waiting", "failure_class": "other", "next_step": "retry_same"}
+        )
+
+        assert [c["run_id"] for c in h.fakes.cancels] == [RUN_IDS[0]]
+        assert not await _cancel_requested_for_an_activity(h)
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1)]
+        assert [s["run_id"] for s in h.fakes.skips] == [RUN_IDS[1]]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
+
+    _run(scenario)
+
+
+def test_a_cancel_while_a_failure_that_does_not_retry_is_recorded_cancels_no_run():
+    """A cancel during the record of a failure that ends the run lets the record end; no run is cancelled on top."""
+
+    async def scenario(h: Harness) -> None:
+        await _cancel_while_recording_the_first_failure(
+            h, {"status": "failed", "failure_class": "other", "next_step": "not_retried"}
+        )
+
+        assert h.fakes.cancels == []
+        assert not await _cancel_requested_for_an_activity(h)
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1)]
+        assert [s["run_id"] for s in h.fakes.skips] == [RUN_IDS[1]]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
+
+    _run(scenario)
+
+
+def test_a_cancel_while_a_success_is_recorded_cancels_no_run():
+    """A cancel during the record of a success ends the workflow without cancelling the run."""
+
+    async def scenario(h: Harness) -> None:
+        await _cancel_while_recording_the_first_failure(h, {"status": "succeeded"}, succeeded=True)
+
+        assert h.fakes.cancels == []
+        assert [s["run_id"] for s in h.fakes.skips] == [RUN_IDS[1]]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
+
+    _run(scenario)
+
+
 def test_a_cancel_during_an_attempt_cancels_no_run_by_itself():
     """A cancel that interrupts an attempt is recorded on that attempt; the run is not cancelled a second way."""
 
