@@ -53,6 +53,8 @@ docker build -t console:dev -f src/data-platform/frontend/Dockerfile .
 
 The image serves the built files from nginx (`nginx:1.29-alpine`) as a non-root user on port
 8080: `/` redirects to `/console/` (a relative redirect), `/console/` serves the app (unknown paths fall back to `index.html` for client-side
-routes) and `/console/api/` is proxied to
-`table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000`. nginx resolves that
+routes) and `/console/api/` is proxied to `CONSOLE_API_UPSTREAM` (default
+`http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000`; the chart sets it
+to its own API). The nginx image's start-up step writes it into `console.conf.template`, the
+server block, at `/tmp/console.conf`, substituting only `CONSOLE_` variables. nginx resolves that
 name at startup, so the container only starts where it resolves (inside the cluster).

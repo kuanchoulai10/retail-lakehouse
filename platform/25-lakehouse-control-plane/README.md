@@ -1,18 +1,18 @@
 # Lakehouse Control Plane
 
-Wave 25. Creates the `lakehouse-control-plane` and `lakehouse-maintenance-operations` namespaces and deploys the table maintenance control plane as the Helm release `table-maintenance` (`chart/`).
+Wave 25. Creates the `lakehouse-control-plane` and `lakehouse-maintenance-operations` namespaces and deploys the table maintenance control plane as the Helm release `table-maintenance` (`chart/`). Its PostgreSQL is the wave before, `20-table-maintenance-db`; the chart only connects to it.
 
 ## Deployed Resources
 
 ```
 Namespace: lakehouse-control-plane
-  Deployment table-maintenance-db             PostgreSQL 17.11 (PVC, Recreate), Service table-maintenance-db:5432
   Job        table-maintenance-migrate-<rev>  creates the schema, seeds the "default" maintenance and discovery policies
   Deployment table-maintenance-api            Service table-maintenance-api:8000
   Deployment table-maintenance-worker         Temporal worker (task queue table-maintenance)
   Deployment table-maintenance-event-consumer Polaris catalog events from Kafka (1 replica)
-  Deployment console                          data platform console (nginx), Service console:8080
-  HTTPRoute  console                          /console on platform-gateway (istio-ingress)
+  Deployment table-maintenance-console        data platform console (nginx), Service table-maintenance-console:8080
+  HTTPRoute  table-maintenance-console        /console on platform-gateway (istio-ingress)
+  Pod        table-maintenance-test-connection  helm test hook: calls the API's /healthz, deleted once it passes
 Namespace: lakehouse-maintenance-operations
   ServiceAccount/Role/RoleBinding table-maintenance-spark   Spark driver
   Role/RoleBinding table-maintenance-worker                 worker may manage SparkApplications
@@ -31,27 +31,48 @@ KUBE_CONTEXT=retail-lakehouse bash platform/25-lakehouse-control-plane/validate.
 `bootstrap.sh`:
 
 1. creates both namespaces;
-2. creates Secret `table-maintenance-db` (random password) only if it is missing;
-3. copies the Polaris root credential (`polaris-bootstrap-secret`, as `client_id:client_secret`) into Secret `table-maintenance-polaris-credential`, and the RustFS credentials into Secret `table-maintenance-s3`, in both namespaces;
-4. runs `build.sh`, which builds `table-maintenance-backend`, `table-maintenance-spark` and `console` (`src/data-platform/frontend`), tags them with the short git SHA of the last commit touching their source (`-dirty` when uncommitted) and loads them into minikube;
-5. runs `helm upgrade --install table-maintenance ./chart --wait`.
+2. copies the Polaris root credential (`polaris-bootstrap-secret`, as `client_id:client_secret`) into Secret `table-maintenance-polaris-credential`, and the RustFS credentials into Secret `table-maintenance-s3`, in both namespaces;
+3. runs `build.sh`, which builds `table-maintenance-backend`, `table-maintenance-spark` and `console` (`src/data-platform/frontend`), tags them with the short git SHA of the last commit touching their source (`-dirty` when uncommitted) and loads them into minikube;
+4. runs `helm upgrade --install table-maintenance ./chart --wait`.
+
+The Secret `table-maintenance-db` and the database come from `20-table-maintenance-db`, which `tasks/apps.yml` validates first. `validate.sh` ends its rollout checks with `helm test table-maintenance` (timeout `HELM_TEST_TIMEOUT`, default `120s`, apart from `TIMEOUT` because `tasks/apps.yml` runs `validate.sh` as a 10-second status check).
 
 The Spark operator (wave 11) must watch `lakehouse-maintenance-operations` (`spark.jobNamespaces`).
 
 ## Console
 
-The console is a static app served by nginx at `/console/`; nginx proxies `/console/api/` to `table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000`, so the browser talks to one origin. nginx resolves that name at start-up, which works because the api Service is in the same release. The `console` HTTPRoute attaches to `platform-gateway` (wave `12-platform-gateway`) with path prefix `/console`; `bootstrap.sh` labels `lakehouse-control-plane` with `gateway::allow_routes` so the Gateway admits it. nginx redirects `/console` to `/console/` with a relative `Location` (`absolute_redirect off`), so the redirect keeps whatever scheme and port the browser used.
+The console is a static app served by nginx at `/console/`; nginx proxies `/console/api/` to this release's API, so the browser talks to one origin. The chart passes the API's address (`<release API name>.<namespace>.svc.cluster.local:<api.port>`) in `CONSOLE_API_UPSTREAM`, and the nginx image writes it into the server block at start-up; nginx resolves the name then, which is why a console without the API fails before install. The `table-maintenance-console` HTTPRoute attaches to `platform-gateway` (wave `12-platform-gateway`) with path prefix `/console`; `bootstrap.sh` labels `lakehouse-control-plane` with `gateway::allow_routes` so the Gateway admits it. nginx redirects `/console` to `/console/` with a relative `Location` (`absolute_redirect off`), so the redirect keeps whatever scheme and port the browser used.
 
 ```
 kubectl port-forward service/platform-gateway-istio 8591:80 --namespace istio-ingress --context retail-lakehouse
 open http://localhost:8591/console/
 ```
 
-`validate.sh` waits for the `console` rollout and the route's `Accepted` condition, then curls the gateway (`gateway::curl`) and checks that `/console`, `/console/` and the deep link `/console/tables/x/commits` return the app and `/console/api/v1/tables` returns a JSON array.
+`validate.sh` waits for the `table-maintenance-console` rollout and the route's `Accepted` condition, then curls the gateway (`gateway::curl`) and checks that `/console`, `/console/` and the deep link `/console/tables/x/commits` return the app and `/console/api/v1/tables` returns a JSON array.
 
 ## Ordering
 
-The `migrate` Job is a regular Job named with the Helm release revision, so each upgrade runs it again. A pre-install hook would run before the PostgreSQL Deployment exists. The Job waits for `pg_isready`. The api, worker and event-consumer pods have an init container that waits until the `default` maintenance policy and the `default` discovery policy (`dp-00000000000000000000000000`) both exist, which means the migration finished.
+The `migrate` Job is a regular Job named with the Helm release revision, so each upgrade runs it again. The Job waits for `pg_isready` on `database.host`. The api, worker and event-consumer pods have an init container that waits until the `default` maintenance policy and the `default` discovery policy (`dp-00000000000000000000000000`) both exist, which means the migration finished.
+
+## Chart values
+
+The chart follows the conventions of open-source charts such as Trino's (`trinodb/charts`). **Everything a deploy may need to change is a value, so nobody edits a template.**
+
+| Block | What it sets |
+|---|---|
+| `nameOverride`, `fullnameOverride` | every object's name: `<release>-table-maintenance-<role>`, or `<release>-<role>` when the release name already holds the chart name (`table-maintenance-api` for the release `table-maintenance`) |
+| `image.registry`, `image.<backend\|spark\|console>.{repository,tag,digest}`, `image.pullPolicy`, `imagePullSecrets` | `[registry/]repository:tag[@digest]`; an empty tag is the chart's `appVersion`, and the tag is the pods' `app.kubernetes.io/version` |
+| `api`, `worker`, `eventConsumer`, `migrate`, `console` | one block per role: `enabled`, `replicas` (not `migrate`), `labels` / `annotations` (the workload), `podLabels` / `podAnnotations`, `nodeSelector`, `tolerations`, `affinity`, `resources`, and the role's `env`, `envFrom`, `secretMounts` |
+| `env`, `envFrom`, `secretMounts`, `commonLabels`, `extraManifests` | the same for every pod (merged by name: a global entry replaces one of the chart's own, a role's entry replaces both, and each name appears once), labels on every object, and further manifests rendered with templating |
+| `worker.serviceAccount`, `spark.serviceAccount` | `create`, `name`, `annotations`: use an existing ServiceAccount by name |
+| `rbac.create`, `volcano.create` | leave the Roles, or the cluster-scoped queues and PriorityClasses, to someone else; the names in `volcano.queues.*.name` and `volcano.priorityClassPrefix` default to the release's |
+| `database` | `host`, `port`, `name`, `user`, `existingSecret`, `secretKey`, and `clientImage` for the two wait init containers |
+
+**Values that contradict each other fail before install, with the value to change:** a console or a worker without the API, `eventConsumer.replicas` above 1, an empty `database.existingSecret`, and an existing ServiceAccount without its name. `values.schema.json` refuses a key the chart does not know (`worker.replica`), a value of the wrong type (an image tag that is a number: `bootstrap.sh` passes tags with `--set-string` so a short SHA of digits stays a string), and a label key under `app.kubernetes.io/` or `helm.sh/` in `commonLabels`, `<role>.labels` or `<role>.podLabels`, since the chart sets those itself; each error names the key.
+
+## Chart tests
+
+`task -d platform/25-lakehouse-control-plane unit-test` runs, without a cluster, `helm lint`, the helm-unittest suites in `chart/tests/` and a render of each scenario in `chart/ci/` (the defaults, a renamed release, the API alone, and one where RBAC, Volcano, the ServiceAccounts and the database belong to someone else with every pass-through set). The pre-pr gate runs it on its backend side. `scripts/check_k8s_labels.py` (pre-commit hook `k8s-labels`) checks the label standard on each scenario's render. helm-unittest is a Helm plugin pinned at `1.2.1`; the task stops with the install steps when it is missing, and the install verifies the release's signature against the project's `public-key.asc`. On the cluster, `validate.sh` runs `helm test`.
 
 ## Configuration
 
