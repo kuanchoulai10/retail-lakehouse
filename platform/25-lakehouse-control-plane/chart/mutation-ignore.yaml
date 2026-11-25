@@ -1,0 +1,20 @@
+- file: templates/_helpers.tpl
+  operator: change-string
+  original: '{{- .Release.Name | trunc 63 | trimSuffix "-" }}'
+  reason: Helm refuses a release name over 53 characters, so cutting it at 63 never changes it and it never ends cut on a dash.
+- file: templates/_helpers.tpl
+  operator: change-number
+  original: '{{- .Release.Name | trunc 63 | trimSuffix "-" }}'
+  reason: Helm refuses a release name over 53 characters, so cutting it at 63 or 64 never changes it.
+- file: templates/api.yaml
+  operator: delete-line
+  original: 'type: PathPrefix'
+  reason: Gateway API defaults a path match to PathPrefix, so the route matches the same requests without the line.
+- file: templates/console.yaml
+  operator: delete-line
+  original: 'type: PathPrefix'
+  reason: Gateway API defaults a path match to PathPrefix, so the route matches the same requests without the line.
+- file: templates/event-consumer.yaml
+  operator: delete-line
+  original: 'replicas: {{ .Values.backend.eventConsumer.replicas }}'
+  reason: The schema allows only 1 replica and Kubernetes defaults a Deployment to 1, so the line changes nothing it is allowed to.

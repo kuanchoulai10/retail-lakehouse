@@ -4,6 +4,8 @@ version: '3'
 
 vars:
   HELM_UNITTEST_VERSION: 1.2.1
+  KUBECONFORM_VERSION: v0.8.0
+  CHECKS: uv run --no-project --with pyyaml python {{.TASKFILE_DIR}}/../../scripts/check_chart_manifests.py
 
 tasks:
   unit-test:
@@ -30,14 +32,40 @@ tasks:
           helm lint chart --values values/minikube.yaml --values values/e2e.yaml ${tags}
 
   mutation-test:
-    desc: "Break the wave-25 chart's templates and schema one way at a time and list the mutants its helm-unittest suites miss"
+    desc: "Break the wave-25 chart's templates and schema one way at a time and list the mutants its unit tests and manifest checks miss"
     cmds:
-      - cmd: uv run --no-project --with pyyaml python ../../scripts/mutate_chart.py chart
+      - task: kubeconform-installed
+      - cmd: |
+          uv run --no-project --with pyyaml python ../../scripts/mutate_chart.py chart \
+            --test-command "sh -c 'helm unittest {chart} >/dev/null && {{.CHECKS}} {chart} >/dev/null'"
 
   security-test:
-    desc: "Scan the wave-25 chart's rendered manifests"
+    desc: "Check every chart/ci/*-values.yaml rendering against the Kubernetes and CRD schemas, the label standard and the deployment rules"
     cmds:
-      - cmd: echo "TODO:// kube-linter or kubeconform over every chart/ci/*-values.yaml rendering"
+      - task: kubeconform-installed
+      - cmd: "{{.CHECKS}} chart"
+
+  kubeconform-installed:
+    internal: true
+    cmds:
+      - cmd: |
+          installed="$(kubeconform -v 2>/dev/null || true)"
+          if [ "${installed}" != "{{.KUBECONFORM_VERSION}}" ]; then
+            echo "kubeconform {{.KUBECONFORM_VERSION}} is required (found '${installed:-none}'). Install it with: brew install kubeconform" >&2
+            exit 1
+          fi
+
+  schemas:
+    desc: "Write the HTTPRoute and Volcano Queue schemas kubeconform reads, from wave 11's vendored CRD and the cluster's Volcano CRD"
+    requires:
+      vars: [KUBE_CONTEXT]
+    cmds:
+      - cmd: |
+          crds="$(mktemp -d)"
+          trap 'find "${crds}" -delete' EXIT
+          yq 'select(.metadata.name == "httproutes.gateway.networking.k8s.io")' ../11-gateway-api-crds/manifests/standard-install-v1.3.0.yaml > "${crds}/httproute.yaml"
+          kubectl get crd queues.scheduling.volcano.sh -o yaml --context "{{.KUBE_CONTEXT}}" > "${crds}/queue.yaml"
+          uv run --no-project --with pyyaml python ../../scripts/crd_json_schemas.py "${crds}/httproute.yaml" "${crds}/queue.yaml" --out schemas/crds
 
   build-test:
     desc: "Package the wave-25 chart once, versioned by commit"

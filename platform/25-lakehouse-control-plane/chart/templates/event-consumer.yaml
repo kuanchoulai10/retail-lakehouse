@@ -28,7 +28,7 @@ spec:
           image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.backend.image) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           args:
-            {{- include "table-maintenance.roleArgs" (dict "root" . "role" "eventConsumer") | nindent 12 }}
+            {{- include "table-maintenance.roleArgs" (dict "role" "eventConsumer") | nindent 12 }}
           env:
             {{- include "table-maintenance.env" (dict "root" . "role" .Values.backend.eventConsumer "own" (include "table-maintenance.eventConsumer.env" .)) | nindent 12 }}
           {{- with include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.backend.eventConsumer) | trim }}

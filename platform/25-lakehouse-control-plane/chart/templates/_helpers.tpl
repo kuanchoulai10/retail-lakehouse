@@ -55,10 +55,6 @@ api worker eventConsumer migrate
 {{- include "table-maintenance.suffixed" (dict "root" .root "suffix" (printf "%s-config" (include "table-maintenance.roleSuffix" .role))) }}
 {{- end -}}
 
-{{- define "table-maintenance.role" -}}
-{{- toYaml (get .root.Values.backend .role) }}
-{{- end -}}
-
 {{- define "table-maintenance.roleKeys" -}}
 {{- $service := list "log_level" "database" "temporal" "catalog" "spark" "maintenance" "discovery" "metrics" }}
 {{- $keys := dict

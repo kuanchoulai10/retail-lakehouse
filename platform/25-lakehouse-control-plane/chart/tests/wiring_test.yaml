@@ -3,97 +3,741 @@ release:
   name: table-maintenance
   namespace: lakehouse-control-plane
 values:
-  - ../ci/default-values.yaml
+- ../ci/default-values.yaml
 tests:
-  - it: the console listens on its port, which its Service and route send to
-    set:
-      frontend.console.port: 9080
-    template: templates/console.yaml
-    asserts:
-      - contains:
-          path: "spec.template.spec.containers[0].env"
-          content: {name: CONSOLE_PORT, value: "9080"}
-        documentSelector: {path: kind, value: Deployment}
-      - equal: {path: "spec.template.spec.containers[0].ports", value: [{name: http, containerPort: 9080}]}
-        documentSelector: {path: kind, value: Deployment}
-      - equal: {path: "spec.ports", value: [{name: http, port: 9080, targetPort: http}]}
-        documentSelector: {path: kind, value: Service}
-      - equal: {path: "spec.rules[0].backendRefs", value: [{name: table-maintenance-console, port: 9080}]}
-        documentSelector: {path: kind, value: HTTPRoute}
-
-  - it: the API's probes ask the path and keep the timings its values set
-    set:
-      backend.api.readinessProbe: {path: /ready, initialDelaySeconds: 7, periodSeconds: 8, timeoutSeconds: 2, failureThreshold: 4, successThreshold: 2}
-      backend.api.livenessProbe: {path: /live, initialDelaySeconds: 30, periodSeconds: 15, timeoutSeconds: 3, failureThreshold: 5, successThreshold: 1}
-    template: templates/api.yaml
-    documentSelector: {path: kind, value: Deployment}
-    asserts:
-      - equal:
-          path: "spec.template.spec.containers[0].readinessProbe"
-          value: {httpGet: {path: /ready, port: http}, initialDelaySeconds: 7, periodSeconds: 8, timeoutSeconds: 2, failureThreshold: 4, successThreshold: 2}
-      - equal:
-          path: "spec.template.spec.containers[0].livenessProbe"
-          value: {httpGet: {path: /live, port: http}, initialDelaySeconds: 30, periodSeconds: 15, timeoutSeconds: 3, failureThreshold: 5, successThreshold: 1}
-
-  - it: the console's probes ask the path and keep the timings its values set
-    set:
-      frontend.console.readinessProbe: {path: /ui/, initialDelaySeconds: 3, periodSeconds: 4, timeoutSeconds: 2, failureThreshold: 6, successThreshold: 2}
-      frontend.console.livenessProbe: {path: /ui/live, initialDelaySeconds: 11, periodSeconds: 12, timeoutSeconds: 3, failureThreshold: 7, successThreshold: 1}
-    template: templates/console.yaml
-    documentSelector: {path: kind, value: Deployment}
-    asserts:
-      - equal:
-          path: "spec.template.spec.containers[0].readinessProbe"
-          value: {httpGet: {path: /ui/, port: http}, initialDelaySeconds: 3, periodSeconds: 4, timeoutSeconds: 2, failureThreshold: 6, successThreshold: 2}
-      - equal:
-          path: "spec.template.spec.containers[0].livenessProbe"
-          value: {httpGet: {path: /ui/live, port: http}, initialDelaySeconds: 11, periodSeconds: 12, timeoutSeconds: 3, failureThreshold: 7, successThreshold: 1}
-
-  - it: the connection test asks the API's readiness path with the resources its values set
-    set:
-      backend.api.port: 9000
-      backend.api.readinessProbe.path: /ready
-      backend.api.connectionTest.resources: {requests: {cpu: 20m, memory: 96Mi}, limits: {memory: 160Mi}}
-    template: templates/tests/test-connection.yaml
-    asserts:
-      - equal:
-          path: "spec.containers[0].command[2]"
-          value: import urllib.request; urllib.request.urlopen('http://table-maintenance-api:9000/ready', timeout=10)
-      - equal: {path: "spec.containers[0].resources", value: {requests: {cpu: 20m, memory: 96Mi}, limits: {memory: 160Mi}}}
-
-  - it: the migration retries as often as its values allow
-    set:
-      backend.migrate.backoffLimit: 2
+- it: the console listens on its port, which its Service and route send to
+  set:
+    frontend.console.port: 9080
+  template: templates/console.yaml
+  asserts:
+  - contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: CONSOLE_PORT
+        value: '9080'
+    documentSelector:
+      path: kind
+      value: Deployment
+  - equal:
+      path: spec.template.spec.containers[0].ports
+      value:
+      - name: http
+        containerPort: 9080
+    documentSelector:
+      path: kind
+      value: Deployment
+  - equal:
+      path: spec.ports
+      value:
+      - name: http
+        port: 9080
+        targetPort: http
+    documentSelector:
+      path: kind
+      value: Service
+  - equal:
+      path: spec.rules[0].backendRefs
+      value:
+      - name: table-maintenance-console
+        port: 9080
+    documentSelector:
+      path: kind
+      value: HTTPRoute
+- it: the API's probes ask the path and keep the timings its values set
+  set:
+    backend.api.readinessProbe:
+      path: /ready
+      initialDelaySeconds: 7
+      periodSeconds: 8
+      timeoutSeconds: 2
+      failureThreshold: 4
+      successThreshold: 2
+    backend.api.livenessProbe:
+      path: /live
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      timeoutSeconds: 3
+      failureThreshold: 5
+      successThreshold: 1
+  template: templates/api.yaml
+  documentSelector:
+    path: kind
+    value: Deployment
+  asserts:
+  - equal:
+      path: spec.template.spec.containers[0].readinessProbe
+      value:
+        httpGet:
+          path: /ready
+          port: http
+        initialDelaySeconds: 7
+        periodSeconds: 8
+        timeoutSeconds: 2
+        failureThreshold: 4
+        successThreshold: 2
+  - equal:
+      path: spec.template.spec.containers[0].livenessProbe
+      value:
+        httpGet:
+          path: /live
+          port: http
+        initialDelaySeconds: 30
+        periodSeconds: 15
+        timeoutSeconds: 3
+        failureThreshold: 5
+        successThreshold: 1
+- it: the console's probes ask the path and keep the timings its values set
+  set:
+    frontend.console.readinessProbe:
+      path: /ui/
+      initialDelaySeconds: 3
+      periodSeconds: 4
+      timeoutSeconds: 2
+      failureThreshold: 6
+      successThreshold: 2
+    frontend.console.livenessProbe:
+      path: /ui/live
+      initialDelaySeconds: 11
+      periodSeconds: 12
+      timeoutSeconds: 3
+      failureThreshold: 7
+      successThreshold: 1
+  template: templates/console.yaml
+  documentSelector:
+    path: kind
+    value: Deployment
+  asserts:
+  - equal:
+      path: spec.template.spec.containers[0].readinessProbe
+      value:
+        httpGet:
+          path: /ui/
+          port: http
+        initialDelaySeconds: 3
+        periodSeconds: 4
+        timeoutSeconds: 2
+        failureThreshold: 6
+        successThreshold: 2
+  - equal:
+      path: spec.template.spec.containers[0].livenessProbe
+      value:
+        httpGet:
+          path: /ui/live
+          port: http
+        initialDelaySeconds: 11
+        periodSeconds: 12
+        timeoutSeconds: 3
+        failureThreshold: 7
+        successThreshold: 1
+- it: the connection test asks the API's readiness path with the resources its values set
+  set:
+    backend.api.port: 9000
+    backend.api.readinessProbe.path: /ready
+    backend.api.connectionTest.resources:
+      requests:
+        cpu: 20m
+        memory: 96Mi
+      limits:
+        memory: 160Mi
+  template: templates/tests/test-connection.yaml
+  asserts:
+  - equal:
+      path: spec.containers[0].command[2]
+      value: import urllib.request; urllib.request.urlopen('http://table-maintenance-api:9000/ready', timeout=10)
+  - equal:
+      path: spec.containers[0].resources
+      value:
+        requests:
+          cpu: 20m
+          memory: 96Mi
+        limits:
+          memory: 160Mi
+- it: the migration retries as often as its values allow
+  set:
+    backend.migrate.backoffLimit: 2
+  template: templates/migrate-job.yaml
+  asserts:
+  - equal:
+      path: spec.backoffLimit
+      value: 2
+- it: the event consumer is given the time its values set to stop
+  set:
+    backend.eventConsumer.terminationGracePeriodSeconds: 45
+  template: templates/event-consumer.yaml
+  asserts:
+  - equal:
+      path: spec.template.spec.terminationGracePeriodSeconds
+      value: 45
+- it: the database wait takes its own resources and the schema wait takes the migration's
+  set:
+    backend.migrate.waitForDatabase.resources:
+      requests:
+        cpu: 5m
+        memory: 8Mi
+      limits:
+        memory: 24Mi
+    backend.migrate.resources:
+      requests:
+        cpu: 70m
+        memory: 200Mi
+      limits:
+        memory: 300Mi
+  asserts:
+  - equal:
+      path: spec.template.spec.initContainers[0].resources
+      value:
+        requests:
+          cpu: 5m
+          memory: 8Mi
+        limits:
+          memory: 24Mi
     template: templates/migrate-job.yaml
-    asserts:
-      - equal: {path: spec.backoffLimit, value: 2}
-
-  - it: the event consumer is given the time its values set to stop
-    set:
-      backend.eventConsumer.terminationGracePeriodSeconds: 45
+  - equal:
+      path: spec.template.spec.initContainers[0].resources
+      value:
+        requests:
+          cpu: 70m
+          memory: 200Mi
+        limits:
+          memory: 300Mi
+    template: templates/api.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+  - equal:
+      path: spec.template.spec.initContainers[0].resources
+      value:
+        requests:
+          cpu: 70m
+          memory: 200Mi
+        limits:
+          memory: 300Mi
+    template: templates/worker.yaml
+  - equal:
+      path: spec.template.spec.initContainers[0].resources
+      value:
+        requests:
+          cpu: 70m
+          memory: 200Mi
+        limits:
+          memory: 300Mi
     template: templates/event-consumer.yaml
-    asserts:
-      - equal: {path: spec.template.spec.terminationGracePeriodSeconds, value: 45}
-
-  - it: the database wait takes its own resources and the schema wait takes the migration's
-    set:
-      backend.migrate.waitForDatabase.resources: {requests: {cpu: 5m, memory: 8Mi}, limits: {memory: 24Mi}}
-      backend.migrate.resources: {requests: {cpu: 70m, memory: 200Mi}, limits: {memory: 300Mi}}
-    asserts:
-      - equal:
-          path: "spec.template.spec.initContainers[0].resources"
-          value: {requests: {cpu: 5m, memory: 8Mi}, limits: {memory: 24Mi}}
-        template: templates/migrate-job.yaml
-      - equal:
-          path: "spec.template.spec.initContainers[0].resources"
-          value: {requests: {cpu: 70m, memory: 200Mi}, limits: {memory: 300Mi}}
-        template: templates/api.yaml
-        documentSelector: {path: kind, value: Deployment}
-      - equal:
-          path: "spec.template.spec.initContainers[0].resources"
-          value: {requests: {cpu: 70m, memory: 200Mi}, limits: {memory: 300Mi}}
-        template: templates/worker.yaml
-      - equal:
-          path: "spec.template.spec.initContainers[0].resources"
-          value: {requests: {cpu: 70m, memory: 200Mi}, limits: {memory: 300Mi}}
-        template: templates/event-consumer.yaml
+- it: the api container runs its role with the image, pull policy, settings, mounts and nodes its values set
+  set:
+    global.image.registry: registry.example:5000
+    global.image.pullPolicy: Always
+    global.envFrom:
+    - configMapRef:
+        name: shared
+    backend.api.secretMounts:
+    - name: tls
+      secretName: api-tls
+      path: /etc/tls
+    backend.api.nodeSelector:
+      pool: api
+  template: templates/api.yaml
+  documentSelector:
+    path: kind
+    value: Deployment
+  asserts:
+  - equal:
+      path: spec.template.spec.containers[0].image
+      value: registry.example:5000/table-maintenance-backend:ci
+  - equal:
+      path: spec.template.spec.containers[0].imagePullPolicy
+      value: Always
+  - equal:
+      path: spec.template.spec.containers[0].args
+      value:
+      - api
+      - --config-file=/etc/glac/config.yaml
+  - contains:
+      path: spec.template.spec.containers[0].envFrom
+      content:
+        configMapRef:
+          name: shared
+  - equal:
+      path: spec.template.spec.containers[0].volumeMounts
+      value:
+      - name: config
+        mountPath: /etc/glac
+        readOnly: true
+      - name: secret-role-tls
+        mountPath: /etc/tls
+        readOnly: true
+  - equal:
+      path: spec.template.spec.volumes
+      value:
+      - name: config
+        configMap:
+          name: table-maintenance-api-config
+      - name: migrate-config
+        configMap:
+          name: table-maintenance-migrate-config
+      - name: secret-role-tls
+        secret:
+          secretName: api-tls
+  - equal:
+      path: spec.template.spec.nodeSelector
+      value:
+        pool: api
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: api
+  - equal:
+      path: spec.template.metadata.labels["app.kubernetes.io/component"]
+      value: api
+- it: the worker container runs its role with the image, pull policy, settings, mounts and nodes its values set
+  set:
+    global.image.registry: registry.example:5000
+    global.image.pullPolicy: Always
+    global.envFrom:
+    - configMapRef:
+        name: shared
+    backend.worker.secretMounts:
+    - name: tls
+      secretName: worker-tls
+      path: /etc/tls
+    backend.worker.nodeSelector:
+      pool: worker
+  template: templates/worker.yaml
+  asserts:
+  - equal:
+      path: spec.template.spec.containers[0].image
+      value: registry.example:5000/table-maintenance-backend:ci
+  - equal:
+      path: spec.template.spec.containers[0].imagePullPolicy
+      value: Always
+  - equal:
+      path: spec.template.spec.containers[0].args
+      value:
+      - worker
+      - --config-file=/etc/glac/config.yaml
+  - contains:
+      path: spec.template.spec.containers[0].envFrom
+      content:
+        configMapRef:
+          name: shared
+  - equal:
+      path: spec.template.spec.containers[0].volumeMounts
+      value:
+      - name: config
+        mountPath: /etc/glac
+        readOnly: true
+      - name: secret-role-tls
+        mountPath: /etc/tls
+        readOnly: true
+  - equal:
+      path: spec.template.spec.volumes
+      value:
+      - name: config
+        configMap:
+          name: table-maintenance-worker-config
+      - name: migrate-config
+        configMap:
+          name: table-maintenance-migrate-config
+      - name: secret-role-tls
+        secret:
+          secretName: worker-tls
+  - equal:
+      path: spec.template.spec.nodeSelector
+      value:
+        pool: worker
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: worker
+  - equal:
+      path: spec.template.metadata.labels["app.kubernetes.io/component"]
+      value: worker
+- it: the event-consumer container runs its role with the image, pull policy, settings, mounts and nodes its values set
+  set:
+    global.image.registry: registry.example:5000
+    global.image.pullPolicy: Always
+    global.envFrom:
+    - configMapRef:
+        name: shared
+    backend.eventConsumer.secretMounts:
+    - name: tls
+      secretName: event-consumer-tls
+      path: /etc/tls
+    backend.eventConsumer.nodeSelector:
+      pool: event-consumer
+  template: templates/event-consumer.yaml
+  asserts:
+  - equal:
+      path: spec.template.spec.containers[0].image
+      value: registry.example:5000/table-maintenance-backend:ci
+  - equal:
+      path: spec.template.spec.containers[0].imagePullPolicy
+      value: Always
+  - equal:
+      path: spec.template.spec.containers[0].args
+      value:
+      - event-consumer
+      - --config-file=/etc/glac/config.yaml
+  - contains:
+      path: spec.template.spec.containers[0].envFrom
+      content:
+        configMapRef:
+          name: shared
+  - equal:
+      path: spec.template.spec.containers[0].volumeMounts
+      value:
+      - name: config
+        mountPath: /etc/glac
+        readOnly: true
+      - name: secret-role-tls
+        mountPath: /etc/tls
+        readOnly: true
+  - equal:
+      path: spec.template.spec.volumes
+      value:
+      - name: config
+        configMap:
+          name: table-maintenance-event-consumer-config
+      - name: migrate-config
+        configMap:
+          name: table-maintenance-migrate-config
+      - name: secret-role-tls
+        secret:
+          secretName: event-consumer-tls
+  - equal:
+      path: spec.template.spec.nodeSelector
+      value:
+        pool: event-consumer
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: event-consumer
+  - equal:
+      path: spec.template.metadata.labels["app.kubernetes.io/component"]
+      value: event-consumer
+- it: the migrate container runs its role with the image, pull policy, settings, mounts and nodes its values set
+  set:
+    global.image.registry: registry.example:5000
+    global.image.pullPolicy: Always
+    global.envFrom:
+    - configMapRef:
+        name: shared
+    backend.migrate.secretMounts:
+    - name: tls
+      secretName: migrate-tls
+      path: /etc/tls
+    backend.migrate.nodeSelector:
+      pool: migrate
+  template: templates/migrate-job.yaml
+  asserts:
+  - equal:
+      path: spec.template.spec.containers[0].image
+      value: registry.example:5000/table-maintenance-backend:ci
+  - equal:
+      path: spec.template.spec.containers[0].imagePullPolicy
+      value: Always
+  - equal:
+      path: spec.template.spec.containers[0].args
+      value:
+      - migrate
+      - --config-file=/etc/glac/config.yaml
+  - contains:
+      path: spec.template.spec.containers[0].envFrom
+      content:
+        configMapRef:
+          name: shared
+  - equal:
+      path: spec.template.spec.containers[0].volumeMounts
+      value:
+      - name: config
+        mountPath: /etc/glac
+        readOnly: true
+      - name: secret-role-tls
+        mountPath: /etc/tls
+        readOnly: true
+  - equal:
+      path: spec.template.spec.volumes
+      value:
+      - name: config
+        configMap:
+          name: table-maintenance-migrate-config
+      - name: secret-role-tls
+        secret:
+          secretName: migrate-tls
+  - equal:
+      path: spec.template.spec.nodeSelector
+      value:
+        pool: migrate
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: migrate
+  - equal:
+      path: spec.template.metadata.labels["app.kubernetes.io/component"]
+      value: migrate
+- it: the worker is given the time its values set to stop
+  set:
+    backend.worker.terminationGracePeriodSeconds: 33
+  template: templates/worker.yaml
+  asserts:
+  - equal:
+      path: spec.template.spec.terminationGracePeriodSeconds
+      value: 33
+- it: the console runs with the pull policy and mounts its values set
+  set:
+    global.image.pullPolicy: Always
+    frontend.console.secretMounts:
+    - name: tls
+      secretName: console-tls
+      path: /etc/tls
+  template: templates/console.yaml
+  documentSelector:
+    path: kind
+    value: Deployment
+  asserts:
+  - equal:
+      path: spec.template.spec.containers[0].imagePullPolicy
+      value: Always
+  - equal:
+      path: spec.template.spec.containers[0].volumeMounts
+      value:
+      - name: secret-role-tls
+        mountPath: /etc/tls
+        readOnly: true
+  - equal:
+      path: spec.template.spec.volumes
+      value:
+      - name: secret-role-tls
+        secret:
+          secretName: console-tls
+- it: the api route hangs off the Gateway its values name and strips the root path before the API sees it
+  set:
+    backend.api.httpRoute.gateway.name: edge
+    backend.api.httpRoute.gateway.namespace: gateways
+    backend.api.rootPath: /maintenance/api
+  template: templates/api.yaml
+  asserts:
+  - equal:
+      path: spec.parentRefs
+      value:
+      - name: edge
+        namespace: gateways
+    documentSelector:
+      path: kind
+      value: HTTPRoute
+  - equal:
+      path: spec.rules[0].matches
+      value:
+      - path:
+          type: PathPrefix
+          value: /maintenance/api
+    documentSelector:
+      path: kind
+      value: HTTPRoute
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: api
+    documentSelector:
+      path: kind
+      value: HTTPRoute
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: api
+    documentSelector:
+      path: kind
+      value: Service
+  - equal:
+      path: spec.rules[0].filters
+      value:
+      - type: URLRewrite
+        urlRewrite:
+          path:
+            type: ReplacePrefixMatch
+            replacePrefixMatch: /
+    documentSelector:
+      path: kind
+      value: HTTPRoute
+- it: the ui route hangs off the Gateway its values name
+  set:
+    frontend.console.httpRoute.gateway.name: edge
+    frontend.console.httpRoute.gateway.namespace: gateways
+  template: templates/console.yaml
+  asserts:
+  - equal:
+      path: spec.parentRefs
+      value:
+      - name: edge
+        namespace: gateways
+    documentSelector:
+      path: kind
+      value: HTTPRoute
+  - equal:
+      path: spec.rules[0].matches
+      value:
+      - path:
+          type: PathPrefix
+          value: /console
+    documentSelector:
+      path: kind
+      value: HTTPRoute
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: ui
+    documentSelector:
+      path: kind
+      value: HTTPRoute
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: ui
+    documentSelector:
+      path: kind
+      value: Service
+- it: each RBAC object says whether it serves the worker or the Spark jobs
+  template: templates/rbac.yaml
+  asserts:
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: worker
+    documentIndex: 0
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: worker
+    documentIndex: 1
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: worker
+    documentIndex: 2
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: spark-job
+    documentIndex: 3
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: spark-job
+    documentIndex: 4
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: spark-job
+    documentIndex: 5
+- it: the Volcano queues take the capability their values set, and every scheduling object says so
+  set:
+    maintenance.jobs.scheduling.queues.maintenance.capability:
+      cpu: '6'
+      memory: 12Gi
+    maintenance.jobs.scheduling.queues.urgent.capability:
+      cpu: '3'
+      memory: 4Gi
+  template: templates/volcano.yaml
+  asserts:
+  - equal:
+      path: spec.capability
+      value:
+        cpu: '6'
+        memory: 12Gi
+    documentIndex: 0
+  - equal:
+      path: spec.capability
+      value:
+        cpu: '3'
+        memory: 4Gi
+    documentIndex: 1
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: scheduling
+    documentIndex: 0
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: scheduling
+    documentIndex: 1
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: scheduling
+    documentIndex: 2
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: scheduling
+    documentIndex: 3
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: scheduling
+    documentIndex: 4
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: scheduling
+    documentIndex: 5
+- it: the connection test pulls as its values say
+  set:
+    global.image.pullPolicy: Always
+    imagePullSecrets:
+    - name: pull
+  template: templates/tests/test-connection.yaml
+  asserts:
+  - equal:
+      path: spec.containers[0].imagePullPolicy
+      value: Always
+  - equal:
+      path: spec.imagePullSecrets
+      value:
+      - name: pull
+- it: the migration says what it is on the Job and its pod
+  template: templates/migrate-job.yaml
+  asserts:
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: migrate
+  - equal:
+      path: spec.template.metadata.labels["app.kubernetes.io/component"]
+      value: migrate
+- it: a fullnameOverride over 63 characters is cut at 63, without a trailing dash
+  set:
+    fullnameOverride: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bcd
+  template: templates/volcano.yaml
+  documentIndex: 0
+  asserts:
+  - equal:
+      path: metadata.name
+      value: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+- it: a release name and a nameOverride over 63 characters together are cut at 63, without a trailing dash
+  set:
+    nameOverride: nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn-zz
+  template: templates/volcano.yaml
+  documentIndex: 0
+  asserts:
+  - equal:
+      path: metadata.name
+      value: table-maintenance-nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn
+- it: the chart label turns a + of the version into _
+  chart:
+    version: 1.0.0+build.7
+  template: templates/volcano.yaml
+  documentIndex: 0
+  asserts:
+  - equal:
+      path: metadata.labels["helm.sh/chart"]
+      value: table-maintenance-1.0.0_build.7
+- it: a chart label over 63 characters is cut at 63, without a trailing dash
+  chart:
+    version: 1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-b
+  template: templates/volcano.yaml
+  documentIndex: 0
+  asserts:
+  - equal:
+      path: metadata.labels["helm.sh/chart"]
+      value: table-maintenance-1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+- it: the migration's name carries the revision and is cut at 63, without a trailing dash
+  set:
+    fullnameOverride: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  release:
+    name: table-maintenance
+    namespace: lakehouse-control-plane
+    revision: 1
+  template: templates/migrate-job.yaml
+  asserts:
+  - equal:
+      path: metadata.name
+      value: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-migrate
+- it: the migration's name carries the revision
+  release:
+    name: table-maintenance
+    namespace: lakehouse-control-plane
+    revision: 7
+  template: templates/migrate-job.yaml
+  asserts:
+  - equal:
+      path: metadata.name
+      value: table-maintenance-migrate-7

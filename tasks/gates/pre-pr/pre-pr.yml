@@ -43,11 +43,12 @@ tasks:
       - task: console:component-test
 
   backend:
-    desc: "Run the backend, Spark and wave-25 chart unit tests, then the backend's import-linter boundaries"
+    desc: "Run the backend, Spark and wave-25 chart unit tests and the chart's manifest checks, then the backend's import-linter boundaries"
     deps:
       - backend:unit-test
       - spark:unit-test
       - chart:unit-test
+      - chart:security-test
     cmds:
       - task: backend:arch-test
 
