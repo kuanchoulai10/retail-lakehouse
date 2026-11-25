@@ -51,6 +51,7 @@ backend:
   logLevel: WARNING
   api:
     replicas: 2
+    port: 9000
     rootPath: /maintenance/api
     httpRoute:
       gateway:
@@ -94,6 +95,7 @@ frontend:
   image:
     tag: ci
   console:
+    port: 9080
     podLabels:
       retail-lakehouse.io/exposed: "true"
     nodeSelector:

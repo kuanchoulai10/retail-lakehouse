@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pydantic import Field
+
 from bootstrap.configs.settings_block import SettingsBlock
 
 
@@ -10,7 +12,9 @@ class HttpSettings(SettingsBlock):
 
     ``root_path`` is the public prefix a proxy strips before forwarding, for example
     ``/api`` behind the platform gateway. It only moves the docs and the OpenAPI
-    ``servers`` entry; empty means the API is served at the root.
+    ``servers`` entry; empty means the API is served at the root. ``port`` is the
+    port the API listens on.
     """
 
     root_path: str = ""
+    port: int = Field(default=8000, ge=1, le=65535)

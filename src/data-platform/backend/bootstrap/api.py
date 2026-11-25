@@ -15,15 +15,14 @@ if TYPE_CHECKING:
     from bootstrap.configs import ApiSettings
 
 HOST = "0.0.0.0"  # noqa: S104
-PORT = 8000
 
 
 def main(settings: ApiSettings) -> None:
-    """Serve the control plane API on port 8000 until uvicorn is stopped."""
+    """Serve the control plane API on the port its settings name until uvicorn is stopped."""
     configure_logging(settings.log_level)
     bridge = AsyncLoopBridge()
     try:
         app = build_api_app(settings, bridge)
-        uvicorn.run(app, host=HOST, port=PORT, log_level=settings.log_level.lower())
+        uvicorn.run(app, host=HOST, port=settings.http.port, log_level=settings.log_level.lower())
     finally:
         bridge.close()

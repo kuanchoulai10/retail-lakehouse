@@ -135,7 +135,7 @@ maintenance discovery spark
       "urgent_queue" (include "table-maintenance.volcano.urgentQueue" .)
       "priority_class_prefix" (include "table-maintenance.volcano.priorityClassPrefix" .)))
   "callback_base_url" (printf "http://%s.%s.svc.cluster.local:%v" (include "table-maintenance.api.fullname" .) .Release.Namespace .Values.backend.api.port)
-  "http" (dict "root_path" .Values.backend.api.rootPath) }}
+  "http" (dict "root_path" .Values.backend.api.rootPath "port" (int .Values.backend.api.port)) }}
 {{- toYaml $settings }}
 {{- end -}}
 

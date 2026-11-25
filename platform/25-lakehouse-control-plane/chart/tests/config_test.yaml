@@ -100,6 +100,7 @@ tests:
             discovery:
               interval_seconds: 600
             http:
+              port: 8000
               root_path: /api
             log_level: INFO
             maintenance:
@@ -325,6 +326,8 @@ tests:
       - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^  prometheus_url: https://prometheus\.example$'}
         documentSelector: {path: metadata.name, value: table-maintenance-api-config}
       - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^  root_path: /maintenance/api$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-api-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^  port: 9000$'}
         documentSelector: {path: metadata.name, value: table-maintenance-api-config}
       - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^  image: registry\.example:5000/table-maintenance-spark:ci$'}
         documentSelector: {path: metadata.name, value: table-maintenance-worker-config}
