@@ -1,17 +1,72 @@
-{{- define "table-maintenance.backendImage" -}}
-{{ .Values.image.backend.repository }}:{{ required "image.backend.tag is required" .Values.image.backend.tag }}
+{{- define "table-maintenance.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end -}}
 
-{{- define "table-maintenance.sparkImage" -}}
-{{ .Values.image.spark.repository }}:{{ required "image.spark.tag is required" .Values.image.spark.tag }}
+{{- define "table-maintenance.fullname" -}}
+{{- if .Values.fullnameOverride }}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- if contains $name .Release.Name }}
+{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
 {{- end -}}
 
-{{- define "table-maintenance.consoleImage" -}}
-{{ .Values.image.console.repository }}:{{ required "image.console.tag is required" .Values.image.console.tag }}
+{{- define "table-maintenance.chart" -}}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- end -}}
+
+{{- define "table-maintenance.suffixed" -}}
+{{- printf "%s-%s" (include "table-maintenance.fullname" .root) .suffix | trunc 63 | trimSuffix "-" }}
+{{- end -}}
+
+{{- define "table-maintenance.api.fullname" -}}
+{{- include "table-maintenance.suffixed" (dict "root" . "suffix" "api") }}
+{{- end -}}
+
+{{- define "table-maintenance.worker.fullname" -}}
+{{- include "table-maintenance.suffixed" (dict "root" . "suffix" "worker") }}
+{{- end -}}
+
+{{- define "table-maintenance.eventConsumer.fullname" -}}
+{{- include "table-maintenance.suffixed" (dict "root" . "suffix" "event-consumer") }}
+{{- end -}}
+
+{{- define "table-maintenance.migrate.fullname" -}}
+{{- include "table-maintenance.suffixed" (dict "root" . "suffix" "migrate") }}
+{{- end -}}
+
+{{- define "table-maintenance.console.fullname" -}}
+{{- include "table-maintenance.suffixed" (dict "root" . "suffix" "console") }}
+{{- end -}}
+
+{{- define "table-maintenance.config.fullname" -}}
+{{- include "table-maintenance.suffixed" (dict "root" . "suffix" "config") }}
+{{- end -}}
+
+{{- define "table-maintenance.worker.serviceAccountName" -}}
+{{- default (include "table-maintenance.worker.fullname" .) .Values.worker.serviceAccount.name }}
+{{- end -}}
+
+{{- define "table-maintenance.spark.serviceAccountName" -}}
+{{- default (include "table-maintenance.suffixed" (dict "root" . "suffix" "spark")) .Values.spark.serviceAccount.name }}
+{{- end -}}
+
+{{- define "table-maintenance.imageTag" -}}
+{{- default .root.Chart.AppVersion .image.tag }}
+{{- end -}}
+
+{{- define "table-maintenance.image" -}}
+{{- with .root.Values.image.registry }}{{ . }}/{{ end }}
+{{- .image.repository }}:{{ include "table-maintenance.imageTag" . }}
+{{- with .image.digest }}@{{ . }}{{ end }}
 {{- end -}}
 
 {{- define "table-maintenance.selectorLabels" -}}
-app.kubernetes.io/name: {{ .name }}
+app.kubernetes.io/name: {{ include "table-maintenance.name" .root }}
 app.kubernetes.io/instance: {{ .root.Release.Name }}
 app.kubernetes.io/component: {{ .component }}
 {{- end -}}
@@ -23,6 +78,10 @@ app.kubernetes.io/part-of: table-maintenance
 app.kubernetes.io/version: {{ . | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .root.Release.Service }}
+helm.sh/chart: {{ include "table-maintenance.chart" .root }}
+{{- with .root.Values.commonLabels }}
+{{ toYaml . }}
+{{- end }}
 {{- end -}}
 
 {{- define "table-maintenance.dbEnv" -}}

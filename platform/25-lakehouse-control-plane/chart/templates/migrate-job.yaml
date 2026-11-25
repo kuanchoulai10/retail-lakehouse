@@ -1,16 +1,16 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: table-maintenance-migrate-{{ .Release.Revision }}
+  name: {{ printf "%s-%d" (include "table-maintenance.migrate.fullname" .) (int .Release.Revision) | trunc 63 | trimSuffix "-" }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "migrate" "version" .Values.image.backend.tag) | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "component" "migrate" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.backend))) | nindent 4 }}
 spec:
   backoffLimit: 6
   template:
     metadata:
       labels:
-        {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "migrate" "version" .Values.image.backend.tag) | nindent 8 }}
+        {{- include "table-maintenance.labels" (dict "root" . "component" "migrate" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.backend))) | nindent 8 }}
     spec:
       restartPolicy: OnFailure
       automountServiceAccountToken: false
@@ -25,7 +25,7 @@ spec:
             - until pg_isready -h table-maintenance-db -U {{ .Values.postgres.user }} -d {{ .Values.postgres.database }}; do sleep 2; done
       containers:
         - name: migrate
-          image: {{ include "table-maintenance.backendImage" . }}
+          image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.backend) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: GLAC_COMPONENT
@@ -33,7 +33,7 @@ spec:
             {{- include "table-maintenance.dbEnv" . | nindent 12 }}
           envFrom:
             - configMapRef:
-                name: table-maintenance-config
+                name: {{ include "table-maintenance.config.fullname" . }}
           {{- include "table-maintenance.containerSecurity" . | nindent 10 }}
           resources:
             {{- toYaml .Values.migrate.resources | nindent 12 }}

@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: table-maintenance-event-consumer
+  name: {{ include "table-maintenance.eventConsumer.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "event-consumer" "version" .Values.image.backend.tag) | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "component" "event-consumer" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.backend))) | nindent 4 }}
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "table-maintenance.selectorLabels" (dict "root" . "name" "table-maintenance" "component" "event-consumer") | nindent 6 }}
+      {{- include "table-maintenance.selectorLabels" (dict "root" . "component" "event-consumer") | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "event-consumer" "version" .Values.image.backend.tag) | nindent 8 }}
+        {{- include "table-maintenance.labels" (dict "root" . "component" "event-consumer" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.backend))) | nindent 8 }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
@@ -26,7 +26,7 @@ spec:
         {{- include "table-maintenance.waitForSchema" . | nindent 8 }}
       containers:
         - name: event-consumer
-          image: {{ include "table-maintenance.backendImage" . }}
+          image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.backend) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: GLAC_COMPONENT
@@ -34,7 +34,7 @@ spec:
             {{- include "table-maintenance.appEnv" . | nindent 12 }}
           envFrom:
             - configMapRef:
-                name: table-maintenance-config
+                name: {{ include "table-maintenance.config.fullname" . }}
           {{- include "table-maintenance.containerSecurity" . | nindent 10 }}
           resources:
             {{- toYaml .Values.eventConsumer.resources | nindent 12 }}

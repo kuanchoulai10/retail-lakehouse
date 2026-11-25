@@ -1,0 +1,89 @@
+suite: every object carries helm.sh/chart and commonLabels, selectors never do
+templates:
+  - templates/api.yaml
+  - templates/worker.yaml
+  - templates/event-consumer.yaml
+  - templates/migrate-job.yaml
+  - templates/console.yaml
+  - templates/configmap.yaml
+  - templates/rbac.yaml
+  - templates/volcano.yaml
+release:
+  name: table-maintenance
+  namespace: lakehouse-control-plane
+set:
+  image.backend.tag: t
+  image.spark.tag: t
+  image.console.tag: t
+tests:
+  - it: helm.sh/chart on every object
+    asserts:
+      - matchRegex: {path: "metadata.labels[\"helm.sh/chart\"]", pattern: '^table-maintenance-0\.1\.0$'}
+
+  - it: deployment and service selectors hold exactly name, instance and component
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: table-maintenance
+            app.kubernetes.io/instance: table-maintenance
+            app.kubernetes.io/component: api
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: table-maintenance
+            app.kubernetes.io/instance: table-maintenance
+            app.kubernetes.io/component: worker
+        template: templates/worker.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: table-maintenance
+            app.kubernetes.io/instance: table-maintenance
+            app.kubernetes.io/component: event-consumer
+        template: templates/event-consumer.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: table-maintenance
+            app.kubernetes.io/instance: table-maintenance
+            app.kubernetes.io/component: ui
+        template: templates/console.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal:
+          path: spec.selector
+          value:
+            app.kubernetes.io/name: table-maintenance
+            app.kubernetes.io/instance: table-maintenance
+            app.kubernetes.io/component: api
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Service}
+      - equal:
+          path: spec.selector
+          value:
+            app.kubernetes.io/name: table-maintenance
+            app.kubernetes.io/instance: table-maintenance
+            app.kubernetes.io/component: ui
+        template: templates/console.yaml
+        documentSelector: {path: kind, value: Service}
+
+  - it: commonLabels on every object and pod, never in a selector
+    set:
+      commonLabels:
+        team: data
+    asserts:
+      - equal: {path: metadata.labels.team, value: data}
+
+  - it: commonLabels reach the pod template but not the selector
+    set:
+      commonLabels:
+        team: data
+    template: templates/api.yaml
+    documentSelector: {path: kind, value: Deployment}
+    asserts:
+      - equal: {path: spec.template.metadata.labels.team, value: data}
+      - notExists: {path: spec.selector.matchLabels.team}

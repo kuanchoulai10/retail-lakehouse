@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: console
+  name: {{ include "table-maintenance.console.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" . "name" "console" "component" "ui" "version" .Values.image.console.tag) | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "component" "ui" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.console))) | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "table-maintenance.selectorLabels" (dict "root" . "name" "console" "component" "ui") | nindent 6 }}
+      {{- include "table-maintenance.selectorLabels" (dict "root" . "component" "ui") | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "table-maintenance.labels" (dict "root" . "name" "console" "component" "ui" "version" .Values.image.console.tag) | nindent 8 }}
+        {{- include "table-maintenance.labels" (dict "root" . "component" "ui" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.console))) | nindent 8 }}
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -24,7 +24,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: console
-          image: {{ include "table-maintenance.consoleImage" . }}
+          image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.console) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
@@ -48,13 +48,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: console
+  name: {{ include "table-maintenance.console.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" . "name" "console" "component" "ui") | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "component" "ui") | nindent 4 }}
 spec:
   selector:
-    {{- include "table-maintenance.selectorLabels" (dict "root" . "name" "console" "component" "ui") | nindent 4 }}
+    {{- include "table-maintenance.selectorLabels" (dict "root" . "component" "ui") | nindent 4 }}
   ports:
     - name: http
       port: {{ .Values.console.port }}
@@ -63,10 +63,10 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: console
+  name: {{ include "table-maintenance.console.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" . "name" "console" "component" "ui") | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "component" "ui") | nindent 4 }}
 spec:
   parentRefs:
     - name: {{ .Values.console.gateway.name }}
@@ -77,5 +77,5 @@ spec:
             type: PathPrefix
             value: /console
       backendRefs:
-        - name: console
+        - name: {{ include "table-maintenance.console.fullname" . }}
           port: {{ .Values.console.port }}

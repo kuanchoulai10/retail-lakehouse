@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+vars:
+  HELM_UNITTEST_VERSION: 1.2.1
+
+tasks:
+  unit-test:
+    desc: "Run the wave-25 chart's helm-unittest suites and render its scenario values"
+    cmds:
+      - cmd: |
+          installed="$(helm plugin list | awk '$1 == "unittest" {print $2}')"
+          if [ "${installed}" != "{{.HELM_UNITTEST_VERSION}}" ]; then
+            echo "helm-unittest {{.HELM_UNITTEST_VERSION}} is required (found '${installed:-none}'). Install it with its signature checked:" >&2
+            echo "  gh api 'repos/helm-unittest/helm-unittest/contents/public-key.asc?ref=v{{.HELM_UNITTEST_VERSION}}' --jq .content | base64 -d | gpg --dearmor > /tmp/helm-unittest-pubring.gpg" >&2
+            echo "  helm plugin uninstall unittest 2>/dev/null; helm plugin install https://github.com/helm-unittest/helm-unittest/releases/download/v{{.HELM_UNITTEST_VERSION}}/unittest-{{.HELM_UNITTEST_VERSION}}.tgz --keyring /tmp/helm-unittest-pubring.gpg" >&2
+            exit 1
+          fi
+      - cmd: helm lint chart
+      - cmd: helm unittest chart
+      - cmd: |
+          for values in chart/ci/*-values.yaml; do
+            [ -e "${values}" ] || continue
+            helm lint chart --values "${values}"
+            helm template table-maintenance chart --namespace lakehouse-control-plane --values "${values}" >/dev/null
+          done
+
+  security-test:
+    desc: "Scan the wave-25 chart's rendered manifests"
+    cmds:
+      - cmd: echo "TODO:// kube-linter or kubeconform over every chart/ci/*-values.yaml rendering"
+
+  build-test:
+    desc: "Package the wave-25 chart once, versioned by commit"
+    cmds:
+      - cmd: echo "TODO:// helm package the chart with the build.sh source tag and push it to the chart registry"

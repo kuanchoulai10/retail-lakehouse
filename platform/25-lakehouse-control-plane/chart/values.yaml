@@ -1,14 +1,22 @@
+nameOverride: ""
+fullnameOverride: ""
+commonLabels: {}
+
 image:
+  registry: ""
+  pullPolicy: IfNotPresent
   backend:
     repository: table-maintenance-backend
     tag: ""
+    digest: ""
   spark:
     repository: table-maintenance-spark
     tag: ""
+    digest: ""
   console:
     repository: console
     tag: ""
-  pullPolicy: IfNotPresent
+    digest: ""
 
 postgres:
   image: postgres:17.11-alpine
@@ -43,7 +51,8 @@ kafka:
   topic: polaris-catalog-events
 
 spark:
-  serviceAccount: table-maintenance-spark
+  serviceAccount:
+    name: ""
   sparkVersion: 4.0.0
   icebergVersion: 1.10.1
   sizes:
@@ -106,6 +115,8 @@ worker:
   compactionQuietSeconds: 120
   compactionMaxQuietWaitSeconds: 3600
   terminationGracePeriodSeconds: 90
+  serviceAccount:
+    name: ""
   resources:
     requests:
       cpu: 100m

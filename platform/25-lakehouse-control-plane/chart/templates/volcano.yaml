@@ -5,7 +5,7 @@ kind: Queue
 metadata:
   name: {{ $queue.name }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" $ "name" "table-maintenance" "component" "scheduling") | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" $ "component" "scheduling") | nindent 4 }}
 spec:
   capability:
     cpu: {{ $queue.capability.cpu | quote }}
@@ -18,7 +18,7 @@ kind: PriorityClass
 metadata:
   name: {{ $.Values.volcano.priorityClassPrefix }}-{{ lower $priority }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" $ "name" "table-maintenance" "component" "scheduling") | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" $ "component" "scheduling") | nindent 4 }}
 value: {{ $value | int64 }}
 preemptionPolicy: Never
 globalDefault: false

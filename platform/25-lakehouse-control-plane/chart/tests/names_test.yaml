@@ -1,0 +1,121 @@
+suite: names follow the release and every reference follows the names
+templates:
+  - templates/api.yaml
+  - templates/worker.yaml
+  - templates/event-consumer.yaml
+  - templates/migrate-job.yaml
+  - templates/console.yaml
+  - templates/configmap.yaml
+  - templates/rbac.yaml
+release:
+  name: table-maintenance
+  namespace: lakehouse-control-plane
+  revision: 1
+set:
+  image.backend.tag: t
+  image.spark.tag: t
+  image.console.tag: t
+tests:
+  - it: default release keeps today's names
+    asserts:
+      - equal: {path: metadata.name, value: table-maintenance-api}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal: {path: metadata.name, value: table-maintenance-api}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Service}
+      - equal: {path: metadata.name, value: table-maintenance-worker}
+        template: templates/worker.yaml
+      - equal: {path: metadata.name, value: table-maintenance-event-consumer}
+        template: templates/event-consumer.yaml
+      - equal: {path: metadata.name, value: table-maintenance-migrate-1}
+        template: templates/migrate-job.yaml
+      - equal: {path: metadata.name, value: table-maintenance-console}
+        template: templates/console.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal: {path: metadata.name, value: table-maintenance-console}
+        template: templates/console.yaml
+        documentSelector: {path: kind, value: Service}
+      - equal: {path: metadata.name, value: table-maintenance-config}
+        template: templates/configmap.yaml
+      - equal: {path: metadata.name, value: table-maintenance-worker}
+        template: templates/rbac.yaml
+        documentIndex: 0
+
+  - it: another release name renames everything and every reference
+    release:
+      name: tm2
+    asserts:
+      - equal: {path: metadata.name, value: tm2-table-maintenance-api}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal: {path: metadata.name, value: tm2-table-maintenance-api}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Service}
+      - equal: {path: "spec.rules[0].backendRefs[0].name", value: tm2-table-maintenance-api}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: HTTPRoute}
+      - equal: {path: metadata.name, value: tm2-table-maintenance-worker}
+        template: templates/worker.yaml
+      - equal: {path: spec.template.spec.serviceAccountName, value: tm2-table-maintenance-worker}
+        template: templates/worker.yaml
+      - equal: {path: metadata.name, value: tm2-table-maintenance-event-consumer}
+        template: templates/event-consumer.yaml
+      - equal: {path: metadata.name, value: tm2-table-maintenance-migrate-1}
+        template: templates/migrate-job.yaml
+      - equal: {path: metadata.name, value: tm2-table-maintenance-console}
+        template: templates/console.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal: {path: "spec.rules[0].backendRefs[0].name", value: tm2-table-maintenance-console}
+        template: templates/console.yaml
+        documentSelector: {path: kind, value: HTTPRoute}
+      - equal: {path: metadata.name, value: tm2-table-maintenance-config}
+        template: templates/configmap.yaml
+      - equal:
+          path: data.GLAC_CALLBACK_BASE_URL
+          value: http://tm2-table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000
+        template: templates/configmap.yaml
+      - equal: {path: data.GLAC_SPARK__SERVICE_ACCOUNT, value: tm2-table-maintenance-spark}
+        template: templates/configmap.yaml
+      - equal: {path: metadata.name, value: tm2-table-maintenance-worker}
+        template: templates/rbac.yaml
+        documentIndex: 0
+      - equal: {path: "subjects[0].name", value: tm2-table-maintenance-worker}
+        template: templates/rbac.yaml
+        documentIndex: 2
+      - equal: {path: metadata.name, value: tm2-table-maintenance-spark}
+        template: templates/rbac.yaml
+        documentIndex: 3
+      - equal: {path: "subjects[0].name", value: tm2-table-maintenance-spark}
+        template: templates/rbac.yaml
+        documentIndex: 5
+      - equal: {path: "spec.template.spec.containers[0].envFrom[0].configMapRef.name", value: tm2-table-maintenance-config}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal: {path: "spec.template.spec.containers[0].envFrom[0].configMapRef.name", value: tm2-table-maintenance-config}
+        template: templates/worker.yaml
+      - equal: {path: "spec.template.spec.containers[0].envFrom[0].configMapRef.name", value: tm2-table-maintenance-config}
+        template: templates/event-consumer.yaml
+      - equal: {path: "spec.template.spec.containers[0].envFrom[0].configMapRef.name", value: tm2-table-maintenance-config}
+        template: templates/migrate-job.yaml
+
+  - it: fullnameOverride wins
+    set:
+      fullnameOverride: tm
+    asserts:
+      - equal: {path: metadata.name, value: tm-api}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal: {path: metadata.name, value: tm-worker}
+        template: templates/worker.yaml
+      - equal: {path: metadata.name, value: tm-config}
+        template: templates/configmap.yaml
+
+  - it: nameOverride changes the name label
+    set:
+      nameOverride: maint
+    template: templates/api.yaml
+    documentSelector: {path: kind, value: Deployment}
+    asserts:
+      - equal: {path: "metadata.labels[\"app.kubernetes.io/name\"]", value: maint}
+      - equal: {path: "spec.selector.matchLabels[\"app.kubernetes.io/name\"]", value: maint}

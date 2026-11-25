@@ -1,18 +1,18 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: table-maintenance-worker
+  name: {{ include "table-maintenance.worker.serviceAccountName" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "worker") | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "component" "worker") | nindent 4 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: table-maintenance-worker
+  name: {{ include "table-maintenance.worker.fullname" . }}
   namespace: {{ .Values.namespaces.maintenanceOperations }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "worker") | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "component" "worker") | nindent 4 }}
 rules:
   - apiGroups: ["sparkoperator.k8s.io"]
     resources: ["sparkapplications"]
@@ -24,34 +24,34 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: table-maintenance-worker
+  name: {{ include "table-maintenance.worker.fullname" . }}
   namespace: {{ .Values.namespaces.maintenanceOperations }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "worker") | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "component" "worker") | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: table-maintenance-worker
+  name: {{ include "table-maintenance.worker.fullname" . }}
 subjects:
   - kind: ServiceAccount
-    name: table-maintenance-worker
+    name: {{ include "table-maintenance.worker.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ .Values.spark.serviceAccount }}
+  name: {{ include "table-maintenance.spark.serviceAccountName" . }}
   namespace: {{ .Values.namespaces.maintenanceOperations }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "spark-job") | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "component" "spark-job") | nindent 4 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ .Values.spark.serviceAccount }}
+  name: {{ include "table-maintenance.spark.serviceAccountName" . }}
   namespace: {{ .Values.namespaces.maintenanceOperations }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "spark-job") | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "component" "spark-job") | nindent 4 }}
 rules:
   - apiGroups: [""]
     resources: ["pods", "services", "configmaps", "persistentvolumeclaims"]
@@ -63,15 +63,15 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ .Values.spark.serviceAccount }}
+  name: {{ include "table-maintenance.spark.serviceAccountName" . }}
   namespace: {{ .Values.namespaces.maintenanceOperations }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "spark-job") | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "component" "spark-job") | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ .Values.spark.serviceAccount }}
+  name: {{ include "table-maintenance.spark.serviceAccountName" . }}
 subjects:
   - kind: ServiceAccount
-    name: {{ .Values.spark.serviceAccount }}
+    name: {{ include "table-maintenance.spark.serviceAccountName" . }}
     namespace: {{ .Values.namespaces.maintenanceOperations }}

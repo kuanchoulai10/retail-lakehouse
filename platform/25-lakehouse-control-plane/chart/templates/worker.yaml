@@ -1,30 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: table-maintenance-worker
+  name: {{ include "table-maintenance.worker.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "worker" "version" .Values.image.backend.tag) | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "component" "worker" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.backend))) | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "table-maintenance.selectorLabels" (dict "root" . "name" "table-maintenance" "component" "worker") | nindent 6 }}
+      {{- include "table-maintenance.selectorLabels" (dict "root" . "component" "worker") | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "worker" "version" .Values.image.backend.tag) | nindent 8 }}
+        {{- include "table-maintenance.labels" (dict "root" . "component" "worker" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.backend))) | nindent 8 }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
-      serviceAccountName: table-maintenance-worker
+      serviceAccountName: {{ include "table-maintenance.worker.serviceAccountName" . }}
       terminationGracePeriodSeconds: {{ .Values.worker.terminationGracePeriodSeconds }}
       {{- include "table-maintenance.podSecurity" . | nindent 6 }}
       initContainers:
         {{- include "table-maintenance.waitForSchema" . | nindent 8 }}
       containers:
         - name: worker
-          image: {{ include "table-maintenance.backendImage" . }}
+          image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.backend) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: GLAC_COMPONENT
@@ -32,7 +32,7 @@ spec:
             {{- include "table-maintenance.appEnv" . | nindent 12 }}
           envFrom:
             - configMapRef:
-                name: table-maintenance-config
+                name: {{ include "table-maintenance.config.fullname" . }}
             - secretRef:
                 name: {{ .Values.secrets.s3 }}
           {{- include "table-maintenance.containerSecurity" . | nindent 10 }}
