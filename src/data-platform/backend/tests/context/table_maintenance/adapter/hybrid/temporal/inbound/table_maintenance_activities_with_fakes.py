@@ -15,6 +15,7 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.runs_repo_w
     runs_repo_with_one_run,
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fakes import (
+    FakeCancel,
     FakeDelete,
     FakeRaisePriority,
     FakeRecordResult,
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
     from temporalio.client import Client
 
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
+        CancelTableMaintenanceRunUseCase,
         DeleteMaintenanceJobUseCase,
         GetMaintenanceJobProcessesUseCase,
         GetMaintenanceJobStatusUseCase,
@@ -52,6 +54,7 @@ def table_maintenance_activities_with_fakes(  # noqa: PLR0913
     record_running: RecordMaintenanceAttemptRunningUseCase | None = None,
     raise_priority: RaiseTableMaintenanceRunPriorityUseCase | None = None,
     skip: SkipTableMaintenanceRunUseCase | None = None,
+    cancel: CancelTableMaintenanceRunUseCase | None = None,
     client: Client | None = None,
     callback_base_url: str = "http://cp:8000",
 ) -> TableMaintenanceActivities:
@@ -69,6 +72,7 @@ def table_maintenance_activities_with_fakes(  # noqa: PLR0913
         record_running=record_running or FakeRecordRunning(),
         raise_priority=raise_priority or FakeRaisePriority(),
         skip=skip or FakeSkip(),
+        cancel=cancel or FakeCancel(),
         client=client or MagicMock(),
         callback_base_url=callback_base_url,
     )

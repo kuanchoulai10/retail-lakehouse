@@ -18,6 +18,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.transl
     translate_application_errors,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
+    CancelTableMaintenanceRunUseCaseInput,
     DeleteMaintenanceJobUseCaseInput,
     GetMaintenanceJobProcessesUseCaseInput,
     GetMaintenanceJobStatusUseCaseInput,
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
     from temporalio.client import Client
 
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
+        CancelTableMaintenanceRunUseCase,
         DeleteMaintenanceJobUseCase,
         GetMaintenanceJobProcessesUseCase,
         GetMaintenanceJobStatusUseCase,
@@ -61,6 +63,7 @@ class TableMaintenanceActivities:
         record_running: RecordMaintenanceAttemptRunningUseCase,
         raise_priority: RaiseTableMaintenanceRunPriorityUseCase,
         skip: SkipTableMaintenanceRunUseCase,
+        cancel: CancelTableMaintenanceRunUseCase,
         client: Client,
         callback_base_url: str,
     ) -> None:
@@ -73,6 +76,7 @@ class TableMaintenanceActivities:
         self._record_running = record_running
         self._raise_priority = raise_priority
         self._skip = skip
+        self._cancel = cancel
         self._client = client
         self._callback_base_url = callback_base_url
 
@@ -136,6 +140,13 @@ class TableMaintenanceActivities:
         """Skip a run that never started, saying why; a run no longer pending is left alone and reported not skipped."""
         with translate_application_errors():
             output = self._skip.execute(SkipTableMaintenanceRunUseCaseInput.from_primitives(request))
+        return activity_payload(output)
+
+    @activity.defn(name=TableMaintenanceActivity.CANCEL_MAINTENANCE_RUN)
+    def cancel_table_maintenance_run(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Cancel a run with no attempt in flight; a run in flight or ended is left alone and reported not cancelled."""
+        with translate_application_errors():
+            output = self._cancel.execute(CancelTableMaintenanceRunUseCaseInput.from_primitives(request))
         return activity_payload(output)
 
     @activity.defn(name=TableMaintenanceActivity.SIGNAL_PARENT)

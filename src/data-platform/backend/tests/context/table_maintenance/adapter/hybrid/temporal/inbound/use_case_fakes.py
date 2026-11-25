@@ -13,6 +13,9 @@ from context.table_maintenance.application.port.inbound.table import (
     SyncDiscoveredTablesUseCaseOutput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
+    CancelTableMaintenanceRunUseCase,
+    CancelTableMaintenanceRunUseCaseInput,
+    CancelTableMaintenanceRunUseCaseOutput,
     CreateTableMaintenanceRunsUseCase,
     CreateTableMaintenanceRunsUseCaseInput,
     CreateTableMaintenanceRunsUseCaseOutput,
@@ -239,3 +242,24 @@ class FakeSkip(SkipTableMaintenanceRunUseCase):
         if self._output is not None:
             return self._output
         return SkipTableMaintenanceRunUseCaseOutput(run_id=request.run_id, status="skipped", skipped=True)
+
+
+class FakeCancel(CancelTableMaintenanceRunUseCase):
+    """Cancel run use case fake that records its requests."""
+
+    def __init__(
+        self, output: CancelTableMaintenanceRunUseCaseOutput | None = None, *, error: Exception | None = None
+    ) -> None:
+        """Hold the reply to return (the run cancelled by default) or the error to raise, with no recorded requests."""
+        self.requests: list[CancelTableMaintenanceRunUseCaseInput] = []
+        self._output = output
+        self._error = error
+
+    def execute(self, request: CancelTableMaintenanceRunUseCaseInput) -> CancelTableMaintenanceRunUseCaseOutput:
+        """Record the request and raise the error it holds, or return its reply, or the run as cancelled."""
+        self.requests.append(request)
+        if self._error is not None:
+            raise self._error
+        if self._output is not None:
+            return self._output
+        return CancelTableMaintenanceRunUseCaseOutput(run_id=request.run_id, status="cancelled", cancelled=True)

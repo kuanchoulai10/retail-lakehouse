@@ -44,7 +44,7 @@ pytestmark = pytest.mark.full
 
 RUN_TIMEOUT_SECONDS = 900
 WRITE_EVERY_SECONDS = 15
-ACTIVE = ("pending", "queued", "running")
+ACTIVE = ("pending", "queued", "running", "retry_waiting")
 SELECTION = ("qualifying_partitions", "selected_partitions", "waiting_partitions")
 SCHEMA = Schema(
     NestedField(1, "id", LongType(), required=False),

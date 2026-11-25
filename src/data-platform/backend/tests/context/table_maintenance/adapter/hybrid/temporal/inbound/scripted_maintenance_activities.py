@@ -63,7 +63,9 @@ class ScriptedMaintenanceActivities:
     once that long has passed since that delete (a later delete does not move it).
 
     ``skips`` keeps each skip request; a skip replies with the run skipped, and the runs in
-    ``skip_errors`` (by run id) fail their skip as not found, non-retryably.
+    ``skip_errors`` (by run id) fail their skip as not found, non-retryably. ``cancels`` keeps each
+    cancel of a run with no attempt in flight; a cancel replies with the run cancelled, and the runs
+    in ``cancel_errors`` (by run id) fail their cancel as not found, non-retryably.
     ``run_priorities`` holds each run's priority as the database would: the one each raise that raised
     it replied, P3 (the plan's default) before that; ``submitted_priorities`` keeps, per submit, its
     run's priority then. A fake Spark job sends its results to the workflow that submitted it.
@@ -78,6 +80,7 @@ class ScriptedMaintenanceActivities:
         self.record_errors: set[tuple[str, int]] = set()
         self.record_replies: dict[tuple[str, int], dict[str, Any]] = {}
         self.skip_errors: set[str] = set()
+        self.cancel_errors: set[str] = set()
         self.submit_gate: asyncio.Event | None = None
         self.status_gate: asyncio.Event | None = None
         self.status_hook: Callable[[str, datetime], Awaitable[None]] | None = None
@@ -108,6 +111,7 @@ class ScriptedMaintenanceActivities:
         self.submit_hook: Callable[[dict], Awaitable[None]] | None = None
         self.vanish_after_delete: dict[str, timedelta] = {}
         self.skips: list[dict] = []
+        self.cancels: list[dict] = []
         self.run_priorities: dict[str, str] = {}
         self.submitted_priorities: list[str | None] = []
 
@@ -123,6 +127,14 @@ class ScriptedMaintenanceActivities:
         if request["run_id"] in self.skip_errors:
             raise ApplicationError("no such run", type="NotFoundError", non_retryable=True)
         return {"run_id": request["run_id"], "status": "skipped", "skipped": True}
+
+    @activity.defn(name=TableMaintenanceActivity.CANCEL_MAINTENANCE_RUN)
+    async def cancel_maintenance_run(self, request: dict) -> dict:
+        """Record the cancel and reply with the run cancelled."""
+        self.cancels.append(request)
+        if request["run_id"] in self.cancel_errors:
+            raise ApplicationError("no such run", type="NotFoundError", non_retryable=True)
+        return {"run_id": request["run_id"], "status": "cancelled", "cancelled": True}
 
     @activity.defn(name=TableMaintenanceActivity.SUBMIT_MAINTENANCE_OPERATION)
     async def submit_maintenance_operation(self, request: dict) -> dict:
@@ -275,4 +287,5 @@ class ScriptedMaintenanceActivities:
             self.record_maintenance_attempt_running,
             self.raise_table_maintenance_run_priority,
             self.skip_maintenance_run,
+            self.cancel_maintenance_run,
         ]

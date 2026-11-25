@@ -41,7 +41,7 @@ pytestmark = pytest.mark.full
 
 RUN_TIMEOUT_SECONDS = 900
 SPARK_APPLICATIONS = "/apis/sparkoperator.k8s.io/v1beta2/namespaces/lakehouse-maintenance-operations/sparkapplications"
-ACTIVE = ("pending", "queued", "running")
+ACTIVE = ("pending", "queued", "running", "retry_waiting")
 COMPACTION = ["rewrite_data_files"]
 SCHEMA = Schema(
     NestedField(1, "id", LongType(), required=False),

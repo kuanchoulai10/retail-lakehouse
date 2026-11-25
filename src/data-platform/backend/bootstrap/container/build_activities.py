@@ -42,6 +42,7 @@ def build_activities(use_cases: UseCases, client: Client, settings: WorkerSettin
             record_running=use_cases.record_maintenance_attempt_running,
             raise_priority=use_cases.raise_table_maintenance_run_priority,
             skip=use_cases.skip_table_maintenance_run,
+            cancel=use_cases.cancel_table_maintenance_run,
             client=client,
             callback_base_url=settings.callback_base_url,
         ),

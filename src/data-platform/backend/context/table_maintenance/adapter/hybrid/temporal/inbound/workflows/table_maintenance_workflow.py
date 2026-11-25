@@ -89,7 +89,10 @@ class TableMaintenanceWorkflow:
     pods can outlive the SparkApplication. A
     cancellation (a manual cancel, or the reconciliation giving the run up) fences
     the attempt it interrupts the same way, without a bound and even if another
-    cancel arrives meanwhile, before the run reports. The first attempt runs at the plan's start size.
+    cancel arrives meanwhile, before the run reports; recording that attempt cancels the run. A
+    cancellation while a run waits out the backoff before its retry, with no attempt in flight,
+    cancels that run itself (``cancel_maintenance_run``; a failed cancel is logged), so a run never
+    stays waiting to retry. The first attempt runs at the plan's start size.
     Recording a failed attempt names how it ended and returns what follows it: an
     out-of-memory failure is retried at the next size, other failures at the same size, and a
     failure that needs a person, is not retried or may still be running ends the run at once; a
@@ -209,7 +212,19 @@ class TableMaintenanceWorkflow:
                     return
                 size = decision.get("next_size") or size
             if attempt < self._policy.max_attempts:
-                await workflow.sleep(self._policy.backoff_after(attempt))
+                await self._wait_to_retry(outcome.operation, attempt)
+
+    async def _wait_to_retry(self, name: str, attempt: int) -> None:
+        """Wait out the backoff after ``attempt``; a cancel meanwhile cancels the run of ``name``, then goes on.
+
+        The run is waiting to retry, with no attempt in flight whose record could end it, so the cancel
+        ends it itself (``cancel_maintenance_run``), even if another cancel arrives meanwhile.
+        """
+        try:
+            await workflow.sleep(self._policy.backoff_after(attempt))
+        except asyncio.CancelledError:
+            await self._cancel_waiting_run(name)
+            raise
 
     async def _run_attempt(self, operation: dict[str, Any], attempt: int, size: str) -> OperationResultSignal:
         name = operation["operation"]
@@ -749,6 +764,16 @@ class TableMaintenanceWorkflow:
             )
         except ActivityError as error:
             workflow.logger.warning("skipping run %s failed: %s", run_id, error)
+
+    async def _cancel_waiting_run(self, name: str) -> None:
+        """Cancel the run of ``name``, which has no attempt in flight; a failed cancel is logged."""
+        run_id = self._run_of[name]
+        try:
+            await _to_the_end(
+                self._activity(TableMaintenanceActivity.CANCEL_MAINTENANCE_RUN, {"run_id": run_id, "now": _now()})
+            )
+        except ActivityError as error:
+            workflow.logger.warning("cancelling run %s failed: %s", run_id, error)
 
     def _submit_failed(self, name: str, attempt: int, error: ActivityError) -> OperationResultSignal:
         return self._failure(name, attempt, f"submit failed: {_message(error)}", MaintenanceAttemptEnding.SUBMIT_FAILED)

@@ -55,6 +55,7 @@ from context.table_maintenance.application.service.table_maintenance_policy_atta
     ResolveApplicableTableMaintenancePolicyService,
 )
 from context.table_maintenance.application.service.table_maintenance_run import (
+    CancelTableMaintenanceRunService,
     CreateTableMaintenanceRunsService,
     DeleteMaintenanceJobService,
     ForwardTableMaintenanceResultService,
@@ -219,6 +220,7 @@ def build_use_cases(
         list_table_reconciliations=ListTableReconciliationsService(reconciliations, policies),
         record_table_reconciliation=RecordTableReconciliationService(reconciliations),
         skip_table_maintenance_run=SkipTableMaintenanceRunService(runs),
+        cancel_table_maintenance_run=CancelTableMaintenanceRunService(runs),
         issue_table_maintenance_run_ids=IssueTableMaintenanceRunIdsService(),
         issue_table_reconciliation_id=IssueTableReconciliationIdService(),
         submit_maintenance_operation=SubmitMaintenanceOperationService(runs, tables, gateways.submit_maintenance_job),

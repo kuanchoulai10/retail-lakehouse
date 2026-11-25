@@ -41,7 +41,7 @@ SCHEDULE_SECONDS = 300
 COMMIT_WINDOW_SECONDS = 90
 SCHEDULE_TIMEOUT_SECONDS = 120
 RUN_TIMEOUT_SECONDS = 3600
-ACTIVE = ("pending", "queued", "running")
+ACTIVE = ("pending", "queued", "running", "retry_waiting")
 
 SCHEMA = Schema(
     NestedField(1, "id", LongType(), required=False),

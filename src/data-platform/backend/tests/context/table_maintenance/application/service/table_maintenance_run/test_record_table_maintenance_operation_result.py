@@ -533,3 +533,23 @@ def test_a_success_contradicting_the_recorded_failure_of_a_waiting_run_is_refuse
     assert (stored.status.name.value, stored.attempt_record(1).status.value) == ("retry_waiting", "failed")
     state = tables_repo.get(TableId("u-1")).operation_state(RDF)
     assert (state.consecutive_failures, state.last_successful_size) == (1, None)
+
+
+def test_a_cancelled_attempt_cancels_the_run(recorder, runs_repo, tables_repo, table, log, now):
+    """An attempt ended by a cancel cancels and finishes the run; the table counts the failure as before.
+
+    A replay of the same cancel is already recorded: it answers the same and saves nothing.
+    """
+    _run(runs_repo, table, now, ComputeSize.S)
+    later = now + timedelta(minutes=1)
+    out = _record(recorder, later, error="the maintenance workflow was cancelled", ended_by="cancelled")
+    assert (out.status, out.failure_class, out.next_step) == ("cancelled", "cancelled", "cancelled")
+    assert out.next_size is None
+    stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
+    assert (stored.status.name.value, stored.finished_at) == ("cancelled", later)
+    assert (stored.attempt_record(1).status.value, stored.attempt_record(1).finished_at) == ("failed", later)
+    state = tables_repo.get(TableId("u-1")).operation_state(RDF)
+    assert (state.consecutive_failures, state.last_attempt_at) == (1, later)
+    track_calls(runs_repo, "update", "runs.update", log, lambda r: r.id.value)
+    assert _record(recorder, later + timedelta(minutes=1), error="again", ended_by="cancelled") == out
+    assert log == []

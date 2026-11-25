@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.port.inbound.table_maintenance_run.cancel_table_maintenance_run.input import (  # noqa: E501
+    CancelTableMaintenanceRunUseCaseInput,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_run.cancel_table_maintenance_run.output import (  # noqa: E501
+    CancelTableMaintenanceRunUseCaseOutput,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_run.cancel_table_maintenance_run.use_case import (  # noqa: E501
+    CancelTableMaintenanceRunUseCase,
+)
 from context.table_maintenance.application.port.inbound.table_maintenance_run.create_table_maintenance_runs.input import (  # noqa: E501
     CreateTableMaintenanceRunsUseCaseInput,
 )
@@ -122,6 +131,9 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run.su
 )
 
 __all__ = [
+    "CancelTableMaintenanceRunUseCase",
+    "CancelTableMaintenanceRunUseCaseInput",
+    "CancelTableMaintenanceRunUseCaseOutput",
     "CreateTableMaintenanceRunsUseCase",
     "CreateTableMaintenanceRunsUseCaseInput",
     "CreateTableMaintenanceRunsUseCaseOutput",

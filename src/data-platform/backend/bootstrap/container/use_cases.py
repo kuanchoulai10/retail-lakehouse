@@ -51,6 +51,7 @@ if TYPE_CHECKING:
         ResolveApplicableTableMaintenancePolicyUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
+        CancelTableMaintenanceRunUseCase,
         CreateTableMaintenanceRunsUseCase,
         DeleteMaintenanceJobUseCase,
         ForwardTableMaintenanceResultUseCase,
@@ -123,6 +124,7 @@ class UseCases:
     raise_table_maintenance_run_priority: RaiseTableMaintenanceRunPriorityUseCase
     plan_table_maintenance: PlanTableMaintenanceUseCase
     skip_table_maintenance_run: SkipTableMaintenanceRunUseCase
+    cancel_table_maintenance_run: CancelTableMaintenanceRunUseCase
     issue_table_maintenance_run_ids: IssueTableMaintenanceRunIdsUseCase
     submit_maintenance_operation: SubmitMaintenanceOperationUseCase
     get_table_reconciliation: GetTableReconciliationUseCase

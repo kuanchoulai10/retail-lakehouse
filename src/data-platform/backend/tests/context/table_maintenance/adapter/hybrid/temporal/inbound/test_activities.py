@@ -20,6 +20,8 @@ from context.table_maintenance.application.port.inbound.table import (
     SyncDiscoveredTablesUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
+    CancelTableMaintenanceRunUseCaseInput,
+    CancelTableMaintenanceRunUseCaseOutput,
     SkipTableMaintenanceRunUseCaseInput,
     SkipTableMaintenanceRunUseCaseOutput,
 )
@@ -45,6 +47,7 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_recon
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fakes import (
     GOLD_POLICY_ID,
+    FakeCancel,
     FakeCreateRuns,
     FakeDelete,
     FakePlan,
@@ -1003,6 +1006,38 @@ def test_skip_activity_refuses_an_unknown_run_without_retry():
 
     with pytest.raises(ApplicationError) as caught:
         activities.skip_table_maintenance_run({"run_id": RUN_1, "reason": "stopped", "now": NOW})
+
+    assert caught.value.non_retryable
+    assert caught.value.type == "NotFoundError"
+
+
+def test_cancel_activity_passes_the_run_and_time_and_returns_the_reply():
+    """The cancel activity builds its input from the payload and returns whether the run was cancelled."""
+    cancel = FakeCancel()
+    activities = table_maintenance_activities_with_fakes(cancel=cancel)
+
+    result = activities.cancel_table_maintenance_run({"run_id": RUN_1, "now": NOW})
+
+    assert cancel.requests == [CancelTableMaintenanceRunUseCaseInput(run_id=RUN_1, now=NOW_DT)]
+    assert result == {"run_id": RUN_1, "status": "cancelled", "cancelled": True}
+
+
+def test_cancel_activity_returns_a_run_left_alone_as_not_cancelled():
+    """A run in flight or ended comes back with its status and ``cancelled`` false, and the activity does not fail."""
+    reply = CancelTableMaintenanceRunUseCaseOutput(run_id=RUN_1, status="succeeded", cancelled=False)
+    activities = table_maintenance_activities_with_fakes(cancel=FakeCancel(reply))
+
+    result = activities.cancel_table_maintenance_run({"run_id": RUN_1, "now": NOW})
+
+    assert result == {"run_id": RUN_1, "status": "succeeded", "cancelled": False}
+
+
+def test_cancel_activity_refuses_an_unknown_run_without_retry():
+    """A cancel of a run that does not exist fails the activity at once, as not found."""
+    activities = table_maintenance_activities_with_fakes(cancel=FakeCancel(error=NotFoundError("no run")))
+
+    with pytest.raises(ApplicationError) as caught:
+        activities.cancel_table_maintenance_run({"run_id": RUN_1, "now": NOW})
 
     assert caught.value.non_retryable
     assert caught.value.type == "NotFoundError"

@@ -16,4 +16,5 @@ class TableMaintenanceActivity(StrEnum):
     RECORD_MAINTENANCE_ATTEMPT_RUNNING = "record_maintenance_attempt_running"
     RAISE_MAINTENANCE_RUN_PRIORITY = "raise_maintenance_run_priority"
     SKIP_MAINTENANCE_RUN = "skip_maintenance_run"
+    CANCEL_MAINTENANCE_RUN = "cancel_maintenance_run"
     SIGNAL_PARENT = "signal_parent"

@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.full
 
 RUN_TIMEOUT_SECONDS = 900
-ACTIVE = ("pending", "queued", "running")
+ACTIVE = ("pending", "queued", "running", "retry_waiting")
 SCHEMA = Schema(
     NestedField(1, "id", LongType(), required=False),
     NestedField(2, "ts", TimestamptzType(), required=False),

@@ -2437,6 +2437,83 @@ def test_a_cancelled_workflow_reports_only_once_every_job_of_its_run_is_gone():
     _run(scenario)
 
 
+async def _waits_out_a_backoff(h: Harness) -> bool:
+    """Tell whether the workflow started a timer after it recorded its latest attempt: the backoff before a retry."""
+    history = await h.client.get_workflow_handle(WORKFLOW_ID).fetch_history()
+    events = list(history.events)
+    records = [
+        i
+        for i, event in enumerate(events)
+        if event.HasField("activity_task_scheduled_event_attributes")
+        and event.activity_task_scheduled_event_attributes.activity_type.name == "record_maintenance_operation_result"
+    ]
+    return bool(records) and any(event.HasField("timer_started_event_attributes") for event in events[records[-1] :])
+
+
+async def _cancel_during_the_retry_wait(h: Harness) -> None:
+    """Fail run 1's first attempt with a retry to follow, and cancel the workflow while it waits to retry."""
+    h.fakes.callbacks = {(COMPACTION, 1): [(1, False, "boom")]}
+    h.fakes.record_replies = {
+        (COMPACTION, 1): {"status": "retry_waiting", "failure_class": "other", "next_step": "retry_same"},
+    }
+    handle = await h.start_maintenance(COMPACTION, EXPIRE)
+    await eventually(lambda: _waits_out_a_backoff(h), bool, timeout=REAL_TIMEOUT_SECONDS)
+    await handle.cancel()
+    with pytest.raises(WorkflowFailureError) as caught:
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+    assert isinstance(caught.value.cause, CancelledError)
+
+
+def test_a_cancel_during_the_retry_wait_cancels_the_run():
+    """A cancel while run 1 waits to retry cancels that run, which has no attempt in flight to record.
+
+    No attempt follows, the run never reached is skipped, and the parent is told as after any cancel.
+    """
+
+    async def scenario(h: Harness) -> None:
+        await _cancel_during_the_retry_wait(h)
+
+        assert [c["run_id"] for c in h.fakes.cancels] == [RUN_IDS[0]]
+        assert h.recorded() == [(COMPACTION, 1, False, "boom")]
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1)]
+        assert [s["run_id"] for s in h.fakes.skips] == [RUN_IDS[1]]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
+        names = _names(await h.commands())
+        assert names.index("cancel_maintenance_run") < names.index("signal_parent")
+
+    _run(scenario)
+
+
+def test_a_failed_cancel_during_the_retry_wait_still_ends_the_workflow():
+    """A cancel of the waiting run that fails is logged: the workflow still ends cancelled and tells the parent."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.cancel_errors = {RUN_IDS[0]}
+        await _cancel_during_the_retry_wait(h)
+
+        assert [c["run_id"] for c in h.fakes.cancels] == [RUN_IDS[0]]
+        assert [s["run_id"] for s in h.fakes.skips] == [RUN_IDS[1]]
+        assert await h.parent_payloads() == [_report(run_ids=list(RUN_IDS[:2]))]
+
+    _run(scenario)
+
+
+def test_a_cancel_during_an_attempt_cancels_no_run_by_itself():
+    """A cancel that interrupts an attempt is recorded on that attempt; the run is not cancelled a second way."""
+
+    async def scenario(h: Harness) -> None:
+        cancelled: list[bool] = []
+        _cancel_on_the_first_status_poll(h, cancelled)
+        handle = await h.start_maintenance(COMPACTION)
+        with pytest.raises(WorkflowFailureError):
+            await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+        assert cancelled == [True]
+        assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
+        assert h.fakes.cancels == []
+
+    _run(scenario)
+
+
 async def _oom_then_a_larger_size(h: Harness) -> WorkflowHandle:
     h.fakes.callbacks = {(COMPACTION, 1): [(1, False, OOM_ERROR)], (COMPACTION, 2): [(2, True, None)]}
     h.fakes.record_replies = {

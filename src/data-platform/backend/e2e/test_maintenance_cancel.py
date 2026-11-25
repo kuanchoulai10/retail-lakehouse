@@ -1,10 +1,10 @@
-"""Stopping a table's maintenance midway fails the run in flight and skips the runs it never reached.
+"""Stopping a table's maintenance midway cancels the run in flight and skips the runs it never reached.
 
 A dry-run policy keeps the platform from maintaining the table on its own; a manual request plans
 a compaction, a manifest rewrite and an expiry. Once the compaction's job was submitted, its
-maintenance execution is cancelled through Temporal: the compaction ends failed by the cancel, the
-two later runs are skipped with the reason, no run stays pending, no Spark job of these runs is
-left, and the table's reconciliation keeps running.
+maintenance execution is cancelled through Temporal: the compaction ends cancelled, its attempt
+failed by the cancel, the two later runs are skipped with the reason, no run stays pending, no Spark
+job of these runs is left, and the table's reconciliation keeps running.
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ PLAN = ("rewrite_data_files", "rewrite_manifests", "expire_snapshots")
 NOT_REACHED = "the table's maintenance stopped before this run started"
 SPARK_APPLICATIONS = "/apis/sparkoperator.k8s.io/v1beta2/namespaces/lakehouse-maintenance-operations/sparkapplications"
 RUN_ID = "table-maintenance/run-id"
-ACTIVE = ("pending", "queued", "running")
+ACTIVE = ("pending", "queued", "running", "retry_waiting")
 SCHEMA = Schema(
     NestedField(1, "id", LongType(), required=False),
     NestedField(2, "note", StringType(), required=False),
@@ -67,7 +67,7 @@ def _settled(platform: PlatformApi, table_uuid: str, run_ids: list[str]) -> list
     return runs
 
 
-def test_a_cancel_fails_the_run_in_flight_and_skips_the_rest(
+def test_a_cancel_cancels_the_run_in_flight_and_skips_the_rest(
     platform: PlatformApi,
     iceberg: Catalog,
     s3: fs.S3FileSystem,
@@ -77,7 +77,7 @@ def test_a_cancel_fails_the_run_in_flight_and_skips_the_rest(
     suffix: str,
     cleanup: CleanupStack,
 ):
-    """The compaction fails as cancelled, the manifest rewrite and expiry are skipped, nothing is left behind."""
+    """The compaction is cancelled, the manifest rewrite and expiry are skipped, nothing is left behind."""
     stopped = ManagedTable.create(
         platform=platform,
         iceberg=iceberg,
@@ -112,7 +112,8 @@ def test_a_cancel_fails_the_run_in_flight_and_skips_the_rest(
     compaction, manifests, expiry = wait_until(
         lambda: _settled(platform, uuid, run_ids), timeout=300, interval=3, what=f"the cancelled plan of {uuid}"
     )
-    assert compaction["status"] == "failed", compaction
+    assert compaction["status"] == "cancelled", compaction
+    assert compaction["finished_at"] is not None, compaction
     last = compaction["attempts"][-1]
     assert (last["failure_class"], last["next_step"]) == ("cancelled", "cancelled"), last
     assert last["finished_at"] is not None, last

@@ -24,6 +24,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     AttemptEnding,
     AttemptStatus,
     ContainerExit,
+    FailureClass,
     FailureEvidence,
     InvalidRunTransition,
     NextStep,
@@ -161,6 +162,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         evidence: ReadMaintenanceJobEvidenceGatewayOutput | None,
         event_log_finished: bool | None,
     ) -> None:
+        """Record the failed attempt: a cancel cancels the run, any other failure fails it or leaves it to retry."""
         error = request.error or _UNKNOWN_ERROR
         texts = tuple(t for t in (error, evidence.error if evidence else None) if t)
         containers = tuple(
@@ -168,6 +170,15 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
             for c in (evidence.containers if evidence else ())
         )
         failure_class = classify_attempt_failure(FailureEvidence(ended_by=ending, texts=texts, containers=containers))
+        if failure_class is FailureClass.CANCELLED:
+            run.cancel_attempt(
+                request.attempt,
+                error,
+                request.now,
+                started_running_at=_started_running_at(evidence),
+                event_log_finished=event_log_finished,
+            )
+            return
         next_attempt = decide_next_attempt(
             failure_class, size, request.attempt, request.max_attempts, still_running=request.still_running
         )

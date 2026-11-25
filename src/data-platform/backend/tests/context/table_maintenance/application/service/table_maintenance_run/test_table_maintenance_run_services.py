@@ -35,6 +35,7 @@ from context.table_maintenance.application.exceptions import (
     ValidationError,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
+    CancelTableMaintenanceRunUseCaseInput,
     CreateTableMaintenanceRunsUseCaseInput,
     ForwardTableMaintenanceResultUseCaseInput,
     GetTableMaintenanceRunUseCaseInput,
@@ -43,6 +44,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     SkipTableMaintenanceRunUseCaseInput,
 )
 from context.table_maintenance.application.service.table_maintenance_run import (
+    CancelTableMaintenanceRunService,
     CreateTableMaintenanceRunsService,
     ForwardTableMaintenanceResultService,
     GetTableMaintenanceRunService,
@@ -682,6 +684,105 @@ def test_skip_of_an_unknown_run_is_not_found(runs_repo, now):
     """Skipping a run that does not exist raises NotFoundError."""
     with pytest.raises(NotFoundError):
         _skip(runs_repo, now, run_id=UNKNOWN_RUN)
+
+
+# --- cancel ---
+
+
+def _cancel(runs_repo, now, run_id=RUN_1):
+    return CancelTableMaintenanceRunService(runs_repo).execute(
+        CancelTableMaintenanceRunUseCaseInput(run_id=run_id, now=now)
+    )
+
+
+def _waiting(started_run, runs_repo, now) -> TableMaintenanceRun:
+    """Fail the started run's first attempt with a retry to follow, so the run waits to retry."""
+    started_run.fail(1, "boom", now, next_attempt=NextAttempt(step=NextStep.RETRY_SAME, size=ComputeSize.S))
+    runs_repo.update(started_run)
+    return started_run
+
+
+def test_cancel_cancels_a_waiting_run(runs_repo, started_run, log, now):
+    """A run waiting to retry is cancelled and finished, keeps its failed attempt, and is saved once."""
+    _waiting(started_run, runs_repo, now)
+    track_calls(runs_repo, "update", "runs.update", log, lambda r: r.id.value)
+    out = _cancel(runs_repo, now + timedelta(minutes=1))
+    assert log == [("runs.update", RUN_1)]
+    assert (out.run_id, out.status, out.cancelled) == (RUN_1, "cancelled", True)
+    stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
+    assert (stored.status.name, stored.finished_at) == (RunStatusName.CANCELLED, now + timedelta(minutes=1))
+    assert [(a.attempt, a.status.value) for a in stored.attempts] == [(1, "failed")]
+
+
+def test_cancel_cancels_a_pending_run(runs_repo, table, log, now):
+    """A run that never started is cancelled and finished with no attempt."""
+    _stored_run(runs_repo, table, now)
+    track_calls(runs_repo, "update", "runs.update", log, lambda r: r.id.value)
+    out = _cancel(runs_repo, now + timedelta(minutes=1))
+    assert log == [("runs.update", RUN_1)]
+    assert (out.status, out.cancelled) == ("cancelled", True)
+    stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
+    assert (stored.status.name, stored.attempts) == (RunStatusName.CANCELLED, ())
+
+
+def _queued(run, now) -> None:
+    """Leave the started run queued."""
+
+
+def _running(run, now) -> None:
+    run.record_attempt_running(1, now, now)
+
+
+def _succeeded(run, now) -> None:
+    run.succeed(1, {}, now)
+
+
+def _failed(run, now) -> None:
+    run.fail(1, "boom", now)
+
+
+def _cancelled(run, now) -> None:
+    run.fail(1, "boom", now, next_attempt=NextAttempt(step=NextStep.RETRY_SAME, size=ComputeSize.S))
+    run.cancel(now)
+
+
+@pytest.mark.parametrize(
+    ("end", "status"),
+    [
+        (_queued, "queued"),
+        (_running, "running"),
+        (_succeeded, "succeeded"),
+        (_failed, "failed"),
+        (_cancelled, "cancelled"),
+    ],
+    ids=["queued", "running", "succeeded", "failed", "cancelled"],
+)
+def test_cancel_leaves_a_finished_or_running_run_alone(runs_repo, started_run, log, now, end, status):
+    """A run in flight or ended is not cancelled, not saved, and says so; a repeated cancel does not fail."""
+    end(started_run, now)
+    runs_repo.update(started_run)
+    before = runs_repo.get(TableMaintenanceRunId(RUN_1)).model_dump()
+    track_calls(runs_repo, "update", "runs.update", log, lambda r: r.id.value)
+    out = _cancel(runs_repo, now + timedelta(minutes=5))
+    assert log == []
+    assert (out.run_id, out.status, out.cancelled) == (RUN_1, status, False)
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).model_dump() == before
+
+
+def test_cancel_leaves_a_skipped_run_alone(runs_repo, table, log, now):
+    """A skipped run has ended: it is not cancelled and not saved."""
+    _stored_run(runs_repo, table, now)
+    _skip(runs_repo, now)
+    track_calls(runs_repo, "update", "runs.update", log, lambda r: r.id.value)
+    out = _cancel(runs_repo, now + timedelta(minutes=5))
+    assert log == []
+    assert (out.status, out.cancelled) == ("skipped", False)
+
+
+def test_cancel_of_an_unknown_run_is_not_found(runs_repo, now):
+    """Cancelling a run that does not exist raises NotFoundError."""
+    with pytest.raises(NotFoundError):
+        _cancel(runs_repo, now, run_id=UNKNOWN_RUN)
 
 
 def _attention_mark(now) -> AttentionMark:
