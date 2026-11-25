@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from context.table_maintenance.adapter.outbound.shared.sql import IsoDatetimeCodec
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
+    AttemptStatus,
     ComputeSize,
     FailureClass,
     MaintenanceOperation,
@@ -56,7 +57,7 @@ def _decode_attempt(data: dict[str, Any]) -> OperationAttempt:
     return OperationAttempt(
         attempt=data["attempt"],
         size=ComputeSize(data["size"]),
-        status=RunStatus(data["status"]),
+        status=AttemptStatus(data["status"]),
         started_at=started_at,
         job_name=data["job_name"],
         started_running_at=IsoDatetimeCodec.decode(data["started_running_at"]),

@@ -5,6 +5,9 @@ from __future__ import annotations
 from context.table_maintenance.application.domain.model.table_maintenance_run.attempt.attempt_ending import (
     AttemptEnding,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_run.attempt.attempt_status import (
+    AttemptStatus,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_run.attempt.container_exit import (
     ContainerExit,
 )
@@ -56,6 +59,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.tr
 
 __all__ = [
     "AttemptEnding",
+    "AttemptStatus",
     "ContainerExit",
     "ExpireSnapshotsJobContent",
     "FailureClass",

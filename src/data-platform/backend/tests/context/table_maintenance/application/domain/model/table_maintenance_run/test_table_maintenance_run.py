@@ -20,6 +20,7 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation as Op,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    AttemptStatus,
     ExpireSnapshotsJobContent,
     FailureClass,
     InvalidRunTransition,
@@ -69,7 +70,7 @@ REGION = PartitionFieldInfo(
 EU = SpecPartitions(spec=PartitionSpecInfo(spec_id=0, fields=(REGION,)), values=(("eu",),))
 
 
-def _attempt(n: int, status: RunStatus = RunStatus.FAILED, **fields: object) -> OperationAttempt:
+def _attempt(n: int, status: AttemptStatus = AttemptStatus.FAILED, **fields: object) -> OperationAttempt:
     return OperationAttempt.model_validate(
         {"attempt": n, "size": ComputeSize.S, "status": status, "started_at": T0, **fields}
     )
@@ -99,7 +100,7 @@ def test_the_first_attempt_queues_and_starts_the_run():
     run = _run()
     run.start_attempt(1, "tm-es-x-a1", _now(1), size=ComputeSize.S)
     assert (run.status, run.started_at) == (RunStatus.QUEUED, _now(1))
-    assert (run.attempts[0].status, run.attempts[0].job_name) == (RunStatus.QUEUED, "tm-es-x-a1")
+    assert (run.attempts[0].status, run.attempts[0].job_name) == (AttemptStatus.QUEUED, "tm-es-x-a1")
 
 
 def test_each_attempt_keeps_its_own_job_name():
@@ -186,13 +187,6 @@ def test_content_of_another_operation_is_refused():
         _run(Op.EXPIRE_SNAPSHOTS, content=RewriteDataFilesJobContent(target_file_size_bytes=1))
 
 
-@pytest.mark.parametrize("status", [RunStatus.PENDING, RunStatus.SKIPPED])
-def test_an_attempt_is_never_pending_or_skipped(status):
-    """An attempt is only queued, running, succeeded or failed."""
-    with pytest.raises(InvariantViolation, match="queued, running, succeeded or failed"):
-        OperationAttempt(attempt=1, size=ComputeSize.S, status=status, started_at=_now())
-
-
 def test_there_is_no_partially_failed_status():
     """With one operation per run there is no partially failed status."""
     assert {s.value for s in RunStatus} == {"pending", "queued", "running", "succeeded", "failed", "skipped"}
@@ -224,7 +218,7 @@ def test_attempts_numbered_from_one_upward_are_valid():
     run = _with(
         _run(),
         status=RunStatus.RUNNING,
-        attempts=(_attempt(1), _attempt(2), _attempt(3, RunStatus.RUNNING)),
+        attempts=(_attempt(1), _attempt(2), _attempt(3, AttemptStatus.RUNNING)),
     )
     assert [a.attempt for a in run.attempts] == [1, 2, 3]
 
@@ -232,8 +226,8 @@ def test_attempts_numbered_from_one_upward_are_valid():
 @pytest.mark.parametrize(
     "attempts",
     [
-        (_attempt(1), _attempt(1, RunStatus.RUNNING)),
-        (_attempt(1), _attempt(3), _attempt(2, RunStatus.RUNNING)),
+        (_attempt(1), _attempt(1, AttemptStatus.RUNNING)),
+        (_attempt(1), _attempt(3), _attempt(2, AttemptStatus.RUNNING)),
     ],
 )
 def test_attempt_numbers_must_increase(attempts):
@@ -245,7 +239,7 @@ def test_attempt_numbers_must_increase(attempts):
 def test_attempts_must_start_at_one():
     """A run whose first attempt is not attempt 1 is refused: there is no history from before attempts."""
     with pytest.raises(InvariantViolation, match="start at 1"):
-        _with(_run(), status=RunStatus.RUNNING, attempts=(_attempt(2, RunStatus.RUNNING),))
+        _with(_run(), status=RunStatus.RUNNING, attempts=(_attempt(2, AttemptStatus.RUNNING),))
 
 
 @pytest.mark.parametrize(
@@ -261,11 +255,11 @@ def test_a_skip_reason_goes_exactly_with_a_skipped_run(status, skip_reason, atte
 @pytest.mark.parametrize(
     ("status", "finished_at", "attempts"),
     [
-        (RunStatus.SUCCEEDED, None, (_attempt(1, RunStatus.SUCCEEDED),)),
+        (RunStatus.SUCCEEDED, None, (_attempt(1, AttemptStatus.SUCCEEDED),)),
         (RunStatus.FAILED, None, (_attempt(1),)),
         (RunStatus.PENDING, _now(1), ()),
-        (RunStatus.QUEUED, _now(1), (_attempt(1, RunStatus.QUEUED),)),
-        (RunStatus.RUNNING, _now(1), (_attempt(1, RunStatus.RUNNING),)),
+        (RunStatus.QUEUED, _now(1), (_attempt(1, AttemptStatus.QUEUED),)),
+        (RunStatus.RUNNING, _now(1), (_attempt(1, AttemptStatus.RUNNING),)),
     ],
 )
 def test_a_finish_time_goes_exactly_with_a_terminal_status(status, finished_at, attempts):
@@ -281,10 +275,10 @@ def test_a_finish_time_goes_exactly_with_a_terminal_status(status, finished_at, 
         (RunStatus.RUNNING, None, ()),
         (RunStatus.FAILED, _now(1), ()),
         (RunStatus.SUCCEEDED, _now(1), ()),
-        (RunStatus.RUNNING, None, (_attempt(1, RunStatus.QUEUED),)),
-        (RunStatus.QUEUED, None, (_attempt(1), _attempt(2, RunStatus.RUNNING))),
-        (RunStatus.FAILED, _now(1), (_attempt(1, RunStatus.SUCCEEDED),)),
-        (RunStatus.PENDING, None, (_attempt(1, RunStatus.QUEUED),)),
+        (RunStatus.RUNNING, None, (_attempt(1, AttemptStatus.QUEUED),)),
+        (RunStatus.QUEUED, None, (_attempt(1), _attempt(2, AttemptStatus.RUNNING))),
+        (RunStatus.FAILED, _now(1), (_attempt(1, AttemptStatus.SUCCEEDED),)),
+        (RunStatus.PENDING, None, (_attempt(1, AttemptStatus.QUEUED),)),
     ],
 )
 def test_the_status_is_the_latest_attempts_or_pending_or_skipped_without_one(status, finished_at, attempts):
@@ -376,7 +370,7 @@ def test_the_run_reads_the_status_of_its_latest_attempt():
     assert run.status is RunStatus.QUEUED
     run.record_attempt_running(2, _now(5), _now(5))
     assert run.status is RunStatus.RUNNING
-    assert [a.status for a in run.attempts] == [RunStatus.FAILED, RunStatus.RUNNING]
+    assert [a.status for a in run.attempts] == [AttemptStatus.FAILED, AttemptStatus.RUNNING]
 
 
 # --- skip ---
@@ -567,7 +561,9 @@ def test_start_attempt_appends_a_queued_attempt_with_its_size():
     run = _run(COMPACTION)
     run.start_attempt(1, "job-1", _now(1), size=ComputeSize.M)
     assert run.attempts == (
-        OperationAttempt(attempt=1, size=ComputeSize.M, status=RunStatus.QUEUED, started_at=_now(1), job_name="job-1"),
+        OperationAttempt(
+            attempt=1, size=ComputeSize.M, status=AttemptStatus.QUEUED, started_at=_now(1), job_name="job-1"
+        ),
     )
 
 
@@ -595,7 +591,7 @@ def test_fail_records_class_error_event_log_and_next_step_on_the_attempt():
     assert run.attempt_record(1) == OperationAttempt(
         attempt=1,
         size=ComputeSize.S,
-        status=RunStatus.FAILED,
+        status=AttemptStatus.FAILED,
         started_at=_now(1),
         job_name="job-1",
         finished_at=_now(5),
@@ -626,7 +622,7 @@ def test_succeed_marks_the_attempt_done():
     run.succeed(1, {"rewritten_data_files_count": 3}, _now(4), event_log_finished=True)
     record = run.attempt_record(1)
     assert record is not None
-    assert record.status is RunStatus.SUCCEEDED
+    assert record.status is AttemptStatus.SUCCEEDED
     assert record.finished_at == _now(4)
     assert record.event_log_finished is True
     assert record.next_step is NextStep.DONE
@@ -656,9 +652,9 @@ def test_three_attempts_keep_three_entries():
     run.start_attempt(3, "job-3", _now(5), size=ComputeSize.L)
     run.succeed(3, {}, _now(6))
     assert [(a.attempt, a.size, a.status, a.next_step, a.next_size) for a in run.attempts] == [
-        (1, ComputeSize.S, RunStatus.FAILED, NextStep.RETRY_LARGER, ComputeSize.M),
-        (2, ComputeSize.M, RunStatus.FAILED, NextStep.RETRY_LARGER, ComputeSize.L),
-        (3, ComputeSize.L, RunStatus.SUCCEEDED, NextStep.DONE, None),
+        (1, ComputeSize.S, AttemptStatus.FAILED, NextStep.RETRY_LARGER, ComputeSize.M),
+        (2, ComputeSize.M, AttemptStatus.FAILED, NextStep.RETRY_LARGER, ComputeSize.L),
+        (3, ComputeSize.L, AttemptStatus.SUCCEEDED, NextStep.DONE, None),
     ]
     assert run.error is None
 
@@ -681,15 +677,15 @@ def test_attempt_record_is_none_for_an_unknown_attempt():
 def test_an_attempt_cannot_start_running_before_it_was_submitted():
     """A running time earlier than the submit time is rejected."""
     with pytest.raises(InvariantViolation):
-        _attempt(1, RunStatus.RUNNING, started_running_at=T0 - timedelta(seconds=1))
+        _attempt(1, AttemptStatus.RUNNING, started_running_at=T0 - timedelta(seconds=1))
 
 
 def test_a_queued_or_running_attempt_is_not_finished():
     """Only an attempt with an outcome is finished."""
-    assert not _attempt(1, RunStatus.QUEUED).finished
-    assert not _attempt(1, RunStatus.RUNNING).finished
-    assert _attempt(1, RunStatus.FAILED).finished
-    assert _attempt(1, RunStatus.SUCCEEDED).finished
+    assert not _attempt(1, AttemptStatus.QUEUED).finished
+    assert not _attempt(1, AttemptStatus.RUNNING).finished
+    assert _attempt(1, AttemptStatus.FAILED).finished
+    assert _attempt(1, AttemptStatus.SUCCEEDED).finished
 
 
 # --- the driver running ---
@@ -705,7 +701,7 @@ def test_a_submitted_attempt_is_queued():
     """A submitted attempt and its run wait in the queue until the job runs."""
     run = _queued_run()
     assert run.status is RunStatus.QUEUED
-    assert run.attempts[0].status is RunStatus.QUEUED
+    assert run.attempts[0].status is AttemptStatus.QUEUED
     assert run.attempts[0].started_running_at is None
     assert not run.attempts[0].finished
 
@@ -724,7 +720,7 @@ def test_record_running_moves_queued_to_running():
     run = _queued_run()
     run.record_attempt_running(1, _now(3), _now(4))
     assert run.status is RunStatus.RUNNING
-    assert run.attempts[0].status is RunStatus.RUNNING
+    assert run.attempts[0].status is AttemptStatus.RUNNING
     assert run.attempts[0].started_running_at == _now(3)
 
 
@@ -772,7 +768,7 @@ def test_record_running_on_a_finished_attempt_only_fills_the_time():
     run.fail(1, "boom", _now(5))
     run.record_attempt_running(1, _now(9), _now(10))
     assert run.status is RunStatus.FAILED
-    assert run.attempts[0].status is RunStatus.FAILED
+    assert run.attempts[0].status is AttemptStatus.FAILED
     assert run.attempts[0].started_running_at == _now(5)
     run.record_attempt_running(1, _now(2), _now(10))
     assert run.attempts[0].started_running_at == _now(5)
@@ -940,4 +936,4 @@ def test_the_current_attempt_is_the_latest_attempts_number():
 def test_an_attempt_needs_a_size():
     """An attempt always runs at a size; one without is refused."""
     with pytest.raises(InvariantViolation, match="size"):
-        OperationAttempt(attempt=1, size=None, status=RunStatus.QUEUED, started_at=_now())  # ty: ignore[invalid-argument-type]
+        OperationAttempt(attempt=1, size=None, status=AttemptStatus.QUEUED, started_at=_now())  # ty: ignore[invalid-argument-type]

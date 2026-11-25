@@ -15,6 +15,9 @@ from context.table_maintenance.application.domain.model.shared import (
     TableMaintenanceRunId,
     TablePriority,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_run.attempt.attempt_status import (
+    AttemptStatus,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_run.attempt.failure_class import (
     FailureClass,
 )
@@ -124,7 +127,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             if self.status not in _NEVER_STARTED:
                 msg = f"run {self.id} has no attempt, so it is pending or skipped, not {self.status}"
                 raise ValueError(msg)
-        elif self.status is not self.attempts[-1].status:
+        elif self.status.value != self.attempts[-1].status.value:
             latest = self.attempts[-1]
             msg = (
                 f"a run reads its latest attempt's status: run {self.id} is {self.status}, "
@@ -207,7 +210,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             attempts=(
                 *self.attempts,
                 OperationAttempt(
-                    attempt=attempt, size=size, status=RunStatus.QUEUED, started_at=now, job_name=job_name
+                    attempt=attempt, size=size, status=AttemptStatus.QUEUED, started_at=now, job_name=job_name
                 ),
             ),
         )
@@ -237,7 +240,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         it, within its own span, and keeps its status. A report for an earlier attempt is ignored.
         """
         record = self._current_record(attempt)
-        if record is None or record.status is RunStatus.RUNNING:
+        if record is None or record.status is AttemptStatus.RUNNING:
             return
         if record.finished:
             if record.started_running_at is None and record.finished_at is not None:
@@ -252,7 +255,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             status=RunStatus.RUNNING,
             attempts=self._with_attempt(
                 attempt,
-                status=RunStatus.RUNNING,
+                status=AttemptStatus.RUNNING,
                 started_running_at=self._clamp(started_running_at, record.started_at, now),
             ),
         )
@@ -377,7 +380,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             error=error,
             attempts=self._with_attempt(
                 attempt,
-                status=status,
+                status=AttemptStatus(status.value),
                 finished_at=now,
                 started_running_at=self._running_time(record, started_running_at, now),
                 error=error,

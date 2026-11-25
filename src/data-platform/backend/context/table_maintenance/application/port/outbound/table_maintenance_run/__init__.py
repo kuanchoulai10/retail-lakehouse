@@ -10,6 +10,7 @@ from context.table_maintenance.application.domain.model.shared import (
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    AttemptStatus,
     FailureClass,
     NextStep,
     OperationAttempt,
@@ -91,6 +92,7 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run.t
 )
 
 __all__ = [
+    "AttemptStatus",
     "ComputeSize",
     "DeleteMaintenanceJobGateway",
     "DeleteMaintenanceJobGatewayInput",

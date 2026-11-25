@@ -8,17 +8,15 @@ from pydantic import model_validator
 
 from base import ValueObject
 from context.table_maintenance.application.domain.model.shared import ComputeSize
+from context.table_maintenance.application.domain.model.table_maintenance_run.attempt.attempt_status import (
+    AttemptStatus,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_run.attempt.failure_class import (
     FailureClass,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run.attempt.next_step import (
     NextStep,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_run.status.run_status import (
-    RunStatus,
-)
-
-_ATTEMPT_STATUSES = frozenset({RunStatus.QUEUED, RunStatus.RUNNING, RunStatus.SUCCEEDED, RunStatus.FAILED})
 
 
 class OperationAttempt(ValueObject):
@@ -32,7 +30,7 @@ class OperationAttempt(ValueObject):
 
     attempt: int
     size: ComputeSize
-    status: RunStatus
+    status: AttemptStatus
     started_at: datetime
     job_name: str | None = None
     started_running_at: datetime | None = None
@@ -44,13 +42,6 @@ class OperationAttempt(ValueObject):
     next_size: ComputeSize | None = None
 
     @model_validator(mode="after")
-    def _is_queued_running_or_done(self) -> OperationAttempt:
-        if self.status not in _ATTEMPT_STATUSES:
-            msg = f"attempt {self.attempt} is {self.status}: an attempt is queued, running, succeeded or failed"
-            raise ValueError(msg)
-        return self
-
-    @model_validator(mode="after")
     def _runs_no_earlier_than_it_was_submitted(self) -> OperationAttempt:
         if self.started_running_at is not None and self.started_running_at < self.started_at:
             msg = f"attempt {self.attempt} started running at {self.started_running_at}, before it was submitted"
@@ -60,4 +51,4 @@ class OperationAttempt(ValueObject):
     @property
     def finished(self) -> bool:
         """Return whether the attempt has an outcome."""
-        return self.status not in (RunStatus.QUEUED, RunStatus.RUNNING)
+        return self.status not in (AttemptStatus.QUEUED, AttemptStatus.RUNNING)
