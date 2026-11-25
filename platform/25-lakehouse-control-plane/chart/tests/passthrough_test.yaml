@@ -81,6 +81,7 @@ tests:
       - equal:
           path: "spec.template.spec.containers[0].env"
           value:
+            - {name: CONSOLE_PORT, value: "8080"}
             - {name: CONSOLE_API_UPSTREAM, value: "http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000"}
             - {name: G, value: g}
       - equal: {path: "spec.template.spec.containers[0].envFrom", value: [{configMapRef: {name: console-extra}}]}

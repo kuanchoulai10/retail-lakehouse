@@ -1,0 +1,22 @@
+suite: each value reaches the field it sets, in every object that uses it
+release:
+  name: table-maintenance
+  namespace: lakehouse-control-plane
+values:
+  - ../ci/default-values.yaml
+tests:
+  - it: the console listens on its port, which its Service and route send to
+    set:
+      frontend.console.port: 9080
+    template: templates/console.yaml
+    asserts:
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: CONSOLE_PORT, value: "9080"}
+        documentSelector: {path: kind, value: Deployment}
+      - equal: {path: "spec.template.spec.containers[0].ports", value: [{name: http, containerPort: 9080}]}
+        documentSelector: {path: kind, value: Deployment}
+      - equal: {path: "spec.ports", value: [{name: http, port: 9080, targetPort: http}]}
+        documentSelector: {path: kind, value: Service}
+      - equal: {path: "spec.rules[0].backendRefs", value: [{name: table-maintenance-console, port: 9080}]}
+        documentSelector: {path: kind, value: HTTPRoute}

@@ -336,6 +336,8 @@ securityContext:
 {{- end -}}
 
 {{- define "table-maintenance.console.env" -}}
+- name: CONSOLE_PORT
+  value: {{ .Values.frontend.console.port | quote }}
 - name: CONSOLE_API_UPSTREAM
   value: http://{{ include "table-maintenance.api.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.backend.api.port }}
 {{- end -}}
