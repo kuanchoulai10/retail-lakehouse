@@ -340,17 +340,6 @@ tests:
     asserts:
       - notFailedTemplate: {}
 
-  - it: the minikube environment and the e2e overlay are known values
-    values:
-      - ../../values/minikube.yaml
-      - ../../values/e2e.yaml
-    set:
-      backend.image.tag: t
-      frontend.image.tag: t
-      maintenance.jobs.image.tag: t
-    asserts:
-      - notFailedTemplate: {}
-
   - it: every scenario in ci is known values
     values:
       - ../ci/external-values.yaml

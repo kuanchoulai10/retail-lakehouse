@@ -197,13 +197,30 @@ def test_the_command_line_fails_when_a_mutant_survives(tmp_path: Path, capsys):
     out = capsys.readouterr().out
     assert "survived" in out
     assert "templates/x.yaml:11 remove-fail" in out
-    assert mutate_chart.main([str(chart), "--jobs", "2", "--test-command", "false"]) == 0
+    unchanged = _unchanged(chart, "templates/x.yaml")
+    assert mutate_chart.main([str(chart), "--only", "templates/x.yaml", "--test-command", unchanged]) == 0
+
+
+def _unchanged(chart: Path, file: str) -> str:
+    """A test command that passes on an unmutated copy and fails once the copy's ``file`` differs."""
+    return f'cmp -s "{{chart}}/{file}" "{chart / file}"'
+
+
+def test_a_chart_its_tests_fail_before_any_mutant_stops_the_run(tmp_path: Path, capsys):
+    """Tests that fail on the unmutated copy would count every mutant killed, so no mutant runs."""
+    chart = _chart(tmp_path)
+    assert mutate_chart.main([str(chart), "--test-command", "false"]) == 2
+    out = capsys.readouterr().out
+    assert "the tests fail on an unmutated copy of the chart" in out
+    assert "mutants," not in out
 
 
 def test_the_command_line_can_run_one_file(tmp_path: Path, capsys):
     """`--only` limits the run to the files it names."""
     chart = _chart(tmp_path)
-    mutate_chart.main([str(chart), "--only", "values.schema.json", "--test-command", "false"])
+    mutate_chart.main(
+        [str(chart), "--only", "values.schema.json", "--test-command", _unchanged(chart, "values.schema.json")]
+    )
     out = capsys.readouterr().out
     assert "templates/x.yaml" not in out
     assert "7 mutants, 7 killed" in out

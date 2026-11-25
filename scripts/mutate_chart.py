@@ -177,13 +177,14 @@ def all_mutants(chart: Path, only: list[str] | None = None) -> list[Mutant]:
     return [m for m in mutants if (m.file, m.operator, m.original.strip()) not in ignored]
 
 
-def killed(chart: Path, mutant: Mutant, command: list[str]) -> bool:
-    """Run the tests on a copy of the chart holding the mutant; the mutant is killed when they fail."""
+def killed(chart: Path, mutant: Mutant | None, command: list[str]) -> bool:
+    """Run the tests on a copy of the chart holding the mutant (or none); the mutant is killed when they fail."""
     with tempfile.TemporaryDirectory() as scratch:
         copied = Path(scratch) / chart.name
         shutil.copytree(chart, copied)
-        target = copied / mutant.file
-        target.write_text(apply(target.read_text(), mutant))
+        if mutant is not None:
+            target = copied / mutant.file
+            target.write_text(apply(target.read_text(), mutant))
         argv = [part.replace("{chart}", str(copied)) for part in command]
         try:
             finished = subprocess.run(argv, capture_output=True, text=True, timeout=TIMEOUT_SECONDS, check=False)
@@ -193,7 +194,7 @@ def killed(chart: Path, mutant: Mutant, command: list[str]) -> bool:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run every mutant and list the survivors; the exit status is 1 when any survived."""
+    """Run every mutant and list the survivors; exit 1 when any survived, 2 when the tests fail unmutated."""
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("chart", type=Path)
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 2)
@@ -202,6 +203,9 @@ def main(argv: list[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
     chart = arguments.chart.resolve()
     command = shlex.split(arguments.test_command)
+    if killed(chart, None, command):
+        print("the tests fail on an unmutated copy of the chart, so every mutant would count as killed; fix them first")
+        return 2
     mutants = all_mutants(chart, arguments.only)
     with ThreadPoolExecutor(max_workers=arguments.jobs) as pool:
         verdicts = list(pool.map(lambda mutant: killed(chart, mutant, command), mutants))
