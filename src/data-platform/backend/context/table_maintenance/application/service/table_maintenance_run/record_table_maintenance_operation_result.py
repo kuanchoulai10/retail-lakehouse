@@ -27,7 +27,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     FailureEvidence,
     InvalidRunTransition,
     NextStep,
-    PendingRunStatus,
 )
 from context.table_maintenance.application.domain.service.table import fits_smaller_size
 from context.table_maintenance.application.domain.service.table_maintenance_run import (
@@ -113,9 +112,10 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         the table up to date, so a retry after a crash between the two saves
         loses no table update; the table takes each attempt in once. A stale
         lower attempt changes nothing. A result naming an operation other than
-        the run's is a conflict and changes nothing. A run still pending (its first
-        submit never saved the attempt: a cancel or a refused submit stopped it
-        first) has nothing to record: the reply says ``pending`` and nothing is
+        the run's is a conflict and changes nothing. A run with no attempt has
+        nothing to record: one still pending (its first submit never saved the
+        attempt: a cancel or a refused submit stopped it first), or one skipped or
+        cancelled before it started. The reply says its status and nothing is
         saved, so the caller can tell the attempt never started.
         """
         try:
@@ -127,7 +127,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         if run is None:
             raise NotFoundError(f"maintenance run {request.run_id} not found")
         require_run_operation(run, operation)
-        if run.status == PendingRunStatus():
+        if not run.attempts:
             return _output(run, None)
         with translate_domain_errors():
             if request.attempt < run.current_attempt:

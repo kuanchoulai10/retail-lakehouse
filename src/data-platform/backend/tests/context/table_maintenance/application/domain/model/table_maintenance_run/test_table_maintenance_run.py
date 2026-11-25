@@ -1024,6 +1024,32 @@ def test_a_failure_that_does_not_retry_fails_the_run(next_attempt):
     assert (run.status, run.finished_at) == (FailedRunStatus(), _now(3))
 
 
+def test_a_failure_whose_next_step_is_cancelled_still_fails_the_run():
+    """``fail`` with the next step ``cancelled`` fails the run: only ``cancel_attempt`` cancels it."""
+    run = _running_run()
+    run.fail(1, CANCELLED_BY_WORKFLOW, _now(3), next_attempt=NextAttempt(step=NextStep.CANCELLED))
+    assert (run.status, run.finished_at) == (FailedRunStatus(), _now(3))
+
+
+@pytest.mark.parametrize(
+    ("make", "move", "refusal"),
+    [
+        (_failed_run, lambda run: run.start_attempt(2, "job-2", _now(4), size=ComputeSize.S), "start_attempt"),
+        (_failed_run, lambda run: run.skip(STOPPED, _now(4)), "skip"),
+        (_failed_run, lambda run: run.cancel(_now(4)), "cancel"),
+        (_waiting_run, lambda run: run.succeed(1, {}, _now(4)), "succeed"),
+        (_succeeded_run, lambda run: run.cancel_attempt(1, CANCELLED_BY_WORKFLOW, _now(4)), "cancel"),
+        (_succeeded_run, lambda run: run.fail(1, "late", _now(4)), "fail"),
+    ],
+    ids=["start_attempt", "skip", "cancel", "succeed", "cancel_attempt", "fail"],
+)
+def test_a_refused_move_names_the_run(make, move, refusal):
+    """A move the run's status refuses names the run, the move and the status it is in."""
+    run = make()
+    with pytest.raises(InvalidRunTransition, match=f"^run {RUN_1}: cannot {refusal} a run that is {run.status.name}$"):
+        move(run)
+
+
 def test_a_waiting_run_starts_its_next_attempt_queued():
     """The retry of a waiting run queues it again and clears the failed attempt's outcome from the run."""
     run = _waiting_run()

@@ -487,3 +487,49 @@ def test_a_failure_that_does_not_retry_answers_failed(recorder, runs_repo, table
     out = _record(recorder, now, error="boom", max_attempts=1)
     assert (out.status, out.next_step) == ("failed", "attempts_used")
     assert runs_repo.get(TableMaintenanceRunId(RUN_1)).finished_at == now
+
+
+def _never_started(runs_repo, table, now, end: str) -> TableMaintenanceRun:
+    """Store a run that ended before its first attempt: cancelled or skipped while pending."""
+    run = _run(runs_repo, table, now)
+    if end == "cancelled":
+        run.cancel(now)
+    else:
+        run.skip("the table's maintenance stopped before this run started", now)
+    runs_repo.update(run)
+    return run
+
+
+@pytest.mark.parametrize("end", ["cancelled", "skipped"])
+def test_a_late_result_for_a_run_that_never_started_changes_nothing(
+    recorder, runs_repo, tables_repo, table, evidence, log, now, end
+):
+    """A result for a run that ended with no attempt answers its status and saves nothing, reads nothing."""
+    _never_started(runs_repo, table, now, end)
+    track_calls(runs_repo, "update", "runs.update", log, lambda r: r.id.value)
+    track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
+    out = _record(recorder, now + timedelta(minutes=1), error="cancelled", ended_by="cancelled")
+    assert (out.status, out.failure_class, out.next_step) == (end, None, None)
+    assert log == []
+    assert evidence.calls == []
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).status.name.value == end
+
+
+def test_a_success_contradicting_the_recorded_failure_of_a_waiting_run_is_refused(
+    recorder, runs_repo, tables_repo, table, log, now
+):
+    """A success for attempt 1 of a run waiting to retry, whose attempt 1 is recorded failed, is a conflict.
+
+    The run keeps waiting, nothing is saved, and the table keeps the failure only.
+    """
+    _run(runs_repo, table, now, ComputeSize.S)
+    _record(recorder, now)
+    track_calls(runs_repo, "update", "runs.update", log, lambda r: r.id.value)
+    track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
+    with pytest.raises(ConflictError, match=f"run {RUN_1}: cannot succeed a run that is retry_waiting"):
+        _record(recorder, now + timedelta(minutes=1), succeeded=True, error=None, metrics={"rewritten_files": 4})
+    assert log == []
+    stored = runs_repo.get(TableMaintenanceRunId(RUN_1))
+    assert (stored.status.name.value, stored.attempt_record(1).status.value) == ("retry_waiting", "failed")
+    state = tables_repo.get(TableId("u-1")).operation_state(RDF)
+    assert (state.consecutive_failures, state.last_successful_size) == (1, None)

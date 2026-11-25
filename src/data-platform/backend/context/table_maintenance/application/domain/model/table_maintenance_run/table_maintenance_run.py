@@ -47,7 +47,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.tr
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
 
     from context.table_maintenance.application.domain.model.table_maintenance_run.attempt.next_attempt import (
         NextAttempt,
@@ -226,7 +226,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             if job_name is not None:
                 self.attach_job_name(attempt, job_name)
             return
-        queued = self.status.start_attempt()
+        queued = self._next_status(self.status.start_attempt)
         if attempt != self.current_attempt + 1:
             msg = f"cannot start attempt {attempt} of run {self.id}: its next attempt is {self.current_attempt + 1}"
             raise InvalidRunTransition(msg)
@@ -279,7 +279,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
                 )
             return
         self._assign_together(
-            status=self.status.mark_running(),
+            status=self._next_status(self.status.mark_running),
             attempts=self._with_attempt(
                 attempt,
                 status=AttemptStatus.RUNNING,
@@ -322,7 +322,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             return
         self._end_attempt(
             record,
-            self.status.succeed(),
+            self._next_status(self.status.succeed),
             AttemptStatus.SUCCEEDED,
             now,
             started_running_at=started_running_at,
@@ -358,7 +358,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         retries = next_attempt is not None and next_attempt.step.retries
         self._end_attempt(
             record,
-            self.status.fail(retries=retries),
+            self._next_status(lambda: self.status.fail(retries=retries)),
             AttemptStatus.FAILED,
             now,
             started_running_at=started_running_at,
@@ -389,7 +389,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             return
         self._end_attempt(
             record,
-            self.status.cancel(),
+            self._next_status(self.status.cancel),
             AttemptStatus.FAILED,
             now,
             started_running_at=started_running_at,
@@ -413,11 +413,19 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
                 f"cancel it with cancel_attempt"
             )
             raise InvalidRunTransition(msg)
-        self._assign_together(status=self.status.cancel(), finished_at=now)
+        self._assign_together(status=self._next_status(self.status.cancel), finished_at=now)
 
     def skip(self, reason: str, now: datetime) -> None:
         """Skip a run that never started, saying why."""
-        self._assign_together(status=self.status.skip(), skip_reason=reason, finished_at=now)
+        self._assign_together(status=self._next_status(self.status.skip), skip_reason=reason, finished_at=now)
+
+    def _next_status(self, move: Callable[[], RunStatus]) -> RunStatus:
+        """Return the status ``move`` leads to, naming this run when the current status refuses it."""
+        try:
+            return move()
+        except InvalidRunTransition as refusal:
+            msg = f"run {self.id}: {refusal}"
+            raise InvalidRunTransition(msg) from refusal
 
     def _current_record(self, attempt: int) -> OperationAttempt | None:
         """Return the current attempt when ``attempt`` is it, None for an earlier one; refuse a later one."""
