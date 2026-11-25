@@ -228,20 +228,25 @@ helm.sh/chart: {{ include "table-maintenance.chart" .root }}
 
 {{- define "table-maintenance.waitForSchema" -}}
 - name: wait-for-schema
-  image: {{ .Values.database.clientImage }}
-  imagePullPolicy: IfNotPresent
+  image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.backend) }}
+  imagePullPolicy: {{ .Values.image.pullPolicy }}
+  args:
+    - migrate
+    - --wait
+    - --config-file={{ include "table-maintenance.configFile" . }}
   env:
-    - name: PGPASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: {{ .Values.database.existingSecret }}
-          key: {{ .Values.database.secretKey }}
-  command:
-    - sh
-    - -c
-    - >-
-      until [ "$(psql -h {{ .Values.database.host }} -p {{ .Values.database.port }} -U {{ .Values.database.user }} -d {{ .Values.database.name }} -tAc "select (select count(*) from table_maintenance_policies where name = 'default') + (select count(*) from table_discovery_policies where id = 'dp-00000000000000000000000000')")" = "2" ]; do
-      echo "waiting for the migrate job to seed the schema"; sleep 3; done
+    {{- include "table-maintenance.migrate.env" . | nindent 4 }}
+  volumeMounts:
+    - name: migrate-config
+      mountPath: /etc/glac
+      readOnly: true
+  {{- include "table-maintenance.containerSecurity" . | nindent 2 }}
+{{- end -}}
+
+{{- define "table-maintenance.waitForSchemaVolume" -}}
+- name: migrate-config
+  configMap:
+    name: {{ include "table-maintenance.roleConfig.fullname" (dict "root" . "role" "migrate") }}
 {{- end -}}
 
 {{- define "table-maintenance.podSecurity" -}}

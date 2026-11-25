@@ -57,6 +57,7 @@ spec:
             {{- toYaml .Values.api.resources | nindent 12 }}
       volumes:
         {{- include "table-maintenance.configVolume" (dict "root" . "role" "api") | nindent 8 }}
+        {{- include "table-maintenance.waitForSchemaVolume" . | nindent 8 }}
         {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.api) }}
         {{- . | nindent 8 }}
         {{- end }}

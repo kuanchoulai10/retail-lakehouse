@@ -98,6 +98,7 @@ tests:
           path: spec.template.spec.volumes
           value:
             - {name: config, configMap: {name: table-maintenance-api-config}}
+            - {name: migrate-config, configMap: {name: table-maintenance-migrate-config}}
             - {name: secret-global-ca, secret: {secretName: ca-bundle}}
             - {name: secret-role-tls, secret: {secretName: api-tls}}
             - {name: secret-role-ca, secret: {secretName: api-ca}}
@@ -116,13 +117,14 @@ tests:
           path: spec.template.spec.volumes
           value:
             - {name: config, configMap: {name: table-maintenance-worker-config}}
+            - {name: migrate-config, configMap: {name: table-maintenance-migrate-config}}
             - {name: secret-global-ca, secret: {secretName: ca-bundle}}
         template: templates/worker.yaml
 
   - it: no secretMounts leave only the settings file
     template: templates/worker.yaml
     asserts:
-      - equal: {path: spec.template.spec.volumes, value: [{name: config, configMap: {name: table-maintenance-worker-config}}]}
+      - equal: {path: spec.template.spec.volumes, value: [{name: config, configMap: {name: table-maintenance-worker-config}}, {name: migrate-config, configMap: {name: table-maintenance-migrate-config}}]}
       - equal: {path: "spec.template.spec.containers[0].volumeMounts", value: [{name: config, mountPath: /etc/glac, readOnly: true}]}
 
   - it: extraManifests render with templating, as strings or objects

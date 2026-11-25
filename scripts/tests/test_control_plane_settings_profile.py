@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -125,6 +126,13 @@ def test_bootstrap_passes_image_tags_as_strings():
     assert "--set image." not in script
     for image in ("backend", "spark", "console"):
         assert f'--set-string image.{image}.tag="' in script
+
+
+def test_the_chart_names_no_table_or_seed():
+    """The services wait for the schema through the backend, so no table name or seed id lives in the chart."""
+    for migrate_enabled in ("true", "false"):
+        rendered = yaml.safe_dump_all(_render("--set", f"migrate.enabled={migrate_enabled}"))
+        assert not re.search(r"table_maintenance_policies|table_discovery_policies|dp-0000|psql", rendered)
 
 
 def test_bootstrap_gives_the_settings_the_region_it_gives_the_s3_secret():
