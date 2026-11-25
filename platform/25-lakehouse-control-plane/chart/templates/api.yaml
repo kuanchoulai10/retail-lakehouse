@@ -25,12 +25,7 @@ spec:
           image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.backend) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-            - name: GLAC_COMPONENT
-              value: api
-            - name: GLAC_API__ROOT_PATH
-              value: {{ .Values.api.rootPath | quote }}
-            {{- include "table-maintenance.appEnv" . | nindent 12 }}
-            {{- include "table-maintenance.extraEnv" (dict "root" . "role" .Values.api) | nindent 12 }}
+            {{- include "table-maintenance.env" (dict "root" . "role" .Values.api "own" (include "table-maintenance.api.env" .)) | nindent 12 }}
           envFrom:
             - configMapRef:
                 name: {{ include "table-maintenance.config.fullname" . }}

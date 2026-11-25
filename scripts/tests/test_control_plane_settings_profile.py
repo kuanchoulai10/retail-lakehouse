@@ -81,3 +81,11 @@ def test_bootstrap_refuses_an_unknown_profile_before_it_touches_the_cluster(tmp_
     assert finished.returncode != 0
     assert "SETTINGS_PROFILE must be default or e2e" in finished.stderr
     assert not calls.exists()
+
+
+def test_bootstrap_passes_image_tags_as_strings():
+    """A short SHA of digits stays a string, so the schema's string tag accepts it."""
+    script = (WAVE / "bootstrap.sh").read_text()
+    assert "--set image." not in script
+    for image in ("backend", "spark", "console"):
+        assert f'--set-string image.{image}.tag="' in script

@@ -44,6 +44,53 @@ tests:
       - failedTemplate:
           errorPattern: "path"
 
+  - it: a value nothing reads is refused
+    set:
+      namespaces.controlPlane: elsewhere
+    asserts:
+      - failedTemplate:
+          errorPattern: "controlPlane"
+
+  - it: a tag must be a string, so a short SHA of digits is never turned into a number
+    set:
+      image.backend.tag: 1234567
+    asserts:
+      - failedTemplate:
+          errorPattern: "/image/backend/tag"
+
+  - it: commonLabels may not take over a label the chart sets
+    set:
+      commonLabels:
+        app.kubernetes.io/part-of: other
+    asserts:
+      - failedTemplate:
+          errorPattern: "commonLabels"
+
+  - it: a role's workload labels may not take over a label the chart sets
+    set:
+      worker.labels:
+        helm.sh/chart: other
+    asserts:
+      - failedTemplate:
+          errorPattern: "/worker/labels"
+
+  - it: a role's pod labels may not take over a selector label
+    set:
+      api.podLabels:
+        app.kubernetes.io/component: other
+    asserts:
+      - failedTemplate:
+          errorPattern: "/api/podLabels"
+
+  - it: labels of our own prefix are fine
+    set:
+      commonLabels:
+        retail-lakehouse.io/team: data
+      api.podLabels:
+        retail-lakehouse.io/exposed: "true"
+    asserts:
+      - notFailedTemplate: {}
+
   - it: the e2e overlay is known values
     values:
       - ../values-e2e.yaml

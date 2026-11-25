@@ -40,7 +40,6 @@ secrets:
   s3: table-maintenance-s3
 
 namespaces:
-  controlPlane: lakehouse-control-plane
   maintenanceOperations: lakehouse-maintenance-operations
 
 temporal:

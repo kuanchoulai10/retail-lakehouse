@@ -31,16 +31,36 @@ tests:
         template: templates/api.yaml
         documentSelector: {path: kind, value: Deployment}
 
-  - it: role env comes after global, so it wins a name
+  - it: a name in both layers is one entry, and the role's value wins
     set:
-      env: [{name: X, value: global}]
+      env: [{name: X, value: global}, {name: Y, value: "y"}]
       api.env: [{name: X, value: role}]
     template: templates/api.yaml
     documentSelector: {path: kind, value: Deployment}
     asserts:
       - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 7}
-      - equal: {path: "spec.template.spec.containers[0].env[5]", value: {name: X, value: global}}
-      - equal: {path: "spec.template.spec.containers[0].env[6]", value: {name: X, value: role}}
+      - equal: {path: "spec.template.spec.containers[0].env[5]", value: {name: X, value: role}}
+      - equal: {path: "spec.template.spec.containers[0].env[6]", value: {name: Y, value: "y"}}
+
+  - it: an entry named like one of the chart's own replaces it in place
+    set:
+      api.env: [{name: GLAC_API__ROOT_PATH, value: /maintenance-api}]
+    template: templates/api.yaml
+    documentSelector: {path: kind, value: Deployment}
+    asserts:
+      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 5}
+      - equal: {path: "spec.template.spec.containers[0].env[1]", value: {name: GLAC_API__ROOT_PATH, value: /maintenance-api}}
+
+  - it: a role env name the worker shares with the global layer is one entry on the worker too
+    set:
+      env: [{name: X, value: global}]
+      worker.env: [{name: X, value: role}]
+      migrate.env: [{name: X, value: migrate}]
+    asserts:
+      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 5}
+        template: templates/worker.yaml
+      - equal: {path: "spec.template.spec.containers[0].env[4]", value: {name: X, value: role}}
+        template: templates/worker.yaml
 
   - it: envFrom layers follow the chart's own sources
     set:
@@ -60,7 +80,11 @@ tests:
     template: templates/console.yaml
     documentSelector: {path: kind, value: Deployment}
     asserts:
-      - equal: {path: "spec.template.spec.containers[0].env", value: [{name: G, value: g}]}
+      - equal:
+          path: "spec.template.spec.containers[0].env"
+          value:
+            - {name: CONSOLE_API_UPSTREAM, value: "http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000"}
+            - {name: G, value: g}
       - equal: {path: "spec.template.spec.containers[0].envFrom", value: [{configMapRef: {name: console-extra}}]}
 
   - it: secretMounts at both layers, with names that cannot collide

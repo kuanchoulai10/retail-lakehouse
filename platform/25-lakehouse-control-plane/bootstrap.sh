@@ -109,9 +109,9 @@ CONSOLE_TAG="$(sed -n 's/^CONSOLE_TAG=//p' <<<"${BUILD_OUTPUT}")"
 helm upgrade --install table-maintenance "${SCRIPT_DIR}/chart" \
   --namespace "${CONTROL_PLANE_NAMESPACE}" \
   ${PROFILE_VALUES[@]+"${PROFILE_VALUES[@]}"} \
-  --set image.backend.tag="${BACKEND_TAG}" \
-  --set image.spark.tag="${SPARK_TAG}" \
-  --set image.console.tag="${CONSOLE_TAG}" \
+  --set-string image.backend.tag="${BACKEND_TAG}" \
+  --set-string image.spark.tag="${SPARK_TAG}" \
+  --set-string image.console.tag="${CONSOLE_TAG}" \
   --wait \
   --wait-for-jobs \
   --timeout "${TIMEOUT}" \

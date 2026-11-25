@@ -148,13 +148,55 @@ securityContext:
       - ALL
 {{- end -}}
 
-{{- define "table-maintenance.extraEnv" -}}
-{{- with .root.Values.env }}
-{{ toYaml . }}
+{{- define "table-maintenance.env" -}}
+{{- $names := list }}
+{{- $entries := dict }}
+{{- $own := list }}
+{{- with .own }}
+{{- $own = fromYamlArray . }}
 {{- end }}
-{{- with .role.env }}
-{{ toYaml . }}
+{{- range concat $own (.root.Values.env | default list) (.role.env | default list) }}
+{{- if not (hasKey $entries .name) }}
+{{- $names = append $names .name }}
 {{- end }}
+{{- $_ := set $entries .name . }}
+{{- end }}
+{{- $out := list }}
+{{- range $names }}
+{{- $out = append $out (list (get $entries .) | toYaml | trim) }}
+{{- end }}
+{{- join "\n" $out }}
+{{- end -}}
+
+{{- define "table-maintenance.api.env" -}}
+- name: GLAC_COMPONENT
+  value: api
+- name: GLAC_API__ROOT_PATH
+  value: {{ .Values.api.rootPath | quote }}
+{{ include "table-maintenance.appEnv" . }}
+{{- end -}}
+
+{{- define "table-maintenance.worker.env" -}}
+- name: GLAC_COMPONENT
+  value: worker
+{{ include "table-maintenance.appEnv" . }}
+{{- end -}}
+
+{{- define "table-maintenance.eventConsumer.env" -}}
+- name: GLAC_COMPONENT
+  value: event_consumer
+{{ include "table-maintenance.appEnv" . }}
+{{- end -}}
+
+{{- define "table-maintenance.migrate.env" -}}
+- name: GLAC_COMPONENT
+  value: migrate
+{{ include "table-maintenance.dbEnv" . }}
+{{- end -}}
+
+{{- define "table-maintenance.console.env" -}}
+- name: CONSOLE_API_UPSTREAM
+  value: http://{{ include "table-maintenance.api.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.api.port }}
 {{- end -}}
 
 {{- define "table-maintenance.extraEnvFrom" -}}

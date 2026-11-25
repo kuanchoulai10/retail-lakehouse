@@ -10,6 +10,10 @@ RUN npm --prefix src/data-platform/frontend run build
 
 FROM nginx:1.29-alpine
 COPY src/data-platform/frontend/nginx.conf /etc/nginx/nginx.conf
+COPY src/data-platform/frontend/console.conf.template /etc/nginx/templates/console.conf.template
+ENV NGINX_ENVSUBST_OUTPUT_DIR=/tmp \
+    NGINX_ENVSUBST_FILTER=^CONSOLE_ \
+    CONSOLE_API_UPSTREAM=http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000
 COPY --from=build /app/src/data-platform/frontend/dist /usr/share/nginx/html/console
 RUN chown -R nginx:nginx /usr/share/nginx/html
 USER 101

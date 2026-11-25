@@ -23,10 +23,7 @@ spec:
           image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.backend) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-            - name: GLAC_COMPONENT
-              value: migrate
-            {{- include "table-maintenance.dbEnv" . | nindent 12 }}
-            {{- include "table-maintenance.extraEnv" (dict "root" . "role" .Values.migrate) | nindent 12 }}
+            {{- include "table-maintenance.env" (dict "root" . "role" .Values.migrate "own" (include "table-maintenance.migrate.env" .)) | nindent 12 }}
           envFrom:
             - configMapRef:
                 name: {{ include "table-maintenance.config.fullname" . }}

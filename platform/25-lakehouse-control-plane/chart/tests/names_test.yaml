@@ -1,6 +1,7 @@
 suite: names follow the release and every reference follows the names
 templates:
   - templates/api.yaml
+  - templates/console.yaml
   - templates/worker.yaml
   - templates/event-consumer.yaml
   - templates/migrate-job.yaml
@@ -98,6 +99,32 @@ tests:
         template: templates/event-consumer.yaml
       - equal: {path: "spec.template.spec.containers[0].envFrom[0].configMapRef.name", value: tm2-table-maintenance-config}
         template: templates/migrate-job.yaml
+
+  - it: the API port and name reach every reference to the API
+    release:
+      name: tm2
+      namespace: other-ns
+    set:
+      api.port: 9000
+    asserts:
+      - equal:
+          path: data.GLAC_CALLBACK_BASE_URL
+          value: http://tm2-table-maintenance-api.other-ns.svc.cluster.local:9000
+        template: templates/configmap.yaml
+      - equal: {path: "spec.rules[0].backendRefs[0].port", value: 9000}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: HTTPRoute}
+      - equal: {path: "spec.ports[0].port", value: 9000}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Service}
+      - equal: {path: "spec.template.spec.containers[0].ports[0].containerPort", value: 9000}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: CONSOLE_API_UPSTREAM, value: "http://tm2-table-maintenance-api.other-ns.svc.cluster.local:9000"}
+        template: templates/console.yaml
+        documentSelector: {path: kind, value: Deployment}
 
   - it: fullnameOverride wins
     set:

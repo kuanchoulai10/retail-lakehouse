@@ -27,10 +27,8 @@ spec:
         - name: console
           image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.console) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- with include "table-maintenance.extraEnv" (dict "root" . "role" .Values.console) }}
           env:
-            {{- . | nindent 12 }}
-          {{- end }}
+            {{- include "table-maintenance.env" (dict "root" . "role" .Values.console "own" (include "table-maintenance.console.env" .)) | nindent 12 }}
           {{- with include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.console) }}
           envFrom:
             {{- . | nindent 12 }}

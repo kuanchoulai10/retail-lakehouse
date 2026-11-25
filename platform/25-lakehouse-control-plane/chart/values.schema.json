@@ -16,6 +16,9 @@
       "type": "object",
       "additionalProperties": {
         "type": "string"
+      },
+      "patternProperties": {
+        "^(app\\.kubernetes\\.io|helm\\.sh)/": false
       }
     },
     "imagePullSecrets": {
@@ -190,9 +193,6 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "controlPlane": {
-          "type": "string"
-        },
         "maintenanceOperations": {
           "type": "string"
         }
@@ -438,6 +438,9 @@
           "type": "object",
           "additionalProperties": {
             "type": "string"
+          },
+          "patternProperties": {
+            "^(app\\.kubernetes\\.io|helm\\.sh)/": false
           }
         },
         "annotations": {
@@ -450,6 +453,9 @@
           "type": "object",
           "additionalProperties": {
             "type": "string"
+          },
+          "patternProperties": {
+            "^(app\\.kubernetes\\.io|helm\\.sh)/": false
           }
         },
         "podAnnotations": {
@@ -552,6 +558,9 @@
           "type": "object",
           "additionalProperties": {
             "type": "string"
+          },
+          "patternProperties": {
+            "^(app\\.kubernetes\\.io|helm\\.sh)/": false
           }
         },
         "annotations": {
@@ -564,6 +573,9 @@
           "type": "object",
           "additionalProperties": {
             "type": "string"
+          },
+          "patternProperties": {
+            "^(app\\.kubernetes\\.io|helm\\.sh)/": false
           }
         },
         "podAnnotations": {
@@ -717,6 +729,9 @@
           "type": "object",
           "additionalProperties": {
             "type": "string"
+          },
+          "patternProperties": {
+            "^(app\\.kubernetes\\.io|helm\\.sh)/": false
           }
         },
         "annotations": {
@@ -729,6 +744,9 @@
           "type": "object",
           "additionalProperties": {
             "type": "string"
+          },
+          "patternProperties": {
+            "^(app\\.kubernetes\\.io|helm\\.sh)/": false
           }
         },
         "podAnnotations": {
@@ -812,6 +830,9 @@
           "type": "object",
           "additionalProperties": {
             "type": "string"
+          },
+          "patternProperties": {
+            "^(app\\.kubernetes\\.io|helm\\.sh)/": false
           }
         },
         "annotations": {
@@ -824,6 +845,9 @@
           "type": "object",
           "additionalProperties": {
             "type": "string"
+          },
+          "patternProperties": {
+            "^(app\\.kubernetes\\.io|helm\\.sh)/": false
           }
         },
         "podAnnotations": {
@@ -919,6 +943,9 @@
           "type": "object",
           "additionalProperties": {
             "type": "string"
+          },
+          "patternProperties": {
+            "^(app\\.kubernetes\\.io|helm\\.sh)/": false
           }
         },
         "annotations": {
@@ -931,6 +958,9 @@
           "type": "object",
           "additionalProperties": {
             "type": "string"
+          },
+          "patternProperties": {
+            "^(app\\.kubernetes\\.io|helm\\.sh)/": false
           }
         },
         "podAnnotations": {
