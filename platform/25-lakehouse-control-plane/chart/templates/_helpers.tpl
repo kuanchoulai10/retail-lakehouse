@@ -137,3 +137,89 @@ securityContext:
     drop:
       - ALL
 {{- end -}}
+
+{{- define "table-maintenance.extraEnv" -}}
+{{- with .root.Values.env }}
+{{ toYaml . }}
+{{- end }}
+{{- with .role.env }}
+{{ toYaml . }}
+{{- end }}
+{{- end -}}
+
+{{- define "table-maintenance.extraEnvFrom" -}}
+{{- with .root.Values.envFrom }}
+{{ toYaml . }}
+{{- end }}
+{{- with .role.envFrom }}
+{{ toYaml . }}
+{{- end }}
+{{- end -}}
+
+{{- define "table-maintenance.secretVolumes" -}}
+{{- range $layer, $mounts := dict "global" .root.Values.secretMounts "role" .role.secretMounts }}
+{{- range $mounts }}
+- name: secret-{{ $layer }}-{{ .name }}
+  secret:
+    secretName: {{ .secretName }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{- define "table-maintenance.secretVolumeMounts" -}}
+{{- range $layer, $mounts := dict "global" .root.Values.secretMounts "role" .role.secretMounts }}
+{{- range $mounts }}
+- name: secret-{{ $layer }}-{{ .name }}
+  mountPath: {{ .path }}
+  readOnly: true
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{- define "table-maintenance.podScheduling" -}}
+{{- with .root.Values.imagePullSecrets }}
+imagePullSecrets:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with .role.nodeSelector }}
+nodeSelector:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with .role.tolerations }}
+tolerations:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with .role.affinity }}
+affinity:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end -}}
+
+{{- define "table-maintenance.workloadMetadata" -}}
+labels:
+  {{- include "table-maintenance.labels" . | nindent 2 }}
+  {{- with .role.labels }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+{{- with .role.annotations }}
+annotations:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end -}}
+
+{{- define "table-maintenance.podMetadata" -}}
+labels:
+  {{- include "table-maintenance.labels" . | nindent 2 }}
+  {{- with .role.podLabels }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+{{- if or .checksum .role.podAnnotations }}
+annotations:
+  {{- with .checksum }}
+  checksum/config: {{ . }}
+  {{- end }}
+  {{- with .role.podAnnotations }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+{{- end }}
+{{- end -}}

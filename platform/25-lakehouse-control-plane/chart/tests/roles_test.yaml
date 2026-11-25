@@ -1,0 +1,163 @@
+suite: each role has its own block
+templates:
+  - templates/api.yaml
+  - templates/configmap.yaml
+  - templates/worker.yaml
+  - templates/event-consumer.yaml
+  - templates/migrate-job.yaml
+  - templates/console.yaml
+  - templates/rbac.yaml
+release:
+  name: table-maintenance
+  namespace: lakehouse-control-plane
+set:
+  image.backend.tag: t
+  image.spark.tag: t
+  image.console.tag: t
+tests:
+  - it: worker off renders no worker and none of its RBAC
+    set:
+      worker.enabled: false
+    asserts:
+      - hasDocuments: {count: 0}
+        template: templates/worker.yaml
+      - hasDocuments: {count: 0}
+        template: templates/rbac.yaml
+
+  - it: event consumer off renders no event consumer
+    set:
+      eventConsumer.enabled: false
+    asserts:
+      - hasDocuments: {count: 0}
+        template: templates/event-consumer.yaml
+
+  - it: migrate off renders no Job
+    set:
+      migrate.enabled: false
+    asserts:
+      - hasDocuments: {count: 0}
+        template: templates/migrate-job.yaml
+
+  - it: console off renders no console Deployment, Service or HTTPRoute
+    set:
+      console.enabled: false
+    asserts:
+      - hasDocuments: {count: 0}
+        template: templates/console.yaml
+
+  - it: api off, with worker and console off, renders no API Deployment, Service or HTTPRoute
+    set:
+      api.enabled: false
+      worker.enabled: false
+      console.enabled: false
+    asserts:
+      - hasDocuments: {count: 0}
+        template: templates/api.yaml
+
+  - it: replicas
+    set:
+      api.replicas: 3
+      worker.replicas: 2
+      console.replicas: 0
+    asserts:
+      - equal: {path: spec.replicas, value: 3}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal: {path: spec.replicas, value: 2}
+        template: templates/worker.yaml
+      - equal: {path: spec.replicas, value: 0}
+        template: templates/console.yaml
+        documentSelector: {path: kind, value: Deployment}
+
+  - it: scheduling lands on its own role's pods only
+    set:
+      worker.nodeSelector: {pool: maint}
+      worker.tolerations: [{key: k, operator: Exists}]
+      worker.affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions: [{key: pool, operator: In, values: [maint]}]
+      migrate.nodeSelector: {pool: batch}
+    asserts:
+      - equal: {path: spec.template.spec.nodeSelector, value: {pool: maint}}
+        template: templates/worker.yaml
+      - equal: {path: spec.template.spec.tolerations, value: [{key: k, operator: Exists}]}
+        template: templates/worker.yaml
+      - exists: {path: spec.template.spec.affinity.nodeAffinity}
+        template: templates/worker.yaml
+      - equal: {path: spec.template.spec.nodeSelector, value: {pool: batch}}
+        template: templates/migrate-job.yaml
+      - notExists: {path: spec.template.spec.nodeSelector}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - notExists: {path: spec.template.spec.tolerations}
+        template: templates/event-consumer.yaml
+      - notExists: {path: spec.template.spec.affinity}
+        template: templates/console.yaml
+        documentSelector: {path: kind, value: Deployment}
+
+  - it: workload and pod labels and annotations go where they say
+    set:
+      api.labels: {a: "1"}
+      api.annotations: {note: workload}
+      api.podLabels: {b: "2"}
+      api.podAnnotations: {c: "3"}
+    template: templates/api.yaml
+    documentSelector: {path: kind, value: Deployment}
+    asserts:
+      - equal: {path: metadata.labels.a, value: "1"}
+      - equal: {path: metadata.annotations.note, value: workload}
+      - notExists: {path: spec.template.metadata.labels.a}
+      - equal: {path: spec.template.metadata.labels.b, value: "2"}
+      - notExists: {path: metadata.labels.b}
+      - notExists: {path: spec.selector.matchLabels.b}
+      - equal: {path: spec.template.metadata.annotations.c, value: "3"}
+      - exists: {path: "spec.template.metadata.annotations[\"checksum/config\"]"}
+
+  - it: an existing worker ServiceAccount is used and none is created
+    set:
+      worker.serviceAccount.create: false
+      worker.serviceAccount.name: existing-sa
+    asserts:
+      - equal: {path: spec.template.spec.serviceAccountName, value: existing-sa}
+        template: templates/worker.yaml
+      - hasDocuments: {count: 5}
+        template: templates/rbac.yaml
+      - equal: {path: "subjects[0].name", value: existing-sa}
+        template: templates/rbac.yaml
+        documentIndex: 1
+
+  - it: an existing Spark ServiceAccount is used and none is created
+    set:
+      spark.serviceAccount.create: false
+      spark.serviceAccount.name: existing-spark
+    asserts:
+      - hasDocuments: {count: 5}
+        template: templates/rbac.yaml
+      - equal: {path: "subjects[0].name", value: existing-spark}
+        template: templates/rbac.yaml
+        documentIndex: 4
+
+  - it: serviceAccount annotations land on the ServiceAccounts
+    set:
+      worker.serviceAccount.annotations: {w: "1"}
+      spark.serviceAccount.annotations: {s: "2"}
+    template: templates/rbac.yaml
+    asserts:
+      - equal: {path: metadata.annotations.w, value: "1"}
+        documentIndex: 0
+      - equal: {path: metadata.annotations.s, value: "2"}
+        documentIndex: 3
+
+  - it: imagePullSecrets reach every pod
+    set:
+      imagePullSecrets: [{name: regcred}]
+    asserts:
+      - equal: {path: spec.template.spec.imagePullSecrets, value: [{name: regcred}]}
+        template: templates/worker.yaml
+      - equal: {path: spec.template.spec.imagePullSecrets, value: [{name: regcred}]}
+        template: templates/migrate-job.yaml
+      - equal: {path: spec.template.spec.imagePullSecrets, value: [{name: regcred}]}
+        template: templates/console.yaml
+        documentSelector: {path: kind, value: Deployment}

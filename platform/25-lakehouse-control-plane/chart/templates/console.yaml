@@ -1,19 +1,19 @@
+{{- if .Values.console.enabled }}
+{{- $labels := dict "root" . "role" .Values.console "component" "ui" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.console)) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "table-maintenance.console.fullname" . }}
   namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "table-maintenance.labels" (dict "root" . "component" "ui" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.console))) | nindent 4 }}
+  {{- include "table-maintenance.workloadMetadata" $labels | nindent 2 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.console.replicas }}
   selector:
     matchLabels:
       {{- include "table-maintenance.selectorLabels" (dict "root" . "component" "ui") | nindent 6 }}
   template:
     metadata:
-      labels:
-        {{- include "table-maintenance.labels" (dict "root" . "component" "ui" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.console))) | nindent 8 }}
+      {{- include "table-maintenance.podMetadata" $labels | nindent 6 }}
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -22,10 +22,19 @@ spec:
         runAsGroup: 101
         seccompProfile:
           type: RuntimeDefault
+      {{- include "table-maintenance.podScheduling" (dict "root" . "role" .Values.console) | nindent 6 }}
       containers:
         - name: console
           image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.console) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with include "table-maintenance.extraEnv" (dict "root" . "role" .Values.console) }}
+          env:
+            {{- . | nindent 12 }}
+          {{- end }}
+          {{- with include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.console) }}
+          envFrom:
+            {{- . | nindent 12 }}
+          {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.console.port }}
@@ -41,9 +50,17 @@ spec:
               port: http
             initialDelaySeconds: 10
             periodSeconds: 10
+          {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.console) }}
+          volumeMounts:
+            {{- . | nindent 12 }}
+          {{- end }}
           {{- include "table-maintenance.containerSecurity" . | nindent 10 }}
           resources:
             {{- toYaml .Values.console.resources | nindent 12 }}
+      {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.console) }}
+      volumes:
+        {{- . | nindent 8 }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -79,3 +96,4 @@ spec:
       backendRefs:
         - name: {{ include "table-maintenance.console.fullname" . }}
           port: {{ .Values.console.port }}
+{{- end }}

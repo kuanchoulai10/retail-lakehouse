@@ -2,6 +2,14 @@ nameOverride: ""
 fullnameOverride: ""
 commonLabels: {}
 
+imagePullSecrets: []
+
+env: []
+envFrom: []
+secretMounts: []
+
+extraManifests: []
+
 image:
   registry: ""
   pullPolicy: IfNotPresent
@@ -52,7 +60,9 @@ kafka:
 
 spark:
   serviceAccount:
+    create: true
     name: ""
+    annotations: {}
   sparkVersion: 4.0.0
   icebergVersion: 1.10.1
   sizes:
@@ -89,6 +99,18 @@ volcano:
     P3: 1000000
 
 api:
+  enabled: true
+  replicas: 1
+  labels: {}
+  annotations: {}
+  podLabels: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  env: []
+  envFrom: []
+  secretMounts: []
   port: 8000
   rootPath: /api
   gateway:
@@ -102,6 +124,18 @@ api:
       memory: 512Mi
 
 worker:
+  enabled: true
+  replicas: 1
+  labels: {}
+  annotations: {}
+  podLabels: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  env: []
+  envFrom: []
+  secretMounts: []
   discoveryIntervalSeconds: 600
   attemptDeadlineSeconds: 21600
   maxAttempts: 3
@@ -116,7 +150,9 @@ worker:
   compactionMaxQuietWaitSeconds: 3600
   terminationGracePeriodSeconds: 90
   serviceAccount:
+    create: true
     name: ""
+    annotations: {}
   resources:
     requests:
       cpu: 100m
@@ -125,6 +161,18 @@ worker:
       memory: 1Gi
 
 eventConsumer:
+  enabled: true
+  replicas: 1
+  labels: {}
+  annotations: {}
+  podLabels: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  env: []
+  envFrom: []
+  secretMounts: []
   resources:
     requests:
       cpu: 50m
@@ -133,6 +181,18 @@ eventConsumer:
       memory: 512Mi
 
 console:
+  enabled: true
+  replicas: 1
+  labels: {}
+  annotations: {}
+  podLabels: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  env: []
+  envFrom: []
+  secretMounts: []
   port: 8080
   gateway:
     name: platform-gateway
@@ -145,6 +205,17 @@ console:
       memory: 128Mi
 
 migrate:
+  enabled: true
+  labels: {}
+  annotations: {}
+  podLabels: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  env: []
+  envFrom: []
+  secretMounts: []
   resources:
     requests:
       cpu: 50m

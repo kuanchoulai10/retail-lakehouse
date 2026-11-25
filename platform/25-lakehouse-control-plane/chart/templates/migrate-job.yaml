@@ -1,20 +1,21 @@
+{{- if .Values.migrate.enabled }}
+{{- $labels := dict "root" . "role" .Values.migrate "component" "migrate" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.backend)) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ printf "%s-%d" (include "table-maintenance.migrate.fullname" .) (int .Release.Revision) | trunc 63 | trimSuffix "-" }}
   namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "table-maintenance.labels" (dict "root" . "component" "migrate" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.backend))) | nindent 4 }}
+  {{- include "table-maintenance.workloadMetadata" $labels | nindent 2 }}
 spec:
   backoffLimit: 6
   template:
     metadata:
-      labels:
-        {{- include "table-maintenance.labels" (dict "root" . "component" "migrate" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.backend))) | nindent 8 }}
+      {{- include "table-maintenance.podMetadata" $labels | nindent 6 }}
     spec:
       restartPolicy: OnFailure
       automountServiceAccountToken: false
       {{- include "table-maintenance.podSecurity" . | nindent 6 }}
+      {{- include "table-maintenance.podScheduling" (dict "root" . "role" .Values.migrate) | nindent 6 }}
       initContainers:
         - name: wait-for-db
           image: {{ .Values.postgres.image }}
@@ -31,9 +32,20 @@ spec:
             - name: GLAC_COMPONENT
               value: migrate
             {{- include "table-maintenance.dbEnv" . | nindent 12 }}
+            {{- include "table-maintenance.extraEnv" (dict "root" . "role" .Values.migrate) | nindent 12 }}
           envFrom:
             - configMapRef:
                 name: {{ include "table-maintenance.config.fullname" . }}
+            {{- include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.migrate) | nindent 12 }}
+          {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.migrate) }}
+          volumeMounts:
+            {{- . | nindent 12 }}
+          {{- end }}
           {{- include "table-maintenance.containerSecurity" . | nindent 10 }}
           resources:
             {{- toYaml .Values.migrate.resources | nindent 12 }}
+      {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.migrate) }}
+      volumes:
+        {{- . | nindent 8 }}
+      {{- end }}
+{{- end }}

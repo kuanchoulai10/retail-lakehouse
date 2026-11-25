@@ -1,0 +1,124 @@
+suite: env, envFrom, secretMounts and extraManifests pass through at two layers
+templates:
+  - templates/api.yaml
+  - templates/configmap.yaml
+  - templates/worker.yaml
+  - templates/console.yaml
+  - templates/extra-manifests.yaml
+release:
+  name: table-maintenance
+  namespace: lakehouse-control-plane
+set:
+  image.backend.tag: t
+  image.spark.tag: t
+  image.console.tag: t
+tests:
+  - it: global and role env both reach the pod, global first
+    set:
+      env: [{name: G, value: g}]
+      worker.env: [{name: W, value: w}]
+    asserts:
+      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 6}
+        template: templates/worker.yaml
+      - equal: {path: "spec.template.spec.containers[0].env[4]", value: {name: G, value: g}}
+        template: templates/worker.yaml
+      - equal: {path: "spec.template.spec.containers[0].env[5]", value: {name: W, value: w}}
+        template: templates/worker.yaml
+      - contains: {path: "spec.template.spec.containers[0].env", content: {name: G, value: g}}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - notContains: {path: "spec.template.spec.containers[0].env", content: {name: W, value: w}}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+
+  - it: role env comes after global, so it wins a name
+    set:
+      env: [{name: X, value: global}]
+      api.env: [{name: X, value: role}]
+    template: templates/api.yaml
+    documentSelector: {path: kind, value: Deployment}
+    asserts:
+      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 7}
+      - equal: {path: "spec.template.spec.containers[0].env[5]", value: {name: X, value: global}}
+      - equal: {path: "spec.template.spec.containers[0].env[6]", value: {name: X, value: role}}
+
+  - it: envFrom layers follow the chart's own sources
+    set:
+      envFrom: [{secretRef: {name: global-extra}}]
+      api.envFrom: [{configMapRef: {name: api-extra}}]
+    template: templates/api.yaml
+    documentSelector: {path: kind, value: Deployment}
+    asserts:
+      - lengthEqual: {path: "spec.template.spec.containers[0].envFrom", count: 4}
+      - equal: {path: "spec.template.spec.containers[0].envFrom[2]", value: {secretRef: {name: global-extra}}}
+      - equal: {path: "spec.template.spec.containers[0].envFrom[3]", value: {configMapRef: {name: api-extra}}}
+
+  - it: env and envFrom reach the console too
+    set:
+      env: [{name: G, value: g}]
+      console.envFrom: [{configMapRef: {name: console-extra}}]
+    template: templates/console.yaml
+    documentSelector: {path: kind, value: Deployment}
+    asserts:
+      - equal: {path: "spec.template.spec.containers[0].env", value: [{name: G, value: g}]}
+      - equal: {path: "spec.template.spec.containers[0].envFrom", value: [{configMapRef: {name: console-extra}}]}
+
+  - it: secretMounts at both layers, with names that cannot collide
+    set:
+      secretMounts: [{name: ca, secretName: ca-bundle, path: /etc/ca}]
+      api.secretMounts:
+        - {name: tls, secretName: api-tls, path: /etc/tls}
+        - {name: ca, secretName: api-ca, path: /etc/api-ca}
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes
+          value:
+            - {name: secret-global-ca, secret: {secretName: ca-bundle}}
+            - {name: secret-role-tls, secret: {secretName: api-tls}}
+            - {name: secret-role-ca, secret: {secretName: api-ca}}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal:
+          path: "spec.template.spec.containers[0].volumeMounts"
+          value:
+            - {name: secret-global-ca, mountPath: /etc/ca, readOnly: true}
+            - {name: secret-role-tls, mountPath: /etc/tls, readOnly: true}
+            - {name: secret-role-ca, mountPath: /etc/api-ca, readOnly: true}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal:
+          path: spec.template.spec.volumes
+          value:
+            - {name: secret-global-ca, secret: {secretName: ca-bundle}}
+        template: templates/worker.yaml
+
+  - it: no secretMounts render no volumes
+    template: templates/worker.yaml
+    asserts:
+      - notExists: {path: spec.template.spec.volumes}
+      - notExists: {path: "spec.template.spec.containers[0].volumeMounts"}
+
+  - it: extraManifests render with templating, as strings or objects
+    set:
+      extraManifests:
+        - |
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: {{ include "table-maintenance.fullname" . }}-extra
+        - apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: "{{ .Release.Name }}-object"
+    template: templates/extra-manifests.yaml
+    asserts:
+      - hasDocuments: {count: 2}
+      - equal: {path: metadata.name, value: table-maintenance-extra}
+        documentIndex: 0
+      - equal: {path: metadata.name, value: table-maintenance-object}
+        documentIndex: 1
+
+  - it: no extraManifests render nothing
+    template: templates/extra-manifests.yaml
+    asserts:
+      - hasDocuments: {count: 0}

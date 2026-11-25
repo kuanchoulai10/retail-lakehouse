@@ -1,24 +1,23 @@
+{{- if .Values.api.enabled }}
+{{- $labels := dict "root" . "role" .Values.api "component" "api" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.backend)) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "table-maintenance.api.fullname" . }}
   namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "table-maintenance.labels" (dict "root" . "component" "api" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.backend))) | nindent 4 }}
+  {{- include "table-maintenance.workloadMetadata" $labels | nindent 2 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.api.replicas }}
   selector:
     matchLabels:
       {{- include "table-maintenance.selectorLabels" (dict "root" . "component" "api") | nindent 6 }}
   template:
     metadata:
-      labels:
-        {{- include "table-maintenance.labels" (dict "root" . "component" "api" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.backend))) | nindent 8 }}
-      annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      {{- include "table-maintenance.podMetadata" (merge (dict "checksum" (include (print $.Template.BasePath "/configmap.yaml") . | sha256sum)) $labels) | nindent 6 }}
     spec:
       automountServiceAccountToken: false
       {{- include "table-maintenance.podSecurity" . | nindent 6 }}
+      {{- include "table-maintenance.podScheduling" (dict "root" . "role" .Values.api) | nindent 6 }}
       initContainers:
         {{- include "table-maintenance.waitForSchema" . | nindent 8 }}
       containers:
@@ -31,11 +30,13 @@ spec:
             - name: GLAC_API__ROOT_PATH
               value: {{ .Values.api.rootPath | quote }}
             {{- include "table-maintenance.appEnv" . | nindent 12 }}
+            {{- include "table-maintenance.extraEnv" (dict "root" . "role" .Values.api) | nindent 12 }}
           envFrom:
             - configMapRef:
                 name: {{ include "table-maintenance.config.fullname" . }}
             - secretRef:
                 name: {{ .Values.secrets.s3 }}
+            {{- include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.api) | nindent 12 }}
           ports:
             - name: http
               containerPort: {{ .Values.api.port }}
@@ -51,9 +52,17 @@ spec:
               port: http
             initialDelaySeconds: 20
             periodSeconds: 10
+          {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.api) }}
+          volumeMounts:
+            {{- . | nindent 12 }}
+          {{- end }}
           {{- include "table-maintenance.containerSecurity" . | nindent 10 }}
           resources:
             {{- toYaml .Values.api.resources | nindent 12 }}
+      {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.api) }}
+      volumes:
+        {{- . | nindent 8 }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -95,3 +104,4 @@ spec:
       backendRefs:
         - name: {{ include "table-maintenance.api.fullname" . }}
           port: {{ .Values.api.port }}
+{{- end }}
