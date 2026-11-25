@@ -40,7 +40,9 @@ from bootstrap.container.load_k8s_config import load_k8s_config
 from bootstrap.container.repositories import Repositories
 from bootstrap.container.run_event_consumer import run_event_consumer
 from bootstrap.container.run_migrations import run_migrations
+from bootstrap.container.schema_is_ready import schema_is_ready
 from bootstrap.container.use_cases import UseCases
+from bootstrap.container.wait_for_schema import wait_for_schema
 
 __all__ = [
     "Activities",
@@ -78,5 +80,7 @@ __all__ = [
     "event_log_base",
     "load_k8s_config",
     "run_event_consumer",
+    "schema_is_ready",
     "run_migrations",
+    "wait_for_schema",
 ]

@@ -2498,7 +2498,7 @@ wheels = [
 [[package]]
 name = "table-maintenance-backend"
 version = "0.1.0"
-source = { virtual = "src/data-platform/backend" }
+source = { editable = "src/data-platform/backend" }
 dependencies = [
     { name = "confluent-kafka" },
     { name = "fastapi", extra = ["standard"] },

@@ -22,4 +22,4 @@ COPY --chown=10001:10001 . .
 USER 10001
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
-CMD ["python", "entrypoint.py"]
+ENTRYPOINT ["python", "-m", "bootstrap.cli"]

@@ -452,6 +452,10 @@ BOUNDARY_FREE_MODULES = {
     "bootstrap.event_consumer",
     "bootstrap.migrate",
     "bootstrap.export_openapi",
+    "bootstrap.cli.__main__",
+    "bootstrap.cli.glac",
+    "bootstrap.cli.role_command",
+    "bootstrap.cli.role_commands",
 }
 
 
