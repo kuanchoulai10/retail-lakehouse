@@ -33,7 +33,10 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: POSTGRES_USER
-              value: table_maintenance
+              valueFrom:
+                secretKeyRef:
+                  name: table-maintenance-db
+                  key: username
             - name: POSTGRES_DB
               value: table_maintenance
             - name: POSTGRES_PASSWORD

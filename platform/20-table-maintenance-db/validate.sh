@@ -13,9 +13,13 @@ log::on_failure "PostgreSQL for table maintenance is not ready"
 
 namespace::assert_ambient "${NAMESPACE}"
 
-kubectl get secret table-maintenance-db \
-  --namespace "${NAMESPACE}" \
-  --context "${KUBE_CONTEXT}" >/dev/null
+for key in username password; do
+  [[ -n "$(kubectl get secret table-maintenance-db \
+    -o jsonpath="{.data.${key}}" \
+    --namespace "${NAMESPACE}" \
+    --context "${KUBE_CONTEXT}")" ]] \
+    || { echo "Secret table-maintenance-db has no ${key}" >&2; exit 1; }
+done
 
 kubectl rollout status deployment/table-maintenance-db \
   --namespace "${NAMESPACE}" \

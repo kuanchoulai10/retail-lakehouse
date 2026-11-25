@@ -8,6 +8,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
 
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 NAMESPACE="lakehouse-control-plane"
+DB_USER="table_maintenance"
 
 log::on_success "PostgreSQL for table maintenance deployed"
 log::on_failure "PostgreSQL for table maintenance deployment failed"
@@ -29,10 +30,20 @@ if [[ -z "${EXISTING_DB_SECRET}" ]]; then
   [[ -n "${DB_PASSWORD}" ]] || fail "generated an empty database password"
   printf '%s' "${DB_PASSWORD}" \
     | kubectl create secret generic table-maintenance-db \
+      --from-literal=username="${DB_USER}" \
       --from-file=password=/dev/stdin \
       --namespace "${NAMESPACE}" \
       --context "${KUBE_CONTEXT}" >/dev/null
   unset DB_PASSWORD
+elif [[ -z "$(kubectl get secret table-maintenance-db \
+  -o jsonpath='{.data.username}' \
+  --namespace "${NAMESPACE}" \
+  --context "${KUBE_CONTEXT}")" ]]; then
+  kubectl patch secret table-maintenance-db \
+    --type merge \
+    --patch "{\"stringData\":{\"username\":\"${DB_USER}\"}}" \
+    --namespace "${NAMESPACE}" \
+    --context "${KUBE_CONTEXT}" >/dev/null
 fi
 
 kubectl apply \
