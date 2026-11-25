@@ -7,7 +7,7 @@ vars:
 
 tasks:
   unit-test:
-    desc: "Run the wave-25 chart's helm-unittest suites and render its scenario values"
+    desc: "Run the wave-25 chart's helm-unittest suites and lint it with each scenario and the minikube environment"
     cmds:
       - cmd: |
           installed="$(helm plugin list | awk '$1 == "unittest" {print $2}')"
@@ -17,7 +17,6 @@ tasks:
             echo "  helm plugin uninstall unittest 2>/dev/null; helm plugin install https://github.com/helm-unittest/helm-unittest/releases/download/v{{.HELM_UNITTEST_VERSION}}/unittest-{{.HELM_UNITTEST_VERSION}}.tgz --keyring /tmp/helm-unittest-pubring.gpg" >&2
             exit 1
           fi
-      - cmd: helm lint chart
       - cmd: helm unittest chart
       - cmd: |
           for values in chart/ci/*-values.yaml; do
@@ -25,6 +24,10 @@ tasks:
             helm lint chart --values "${values}"
             helm template table-maintenance chart --namespace lakehouse-control-plane --values "${values}" >/dev/null
           done
+      - cmd: |
+          tags="--set-string backend.image.tag=lint --set-string maintenance.jobs.image.tag=lint --set-string frontend.image.tag=lint"
+          helm lint chart --values values/minikube.yaml ${tags}
+          helm lint chart --values values/minikube.yaml --values values/e2e.yaml ${tags}
 
   mutation-test:
     desc: "Break the wave-25 chart's templates and schema one way at a time and list the mutants its helm-unittest suites miss"

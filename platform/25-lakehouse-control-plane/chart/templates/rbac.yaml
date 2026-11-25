@@ -1,5 +1,4 @@
-{{- if .Values.worker.enabled }}
-{{- if .Values.worker.serviceAccount.create }}
+{{- if .Values.backend.worker.serviceAccount.create }}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -8,18 +7,18 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "table-maintenance.labels" (dict "root" . "component" "worker") | nindent 4 }}
-  {{- with .Values.worker.serviceAccount.annotations }}
+  {{- with .Values.backend.worker.serviceAccount.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 {{- end }}
-{{- if .Values.rbac.create }}
+{{- if .Values.backend.worker.rbac.create }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: {{ include "table-maintenance.worker.fullname" . }}
-  namespace: {{ .Values.namespaces.maintenanceOperations }}
+  namespace: {{ .Values.maintenance.jobs.namespace }}
   labels:
     {{- include "table-maintenance.labels" (dict "root" . "component" "worker") | nindent 4 }}
 rules:
@@ -34,7 +33,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: {{ include "table-maintenance.worker.fullname" . }}
-  namespace: {{ .Values.namespaces.maintenanceOperations }}
+  namespace: {{ .Values.maintenance.jobs.namespace }}
   labels:
     {{- include "table-maintenance.labels" (dict "root" . "component" "worker") | nindent 4 }}
 roleRef:
@@ -46,27 +45,27 @@ subjects:
     name: {{ include "table-maintenance.worker.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 {{- end }}
-{{- if .Values.spark.serviceAccount.create }}
+{{- if .Values.maintenance.jobs.serviceAccount.create }}
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{ include "table-maintenance.spark.serviceAccountName" . }}
-  namespace: {{ .Values.namespaces.maintenanceOperations }}
+  namespace: {{ .Values.maintenance.jobs.namespace }}
   labels:
     {{- include "table-maintenance.labels" (dict "root" . "component" "spark-job") | nindent 4 }}
-  {{- with .Values.spark.serviceAccount.annotations }}
+  {{- with .Values.maintenance.jobs.serviceAccount.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 {{- end }}
-{{- if .Values.rbac.create }}
+{{- if .Values.maintenance.jobs.rbac.create }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: {{ include "table-maintenance.spark.serviceAccountName" . }}
-  namespace: {{ .Values.namespaces.maintenanceOperations }}
+  namespace: {{ .Values.maintenance.jobs.namespace }}
   labels:
     {{- include "table-maintenance.labels" (dict "root" . "component" "spark-job") | nindent 4 }}
 rules:
@@ -81,7 +80,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: {{ include "table-maintenance.spark.serviceAccountName" . }}
-  namespace: {{ .Values.namespaces.maintenanceOperations }}
+  namespace: {{ .Values.maintenance.jobs.namespace }}
   labels:
     {{- include "table-maintenance.labels" (dict "root" . "component" "spark-job") | nindent 4 }}
 roleRef:
@@ -91,6 +90,5 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: {{ include "table-maintenance.spark.serviceAccountName" . }}
-    namespace: {{ .Values.namespaces.maintenanceOperations }}
-{{- end }}
+    namespace: {{ .Values.maintenance.jobs.namespace }}
 {{- end }}

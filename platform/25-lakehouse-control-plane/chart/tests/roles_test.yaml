@@ -10,75 +10,34 @@ templates:
 release:
   name: table-maintenance
   namespace: lakehouse-control-plane
-set:
-  image.backend.tag: t
-  image.spark.tag: t
-  image.console.tag: t
+values:
+  - ../ci/default-values.yaml
 tests:
-  - it: worker off renders no worker and none of its RBAC
-    set:
-      worker.enabled: false
-    asserts:
-      - hasDocuments: {count: 0}
-        template: templates/worker.yaml
-      - hasDocuments: {count: 0}
-        template: templates/rbac.yaml
-
-  - it: event consumer off renders no event consumer
-    set:
-      eventConsumer.enabled: false
-    asserts:
-      - hasDocuments: {count: 0}
-        template: templates/event-consumer.yaml
-
-  - it: migrate off renders no Job
-    set:
-      migrate.enabled: false
-    asserts:
-      - hasDocuments: {count: 0}
-        template: templates/migrate-job.yaml
-
-  - it: console off renders no console Deployment, Service or HTTPRoute
-    set:
-      console.enabled: false
-    asserts:
-      - hasDocuments: {count: 0}
-        template: templates/console.yaml
-
-  - it: api off, with worker and console off, renders no API Deployment, Service or HTTPRoute
-    set:
-      api.enabled: false
-      worker.enabled: false
-      console.enabled: false
-    asserts:
-      - hasDocuments: {count: 0}
-        template: templates/api.yaml
-
   - it: replicas
     set:
-      api.replicas: 3
-      worker.replicas: 2
-      console.replicas: 0
+      backend.api.replicas: 3
+      backend.worker.replicas: 2
+      frontend.console.replicas: 2
     asserts:
       - equal: {path: spec.replicas, value: 3}
         template: templates/api.yaml
         documentSelector: {path: kind, value: Deployment}
       - equal: {path: spec.replicas, value: 2}
         template: templates/worker.yaml
-      - equal: {path: spec.replicas, value: 0}
+      - equal: {path: spec.replicas, value: 2}
         template: templates/console.yaml
         documentSelector: {path: kind, value: Deployment}
 
   - it: scheduling lands on its own role's pods only
     set:
-      worker.nodeSelector: {pool: maint}
-      worker.tolerations: [{key: k, operator: Exists}]
-      worker.affinity:
+      backend.worker.nodeSelector: {pool: maint}
+      backend.worker.tolerations: [{key: k, operator: Exists}]
+      backend.worker.affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions: [{key: pool, operator: In, values: [maint]}]
-      migrate.nodeSelector: {pool: batch}
+      backend.migrate.nodeSelector: {pool: batch}
     asserts:
       - equal: {path: spec.template.spec.nodeSelector, value: {pool: maint}}
         template: templates/worker.yaml
@@ -99,10 +58,10 @@ tests:
 
   - it: workload and pod labels and annotations go where they say
     set:
-      api.labels: {a: "1"}
-      api.annotations: {note: workload}
-      api.podLabels: {b: "2"}
-      api.podAnnotations: {c: "3"}
+      backend.api.labels: {a: "1"}
+      backend.api.annotations: {note: workload}
+      backend.api.podLabels: {b: "2"}
+      backend.api.podAnnotations: {c: "3"}
     template: templates/api.yaml
     documentSelector: {path: kind, value: Deployment}
     asserts:
@@ -117,8 +76,8 @@ tests:
 
   - it: an existing worker ServiceAccount is used and none is created
     set:
-      worker.serviceAccount.create: false
-      worker.serviceAccount.name: existing-sa
+      backend.worker.serviceAccount.create: false
+      backend.worker.serviceAccount.name: existing-sa
     asserts:
       - equal: {path: spec.template.spec.serviceAccountName, value: existing-sa}
         template: templates/worker.yaml
@@ -130,8 +89,8 @@ tests:
 
   - it: an existing Spark ServiceAccount is used and none is created
     set:
-      spark.serviceAccount.create: false
-      spark.serviceAccount.name: existing-spark
+      maintenance.jobs.serviceAccount.create: false
+      maintenance.jobs.serviceAccount.name: existing-spark
     asserts:
       - hasDocuments: {count: 5}
         template: templates/rbac.yaml
@@ -141,8 +100,8 @@ tests:
 
   - it: serviceAccount annotations land on the ServiceAccounts
     set:
-      worker.serviceAccount.annotations: {w: "1"}
-      spark.serviceAccount.annotations: {s: "2"}
+      backend.worker.serviceAccount.annotations: {w: "1"}
+      maintenance.jobs.serviceAccount.annotations: {s: "2"}
     template: templates/rbac.yaml
     asserts:
       - equal: {path: metadata.annotations.w, value: "1"}

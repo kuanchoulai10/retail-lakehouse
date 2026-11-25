@@ -7,17 +7,19 @@ source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/gateway.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-600s}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SETTINGS_PROFILE="${SETTINGS_PROFILE:-default}"
 case "${SETTINGS_PROFILE}" in
   default) PROFILE_VALUES=() ;;
-  e2e) PROFILE_VALUES=(--values "$(dirname "${BASH_SOURCE[0]}")/chart/values-e2e.yaml") ;;
+  e2e) PROFILE_VALUES=(--values "${SCRIPT_DIR}/values/e2e.yaml") ;;
   *) echo "SETTINGS_PROFILE must be default or e2e, not ${SETTINGS_PROFILE}" >&2; exit 1 ;;
 esac
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTROL_PLANE_NAMESPACE="lakehouse-control-plane"
 OPERATIONS_NAMESPACE="lakehouse-maintenance-operations"
-S3_REGION="dummy-region"
+S3_REGION="$(yq '.external.objectStorage.s3.region' "${SCRIPT_DIR}/values/minikube.yaml")"
+[[ -n "${S3_REGION}" && "${S3_REGION}" != "null" ]] \
+  || { echo "values/minikube.yaml names no S3 region" >&2; exit 1; }
 
 log::on_success "Lakehouse control plane deployed (settings profile: ${SETTINGS_PROFILE})"
 log::on_failure "Lakehouse control plane deployment failed"
@@ -106,11 +108,11 @@ CONSOLE_TAG="$(sed -n 's/^CONSOLE_TAG=//p' <<<"${BUILD_OUTPUT}")"
 
 helm upgrade --install table-maintenance "${SCRIPT_DIR}/chart" \
   --namespace "${CONTROL_PLANE_NAMESPACE}" \
+  --values "${SCRIPT_DIR}/values/minikube.yaml" \
   ${PROFILE_VALUES[@]+"${PROFILE_VALUES[@]}"} \
-  --set-string image.backend.tag="${BACKEND_TAG}" \
-  --set-string image.spark.tag="${SPARK_TAG}" \
-  --set-string image.console.tag="${CONSOLE_TAG}" \
-  --set-string config.catalog.s3_region="${S3_REGION}" \
+  --set-string backend.image.tag="${BACKEND_TAG}" \
+  --set-string maintenance.jobs.image.tag="${SPARK_TAG}" \
+  --set-string frontend.image.tag="${CONSOLE_TAG}" \
   --wait \
   --wait-for-jobs \
   --timeout "${TIMEOUT}" \

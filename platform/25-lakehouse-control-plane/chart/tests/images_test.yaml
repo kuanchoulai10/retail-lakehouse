@@ -6,14 +6,12 @@ templates:
 release:
   name: table-maintenance
   namespace: lakehouse-control-plane
-set:
-  image.backend.tag: t
-  image.spark.tag: t
-  image.console.tag: t
+values:
+  - ../ci/default-values.yaml
 tests:
   - it: tag empty uses appVersion
     set:
-      image.backend.tag: ""
+      backend.image.tag: ""
     template: templates/api.yaml
     documentSelector: {path: kind, value: Deployment}
     asserts:
@@ -22,9 +20,9 @@ tests:
 
   - it: registry and digest
     set:
-      image.registry: reg.example
-      image.backend.tag: "1.2"
-      image.backend.digest: sha256:abc
+      global.image.registry: reg.example
+      backend.image.tag: "1.2"
+      backend.image.digest: sha256:abc
     template: templates/api.yaml
     documentSelector: {path: kind, value: Deployment}
     asserts:
@@ -32,9 +30,9 @@ tests:
 
   - it: spark image reaches the worker config
     set:
-      image.registry: reg.example
-      image.spark.tag: ""
-      image.spark.digest: sha256:def
+      global.image.registry: reg.example
+      maintenance.jobs.image.tag: ""
+      maintenance.jobs.image.digest: sha256:def
     template: templates/configmap.yaml
     asserts:
       - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^  image: reg\.example/table\-maintenance\-spark:0\.1\.0@sha256:def$'}
@@ -42,7 +40,7 @@ tests:
 
   - it: console image follows the same rule
     set:
-      image.console.tag: "2.0"
+      frontend.image.tag: "2.0"
     template: templates/console.yaml
     documentSelector: {path: kind, value: Deployment}
     asserts:
@@ -51,7 +49,7 @@ tests:
 
   - it: version label is the effective tag
     set:
-      image.backend.tag: "1.2"
+      backend.image.tag: "1.2"
     template: templates/api.yaml
     documentSelector: {path: kind, value: Deployment}
     asserts:

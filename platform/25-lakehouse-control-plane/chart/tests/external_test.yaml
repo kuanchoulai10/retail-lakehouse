@@ -1,0 +1,176 @@
+suite: the chart connects to external services it does not run, logging in from their Secrets
+templates:
+  - templates/api.yaml
+  - templates/worker.yaml
+  - templates/event-consumer.yaml
+  - templates/migrate-job.yaml
+  - templates/console.yaml
+release:
+  name: table-maintenance
+  namespace: lakehouse-control-plane
+values:
+  - ../ci/default-values.yaml
+tests:
+  - it: no database, Temporal, Polaris, S3, Kafka or Prometheus runs in the chart
+    asserts:
+      - notEqual: {path: kind, value: PersistentVolumeClaim}
+      - notEqual: {path: kind, value: StatefulSet}
+      - notEqual: {path: 'metadata.labels["app.kubernetes.io/component"]', value: database}
+
+  - it: the database login comes from the Secret, user and password both
+    template: templates/worker.yaml
+    asserts:
+      - equal:
+          path: "spec.template.spec.containers[0].env[0]"
+          value: {name: DB_USERNAME, valueFrom: {secretKeyRef: {name: table-maintenance-db, key: username}}}
+      - equal:
+          path: "spec.template.spec.containers[0].env[1]"
+          value: {name: DB_PASSWORD, valueFrom: {secretKeyRef: {name: table-maintenance-db, key: password}}}
+      - equal:
+          path: "spec.template.spec.containers[0].env[2]"
+          value:
+            name: GLAC_DATABASE__POSTGRES__DB_URL
+            value: "postgresql+psycopg://$(DB_USERNAME):$(DB_PASSWORD)@postgres.databases.svc.cluster.local:5432/table_maintenance?sslmode=prefer"
+
+  - it: another database, Secret and SSL mode reach every backend container
+    set:
+      external.database.postgresql: {endpoint: "pg.example:6543", database: tm, credentialsSecret: login, sslMode: verify-full}
+    asserts:
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: GLAC_DATABASE__POSTGRES__DB_URL, value: "postgresql+psycopg://$(DB_USERNAME):$(DB_PASSWORD)@pg.example:6543/tm?sslmode=verify-full"}
+        documentSelector: {path: kind, value: Deployment}
+        template: templates/api.yaml
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: GLAC_DATABASE__POSTGRES__DB_URL, value: "postgresql+psycopg://$(DB_USERNAME):$(DB_PASSWORD)@pg.example:6543/tm?sslmode=verify-full"}
+        template: templates/event-consumer.yaml
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: GLAC_DATABASE__POSTGRES__DB_URL, value: "postgresql+psycopg://$(DB_USERNAME):$(DB_PASSWORD)@pg.example:6543/tm?sslmode=verify-full"}
+        template: templates/migrate-job.yaml
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: DB_USERNAME, valueFrom: {secretKeyRef: {name: login, key: username}}}
+        template: templates/migrate-job.yaml
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: DB_PASSWORD, valueFrom: {secretKeyRef: {name: login, key: password}}}
+        template: templates/event-consumer.yaml
+
+  - it: the migrate Job waits for the database host and port, as the Secret's user
+    set:
+      external.database.postgresql: {endpoint: "pg.example:6543", database: tm, credentialsSecret: login}
+    template: templates/migrate-job.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers
+          value:
+            - name: wait-for-db
+              image: postgres:17.11-alpine
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: DB_USERNAME
+                  valueFrom: {secretKeyRef: {name: login, key: username}}
+              command:
+                - sh
+                - -c
+                - until pg_isready -h pg.example -p 6543 -U "$DB_USERNAME" -d tm; do sleep 2; done
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities: {drop: [ALL]}
+
+  - it: the database wait image can be changed
+    set:
+      backend.migrate.waitForDatabase.image: postgres:18-alpine
+    template: templates/migrate-job.yaml
+    asserts:
+      - equal: {path: "spec.template.spec.initContainers[0].image", value: postgres:18-alpine}
+
+  - it: the services wait for the schema with glac, reading the migrate file
+    template: templates/worker.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers
+          value:
+            - name: wait-for-schema
+              image: table-maintenance-backend:ci
+              imagePullPolicy: IfNotPresent
+              args: [migrate, --wait, --config-file=/etc/glac/config.yaml]
+              env:
+                - name: DB_USERNAME
+                  valueFrom: {secretKeyRef: {name: table-maintenance-db, key: username}}
+                - name: DB_PASSWORD
+                  valueFrom: {secretKeyRef: {name: table-maintenance-db, key: password}}
+                - name: GLAC_DATABASE__POSTGRES__DB_URL
+                  value: "postgresql+psycopg://$(DB_USERNAME):$(DB_PASSWORD)@postgres.databases.svc.cluster.local:5432/table_maintenance?sslmode=prefer"
+              volumeMounts:
+                - {name: migrate-config, mountPath: /etc/glac, readOnly: true}
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities: {drop: [ALL]}
+
+  - it: the API and the event consumer wait for the schema too
+    asserts:
+      - equal: {path: "spec.template.spec.initContainers[0].args", value: [migrate, --wait, --config-file=/etc/glac/config.yaml]}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal: {path: "spec.template.spec.initContainers[0].args", value: [migrate, --wait, --config-file=/etc/glac/config.yaml]}
+        template: templates/event-consumer.yaml
+      - lengthEqual: {path: spec.template.spec.initContainers, count: 1}
+        template: templates/event-consumer.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content: {name: migrate-config, configMap: {name: table-maintenance-migrate-config}}
+        template: templates/event-consumer.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content: {name: migrate-config, configMap: {name: table-maintenance-migrate-config}}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+
+  - it: the Polaris credential comes from its Secret for the roles that call Polaris
+    set:
+      external.catalog.polaris.credentialsSecret: polaris-login
+    asserts:
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: GLAC_CATALOG__CREDENTIAL, valueFrom: {secretKeyRef: {name: polaris-login, key: credential}}}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: GLAC_CATALOG__CREDENTIAL, valueFrom: {secretKeyRef: {name: polaris-login, key: credential}}}
+        template: templates/worker.yaml
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: GLAC_CATALOG__CREDENTIAL, valueFrom: {secretKeyRef: {name: polaris-login, key: credential}}}
+        template: templates/event-consumer.yaml
+      - notContains:
+          path: "spec.template.spec.containers[0].env"
+          content: {name: GLAC_CATALOG__CREDENTIAL, valueFrom: {secretKeyRef: {name: polaris-login, key: credential}}}
+        template: templates/migrate-job.yaml
+
+  - it: the S3 keys come from their Secret for the API and the worker, which read event logs
+    set:
+      external.objectStorage.s3.credentialsSecret: s3-login
+    asserts:
+      - equal: {path: "spec.template.spec.containers[0].envFrom", value: [{secretRef: {name: s3-login}}]}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal: {path: "spec.template.spec.containers[0].envFrom", value: [{secretRef: {name: s3-login}}]}
+        template: templates/worker.yaml
+      - notExists: {path: "spec.template.spec.containers[0].envFrom"}
+        template: templates/event-consumer.yaml
+      - notExists: {path: "spec.template.spec.containers[0].envFrom"}
+        template: templates/migrate-job.yaml
+
+  - it: the console takes no external Secret
+    template: templates/console.yaml
+    documentSelector: {path: kind, value: Deployment}
+    asserts:
+      - equal:
+          path: "spec.template.spec.containers[0].env"
+          value:
+            - {name: CONSOLE_API_UPSTREAM, value: "http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000"}
+      - notExists: {path: "spec.template.spec.containers[0].envFrom"}

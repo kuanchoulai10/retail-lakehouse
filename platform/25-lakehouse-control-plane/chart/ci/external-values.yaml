@@ -1,82 +1,127 @@
-image:
-  registry: registry.example:5000
-  backend:
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+global:
+  image:
+    registry: registry.example:5000
+  env:
+    - name: HTTPS_PROXY
+      value: http://proxy.example:3128
+  envFrom:
+    - secretRef:
+        name: proxy-credentials
+  secretMounts:
+    - name: ca
+      secretName: corporate-ca
+      path: /etc/ssl/corporate
 imagePullSecrets:
   - name: registry-credentials
-rbac:
-  create: false
-volcano:
-  create: false
-  queues:
-    maintenance:
-      name: shared-maintenance
-    urgent:
-      name: shared-urgent
-  priorityClassPrefix: shared
-database:
-  host: postgres.databases.svc.cluster.local
-  port: 6432
-  name: maintenance
-  user: maintenance_app
-  existingSecret: maintenance-db-credentials
-  secretKey: app-password
-spark:
-  serviceAccount:
-    create: false
-    name: spark-jobs
-worker:
-  serviceAccount:
-    create: false
-    name: maintenance-worker
-  env:
-    - name: GLAC_LOG_LEVEL
-      value: DEBUG
-  secretMounts:
-    - name: kube-ca
-      secretName: kube-ca-bundle
-      path: /etc/kube-ca
-  nodeSelector:
-    retail-lakehouse.io/pool: maintenance
-  tolerations:
-    - key: retail-lakehouse.io/maintenance
-      operator: Exists
-      effect: NoSchedule
-env:
-  - name: HTTPS_PROXY
-    value: http://proxy.example:3128
-envFrom:
-  - secretRef:
-      name: proxy-credentials
-secretMounts:
-  - name: ca
-    secretName: corporate-ca
-    path: /etc/ssl/corporate
-api:
-  replicas: 2
-  podAnnotations:
-    retail-lakehouse.io/scrape: "true"
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            topologyKey: kubernetes.io/hostname
-            labelSelector:
-              matchLabels:
-                app.kubernetes.io/component: api
-eventConsumer:
-  replicas: 0
-  nodeSelector:
-    retail-lakehouse.io/pool: maintenance
-migrate:
-  nodeSelector:
-    retail-lakehouse.io/pool: maintenance
-console:
-  podLabels:
-    retail-lakehouse.io/exposed: "true"
-  nodeSelector:
-    retail-lakehouse.io/pool: web
+external:
+  database:
+    postgresql:
+      endpoint: postgres.databases.svc.cluster.local:6432
+      database: maintenance
+      credentialsSecret: maintenance-db-credentials
+      sslMode: require
+      poolSize: 10
+  orchestrator:
+    temporal:
+      endpoint: temporal.example:7233
+      namespace: maintenance
+  catalog:
+    polaris:
+      endpoint: https://polaris.example/polaris
+      scope: PRINCIPAL_ROLE:maintenance
+      credentialsSecret: maintenance-polaris
+  objectStorage:
+    s3:
+      endpoint: https://s3.eu-west-1.amazonaws.com
+      region: eu-west-1
+      pathStyleAccess: false
+      credentialsSecret: maintenance-s3
+  catalogEvents:
+    kafka:
+      endpoint: broker-0.example:9092,broker-1.example:9092
+      topic: polaris-events
+  metricsHistory:
+    prometheus:
+      endpoint: https://prometheus.example
+      queryTimeoutSeconds: 20
+backend:
+  image:
+    tag: ci
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  logLevel: WARNING
+  api:
+    replicas: 2
+    rootPath: /maintenance/api
+    httpRoute:
+      gateway:
+        name: shared-gateway
+        namespace: gateways
+    podAnnotations:
+      retail-lakehouse.io/scrape: "true"
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: api
+  worker:
+    logLevel: DEBUG
+    serviceAccount:
+      create: false
+      name: maintenance-worker
+    rbac:
+      create: false
+    secretMounts:
+      - name: kube-ca
+        secretName: kube-ca-bundle
+        path: /etc/kube-ca
+    nodeSelector:
+      retail-lakehouse.io/pool: maintenance
+    tolerations:
+      - key: retail-lakehouse.io/maintenance
+        operator: Exists
+        effect: NoSchedule
+  eventConsumer:
+    nodeSelector:
+      retail-lakehouse.io/pool: maintenance
+  migrate:
+    nodeSelector:
+      retail-lakehouse.io/pool: maintenance
+frontend:
+  image:
+    tag: ci
+  console:
+    podLabels:
+      retail-lakehouse.io/exposed: "true"
+    nodeSelector:
+      retail-lakehouse.io/pool: web
+    httpRoute:
+      gateway:
+        name: shared-gateway
+        namespace: gateways
+maintenance:
+  jobs:
+    image:
+      tag: ci
+    namespace: maintenance-jobs
+    serviceAccount:
+      create: false
+      name: spark-jobs
+    rbac:
+      create: false
+    spark:
+      eventLogDir: s3a://maintenance-event-logs/
+    scheduling:
+      create: false
+      queues:
+        maintenance:
+          name: shared-maintenance
+        urgent:
+          name: shared-urgent
+      priorityClassPrefix: shared
 extraManifests:
   - |
     apiVersion: v1

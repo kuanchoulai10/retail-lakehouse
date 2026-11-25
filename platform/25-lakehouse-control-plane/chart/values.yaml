@@ -1,201 +1,251 @@
 nameOverride: ""
 fullnameOverride: ""
 commonLabels: {}
-
 imagePullSecrets: []
-
-env: []
-envFrom: []
-secretMounts: []
-
 extraManifests: []
 
-image:
-  registry: ""
-  pullPolicy: IfNotPresent
-  backend:
+global:
+  image:
+    registry: ""
+    pullPolicy: IfNotPresent
+  env: []
+  envFrom: []
+  secretMounts: []
+
+external:
+  database:
+    type: postgresql
+    postgresql:
+      endpoint: ""
+      database: ""
+      credentialsSecret: ""
+      sslMode: prefer
+      poolSize: 5
+  orchestrator:
+    type: temporal
+    temporal:
+      endpoint: ""
+      namespace: default
+  catalog:
+    type: polaris
+    polaris:
+      endpoint: ""
+      scope: PRINCIPAL_ROLE:ALL
+      credentialsSecret: ""
+  objectStorage:
+    type: s3
+    s3:
+      endpoint: ""
+      region: ""
+      pathStyleAccess: true
+      credentialsSecret: ""
+  catalogEvents:
+    type: kafka
+    kafka:
+      endpoint: ""
+      topic: ""
+  metricsHistory:
+    type: prometheus
+    prometheus:
+      endpoint: ""
+      queryTimeoutSeconds: 10
+
+backend:
+  image:
     repository: table-maintenance-backend
     tag: ""
     digest: ""
-  spark:
-    repository: table-maintenance-spark
-    tag: ""
-    digest: ""
-  console:
+  logLevel: INFO
+  api:
+    replicas: 1
+    logLevel: ""
+    port: 8000
+    rootPath: /api
+    httpRoute:
+      gateway:
+        name: ""
+        namespace: ""
+    labels: {}
+    annotations: {}
+    podLabels: {}
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    env: []
+    envFrom: []
+    secretMounts: []
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
+  worker:
+    replicas: 1
+    logLevel: ""
+    terminationGracePeriodSeconds: 90
+    serviceAccount:
+      create: true
+      name: ""
+      annotations: {}
+    rbac:
+      create: true
+    labels: {}
+    annotations: {}
+    podLabels: {}
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    env: []
+    envFrom: []
+    secretMounts: []
+    resources:
+      requests:
+        cpu: 100m
+        memory: 384Mi
+      limits:
+        memory: 1Gi
+  eventConsumer:
+    replicas: 1
+    logLevel: ""
+    labels: {}
+    annotations: {}
+    podLabels: {}
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    env: []
+    envFrom: []
+    secretMounts: []
+    resources:
+      requests:
+        cpu: 50m
+        memory: 192Mi
+      limits:
+        memory: 512Mi
+  migrate:
+    logLevel: ""
+    waitForDatabase:
+      image: postgres:17.11-alpine
+    labels: {}
+    annotations: {}
+    podLabels: {}
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    env: []
+    envFrom: []
+    secretMounts: []
+    resources:
+      requests:
+        cpu: 50m
+        memory: 192Mi
+      limits:
+        memory: 512Mi
+
+frontend:
+  image:
     repository: console
     tag: ""
     digest: ""
-
-database:
-  host: table-maintenance-db
-  port: 5432
-  name: table_maintenance
-  user: table_maintenance
-  existingSecret: table-maintenance-db
-  secretKey: password
-  clientImage: postgres:17.11-alpine
-
-secrets:
-  catalogCredential: table-maintenance-polaris-credential
-  s3: table-maintenance-s3
-
-namespaces:
-  maintenanceOperations: lakehouse-maintenance-operations
-
-logLevel: ""
+  console:
+    replicas: 1
+    port: 8080
+    httpRoute:
+      gateway:
+        name: ""
+        namespace: ""
+    labels: {}
+    annotations: {}
+    podLabels: {}
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    env: []
+    envFrom: []
+    secretMounts: []
+    resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
+      limits:
+        memory: 128Mi
 
 maintenance:
-  attemptDeadlineSeconds: null
-  maxAttempts: null
-  queueWaitLimitSeconds: null
-
-config: {}
-
-spark:
-  serviceAccount:
-    create: true
-    name: ""
-    annotations: {}
-  sizes: {}
-
-volcano:
-  create: true
-  queues:
-    maintenance:
+  discovery:
+    intervalSeconds: 600
+  cooldowns:
+    rewriteDataFilesSeconds: 3600
+    rewriteManifestsSeconds: 21600
+    expireSnapshotsSeconds: 21600
+    removeOrphanFilesIntervalSeconds: 604800
+  failureBackoffCapSeconds: 86400
+  partitionSelection:
+    partitionsPerJob: 10
+    quietSeconds: 120
+    maxQuietWaitSeconds: 3600
+  jobs:
+    image:
+      repository: table-maintenance-spark
+      tag: ""
+      digest: ""
+    namespace: ""
+    serviceAccount:
+      create: true
       name: ""
-      capability:
-        cpu: "2"
-        memory: 5017Mi
-    urgent:
-      name: ""
-      capability:
-        cpu: "2"
-        memory: 5017Mi
-  priorityClassPrefix: ""
-  priorities:
-    P0: 1000003
-    P1: 1000002
-    P2: 1000001
-    P3: 1000000
-
-rbac:
-  create: true
-
-api:
-  enabled: true
-  config: {}
-  replicas: 1
-  labels: {}
-  annotations: {}
-  podLabels: {}
-  podAnnotations: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  env: []
-  envFrom: []
-  secretMounts: []
-  port: 8000
-  rootPath: /api
-  gateway:
-    name: platform-gateway
-    namespace: istio-ingress
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
+      annotations: {}
+    rbac:
+      create: true
     limits:
-      memory: 512Mi
-
-worker:
-  enabled: true
-  config: {}
-  replicas: 1
-  labels: {}
-  annotations: {}
-  podLabels: {}
-  podAnnotations: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  env: []
-  envFrom: []
-  secretMounts: []
-  terminationGracePeriodSeconds: 90
-  serviceAccount:
-    create: true
-    name: ""
-    annotations: {}
-  resources:
-    requests:
-      cpu: 100m
-      memory: 384Mi
-    limits:
-      memory: 1Gi
-
-eventConsumer:
-  enabled: true
-  config: {}
-  replicas: 1
-  labels: {}
-  annotations: {}
-  podLabels: {}
-  podAnnotations: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  env: []
-  envFrom: []
-  secretMounts: []
-  resources:
-    requests:
-      cpu: 50m
-      memory: 192Mi
-    limits:
-      memory: 512Mi
-
-console:
-  enabled: true
-  replicas: 1
-  labels: {}
-  annotations: {}
-  podLabels: {}
-  podAnnotations: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  env: []
-  envFrom: []
-  secretMounts: []
-  port: 8080
-  gateway:
-    name: platform-gateway
-    namespace: istio-ingress
-  resources:
-    requests:
-      cpu: 20m
-      memory: 32Mi
-    limits:
-      memory: 128Mi
-
-migrate:
-  enabled: true
-  config: {}
-  labels: {}
-  annotations: {}
-  podLabels: {}
-  podAnnotations: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  env: []
-  envFrom: []
-  secretMounts: []
-  resources:
-    requests:
-      cpu: 50m
-      memory: 192Mi
-    limits:
-      memory: 512Mi
-
-settingsProfile: default
+      attemptDeadlineSeconds: 21600
+      queueWaitLimitSeconds: 86400
+      maxAttempts: 3
+    sizes:
+      S:
+        driverMemory: 768m
+        executorMemory: 768m
+        executorInstances: 1
+      M:
+        driverMemory: 1g
+        executorMemory: 1536m
+        executorInstances: 1
+      L:
+        driverMemory: 1536m
+        executorMemory: 2g
+        executorInstances: 1
+    cores:
+      driver: 1
+      driverLimit: "1"
+      executor: 1
+      executorLimit: "1"
+    spark:
+      sparkVersion: 4.0.0
+      icebergVersion: 1.10.1
+      hadoopVersion: 3.4.1
+      awsSdkVersion: 2.33.0
+      eventLogDir: ""
+      mainApplicationFile: local:///opt/spark/work-dir/main.py
+    scheduling:
+      create: true
+      queues:
+        maintenance:
+          name: ""
+          capability:
+            cpu: "2"
+            memory: 5017Mi
+        urgent:
+          name: ""
+          capability:
+            cpu: "2"
+            memory: 5017Mi
+      priorityClassPrefix: ""
+      priorities:
+        P0: 1000003
+        P1: 1000002
+        P2: 1000001
+        P3: 1000000

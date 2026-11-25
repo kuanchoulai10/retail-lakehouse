@@ -212,7 +212,6 @@ def test_rendered_chart_renders_each_ci_values_file():
     assert [path.name for path in CI_VALUES] == [
         "default-values.yaml",
         "external-values.yaml",
-        "minimal-values.yaml",
         "renamed-values.yaml",
     ]
     assert [source for source, _ in rendered] == [
@@ -220,6 +219,13 @@ def test_rendered_chart_renders_each_ci_values_file():
     ]
     for source, text in rendered:
         assert "kind: Deployment" in text, source
+
+
+def test_each_scenario_renders_with_its_own_image_tags():
+    """A scenario is a whole environment, image tags included, so the check sets nothing over it."""
+    for source, text in check_k8s_labels.rendered_chart(REPO_ROOT):
+        assert "table-maintenance-backend:ci" in text, source
+        assert ":check" not in text, source
 
 
 def test_every_ci_scenario_passes_the_label_check():

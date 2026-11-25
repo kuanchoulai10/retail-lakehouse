@@ -1,5 +1,4 @@
-{{- if .Values.worker.enabled }}
-{{- $labels := dict "root" . "role" .Values.worker "component" "worker" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.backend)) }}
+{{- $labels := dict "root" . "role" .Values.backend.worker "component" "worker" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.backend.image)) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,7 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- include "table-maintenance.workloadMetadata" $labels | nindent 2 }}
 spec:
-  replicas: {{ .Values.worker.replicas }}
+  replicas: {{ .Values.backend.worker.replicas }}
   selector:
     matchLabels:
       {{- include "table-maintenance.selectorLabels" (dict "root" . "component" "worker") | nindent 6 }}
@@ -17,35 +16,33 @@ spec:
     spec:
       enableServiceLinks: false
       serviceAccountName: {{ include "table-maintenance.worker.serviceAccountName" . }}
-      terminationGracePeriodSeconds: {{ .Values.worker.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.backend.worker.terminationGracePeriodSeconds }}
       {{- include "table-maintenance.podSecurity" . | nindent 6 }}
-      {{- include "table-maintenance.podScheduling" (dict "root" . "role" .Values.worker) | nindent 6 }}
+      {{- include "table-maintenance.podScheduling" (dict "root" . "role" .Values.backend.worker) | nindent 6 }}
       initContainers:
         {{- include "table-maintenance.waitForSchema" . | nindent 8 }}
       containers:
         - name: worker
-          image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.backend) }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.backend.image) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           args:
             {{- include "table-maintenance.roleArgs" (dict "root" . "role" "worker") | nindent 12 }}
           env:
-            {{- include "table-maintenance.env" (dict "root" . "role" .Values.worker "own" (include "table-maintenance.worker.env" .)) | nindent 12 }}
+            {{- include "table-maintenance.env" (dict "root" . "role" .Values.backend.worker "own" (include "table-maintenance.worker.env" .)) | nindent 12 }}
           envFrom:
-            - secretRef:
-                name: {{ .Values.secrets.s3 }}
-            {{- include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.worker) | nindent 12 }}
+            {{- include "table-maintenance.s3EnvFrom" . | nindent 12 }}
+            {{- include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.backend.worker) | nindent 12 }}
           volumeMounts:
             {{- include "table-maintenance.configVolumeMount" . | nindent 12 }}
-            {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.worker) }}
+            {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.backend.worker) }}
             {{- . | nindent 12 }}
             {{- end }}
           {{- include "table-maintenance.containerSecurity" . | nindent 10 }}
           resources:
-            {{- toYaml .Values.worker.resources | nindent 12 }}
+            {{- toYaml .Values.backend.worker.resources | nindent 12 }}
       volumes:
         {{- include "table-maintenance.configVolume" (dict "root" . "role" "worker") | nindent 8 }}
         {{- include "table-maintenance.waitForSchemaVolume" . | nindent 8 }}
-        {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.worker) }}
+        {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.backend.worker) }}
         {{- . | nindent 8 }}
         {{- end }}
-{{- end }}

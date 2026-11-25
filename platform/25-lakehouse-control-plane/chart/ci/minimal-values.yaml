@@ -1,8 +1,0 @@
-worker:
-  enabled: false
-eventConsumer:
-  enabled: false
-console:
-  enabled: false
-volcano:
-  create: false

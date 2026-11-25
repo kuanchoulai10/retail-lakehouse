@@ -4,10 +4,8 @@ templates:
 release:
   name: table-maintenance
   namespace: lakehouse-control-plane
-set:
-  image.backend.tag: t
-  image.spark.tag: t
-  image.console.tag: t
+values:
+  - ../ci/default-values.yaml
 tests:
   - it: the test pod is a helm test hook that calls the API health check
     asserts:
@@ -17,23 +15,15 @@ tests:
       - equal: {path: "metadata.annotations[\"helm.sh/hook-delete-policy\"]", value: "before-hook-creation,hook-succeeded"}
       - equal: {path: spec.restartPolicy, value: Never}
       - equal: {path: spec.automountServiceAccountToken, value: false}
-      - equal: {path: "spec.containers[0].image", value: "table-maintenance-backend:t"}
+      - equal: {path: "spec.containers[0].image", value: "table-maintenance-backend:ci"}
       - matchRegex: {path: "spec.containers[0].command[2]", pattern: "http://table-maintenance-api:8000/healthz"}
       - equal: {path: "metadata.labels[\"app.kubernetes.io/component\"]", value: test}
-      - equal: {path: "metadata.labels[\"app.kubernetes.io/version\"]", value: t}
+      - equal: {path: "metadata.labels[\"app.kubernetes.io/version\"]", value: ci}
 
   - it: a renamed release calls its own API
     release:
       name: tm2
     set:
-      api.port: 9000
+      backend.api.port: 9000
     asserts:
       - matchRegex: {path: "spec.containers[0].command[2]", pattern: "http://tm2-table-maintenance-api:9000/healthz"}
-
-  - it: no test pod without the API
-    set:
-      api.enabled: false
-      worker.enabled: false
-      console.enabled: false
-    asserts:
-      - hasDocuments: {count: 0}

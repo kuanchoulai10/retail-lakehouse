@@ -1,5 +1,5 @@
-{{- if .Values.volcano.create }}
-{{- $queues := list (dict "name" (include "table-maintenance.volcano.queue" .) "queue" .Values.volcano.queues.maintenance) (dict "name" (include "table-maintenance.volcano.urgentQueue" .) "queue" .Values.volcano.queues.urgent) }}
+{{- if .Values.maintenance.jobs.scheduling.create }}
+{{- $queues := list (dict "name" (include "table-maintenance.volcano.queue" .) "queue" .Values.maintenance.jobs.scheduling.queues.maintenance) (dict "name" (include "table-maintenance.volcano.urgentQueue" .) "queue" .Values.maintenance.jobs.scheduling.queues.urgent) }}
 {{- range $queues }}
 ---
 apiVersion: scheduling.volcano.sh/v1beta1
@@ -14,7 +14,7 @@ spec:
     memory: {{ .queue.capability.memory | quote }}
 {{- end }}
 {{- $prefix := include "table-maintenance.volcano.priorityClassPrefix" . }}
-{{- range $priority, $value := .Values.volcano.priorities }}
+{{- range $priority, $value := .Values.maintenance.jobs.scheduling.priorities }}
 ---
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass

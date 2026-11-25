@@ -139,7 +139,7 @@ def manifest_files(root: Path) -> list[Path]:
 
 
 def rendered_chart(root: Path) -> list[tuple[str, str]]:
-    """Render the wave-25 chart once per scenario in its ci/ folder, with placeholder image tags."""
+    """Render the wave-25 chart once per scenario in its ci/ folder, each a whole environment."""
     return [
         (
             f"{CHART} (rendered with ci/{values.name})",
@@ -153,12 +153,6 @@ def rendered_chart(root: Path) -> list[tuple[str, str]]:
                     "lakehouse-control-plane",
                     "--values",
                     str(values),
-                    "--set",
-                    "image.backend.tag=check",
-                    "--set",
-                    "image.spark.tag=check",
-                    "--set",
-                    "image.console.tag=check",
                 ],
                 check=True,
                 capture_output=True,

@@ -1,98 +1,359 @@
-suite: values the chart does not know are refused, naming the key
+suite: values the chart does not know, or of the wrong kind, are refused, naming the key
 templates:
   - templates/configmap.yaml
 release:
   name: table-maintenance
   namespace: lakehouse-control-plane
-set:
-  image.backend.tag: t
-  image.spark.tag: t
-  image.console.tag: t
+values:
+  - ../ci/default-values.yaml
 tests:
   - it: unknown top-level key
     set:
       replica: 2
     asserts:
-      - failedTemplate:
-          errorPattern: "replica"
+      - failedTemplate: {errorPattern: "replica"}
+
+  - it: the old top-level blocks are gone
+    set:
+      config: {temporal: {address: x}}
+    asserts:
+      - failedTemplate: {errorPattern: "config"}
 
   - it: unknown role key
     set:
-      worker.replica: 2
+      backend.worker.replica: 2
     asserts:
-      - failedTemplate:
-          errorPattern: "replica"
+      - failedTemplate: {errorPattern: "replica"}
+
+  - it: a role cannot be turned off, the API
+    set:
+      backend.api.enabled: false
+    asserts:
+      - failedTemplate: {errorPattern: "/backend/api.*enabled"}
+
+  - it: a role cannot be turned off, the worker
+    set:
+      backend.worker.enabled: false
+    asserts:
+      - failedTemplate: {errorPattern: "/backend/worker.*enabled"}
+
+  - it: a role cannot be turned off, the event consumer
+    set:
+      backend.eventConsumer.enabled: false
+    asserts:
+      - failedTemplate: {errorPattern: "/backend/eventConsumer.*enabled"}
+
+  - it: a role cannot be turned off, the migrate Job
+    set:
+      backend.migrate.enabled: false
+    asserts:
+      - failedTemplate: {errorPattern: "/backend/migrate.*enabled"}
+
+  - it: a role cannot be turned off, the console
+    set:
+      frontend.console.enabled: false
+    asserts:
+      - failedTemplate: {errorPattern: "/frontend/console.*enabled"}
+
+  - it: the API runs at least one replica
+    set:
+      backend.api.replicas: 0
+    asserts:
+      - failedTemplate: {errorPattern: "/backend/api/replicas"}
+
+  - it: the worker runs at least one replica
+    set:
+      backend.worker.replicas: 0
+    asserts:
+      - failedTemplate: {errorPattern: "/backend/worker/replicas"}
+
+  - it: the console runs at least one replica
+    set:
+      frontend.console.replicas: 0
+    asserts:
+      - failedTemplate: {errorPattern: "/frontend/console/replicas"}
+
+  - it: the event consumer runs exactly one replica, never none
+    set:
+      backend.eventConsumer.replicas: 0
+    asserts:
+      - failedTemplate: {errorPattern: "/backend/eventConsumer/replicas"}
+
+  - it: the event consumer runs exactly one replica, never two
+    set:
+      backend.eventConsumer.replicas: 2
+    asserts:
+      - failedTemplate: {errorPattern: "/backend/eventConsumer/replicas"}
+
+  - it: several API, worker and console replicas are fine
+    set:
+      backend.api.replicas: 3
+      backend.worker.replicas: 2
+      frontend.console.replicas: 2
+    asserts:
+      - notFailedTemplate: {}
 
   - it: wrong type
     set:
-      api.replicas: two
+      backend.api.replicas: two
     asserts:
-      - failedTemplate:
-          errorPattern: "replicas"
+      - failedTemplate: {errorPattern: "replicas"}
 
   - it: unknown image key
     set:
-      image.backend.tags: x
+      backend.image.tags: x
     asserts:
-      - failedTemplate:
-          errorPattern: "tags"
-
-  - it: a secretMount without its path
-    set:
-      secretMounts: [{name: ca, secretName: ca-bundle}]
-    asserts:
-      - failedTemplate:
-          errorPattern: "path"
-
-  - it: a value nothing reads is refused
-    set:
-      namespaces.controlPlane: elsewhere
-    asserts:
-      - failedTemplate:
-          errorPattern: "controlPlane"
+      - failedTemplate: {errorPattern: "tags"}
 
   - it: a tag must be a string, so a short SHA of digits is never turned into a number
     set:
-      image.backend.tag: 1234567
+      backend.image.tag: 1234567
     asserts:
-      - failedTemplate:
-          errorPattern: "/image/backend/tag"
+      - failedTemplate: {errorPattern: "/backend/image/tag"}
+
+  - it: the Spark image tag is a string too
+    set:
+      maintenance.jobs.image.tag: 1234567
+    asserts:
+      - failedTemplate: {errorPattern: "/maintenance/jobs/image/tag"}
+
+  - it: the console image tag is a string too
+    set:
+      frontend.image.tag: 1234567
+    asserts:
+      - failedTemplate: {errorPattern: "/frontend/image/tag"}
+
+  - it: the database type is only PostgreSQL
+    set:
+      external.database.type: mysql
+    asserts:
+      - failedTemplate: {errorPattern: "/external/database/type"}
+
+  - it: the orchestrator type is only Temporal
+    set:
+      external.orchestrator.type: airflow
+    asserts:
+      - failedTemplate: {errorPattern: "/external/orchestrator/type"}
+
+  - it: the catalog type is only Polaris
+    set:
+      external.catalog.type: glue
+    asserts:
+      - failedTemplate: {errorPattern: "/external/catalog/type"}
+
+  - it: the object storage type is only S3
+    set:
+      external.objectStorage.type: gcs
+    asserts:
+      - failedTemplate: {errorPattern: "/external/objectStorage/type"}
+
+  - it: the catalog events type is only Kafka
+    set:
+      external.catalogEvents.type: pulsar
+    asserts:
+      - failedTemplate: {errorPattern: "/external/catalogEvents/type"}
+
+  - it: the metrics history type is only Prometheus
+    set:
+      external.metricsHistory.type: thanos
+    asserts:
+      - failedTemplate: {errorPattern: "/external/metricsHistory/type"}
+
+  - it: the database type is required
+    set:
+      external.database.type: null
+    asserts:
+      - failedTemplate: {errorPattern: "/external/database.*type"}
+
+  - it: the orchestrator type is required
+    set:
+      external.orchestrator.type: null
+    asserts:
+      - failedTemplate: {errorPattern: "/external/orchestrator.*type"}
+
+  - it: the catalog type is required
+    set:
+      external.catalog.type: null
+    asserts:
+      - failedTemplate: {errorPattern: "/external/catalog.*type"}
+
+  - it: the object storage type is required
+    set:
+      external.objectStorage.type: null
+    asserts:
+      - failedTemplate: {errorPattern: "/external/objectStorage.*type"}
+
+  - it: the catalog events type is required
+    set:
+      external.catalogEvents.type: null
+    asserts:
+      - failedTemplate: {errorPattern: "/external/catalogEvents.*type"}
+
+  - it: the metrics history type is required
+    set:
+      external.metricsHistory.type: null
+    asserts:
+      - failedTemplate: {errorPattern: "/external/metricsHistory.*type"}
+
+  - it: a host:port endpoint is not a URL
+    set:
+      external.database.postgresql.endpoint: postgresql://pg:5432
+    asserts:
+      - failedTemplate: {errorPattern: "/external/database/postgresql/endpoint"}
+
+  - it: a host:port endpoint needs its port
+    set:
+      external.orchestrator.temporal.endpoint: temporal.example
+    asserts:
+      - failedTemplate: {errorPattern: "/external/orchestrator/temporal/endpoint"}
+
+  - it: the Kafka endpoint takes several brokers, each with a port
+    set:
+      external.catalogEvents.kafka.endpoint: "a:9092,b"
+    asserts:
+      - failedTemplate: {errorPattern: "/external/catalogEvents/kafka/endpoint"}
+
+  - it: the Polaris endpoint is a URL
+    set:
+      external.catalog.polaris.endpoint: polaris:8181
+    asserts:
+      - failedTemplate: {errorPattern: "/external/catalog/polaris/endpoint"}
+
+  - it: the S3 endpoint is a URL
+    set:
+      external.objectStorage.s3.endpoint: s3:9000
+    asserts:
+      - failedTemplate: {errorPattern: "/external/objectStorage/s3/endpoint"}
+
+  - it: the Prometheus endpoint is a URL
+    set:
+      external.metricsHistory.prometheus.endpoint: prometheus:9090
+    asserts:
+      - failedTemplate: {errorPattern: "/external/metricsHistory/prometheus/endpoint"}
+
+  - it: the event log location is an s3a URL
+    set:
+      maintenance.jobs.spark.eventLogDir: s3://logs/
+    asserts:
+      - failedTemplate: {errorPattern: "/maintenance/jobs/spark/eventLogDir"}
+
+  - it: the SSL mode is one PostgreSQL knows
+    set:
+      external.database.postgresql.sslMode: on
+    asserts:
+      - failedTemplate: {errorPattern: "/external/database/postgresql/sslMode"}
+
+  - it: the log level is one the backend knows
+    set:
+      backend.logLevel: LOUD
+    asserts:
+      - failedTemplate: {errorPattern: "/backend/logLevel"}
+
+  - it: a role's log level is one the backend knows, or empty
+    set:
+      backend.worker.logLevel: verbose
+    asserts:
+      - failedTemplate: {errorPattern: "/backend/worker/logLevel"}
+
+  - it: the pull policy is one Kubernetes knows
+    set:
+      global.image.pullPolicy: Sometimes
+    asserts:
+      - failedTemplate: {errorPattern: "/global/image/pullPolicy"}
+
+  - it: the pool holds at least one connection
+    set:
+      external.database.postgresql.poolSize: 0
+    asserts:
+      - failedTemplate: {errorPattern: "/external/database/postgresql/poolSize"}
+
+  - it: a maintenance job is tried at least once
+    set:
+      maintenance.jobs.limits.maxAttempts: 0
+    asserts:
+      - failedTemplate: {errorPattern: "/maintenance/jobs/limits/maxAttempts"}
+
+  - it: a job size runs at least one executor
+    set:
+      maintenance.jobs.sizes.M.executorInstances: 0
+    asserts:
+      - failedTemplate: {errorPattern: "/maintenance/jobs/sizes/M/executorInstances"}
+
+  - it: a job size names its memory
+    set:
+      maintenance.jobs.sizes.L.driverMemory: ""
+    asserts:
+      - failedTemplate: {errorPattern: "/maintenance/jobs/sizes/L/driverMemory"}
+
+  - it: the sizes are S, M and L and nothing else
+    set:
+      maintenance.jobs.sizes.XL: {driverMemory: 4g, executorMemory: 4g, executorInstances: 1}
+    asserts:
+      - failedTemplate: {errorPattern: "XL"}
+
+  - it: the priorities are P0 to P3 and nothing else
+    set:
+      maintenance.jobs.scheduling.priorities.P4: 999999
+    asserts:
+      - failedTemplate: {errorPattern: "P4"}
+
+  - it: a secretMount without its path
+    set:
+      global.secretMounts: [{name: ca, secretName: ca-bundle}]
+    asserts:
+      - failedTemplate: {errorPattern: "path"}
 
   - it: commonLabels may not take over a label the chart sets
     set:
       commonLabels:
         app.kubernetes.io/part-of: other
     asserts:
-      - failedTemplate:
-          errorPattern: "commonLabels"
+      - failedTemplate: {errorPattern: "commonLabels"}
 
   - it: a role's workload labels may not take over a label the chart sets
     set:
-      worker.labels:
+      backend.worker.labels:
         helm.sh/chart: other
     asserts:
-      - failedTemplate:
-          errorPattern: "/worker/labels"
+      - failedTemplate: {errorPattern: "/backend/worker/labels"}
 
   - it: a role's pod labels may not take over a selector label
     set:
-      api.podLabels:
+      backend.api.podLabels:
         app.kubernetes.io/component: other
     asserts:
-      - failedTemplate:
-          errorPattern: "/api/podLabels"
+      - failedTemplate: {errorPattern: "/backend/api/podLabels"}
+
+  - it: the console's pod labels may not take over a selector label either
+    set:
+      frontend.console.podLabels:
+        app.kubernetes.io/name: other
+    asserts:
+      - failedTemplate: {errorPattern: "/frontend/console/podLabels"}
 
   - it: labels of our own prefix are fine
     set:
       commonLabels:
         retail-lakehouse.io/team: data
-      api.podLabels:
+      backend.api.podLabels:
         retail-lakehouse.io/exposed: "true"
     asserts:
       - notFailedTemplate: {}
 
-  - it: the e2e overlay is known values
+  - it: the minikube environment and the e2e overlay are known values
     values:
-      - ../values-e2e.yaml
+      - ../../values/minikube.yaml
+      - ../../values/e2e.yaml
+    set:
+      backend.image.tag: t
+      frontend.image.tag: t
+      maintenance.jobs.image.tag: t
+    asserts:
+      - notFailedTemplate: {}
+
+  - it: every scenario in ci is known values
+    values:
+      - ../ci/external-values.yaml
+      - ../ci/renamed-values.yaml
     asserts:
       - notFailedTemplate: {}

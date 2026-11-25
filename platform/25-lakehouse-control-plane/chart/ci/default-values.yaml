@@ -1,7 +1,48 @@
-image:
-  backend:
+external:
+  database:
+    postgresql:
+      endpoint: postgres.databases.svc.cluster.local:5432
+      database: table_maintenance
+      credentialsSecret: table-maintenance-db
+  orchestrator:
+    temporal:
+      endpoint: temporal-frontend.temporal.svc.cluster.local:7233
+  catalog:
+    polaris:
+      endpoint: http://polaris.catalog.svc.cluster.local:8181
+      credentialsSecret: table-maintenance-polaris-credential
+  objectStorage:
+    s3:
+      endpoint: http://s3.storage.svc.cluster.local:9000
+      region: us-east-1
+      credentialsSecret: table-maintenance-s3
+  catalogEvents:
+    kafka:
+      endpoint: kafka.kafka.svc.cluster.local:9092
+      topic: catalog-events
+  metricsHistory:
+    prometheus:
+      endpoint: http://prometheus.metrics.svc.cluster.local:9090
+backend:
+  image:
     tag: ci
-  spark:
+  api:
+    httpRoute:
+      gateway:
+        name: gateway
+        namespace: ingress
+frontend:
+  image:
     tag: ci
   console:
-    tag: ci
+    httpRoute:
+      gateway:
+        name: gateway
+        namespace: ingress
+maintenance:
+  jobs:
+    image:
+      tag: ci
+    namespace: maintenance-jobs
+    spark:
+      eventLogDir: s3a://spark-event-logs/

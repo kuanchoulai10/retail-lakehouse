@@ -11,10 +11,8 @@ templates:
 release:
   name: table-maintenance
   namespace: lakehouse-control-plane
-set:
-  image.backend.tag: t
-  image.spark.tag: t
-  image.console.tag: t
+values:
+  - ../ci/default-values.yaml
 tests:
   - it: helm.sh/chart on every object
     asserts:

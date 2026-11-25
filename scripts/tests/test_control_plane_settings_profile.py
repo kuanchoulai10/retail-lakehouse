@@ -1,4 +1,4 @@
-"""Test the wave-25 settings profiles: the default values, the e2e overlay and how bootstrap.sh picks one."""
+"""Test the wave-25 environment files: the minikube environment, the e2e overlay and how bootstrap.sh picks them."""
 
 from __future__ import annotations
 
@@ -14,7 +14,8 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WAVE = REPO_ROOT / "platform" / "25-lakehouse-control-plane"
 CHART = WAVE / "chart"
-PROFILE_LABEL = "retail-lakehouse.io/settings-profile"
+MINIKUBE = WAVE / "values" / "minikube.yaml"
+E2E = WAVE / "values" / "e2e.yaml"
 E2E_MAINTENANCE = {
     "compaction_quiet_seconds": 60,
     "compaction_max_quiet_wait_seconds": 180,
@@ -28,8 +29,9 @@ pytestmark = pytest.mark.skipif(shutil.which("helm") is None, reason="helm rende
 
 def _render(*arguments: str) -> list[dict]:
     command = ["helm", "template", "table-maintenance", str(CHART), "--namespace", "lakehouse-control-plane"]
-    for image in ("backend", "spark", "console"):
-        command += ["--set", f"image.{image}.tag=test"]
+    command += ["--values", str(MINIKUBE)]
+    for image in ("backend.image", "maintenance.jobs.image", "frontend.image"):
+        command += ["--set-string", f"{image}.tag=test"]
     command += arguments
     rendered = subprocess.run(command, capture_output=True, text=True, check=True).stdout
     return [doc for doc in yaml.safe_load_all(rendered) if doc]
@@ -57,30 +59,35 @@ def _checksums(*arguments: str) -> dict[str, str]:
     }
 
 
-def test_the_default_values_render_the_default_profile():
-    """Without the overlay every role runs Pydantic's defaults: no maintenance setting is written, and it says so."""
+def test_the_minikube_environment_writes_every_role_s_settings_without_a_profile_label():
+    """The minikube environment alone renders a settings file per role, and no role carries a profile label."""
     config_maps = _config_maps()
     assert set(config_maps) == set(ROLES)
     for doc in config_maps.values():
-        assert doc["metadata"]["labels"][PROFILE_LABEL] == "default"
-        assert "maintenance" not in yaml.safe_load(doc["data"]["config.yaml"])
+        assert not any(key.startswith("retail-lakehouse.io/") for key in doc["metadata"]["labels"])
 
 
 def test_the_e2e_overlay_shortens_only_its_waits():
     """The overlay changes the four waits a maintenance scenario sits through, for the API and the worker alike."""
     default = _settings()
-    e2e = _settings("-f", str(CHART / "values-e2e.yaml"))
-    for doc in _config_maps("-f", str(CHART / "values-e2e.yaml")).values():
-        assert doc["metadata"]["labels"][PROFILE_LABEL] == "e2e"
+    e2e = _settings("--values", str(E2E))
     for role in ("api", "worker"):
-        assert e2e[role].pop("maintenance") == E2E_MAINTENANCE
+        assert {key: e2e[role]["maintenance"][key] for key in E2E_MAINTENANCE} == E2E_MAINTENANCE
+        assert all(default[role]["maintenance"][key] > bound for key, bound in E2E_MAINTENANCE.items())
+        for key in E2E_MAINTENANCE:
+            e2e[role]["maintenance"][key] = default[role]["maintenance"][key]
     assert e2e == default
+
+
+def test_the_e2e_overlay_names_no_environment():
+    """The overlay only shortens waits; where the services are comes from the environment file alone."""
+    assert set(yaml.safe_load(E2E.read_text())) == {"maintenance"}
 
 
 def test_changing_one_role_s_config_restarts_only_that_role():
     """Each Deployment's checksum covers its own settings file only."""
     before = _checksums()
-    after = _checksums("--set", "worker.config.log_level=DEBUG")
+    after = _checksums("--set", "backend.worker.logLevel=DEBUG")
     assert after["table-maintenance-worker"] != before["table-maintenance-worker"]
     assert after["table-maintenance-api"] == before["table-maintenance-api"]
     assert after["table-maintenance-event-consumer"] == before["table-maintenance-event-consumer"]
@@ -89,7 +96,7 @@ def test_changing_one_role_s_config_restarts_only_that_role():
 def test_a_shared_setting_restarts_every_role_that_reads_it():
     """A change to a shared block the API and the worker both read restarts both, and not the event consumer."""
     before = _checksums()
-    after = _checksums("--set", "config.maintenance.max_attempts=5")
+    after = _checksums("--set", "maintenance.jobs.limits.maxAttempts=5")
     assert after["table-maintenance-worker"] != before["table-maintenance-worker"]
     assert after["table-maintenance-api"] != before["table-maintenance-api"]
     assert after["table-maintenance-event-consumer"] == before["table-maintenance-event-consumer"]
@@ -123,20 +130,39 @@ def test_bootstrap_refuses_an_unknown_profile_before_it_touches_the_cluster(tmp_
 def test_bootstrap_passes_image_tags_as_strings():
     """A short SHA of digits stays a string, so the schema's string tag accepts it."""
     script = (WAVE / "bootstrap.sh").read_text()
-    assert "--set image." not in script
-    for image in ("backend", "spark", "console"):
-        assert f'--set-string image.{image}.tag="' in script
+    assert "--set " not in script
+    for image in ("backend.image", "maintenance.jobs.image", "frontend.image"):
+        assert f'--set-string {image}.tag="' in script
+
+
+def test_bootstrap_sets_nothing_but_the_image_tags():
+    """Every other value comes from the environment file, so the deploy and the file cannot disagree."""
+    script = (WAVE / "bootstrap.sh").read_text()
+    assert sorted(re.findall(r"--set-string (\S+)=", script)) == [
+        "backend.image.tag",
+        "frontend.image.tag",
+        "maintenance.jobs.image.tag",
+    ]
+
+
+def test_bootstrap_deploys_the_minikube_environment_then_the_profile_overlay():
+    """The environment file comes first, so the e2e overlay can change what it sets."""
+    script = (WAVE / "bootstrap.sh").read_text()
+    environment = script.index('--values "${SCRIPT_DIR}/values/minikube.yaml"')
+    overlay = script.index('${PROFILE_VALUES[@]+"${PROFILE_VALUES[@]}"}')
+    assert environment < overlay
+    assert 'PROFILE_VALUES=(--values "${SCRIPT_DIR}/values/e2e.yaml")' in script
 
 
 def test_the_chart_names_no_table_or_seed():
     """The services wait for the schema through the backend, so no table name or seed id lives in the chart."""
-    for migrate_enabled in ("true", "false"):
-        rendered = yaml.safe_dump_all(_render("--set", f"migrate.enabled={migrate_enabled}"))
-        assert not re.search(r"table_maintenance_policies|table_discovery_policies|dp-0000|psql", rendered)
+    rendered = yaml.safe_dump_all(_render())
+    assert not re.search(r"table_maintenance_policies|table_discovery_policies|dp-0000|psql", rendered)
 
 
-def test_bootstrap_gives_the_settings_the_region_it_gives_the_s3_secret():
-    """One region reaches both the S3 Secret and the catalog settings, so they cannot differ."""
+def test_bootstrap_gives_the_s3_secret_the_region_of_the_environment_file():
+    """The S3 Secret's region is read from the environment file the settings come from, so they cannot differ."""
     script = (WAVE / "bootstrap.sh").read_text()
     assert 'AWS_REGION: "%s"' in script
-    assert '--set-string config.catalog.s3_region="${S3_REGION}"' in script
+    assert 'S3_REGION="$(yq \'.external.objectStorage.s3.region\' "${SCRIPT_DIR}/values/minikube.yaml")"' in script
+    assert 'S3_REGION="dummy-region"' not in script

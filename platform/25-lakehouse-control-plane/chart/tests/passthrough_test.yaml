@@ -8,21 +8,19 @@ templates:
 release:
   name: table-maintenance
   namespace: lakehouse-control-plane
-set:
-  image.backend.tag: t
-  image.spark.tag: t
-  image.console.tag: t
+values:
+  - ../ci/default-values.yaml
 tests:
   - it: global and role env both reach the pod, global first
     set:
-      env: [{name: G, value: g}]
-      worker.env: [{name: W, value: w}]
+      global.env: [{name: G, value: g}]
+      backend.worker.env: [{name: W, value: w}]
     asserts:
-      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 5}
+      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 6}
         template: templates/worker.yaml
-      - equal: {path: "spec.template.spec.containers[0].env[3]", value: {name: G, value: g}}
+      - equal: {path: "spec.template.spec.containers[0].env[4]", value: {name: G, value: g}}
         template: templates/worker.yaml
-      - equal: {path: "spec.template.spec.containers[0].env[4]", value: {name: W, value: w}}
+      - equal: {path: "spec.template.spec.containers[0].env[5]", value: {name: W, value: w}}
         template: templates/worker.yaml
       - contains: {path: "spec.template.spec.containers[0].env", content: {name: G, value: g}}
         template: templates/api.yaml
@@ -33,39 +31,39 @@ tests:
 
   - it: a name in both layers is one entry, and the role's value wins
     set:
-      env: [{name: X, value: global}, {name: Y, value: "y"}]
-      api.env: [{name: X, value: role}]
+      global.env: [{name: X, value: global}, {name: Y, value: "y"}]
+      backend.api.env: [{name: X, value: role}]
     template: templates/api.yaml
     documentSelector: {path: kind, value: Deployment}
     asserts:
-      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 5}
-      - equal: {path: "spec.template.spec.containers[0].env[3]", value: {name: X, value: role}}
-      - equal: {path: "spec.template.spec.containers[0].env[4]", value: {name: Y, value: "y"}}
+      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 6}
+      - equal: {path: "spec.template.spec.containers[0].env[4]", value: {name: X, value: role}}
+      - equal: {path: "spec.template.spec.containers[0].env[5]", value: {name: Y, value: "y"}}
 
   - it: an entry named like one of the chart's own replaces it in place
     set:
-      api.env: [{name: GLAC_CATALOG__CREDENTIAL, value: "id:secret"}]
+      backend.api.env: [{name: GLAC_CATALOG__CREDENTIAL, value: "id:secret"}]
     template: templates/api.yaml
     documentSelector: {path: kind, value: Deployment}
     asserts:
-      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 3}
-      - equal: {path: "spec.template.spec.containers[0].env[2]", value: {name: GLAC_CATALOG__CREDENTIAL, value: "id:secret"}}
+      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 4}
+      - equal: {path: "spec.template.spec.containers[0].env[3]", value: {name: GLAC_CATALOG__CREDENTIAL, value: "id:secret"}}
 
   - it: a role env name the worker shares with the global layer is one entry on the worker too
     set:
-      env: [{name: X, value: global}]
-      worker.env: [{name: X, value: role}]
-      migrate.env: [{name: X, value: migrate}]
+      global.env: [{name: X, value: global}]
+      backend.worker.env: [{name: X, value: role}]
+      backend.migrate.env: [{name: X, value: migrate}]
     asserts:
-      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 4}
+      - lengthEqual: {path: "spec.template.spec.containers[0].env", count: 5}
         template: templates/worker.yaml
-      - equal: {path: "spec.template.spec.containers[0].env[3]", value: {name: X, value: role}}
+      - equal: {path: "spec.template.spec.containers[0].env[4]", value: {name: X, value: role}}
         template: templates/worker.yaml
 
   - it: envFrom layers follow the chart's own sources
     set:
-      envFrom: [{secretRef: {name: global-extra}}]
-      api.envFrom: [{configMapRef: {name: api-extra}}]
+      global.envFrom: [{secretRef: {name: global-extra}}]
+      backend.api.envFrom: [{configMapRef: {name: api-extra}}]
     template: templates/api.yaml
     documentSelector: {path: kind, value: Deployment}
     asserts:
@@ -75,8 +73,8 @@ tests:
 
   - it: env and envFrom reach the console too
     set:
-      env: [{name: G, value: g}]
-      console.envFrom: [{configMapRef: {name: console-extra}}]
+      global.env: [{name: G, value: g}]
+      frontend.console.envFrom: [{configMapRef: {name: console-extra}}]
     template: templates/console.yaml
     documentSelector: {path: kind, value: Deployment}
     asserts:
@@ -89,8 +87,8 @@ tests:
 
   - it: secretMounts at both layers, with names that cannot collide
     set:
-      secretMounts: [{name: ca, secretName: ca-bundle, path: /etc/ca}]
-      api.secretMounts:
+      global.secretMounts: [{name: ca, secretName: ca-bundle, path: /etc/ca}]
+      backend.api.secretMounts:
         - {name: tls, secretName: api-tls, path: /etc/tls}
         - {name: ca, secretName: api-ca, path: /etc/api-ca}
     asserts:

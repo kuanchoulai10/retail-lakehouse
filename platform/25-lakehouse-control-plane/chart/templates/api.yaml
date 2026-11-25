@@ -1,5 +1,4 @@
-{{- if .Values.api.enabled }}
-{{- $labels := dict "root" . "role" .Values.api "component" "api" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.backend)) }}
+{{- $labels := dict "root" . "role" .Values.backend.api "component" "api" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.backend.image)) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,7 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- include "table-maintenance.workloadMetadata" $labels | nindent 2 }}
 spec:
-  replicas: {{ .Values.api.replicas }}
+  replicas: {{ .Values.backend.api.replicas }}
   selector:
     matchLabels:
       {{- include "table-maintenance.selectorLabels" (dict "root" . "component" "api") | nindent 6 }}
@@ -18,24 +17,23 @@ spec:
       enableServiceLinks: false
       automountServiceAccountToken: false
       {{- include "table-maintenance.podSecurity" . | nindent 6 }}
-      {{- include "table-maintenance.podScheduling" (dict "root" . "role" .Values.api) | nindent 6 }}
+      {{- include "table-maintenance.podScheduling" (dict "root" . "role" .Values.backend.api) | nindent 6 }}
       initContainers:
         {{- include "table-maintenance.waitForSchema" . | nindent 8 }}
       containers:
         - name: api
-          image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.backend) }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.backend.image) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           args:
             {{- include "table-maintenance.roleArgs" (dict "root" . "role" "api") | nindent 12 }}
           env:
-            {{- include "table-maintenance.env" (dict "root" . "role" .Values.api "own" (include "table-maintenance.api.env" .)) | nindent 12 }}
+            {{- include "table-maintenance.env" (dict "root" . "role" .Values.backend.api "own" (include "table-maintenance.api.env" .)) | nindent 12 }}
           envFrom:
-            - secretRef:
-                name: {{ .Values.secrets.s3 }}
-            {{- include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.api) | nindent 12 }}
+            {{- include "table-maintenance.s3EnvFrom" . | nindent 12 }}
+            {{- include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.backend.api) | nindent 12 }}
           ports:
             - name: http
-              containerPort: {{ .Values.api.port }}
+              containerPort: {{ .Values.backend.api.port }}
           readinessProbe:
             httpGet:
               path: /healthz
@@ -50,16 +48,16 @@ spec:
             periodSeconds: 10
           volumeMounts:
             {{- include "table-maintenance.configVolumeMount" . | nindent 12 }}
-            {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.api) }}
+            {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.backend.api) }}
             {{- . | nindent 12 }}
             {{- end }}
           {{- include "table-maintenance.containerSecurity" . | nindent 10 }}
           resources:
-            {{- toYaml .Values.api.resources | nindent 12 }}
+            {{- toYaml .Values.backend.api.resources | nindent 12 }}
       volumes:
         {{- include "table-maintenance.configVolume" (dict "root" . "role" "api") | nindent 8 }}
         {{- include "table-maintenance.waitForSchemaVolume" . | nindent 8 }}
-        {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.api) }}
+        {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.backend.api) }}
         {{- . | nindent 8 }}
         {{- end }}
 ---
@@ -75,7 +73,7 @@ spec:
     {{- include "table-maintenance.selectorLabels" (dict "root" . "component" "api") | nindent 4 }}
   ports:
     - name: http
-      port: {{ .Values.api.port }}
+      port: {{ .Values.backend.api.port }}
       targetPort: http
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -87,13 +85,13 @@ metadata:
     {{- include "table-maintenance.labels" (dict "root" . "component" "api") | nindent 4 }}
 spec:
   parentRefs:
-    - name: {{ .Values.api.gateway.name }}
-      namespace: {{ .Values.api.gateway.namespace }}
+    - name: {{ .Values.backend.api.httpRoute.gateway.name }}
+      namespace: {{ .Values.backend.api.httpRoute.gateway.namespace }}
   rules:
     - matches:
         - path:
             type: PathPrefix
-            value: {{ .Values.api.rootPath }}
+            value: {{ .Values.backend.api.rootPath }}
       filters:
         - type: URLRewrite
           urlRewrite:
@@ -102,5 +100,4 @@ spec:
               replacePrefixMatch: /
       backendRefs:
         - name: {{ include "table-maintenance.api.fullname" . }}
-          port: {{ .Values.api.port }}
-{{- end }}
+          port: {{ .Values.backend.api.port }}

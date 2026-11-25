@@ -1,0 +1,9 @@
+maintenance:
+  cooldowns:
+    rewriteDataFilesSeconds: 60
+  partitionSelection:
+    quietSeconds: 60
+    maxQuietWaitSeconds: 180
+  jobs:
+    limits:
+      queueWaitLimitSeconds: 900

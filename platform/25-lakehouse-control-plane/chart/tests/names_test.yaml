@@ -12,10 +12,8 @@ release:
   name: table-maintenance
   namespace: lakehouse-control-plane
   revision: 1
-set:
-  image.backend.tag: t
-  image.spark.tag: t
-  image.console.tag: t
+values:
+  - ../ci/default-values.yaml
 tests:
   - it: default release keeps today's names
     asserts:
@@ -113,7 +111,7 @@ tests:
       name: tm2
       namespace: other-ns
     set:
-      api.port: 9000
+      backend.api.port: 9000
     asserts:
       - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^callback_base_url: http://tm2\-table\-maintenance\-api\.other\-ns\.svc\.cluster\.local:9000$'}
         documentSelector: {path: metadata.name, value: tm2-table-maintenance-worker-config}

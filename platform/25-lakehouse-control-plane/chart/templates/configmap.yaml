@@ -1,6 +1,5 @@
 {{- range $role := splitList " " (include "table-maintenance.backendRoles" .) }}
 {{- $context := dict "root" $ "role" $role }}
-{{- if include "table-maintenance.roleConfig.enabled" $context }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -9,9 +8,7 @@ metadata:
   namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "table-maintenance.labels" (dict "root" $ "component" "config") | nindent 4 }}
-    retail-lakehouse.io/settings-profile: {{ $.Values.settingsProfile | quote }}
 data:
   config.yaml: |
     {{- include "table-maintenance.roleConfig" $context | nindent 4 }}
-{{- end }}
 {{- end }}

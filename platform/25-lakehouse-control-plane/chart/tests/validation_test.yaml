@@ -1,72 +1,206 @@
-suite: contradictory values are refused before install
+suite: an environment value left out, or a contradiction, is refused before install, naming it
 templates:
   - templates/validate.yaml
 release:
   name: table-maintenance
   namespace: lakehouse-control-plane
-set:
-  image.backend.tag: t
-  image.spark.tag: t
-  image.console.tag: t
+values:
+  - ../ci/default-values.yaml
 tests:
-  - it: the defaults pass
+  - it: a complete environment passes
     asserts:
       - notFailedTemplate: {}
 
-  - it: console without the API
+  - it: the database endpoint
     set:
-      api.enabled: false
-      worker.enabled: false
+      external.database.postgresql.endpoint: ""
     asserts:
-      - failedTemplate:
-          errorPattern: "console.enabled needs api.enabled: the console sends /console/api to the API"
+      - failedTemplate: {errorMessage: "external.database.postgresql.endpoint is required: where the PostgreSQL server is, as host:port"}
 
-  - it: worker without the API
+  - it: the database name
     set:
-      api.enabled: false
-      console.enabled: false
+      external.database.postgresql.database: ""
     asserts:
-      - failedTemplate:
-          errorPattern: "worker.enabled needs api.enabled: Spark jobs send their results to the API"
+      - failedTemplate: {errorMessage: "external.database.postgresql.database is required: the database the backend keeps its records in"}
 
-  - it: event consumer replicas
+  - it: the database Secret
     set:
-      eventConsumer.replicas: 2
+      external.database.postgresql.credentialsSecret: ""
     asserts:
-      - failedTemplate:
-          errorPattern: "eventConsumer.replicas must be 0 or 1: Polaris events are consumed by one consumer"
+      - failedTemplate: {errorMessage: "external.database.postgresql.credentialsSecret is required: the Secret holding the database username and password"}
 
-  - it: event consumer may be scaled to zero
+  - it: the Temporal endpoint
     set:
-      eventConsumer.replicas: 0
+      external.orchestrator.temporal.endpoint: ""
+    asserts:
+      - failedTemplate: {errorMessage: "external.orchestrator.temporal.endpoint is required: where the Temporal frontend is, as host:port"}
+
+  - it: the Temporal namespace
+    set:
+      external.orchestrator.temporal.namespace: ""
+    asserts:
+      - failedTemplate: {errorMessage: "external.orchestrator.temporal.namespace is required: the Temporal namespace the workflows run in"}
+
+  - it: the Polaris endpoint
+    set:
+      external.catalog.polaris.endpoint: ""
+    asserts:
+      - failedTemplate: {errorMessage: "external.catalog.polaris.endpoint is required: the Polaris server URL"}
+
+  - it: the Polaris Secret
+    set:
+      external.catalog.polaris.credentialsSecret: ""
+    asserts:
+      - failedTemplate: {errorMessage: "external.catalog.polaris.credentialsSecret is required: the Secret holding the Polaris credential"}
+
+  - it: the S3 endpoint
+    set:
+      external.objectStorage.s3.endpoint: ""
+    asserts:
+      - failedTemplate: {errorMessage: "external.objectStorage.s3.endpoint is required: the S3 endpoint URL"}
+
+  - it: the S3 region
+    set:
+      external.objectStorage.s3.region: ""
+    asserts:
+      - failedTemplate: {errorMessage: "external.objectStorage.s3.region is required: the S3 region"}
+
+  - it: the S3 Secret
+    set:
+      external.objectStorage.s3.credentialsSecret: ""
+    asserts:
+      - failedTemplate: {errorMessage: "external.objectStorage.s3.credentialsSecret is required: the Secret holding the S3 access keys"}
+
+  - it: the Kafka endpoint
+    set:
+      external.catalogEvents.kafka.endpoint: ""
+    asserts:
+      - failedTemplate: {errorMessage: "external.catalogEvents.kafka.endpoint is required: the Kafka bootstrap servers, as host:port"}
+
+  - it: the Kafka topic
+    set:
+      external.catalogEvents.kafka.topic: ""
+    asserts:
+      - failedTemplate: {errorMessage: "external.catalogEvents.kafka.topic is required: the topic Polaris writes its catalog events to"}
+
+  - it: the Prometheus endpoint
+    set:
+      external.metricsHistory.prometheus.endpoint: ""
+    asserts:
+      - failedTemplate: {errorMessage: "external.metricsHistory.prometheus.endpoint is required: the Prometheus URL the table metric trends are read from"}
+
+  - it: the API's Gateway
+    set:
+      backend.api.httpRoute.gateway.name: ""
+    asserts:
+      - failedTemplate: {errorMessage: "backend.api.httpRoute.gateway.name is required: the Gateway the API route attaches to"}
+
+  - it: the API's Gateway namespace
+    set:
+      backend.api.httpRoute.gateway.namespace: ""
+    asserts:
+      - failedTemplate: {errorMessage: "backend.api.httpRoute.gateway.namespace is required: the namespace of the Gateway the API route attaches to"}
+
+  - it: the console's Gateway
+    set:
+      frontend.console.httpRoute.gateway.name: ""
+    asserts:
+      - failedTemplate: {errorMessage: "frontend.console.httpRoute.gateway.name is required: the Gateway the console route attaches to"}
+
+  - it: the console's Gateway namespace
+    set:
+      frontend.console.httpRoute.gateway.namespace: ""
+    asserts:
+      - failedTemplate: {errorMessage: "frontend.console.httpRoute.gateway.namespace is required: the namespace of the Gateway the console route attaches to"}
+
+  - it: the maintenance jobs' namespace
+    set:
+      maintenance.jobs.namespace: ""
+    asserts:
+      - failedTemplate: {errorMessage: "maintenance.jobs.namespace is required: the namespace the Spark operator runs maintenance jobs in"}
+
+  - it: the Spark event log location
+    set:
+      maintenance.jobs.spark.eventLogDir: ""
+    asserts:
+      - failedTemplate: {errorMessage: "maintenance.jobs.spark.eventLogDir is required: where Spark writes its event logs, an s3a:// URL"}
+
+  - it: a worker ServiceAccount the chart does not create needs its name
+    set:
+      backend.worker.serviceAccount.create: false
+    asserts:
+      - failedTemplate: {errorMessage: "backend.worker.serviceAccount.name is required when backend.worker.serviceAccount.create is false"}
+
+  - it: a Spark ServiceAccount the chart does not create needs its name
+    set:
+      maintenance.jobs.serviceAccount.create: false
+    asserts:
+      - failedTemplate: {errorMessage: "maintenance.jobs.serviceAccount.name is required when maintenance.jobs.serviceAccount.create is false"}
+
+  - it: existing ServiceAccounts with their names pass
+    set:
+      backend.worker.serviceAccount: {create: false, name: w}
+      maintenance.jobs.serviceAccount: {create: false, name: s}
     asserts:
       - notFailedTemplate: {}
 
-  - it: worker serviceAccount without a name
+  - it: queues the chart does not create need the maintenance queue's name
     set:
-      worker.serviceAccount.create: false
+      maintenance.jobs.scheduling: {create: false, queues: {urgent: {name: u}}, priorityClassPrefix: p}
     asserts:
-      - failedTemplate:
-          errorPattern: "worker.serviceAccount.name is required when worker.serviceAccount.create is false"
+      - failedTemplate: {errorMessage: "maintenance.jobs.scheduling.queues.maintenance.name is required when maintenance.jobs.scheduling.create is false"}
 
-  - it: spark serviceAccount without a name
+  - it: queues the chart does not create need the urgent queue's name
     set:
-      spark.serviceAccount.create: false
+      maintenance.jobs.scheduling: {create: false, queues: {maintenance: {name: m}}, priorityClassPrefix: p}
     asserts:
-      - failedTemplate:
-          errorPattern: "spark.serviceAccount.name is required when spark.serviceAccount.create is false"
+      - failedTemplate: {errorMessage: "maintenance.jobs.scheduling.queues.urgent.name is required when maintenance.jobs.scheduling.create is false"}
 
-  - it: a turned-off worker needs no ServiceAccount names
+  - it: priority classes the chart does not create need their prefix
     set:
-      worker.enabled: false
-      worker.serviceAccount.create: false
-      spark.serviceAccount.create: false
+      maintenance.jobs.scheduling: {create: false, queues: {maintenance: {name: m}, urgent: {name: u}}}
+    asserts:
+      - failedTemplate: {errorMessage: "maintenance.jobs.scheduling.priorityClassPrefix is required when maintenance.jobs.scheduling.create is false"}
+
+  - it: existing queues and classes with their names pass
+    set:
+      maintenance.jobs.scheduling: {create: false, queues: {maintenance: {name: m}, urgent: {name: u}}, priorityClassPrefix: p}
     asserts:
       - notFailedTemplate: {}
 
-  - it: no database secret
+  - it: permissions left to someone else need nothing more
     set:
-      database.existingSecret: ""
+      backend.worker.rbac.create: false
+      maintenance.jobs.rbac.create: false
     asserts:
-      - failedTemplate:
-          errorPattern: "database.existingSecret is required: the chart creates no password Secret; bootstrap.sh of platform/20-table-maintenance-db does"
+      - notFailedTemplate: {}
+
+  - it: maintenance cannot be set for the worker alone through its env
+    set:
+      backend.worker.env: [{name: GLAC_MAINTENANCE__MAX_ATTEMPTS, value: "5"}]
+    asserts:
+      - failedTemplate: {errorMessage: "backend.worker.env GLAC_MAINTENANCE__MAX_ATTEMPTS must be set under maintenance, not per role: the platform settings page shows it"}
+
+  - it: Spark cannot be set for the API alone through its env, in any case
+    set:
+      backend.api.env: [{name: glac_spark__namespace, value: x}]
+    asserts:
+      - failedTemplate: {errorMessage: "backend.api.env glac_spark__namespace must be set under maintenance, not per role: the platform settings page shows it"}
+
+  - it: discovery cannot be set for the event consumer alone through its env
+    set:
+      backend.eventConsumer.env: [{name: GLAC_DISCOVERY__INTERVAL_SECONDS, value: "5"}]
+    asserts:
+      - failedTemplate: {errorMessage: "backend.eventConsumer.env GLAC_DISCOVERY__INTERVAL_SECONDS must be set under maintenance, not per role: the platform settings page shows it"}
+
+  - it: discovery cannot be set for the migrate Job alone through its env
+    set:
+      backend.migrate.env: [{name: GLAC_DISCOVERY__INTERVAL_SECONDS, value: "5"}]
+    asserts:
+      - failedTemplate: {errorMessage: "backend.migrate.env GLAC_DISCOVERY__INTERVAL_SECONDS must be set under maintenance, not per role: the platform settings page shows it"}
+
+  - it: a role's own env for another block is fine
+    set:
+      backend.worker.env: [{name: GLAC_LOG_LEVEL, value: DEBUG}, {name: GLAC_MAINTENANCEX, value: "1"}]
+    asserts:
+      - notFailedTemplate: {}

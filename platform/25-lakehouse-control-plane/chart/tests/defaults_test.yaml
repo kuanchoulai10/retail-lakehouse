@@ -1,0 +1,10 @@
+suite: the chart's own values name no environment, so it will not install until one is given
+templates:
+  - templates/validate.yaml
+release:
+  name: table-maintenance
+  namespace: lakehouse-control-plane
+tests:
+  - it: the chart's values alone are refused, naming the first value an environment must give
+    asserts:
+      - failedTemplate: {errorMessage: "external.database.postgresql.endpoint is required: where the PostgreSQL server is, as host:port"}

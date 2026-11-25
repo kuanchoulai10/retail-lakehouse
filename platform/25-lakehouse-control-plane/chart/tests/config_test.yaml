@@ -1,0 +1,380 @@
+suite: each backend role reads a settings file the chart writes from the values
+templates:
+  - templates/configmap.yaml
+release:
+  name: table-maintenance
+  namespace: lakehouse-control-plane
+values:
+  - ../ci/default-values.yaml
+tests:
+  - it: the worker's file holds every setting it reads
+    documentSelector: {path: metadata.name, value: table-maintenance-worker-config}
+    asserts:
+      - equal:
+          path: 'data["config.yaml"]'
+          value: |
+            callback_base_url: http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000
+            catalog:
+              management_uri: http://polaris.catalog.svc.cluster.local:8181/api/management/v1
+              s3_endpoint: http://s3.storage.svc.cluster.local:9000
+              s3_path_style_access: true
+              s3_region: us-east-1
+              scope: PRINCIPAL_ROLE:ALL
+              uri: http://polaris.catalog.svc.cluster.local:8181/api/catalog
+            database:
+              backend: postgres
+              postgres:
+                pool_size: 5
+            discovery:
+              interval_seconds: 600
+            log_level: INFO
+            maintenance:
+              attempt_deadline_seconds: 21600
+              compaction_max_quiet_wait_seconds: 3600
+              compaction_partitions_per_job: 10
+              compaction_quiet_seconds: 120
+              expire_snapshots_cooldown_seconds: 21600
+              failure_backoff_cap_seconds: 86400
+              max_attempts: 3
+              queue_wait_limit_seconds: 86400
+              remove_orphan_files_interval_seconds: 604800
+              rewrite_data_files_cooldown_seconds: 3600
+              rewrite_manifests_cooldown_seconds: 21600
+            metrics:
+              prometheus_url: http://prometheus.metrics.svc.cluster.local:9090
+              query_timeout_seconds: 10
+            spark:
+              aws_sdk_version: 2.33.0
+              catalog_credential_secret: table-maintenance-polaris-credential
+              driver_core_limit: "1"
+              driver_cores: 1
+              event_log_dir: s3a://spark-event-logs/
+              executor_core_limit: "1"
+              executor_cores: 1
+              hadoop_version: 3.4.1
+              iceberg_version: 1.10.1
+              image: table-maintenance-spark:ci
+              image_pull_policy: IfNotPresent
+              main_application_file: local:///opt/spark/work-dir/main.py
+              namespace: maintenance-jobs
+              s3_secret_name: table-maintenance-s3
+              service_account: table-maintenance-spark
+              size_l:
+                driver_memory: 1536m
+                executor_instances: 1
+                executor_memory: 2g
+              size_m:
+                driver_memory: 1g
+                executor_instances: 1
+                executor_memory: 1536m
+              size_s:
+                driver_memory: 768m
+                executor_instances: 1
+                executor_memory: 768m
+              spark_version: 4.0.0
+              volcano:
+                priority_class_prefix: table-maintenance
+                queue: table-maintenance
+                urgent_queue: table-maintenance-urgent
+            temporal:
+              address: temporal-frontend.temporal.svc.cluster.local:7233
+              namespace: default
+
+  - it: the API's file holds the same shared settings, its route prefix and no callback
+    documentSelector: {path: metadata.name, value: table-maintenance-api-config}
+    asserts:
+      - equal:
+          path: 'data["config.yaml"]'
+          value: |
+            catalog:
+              management_uri: http://polaris.catalog.svc.cluster.local:8181/api/management/v1
+              s3_endpoint: http://s3.storage.svc.cluster.local:9000
+              s3_path_style_access: true
+              s3_region: us-east-1
+              scope: PRINCIPAL_ROLE:ALL
+              uri: http://polaris.catalog.svc.cluster.local:8181/api/catalog
+            database:
+              backend: postgres
+              postgres:
+                pool_size: 5
+            discovery:
+              interval_seconds: 600
+            http:
+              root_path: /api
+            log_level: INFO
+            maintenance:
+              attempt_deadline_seconds: 21600
+              compaction_max_quiet_wait_seconds: 3600
+              compaction_partitions_per_job: 10
+              compaction_quiet_seconds: 120
+              expire_snapshots_cooldown_seconds: 21600
+              failure_backoff_cap_seconds: 86400
+              max_attempts: 3
+              queue_wait_limit_seconds: 86400
+              remove_orphan_files_interval_seconds: 604800
+              rewrite_data_files_cooldown_seconds: 3600
+              rewrite_manifests_cooldown_seconds: 21600
+            metrics:
+              prometheus_url: http://prometheus.metrics.svc.cluster.local:9090
+              query_timeout_seconds: 10
+            spark:
+              aws_sdk_version: 2.33.0
+              catalog_credential_secret: table-maintenance-polaris-credential
+              driver_core_limit: "1"
+              driver_cores: 1
+              event_log_dir: s3a://spark-event-logs/
+              executor_core_limit: "1"
+              executor_cores: 1
+              hadoop_version: 3.4.1
+              iceberg_version: 1.10.1
+              image: table-maintenance-spark:ci
+              image_pull_policy: IfNotPresent
+              main_application_file: local:///opt/spark/work-dir/main.py
+              namespace: maintenance-jobs
+              s3_secret_name: table-maintenance-s3
+              service_account: table-maintenance-spark
+              size_l:
+                driver_memory: 1536m
+                executor_instances: 1
+                executor_memory: 2g
+              size_m:
+                driver_memory: 1g
+                executor_instances: 1
+                executor_memory: 1536m
+              size_s:
+                driver_memory: 768m
+                executor_instances: 1
+                executor_memory: 768m
+              spark_version: 4.0.0
+              volcano:
+                priority_class_prefix: table-maintenance
+                queue: table-maintenance
+                urgent_queue: table-maintenance-urgent
+            temporal:
+              address: temporal-frontend.temporal.svc.cluster.local:7233
+              namespace: default
+
+  - it: the event consumer's file holds the catalog, Temporal and the Kafka topic, and nothing about maintenance
+    documentSelector: {path: metadata.name, value: table-maintenance-event-consumer-config}
+    asserts:
+      - equal:
+          path: 'data["config.yaml"]'
+          value: |
+            catalog:
+              management_uri: http://polaris.catalog.svc.cluster.local:8181/api/management/v1
+              s3_endpoint: http://s3.storage.svc.cluster.local:9000
+              s3_path_style_access: true
+              s3_region: us-east-1
+              scope: PRINCIPAL_ROLE:ALL
+              uri: http://polaris.catalog.svc.cluster.local:8181/api/catalog
+            database:
+              backend: postgres
+              postgres:
+                pool_size: 5
+            kafka:
+              bootstrap_servers: kafka.kafka.svc.cluster.local:9092
+              topic: catalog-events
+            log_level: INFO
+            temporal:
+              address: temporal-frontend.temporal.svc.cluster.local:7233
+              namespace: default
+
+  - it: the migrate file holds only the database and the log level
+    documentSelector: {path: metadata.name, value: table-maintenance-migrate-config}
+    asserts:
+      - equal:
+          path: 'data["config.yaml"]'
+          value: |
+            database:
+              backend: postgres
+              postgres:
+                pool_size: 5
+            log_level: INFO
+
+  - it: every tuning value reaches its own key
+    set:
+      external.database.postgresql.poolSize: 7
+      external.orchestrator.temporal.namespace: tns
+      external.catalog.polaris.scope: PRINCIPAL_ROLE:x
+      external.objectStorage.s3.pathStyleAccess: false
+      external.metricsHistory.prometheus.queryTimeoutSeconds: 11
+      maintenance.discovery.intervalSeconds: 601
+      maintenance.cooldowns.rewriteDataFilesSeconds: 3601
+      maintenance.cooldowns.rewriteManifestsSeconds: 21601
+      maintenance.cooldowns.expireSnapshotsSeconds: 21602
+      maintenance.cooldowns.removeOrphanFilesIntervalSeconds: 604801
+      maintenance.failureBackoffCapSeconds: 86401
+      maintenance.partitionSelection.partitionsPerJob: 12
+      maintenance.partitionSelection.quietSeconds: 121
+      maintenance.partitionSelection.maxQuietWaitSeconds: 3601
+      maintenance.jobs.limits.attemptDeadlineSeconds: 21603
+      maintenance.jobs.limits.queueWaitLimitSeconds: 86402
+      maintenance.jobs.limits.maxAttempts: 4
+      maintenance.jobs.sizes.S: {driverMemory: s-driver, executorMemory: s-executor, executorInstances: 2}
+      maintenance.jobs.sizes.M: {driverMemory: m-driver, executorMemory: m-executor, executorInstances: 3}
+      maintenance.jobs.sizes.L: {driverMemory: l-driver, executorMemory: l-executor, executorInstances: 4}
+      maintenance.jobs.cores: {driver: 5, driverLimit: "6", executor: 7, executorLimit: "8"}
+      maintenance.jobs.spark:
+        sparkVersion: v-spark
+        icebergVersion: v-iceberg
+        hadoopVersion: v-hadoop
+        awsSdkVersion: v-aws
+        eventLogDir: s3a://logs/
+        mainApplicationFile: local:///main.py
+      global.image.pullPolicy: Always
+    documentSelector: {path: metadata.name, value: table-maintenance-worker-config}
+    asserts:
+      - equal:
+          path: 'data["config.yaml"]'
+          value: |
+            callback_base_url: http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000
+            catalog:
+              management_uri: http://polaris.catalog.svc.cluster.local:8181/api/management/v1
+              s3_endpoint: http://s3.storage.svc.cluster.local:9000
+              s3_path_style_access: false
+              s3_region: us-east-1
+              scope: PRINCIPAL_ROLE:x
+              uri: http://polaris.catalog.svc.cluster.local:8181/api/catalog
+            database:
+              backend: postgres
+              postgres:
+                pool_size: 7
+            discovery:
+              interval_seconds: 601
+            log_level: INFO
+            maintenance:
+              attempt_deadline_seconds: 21603
+              compaction_max_quiet_wait_seconds: 3601
+              compaction_partitions_per_job: 12
+              compaction_quiet_seconds: 121
+              expire_snapshots_cooldown_seconds: 21602
+              failure_backoff_cap_seconds: 86401
+              max_attempts: 4
+              queue_wait_limit_seconds: 86402
+              remove_orphan_files_interval_seconds: 604801
+              rewrite_data_files_cooldown_seconds: 3601
+              rewrite_manifests_cooldown_seconds: 21601
+            metrics:
+              prometheus_url: http://prometheus.metrics.svc.cluster.local:9090
+              query_timeout_seconds: 11
+            spark:
+              aws_sdk_version: v-aws
+              catalog_credential_secret: table-maintenance-polaris-credential
+              driver_core_limit: "6"
+              driver_cores: 5
+              event_log_dir: s3a://logs/
+              executor_core_limit: "8"
+              executor_cores: 7
+              hadoop_version: v-hadoop
+              iceberg_version: v-iceberg
+              image: table-maintenance-spark:ci
+              image_pull_policy: Always
+              main_application_file: local:///main.py
+              namespace: maintenance-jobs
+              s3_secret_name: table-maintenance-s3
+              service_account: table-maintenance-spark
+              size_l:
+                driver_memory: l-driver
+                executor_instances: 4
+                executor_memory: l-executor
+              size_m:
+                driver_memory: m-driver
+                executor_instances: 3
+                executor_memory: m-executor
+              size_s:
+                driver_memory: s-driver
+                executor_instances: 2
+                executor_memory: s-executor
+              spark_version: v-spark
+              volcano:
+                priority_class_prefix: table-maintenance
+                queue: table-maintenance
+                urgent_queue: table-maintenance-urgent
+            temporal:
+              address: temporal-frontend.temporal.svc.cluster.local:7233
+              namespace: tns
+
+  - it: another environment's values reach every role's file
+    values:
+      - ../ci/external-values.yaml
+    asserts:
+      - equal:
+          path: 'data["config.yaml"]'
+          value: |
+            catalog:
+              management_uri: https://polaris.example/polaris/api/management/v1
+              s3_endpoint: https://s3.eu-west-1.amazonaws.com
+              s3_path_style_access: false
+              s3_region: eu-west-1
+              scope: PRINCIPAL_ROLE:maintenance
+              uri: https://polaris.example/polaris/api/catalog
+            database:
+              backend: postgres
+              postgres:
+                pool_size: 10
+            kafka:
+              bootstrap_servers: broker-0.example:9092,broker-1.example:9092
+              topic: polaris-events
+            log_level: WARNING
+            temporal:
+              address: temporal.example:7233
+              namespace: maintenance
+        documentSelector: {path: metadata.name, value: table-maintenance-event-consumer-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^log_level: DEBUG$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-worker-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^  prometheus_url: https://prometheus\.example$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-api-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^  root_path: /maintenance/api$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-api-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^  image: registry\.example:5000/table-maintenance-spark:ci$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-worker-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^  service_account: spark-jobs$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-worker-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^  catalog_credential_secret: maintenance-polaris$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-worker-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^  s3_secret_name: maintenance-s3$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-worker-config}
+
+  - it: a role's own log level wins for that role only
+    set:
+      backend.logLevel: ERROR
+      backend.eventConsumer.logLevel: DEBUG
+    asserts:
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^log_level: DEBUG$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-event-consumer-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^log_level: ERROR$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-api-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^log_level: ERROR$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-worker-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^log_level: ERROR$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-migrate-config}
+
+  - it: each role's log level is its own
+    set:
+      backend.api.logLevel: DEBUG
+      backend.worker.logLevel: WARNING
+      backend.migrate.logLevel: CRITICAL
+    asserts:
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^log_level: DEBUG$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-api-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^log_level: WARNING$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-worker-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^log_level: CRITICAL$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-migrate-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^log_level: INFO$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-event-consumer-config}
+
+  - it: the Polaris endpoint takes the API paths whether or not it ends in a slash
+    set:
+      external.catalog.polaris.endpoint: http://polaris.example:8181/
+    documentSelector: {path: metadata.name, value: table-maintenance-api-config}
+    asserts:
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^  uri: http://polaris\.example:8181/api/catalog$'}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^  management_uri: http://polaris\.example:8181/api/management/v1$'}
+
+  - it: the config maps are four, one per backend role, and carry no profile label
+    asserts:
+      - hasDocuments: {count: 4}
+      - notExists: {path: 'metadata.labels["retail-lakehouse.io/settings-profile"]'}
+      - equal: {path: 'metadata.labels["app.kubernetes.io/component"]', value: config}
+      - equal: {path: metadata.namespace, value: lakehouse-control-plane}

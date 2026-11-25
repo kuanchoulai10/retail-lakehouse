@@ -6,20 +6,20 @@ templates:
 release:
   name: table-maintenance
   namespace: lakehouse-control-plane
-set:
-  image.backend.tag: t
-  image.spark.tag: t
-  image.console.tag: t
+values:
+  - ../ci/default-values.yaml
 tests:
-  - it: volcano.create false renders no Queue and no PriorityClass but still names the queues
+  - it: queues and classes left to someone else render no Queue and no PriorityClass, and the jobs use their names
     set:
-      volcano.create: false
+      maintenance.jobs.scheduling: {create: false, queues: {maintenance: {name: m}, urgent: {name: u}}, priorityClassPrefix: p}
     asserts:
       - hasDocuments: {count: 0}
         template: templates/volcano.yaml
-      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^    queue: table\-maintenance$'}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^    queue: m$'}
         documentSelector: {path: metadata.name, value: table-maintenance-worker-config}
-      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^    priority_class_prefix: table\-maintenance$'}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^    urgent_queue: u$'}
+        documentSelector: {path: metadata.name, value: table-maintenance-worker-config}
+      - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^    priority_class_prefix: p$'}
         documentSelector: {path: metadata.name, value: table-maintenance-worker-config}
 
   - it: default release keeps today's Volcano names
@@ -57,9 +57,9 @@ tests:
 
   - it: names given in values win
     set:
-      volcano.queues.maintenance.name: shared-maint
-      volcano.queues.urgent.name: shared-urgent
-      volcano.priorityClassPrefix: shared
+      maintenance.jobs.scheduling.queues.maintenance.name: shared-maint
+      maintenance.jobs.scheduling.queues.urgent.name: shared-urgent
+      maintenance.jobs.scheduling.priorityClassPrefix: shared
     asserts:
       - equal: {path: metadata.name, value: shared-maint}
         template: templates/volcano.yaml
@@ -70,10 +70,49 @@ tests:
       - matchRegex: {path: 'data["config.yaml"]', pattern: '(?m)^    urgent_queue: shared\-urgent$'}
         documentSelector: {path: metadata.name, value: table-maintenance-worker-config}
 
-  - it: rbac.create false renders no Role and no RoleBinding but keeps the ServiceAccounts
+  - it: the worker's permissions left to someone else render none of its Role or RoleBinding, and keep the Spark ones
     set:
-      rbac.create: false
+      backend.worker.rbac.create: false
+    template: templates/rbac.yaml
+    asserts:
+      - hasDocuments: {count: 4}
+      - notEqual: {path: metadata.name, value: table-maintenance-worker}
+        documentSelector: {path: kind, value: Role}
+      - notEqual: {path: metadata.name, value: table-maintenance-worker}
+        documentSelector: {path: kind, value: RoleBinding}
+
+  - it: the Spark jobs' permissions left to someone else render none of their Role or RoleBinding, and keep the worker's
+    set:
+      maintenance.jobs.rbac.create: false
+    template: templates/rbac.yaml
+    asserts:
+      - hasDocuments: {count: 4}
+      - equal: {path: metadata.name, value: table-maintenance-worker}
+        documentSelector: {path: kind, value: Role}
+      - equal: {path: metadata.name, value: table-maintenance-worker}
+        documentSelector: {path: kind, value: RoleBinding}
+
+  - it: both left to someone else keep only the ServiceAccounts
+    set:
+      backend.worker.rbac.create: false
+      maintenance.jobs.rbac.create: false
     template: templates/rbac.yaml
     asserts:
       - hasDocuments: {count: 2}
       - isKind: {of: ServiceAccount}
+
+  - it: the worker may manage Spark applications and read pods in the jobs namespace only
+    template: templates/rbac.yaml
+    documentIndex: 1
+    asserts:
+      - isKind: {of: Role}
+      - equal: {path: metadata.namespace, value: maintenance-jobs}
+      - equal:
+          path: rules
+          value:
+            - apiGroups: ["sparkoperator.k8s.io"]
+              resources: ["sparkapplications"]
+              verbs: ["create", "get", "list", "watch", "delete"]
+            - apiGroups: [""]
+              resources: ["pods"]
+              verbs: ["get", "list"]

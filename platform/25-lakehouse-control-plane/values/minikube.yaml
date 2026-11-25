@@ -1,0 +1,42 @@
+external:
+  database:
+    postgresql:
+      endpoint: table-maintenance-db.lakehouse-control-plane.svc.cluster.local:5432
+      database: table_maintenance
+      credentialsSecret: table-maintenance-db
+  orchestrator:
+    temporal:
+      endpoint: temporal-frontend.temporal.svc.cluster.local:7233
+  catalog:
+    polaris:
+      endpoint: http://polaris.lakehouse-catalog.svc.cluster.local:8181
+      credentialsSecret: table-maintenance-polaris-credential
+  objectStorage:
+    s3:
+      endpoint: http://rustfs.object-storage.svc.cluster.local:9000
+      region: dummy-region
+      credentialsSecret: table-maintenance-s3
+  catalogEvents:
+    kafka:
+      endpoint: kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
+      topic: polaris-catalog-events
+  metricsHistory:
+    prometheus:
+      endpoint: http://table-metrics-prometheus.table-metrics.svc.cluster.local:9090
+backend:
+  api:
+    httpRoute:
+      gateway:
+        name: platform-gateway
+        namespace: istio-ingress
+frontend:
+  console:
+    httpRoute:
+      gateway:
+        name: platform-gateway
+        namespace: istio-ingress
+maintenance:
+  jobs:
+    namespace: lakehouse-maintenance-operations
+    spark:
+      eventLogDir: s3a://spark-event-logs/

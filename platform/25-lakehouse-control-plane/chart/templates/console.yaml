@@ -1,5 +1,4 @@
-{{- if .Values.console.enabled }}
-{{- $labels := dict "root" . "role" .Values.console "component" "ui" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.console)) }}
+{{- $labels := dict "root" . "role" .Values.frontend.console "component" "ui" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.frontend.image)) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,7 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- include "table-maintenance.workloadMetadata" $labels | nindent 2 }}
 spec:
-  replicas: {{ .Values.console.replicas }}
+  replicas: {{ .Values.frontend.console.replicas }}
   selector:
     matchLabels:
       {{- include "table-maintenance.selectorLabels" (dict "root" . "component" "ui") | nindent 6 }}
@@ -22,20 +21,20 @@ spec:
         runAsGroup: 101
         seccompProfile:
           type: RuntimeDefault
-      {{- include "table-maintenance.podScheduling" (dict "root" . "role" .Values.console) | nindent 6 }}
+      {{- include "table-maintenance.podScheduling" (dict "root" . "role" .Values.frontend.console) | nindent 6 }}
       containers:
         - name: console
-          image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.console) }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.frontend.image) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           env:
-            {{- include "table-maintenance.env" (dict "root" . "role" .Values.console "own" (include "table-maintenance.console.env" .)) | nindent 12 }}
-          {{- with include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.console) }}
+            {{- include "table-maintenance.env" (dict "root" . "role" .Values.frontend.console "own" (include "table-maintenance.console.env" .)) | nindent 12 }}
+          {{- with include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.frontend.console) }}
           envFrom:
             {{- . | nindent 12 }}
           {{- end }}
           ports:
             - name: http
-              containerPort: {{ .Values.console.port }}
+              containerPort: {{ .Values.frontend.console.port }}
           readinessProbe:
             httpGet:
               path: /console/
@@ -48,14 +47,14 @@ spec:
               port: http
             initialDelaySeconds: 10
             periodSeconds: 10
-          {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.console) }}
+          {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.frontend.console) }}
           volumeMounts:
             {{- . | nindent 12 }}
           {{- end }}
           {{- include "table-maintenance.containerSecurity" . | nindent 10 }}
           resources:
-            {{- toYaml .Values.console.resources | nindent 12 }}
-      {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.console) }}
+            {{- toYaml .Values.frontend.console.resources | nindent 12 }}
+      {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.frontend.console) }}
       volumes:
         {{- . | nindent 8 }}
       {{- end }}
@@ -72,7 +71,7 @@ spec:
     {{- include "table-maintenance.selectorLabels" (dict "root" . "component" "ui") | nindent 4 }}
   ports:
     - name: http
-      port: {{ .Values.console.port }}
+      port: {{ .Values.frontend.console.port }}
       targetPort: http
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -84,8 +83,8 @@ metadata:
     {{- include "table-maintenance.labels" (dict "root" . "component" "ui") | nindent 4 }}
 spec:
   parentRefs:
-    - name: {{ .Values.console.gateway.name }}
-      namespace: {{ .Values.console.gateway.namespace }}
+    - name: {{ .Values.frontend.console.httpRoute.gateway.name }}
+      namespace: {{ .Values.frontend.console.httpRoute.gateway.namespace }}
   rules:
     - matches:
         - path:
@@ -93,5 +92,4 @@ spec:
             value: /console
       backendRefs:
         - name: {{ include "table-maintenance.console.fullname" . }}
-          port: {{ .Values.console.port }}
-{{- end }}
+          port: {{ .Values.frontend.console.port }}

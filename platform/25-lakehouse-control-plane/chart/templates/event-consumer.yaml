@@ -1,5 +1,4 @@
-{{- if .Values.eventConsumer.enabled }}
-{{- $labels := dict "root" . "role" .Values.eventConsumer "component" "event-consumer" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.image.backend)) }}
+{{- $labels := dict "root" . "role" .Values.backend.eventConsumer "component" "event-consumer" "version" (include "table-maintenance.imageTag" (dict "root" . "image" .Values.backend.image)) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,7 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- include "table-maintenance.workloadMetadata" $labels | nindent 2 }}
 spec:
-  replicas: {{ .Values.eventConsumer.replicas }}
+  replicas: {{ .Values.backend.eventConsumer.replicas }}
   strategy:
     type: Recreate
   selector:
@@ -21,33 +20,32 @@ spec:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 60
       {{- include "table-maintenance.podSecurity" . | nindent 6 }}
-      {{- include "table-maintenance.podScheduling" (dict "root" . "role" .Values.eventConsumer) | nindent 6 }}
+      {{- include "table-maintenance.podScheduling" (dict "root" . "role" .Values.backend.eventConsumer) | nindent 6 }}
       initContainers:
         {{- include "table-maintenance.waitForSchema" . | nindent 8 }}
       containers:
         - name: event-consumer
-          image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.image.backend) }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: {{ include "table-maintenance.image" (dict "root" . "image" .Values.backend.image) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           args:
             {{- include "table-maintenance.roleArgs" (dict "root" . "role" "eventConsumer") | nindent 12 }}
           env:
-            {{- include "table-maintenance.env" (dict "root" . "role" .Values.eventConsumer "own" (include "table-maintenance.eventConsumer.env" .)) | nindent 12 }}
-          {{- with include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.eventConsumer) | trim }}
+            {{- include "table-maintenance.env" (dict "root" . "role" .Values.backend.eventConsumer "own" (include "table-maintenance.eventConsumer.env" .)) | nindent 12 }}
+          {{- with include "table-maintenance.extraEnvFrom" (dict "root" . "role" .Values.backend.eventConsumer) | trim }}
           envFrom:
             {{- . | nindent 12 }}
           {{- end }}
           volumeMounts:
             {{- include "table-maintenance.configVolumeMount" . | nindent 12 }}
-            {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.eventConsumer) }}
+            {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.backend.eventConsumer) }}
             {{- . | nindent 12 }}
             {{- end }}
           {{- include "table-maintenance.containerSecurity" . | nindent 10 }}
           resources:
-            {{- toYaml .Values.eventConsumer.resources | nindent 12 }}
+            {{- toYaml .Values.backend.eventConsumer.resources | nindent 12 }}
       volumes:
         {{- include "table-maintenance.configVolume" (dict "root" . "role" "eventConsumer") | nindent 8 }}
         {{- include "table-maintenance.waitForSchemaVolume" . | nindent 8 }}
-        {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.eventConsumer) }}
+        {{- with include "table-maintenance.secretVolumes" (dict "root" . "role" .Values.backend.eventConsumer) }}
         {{- . | nindent 8 }}
         {{- end }}
-{{- end }}

@@ -1,8 +1,0 @@
-settingsProfile: e2e
-
-config:
-  maintenance:
-    queue_wait_limit_seconds: 900
-    rewrite_data_files_cooldown_seconds: 60
-    compaction_quiet_seconds: 60
-    compaction_max_quiet_wait_seconds: 180
