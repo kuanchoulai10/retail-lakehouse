@@ -2,7 +2,7 @@
 
 Date: 2026-11-25
 
-Status: Accepted.
+Status: Accepted; the chart values amended 2026-11-25 (KCL-114, see Amendment).
 
 ## Context
 
@@ -28,9 +28,23 @@ Linear KCL-113 asked for each role to read only its own settings, from a file, w
 - The e2e stays a black box: it reads the worker's mounted file as plain YAML to compare the platform settings page with what the worker was given, and takes the service addresses from its own `E2E_*` variables.
 - An existing deployment moves its `values.yaml` overrides to `config:` under the settings' names (`worker.compactionQuietSeconds` becomes `config.maintenance.compaction_quiet_seconds`); the schema refuses the old keys.
 
+## Amendment: the chart values follow open-source practice (2026-11-25, KCL-114)
+
+The chart had to deploy to any cluster that has the external services, as Sentry's, Bitnami's and Trino's charts do, and a values file of a few knobs plus a `config:` pass-through in the backend's own names could not say which values an environment must give. Three decisions above change; the subcommands, the precedence and the per-role files stand.
+
+- **`values.yaml` holds every generic setting with its value, grouped by meaning, and leaves every environment value empty.** The blocks are `global`, `external` (six services, each with a `type` that accepts one value: `postgresql`, `temporal`, `polaris`, `s3`, `kafka`, `prometheus`), `backend` (the image, the log level and the four roles), `frontend` (the console) and `maintenance` (discovery, cooldowns, back-off, partition selection and the Spark jobs). An environment is an overlay file (`values/minikube.yaml` here); without one the chart refuses to render, naming the value it misses.
+- **The chart writes every setting a role reads into its file**, not only those set. The defaults are therefore in two places again, and a backend test (`tests/bootstrap/configs/test_chart_settings.py`) keeps them equal: each role loads the file written for it, every setting it reads has a key there, and every generic value equals the Pydantic default. Pydantic stays the reference.
+- **`config:` and `<role>.config:` are gone**, and so are `enabled` and `settingsProfile`: every role always deploys. Maintenance, discovery and Spark stay shared, now because they have no per-role place; the chart refuses them in one role's `env`.
+
+**A value the chart offers is one the component honours.** The API listens on `http.port` (default 8000), which the chart writes from `backend.api.port`, and the console's nginx on `CONSOLE_PORT` (default 8080) from `frontend.console.port`; both used to be fixed, so the values moved the Services and probes away from the process. The constants the templates held (probes, the migration's retries, the grace periods, the test pod's resources) are values too, and drift tests keep the defaults on what the API and the console build serve.
+
+An existing deployment moves its overrides to the named values (`config.maintenance.compaction_quiet_seconds` becomes `maintenance.partitionSelection.quietSeconds`) and its addresses to an environment file; the schema refuses the old keys. The database Secret holds the `username` beside the `password`.
+
 ## References
 
 - Thanos, components as subcommands of one binary: https://thanos.io/tip/thanos/getting-started.md/
 - Trino Helm chart, per-role ConfigMaps: https://github.com/trinodb/charts
+- Sentry Helm chart, external services by kind: https://github.com/sentry-kubernetes/charts
+- Bitnami charts, `externalDatabase` and `existingSecret`: https://github.com/bitnami/charts
 - pydantic-settings, CLI and YAML sources: https://docs.pydantic.dev/latest/concepts/pydantic_settings/
 - ADR 0005, Bounded contexts (the composition root in `bootstrap/`).
