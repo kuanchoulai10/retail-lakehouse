@@ -79,6 +79,7 @@ tests:
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities: {drop: [ALL]}
+              resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {memory: 64Mi}}
 
   - it: the database wait image can be changed
     set:
@@ -109,6 +110,7 @@ tests:
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities: {drop: [ALL]}
+              resources: {requests: {cpu: 50m, memory: 192Mi}, limits: {memory: 512Mi}}
 
   - it: the API and the event consumer wait for the schema too
     asserts:

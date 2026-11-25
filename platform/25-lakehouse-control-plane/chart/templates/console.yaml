@@ -14,6 +14,7 @@ spec:
     metadata:
       {{- include "table-maintenance.podMetadata" $labels | nindent 6 }}
     spec:
+      enableServiceLinks: false
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
@@ -36,17 +37,9 @@ spec:
             - name: http
               containerPort: {{ .Values.frontend.console.port }}
           readinessProbe:
-            httpGet:
-              path: /console/
-              port: http
-            initialDelaySeconds: 2
-            periodSeconds: 5
+            {{- include "table-maintenance.httpProbe" .Values.frontend.console.readinessProbe | nindent 12 }}
           livenessProbe:
-            httpGet:
-              path: /console/
-              port: http
-            initialDelaySeconds: 10
-            periodSeconds: 10
+            {{- include "table-maintenance.httpProbe" .Values.frontend.console.livenessProbe | nindent 12 }}
           {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.frontend.console) }}
           volumeMounts:
             {{- . | nindent 12 }}

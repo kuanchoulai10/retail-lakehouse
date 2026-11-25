@@ -185,6 +185,84 @@
           }
         }
       }
+    },
+    "readinessProbe": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "initialDelaySeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "periodSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "successThreshold": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "path",
+        "initialDelaySeconds",
+        "periodSeconds",
+        "timeoutSeconds",
+        "failureThreshold",
+        "successThreshold"
+      ]
+    },
+    "livenessProbe": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "initialDelaySeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "periodSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "successThreshold": {
+          "type": "integer",
+          "enum": [
+            1
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "initialDelaySeconds",
+        "periodSeconds",
+        "timeoutSeconds",
+        "failureThreshold",
+        "successThreshold"
+      ]
     }
   },
   "properties": {
@@ -483,6 +561,21 @@
             "httpRoute": {
               "$ref": "#/definitions/httpRoute"
             },
+            "readinessProbe": {
+              "$ref": "#/definitions/readinessProbe"
+            },
+            "livenessProbe": {
+              "$ref": "#/definitions/livenessProbe"
+            },
+            "connectionTest": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "resources": {
+                  "type": "object"
+                }
+              }
+            },
             "labels": {
               "$ref": "#/definitions/labels"
             },
@@ -586,6 +679,10 @@
             "logLevel": {
               "$ref": "#/definitions/roleLogLevel"
             },
+            "terminationGracePeriodSeconds": {
+              "type": "integer",
+              "minimum": 0
+            },
             "labels": {
               "$ref": "#/definitions/labels"
             },
@@ -628,6 +725,10 @@
             "logLevel": {
               "$ref": "#/definitions/roleLogLevel"
             },
+            "backoffLimit": {
+              "type": "integer",
+              "minimum": 0
+            },
             "waitForDatabase": {
               "type": "object",
               "additionalProperties": false,
@@ -635,6 +736,9 @@
                 "image": {
                   "type": "string",
                   "minLength": 1
+                },
+                "resources": {
+                  "type": "object"
                 }
               }
             },
@@ -696,6 +800,12 @@
             },
             "httpRoute": {
               "$ref": "#/definitions/httpRoute"
+            },
+            "readinessProbe": {
+              "$ref": "#/definitions/readinessProbe"
+            },
+            "livenessProbe": {
+              "$ref": "#/definitions/livenessProbe"
             },
             "labels": {
               "$ref": "#/definitions/labels"

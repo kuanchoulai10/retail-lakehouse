@@ -65,6 +65,27 @@ backend:
       gateway:
         name: ""
         namespace: ""
+    readinessProbe:
+      path: /healthz
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 1
+      failureThreshold: 3
+      successThreshold: 1
+    livenessProbe:
+      path: /healthz
+      initialDelaySeconds: 20
+      periodSeconds: 10
+      timeoutSeconds: 1
+      failureThreshold: 3
+      successThreshold: 1
+    connectionTest:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+        limits:
+          memory: 128Mi
     labels: {}
     annotations: {}
     podLabels: {}
@@ -110,6 +131,7 @@ backend:
   eventConsumer:
     replicas: 1
     logLevel: ""
+    terminationGracePeriodSeconds: 60
     labels: {}
     annotations: {}
     podLabels: {}
@@ -128,8 +150,15 @@ backend:
         memory: 512Mi
   migrate:
     logLevel: ""
+    backoffLimit: 6
     waitForDatabase:
       image: postgres:17.11-alpine
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          memory: 64Mi
     labels: {}
     annotations: {}
     podLabels: {}
@@ -159,6 +188,20 @@ frontend:
       gateway:
         name: ""
         namespace: ""
+    readinessProbe:
+      path: /console/
+      initialDelaySeconds: 2
+      periodSeconds: 5
+      timeoutSeconds: 1
+      failureThreshold: 3
+      successThreshold: 1
+    livenessProbe:
+      path: /console/
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 1
+      failureThreshold: 3
+      successThreshold: 1
     labels: {}
     annotations: {}
     podLabels: {}

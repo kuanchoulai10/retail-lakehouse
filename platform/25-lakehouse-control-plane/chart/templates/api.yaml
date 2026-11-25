@@ -35,17 +35,9 @@ spec:
             - name: http
               containerPort: {{ .Values.backend.api.port }}
           readinessProbe:
-            httpGet:
-              path: /healthz
-              port: http
-            initialDelaySeconds: 5
-            periodSeconds: 5
+            {{- include "table-maintenance.httpProbe" .Values.backend.api.readinessProbe | nindent 12 }}
           livenessProbe:
-            httpGet:
-              path: /healthz
-              port: http
-            initialDelaySeconds: 20
-            periodSeconds: 10
+            {{- include "table-maintenance.httpProbe" .Values.backend.api.livenessProbe | nindent 12 }}
           volumeMounts:
             {{- include "table-maintenance.configVolumeMount" . | nindent 12 }}
             {{- with include "table-maintenance.secretVolumeMounts" (dict "root" . "role" .Values.backend.api) }}

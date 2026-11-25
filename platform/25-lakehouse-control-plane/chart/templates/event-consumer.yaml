@@ -18,7 +18,7 @@ spec:
     spec:
       enableServiceLinks: false
       automountServiceAccountToken: false
-      terminationGracePeriodSeconds: 60
+      terminationGracePeriodSeconds: {{ .Values.backend.eventConsumer.terminationGracePeriodSeconds }}
       {{- include "table-maintenance.podSecurity" . | nindent 6 }}
       {{- include "table-maintenance.podScheduling" (dict "root" . "role" .Values.backend.eventConsumer) | nindent 6 }}
       initContainers:

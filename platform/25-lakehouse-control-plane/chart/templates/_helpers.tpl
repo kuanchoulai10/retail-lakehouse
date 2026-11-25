@@ -257,6 +257,8 @@ helm.sh/chart: {{ include "table-maintenance.chart" .root }}
     - -c
     - until pg_isready -h {{ first $hostPort }} -p {{ last $hostPort }} -U "$DB_USERNAME" -d {{ $postgresql.database }}; do sleep 2; done
   {{- include "table-maintenance.containerSecurity" . | nindent 2 }}
+  resources:
+    {{- toYaml .Values.backend.migrate.waitForDatabase.resources | nindent 4 }}
 {{- end -}}
 
 {{- define "table-maintenance.waitForSchema" -}}
@@ -274,6 +276,15 @@ helm.sh/chart: {{ include "table-maintenance.chart" .root }}
       mountPath: /etc/glac
       readOnly: true
   {{- include "table-maintenance.containerSecurity" . | nindent 2 }}
+  resources:
+    {{- toYaml .Values.backend.migrate.resources | nindent 4 }}
+{{- end -}}
+
+{{- define "table-maintenance.httpProbe" -}}
+httpGet:
+  path: {{ .path }}
+  port: http
+{{ toYaml (omit . "path") }}
 {{- end -}}
 
 {{- define "table-maintenance.waitForSchemaVolume" -}}

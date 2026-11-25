@@ -204,3 +204,9 @@ tests:
       backend.worker.env: [{name: GLAC_LOG_LEVEL, value: DEBUG}, {name: GLAC_MAINTENANCEX, value: "1"}]
     asserts:
       - notFailedTemplate: {}
+
+  - it: an environment value set to null is as missing as an empty one
+    set:
+      external.database.postgresql.endpoint: null
+    asserts:
+      - failedTemplate: {errorMessage: "external.database.postgresql.endpoint is required: where the PostgreSQL server is, as host:port"}

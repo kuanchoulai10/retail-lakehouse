@@ -1,0 +1,533 @@
+suite: each rule of the values schema refuses the one value that breaks it, naming where
+templates:
+- templates/configmap.yaml
+release:
+  name: table-maintenance
+  namespace: lakehouse-control-plane
+values:
+- ../ci/default-values.yaml
+tests:
+- it: global takes no key it does not know
+  set:
+    global.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/global'': additional properties ''surplus'' not allowed'
+- it: global.image takes no key it does not know
+  set:
+    global.image.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/global/image'': additional properties ''surplus'' not allowed'
+- it: external takes no key it does not know
+  set:
+    external.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/external'': additional properties ''surplus'' not allowed'
+- it: external.database takes no key it does not know
+  set:
+    external.database.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/external/database'': additional properties ''surplus'' not allowed'
+- it: external.database.postgresql takes no key it does not know
+  set:
+    external.database.postgresql.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/external/database/postgresql'': additional properties ''surplus'' not allowed'
+- it: external.orchestrator takes no key it does not know
+  set:
+    external.orchestrator.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/external/orchestrator'': additional properties ''surplus'' not allowed'
+- it: external.orchestrator.temporal takes no key it does not know
+  set:
+    external.orchestrator.temporal.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/external/orchestrator/temporal'': additional properties ''surplus'' not allowed'
+- it: external.catalog takes no key it does not know
+  set:
+    external.catalog.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/external/catalog'': additional properties ''surplus'' not allowed'
+- it: external.catalog.polaris takes no key it does not know
+  set:
+    external.catalog.polaris.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/external/catalog/polaris'': additional properties ''surplus'' not allowed'
+- it: external.objectStorage takes no key it does not know
+  set:
+    external.objectStorage.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/external/objectStorage'': additional properties ''surplus'' not allowed'
+- it: external.objectStorage.s3 takes no key it does not know
+  set:
+    external.objectStorage.s3.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/external/objectStorage/s3'': additional properties ''surplus'' not allowed'
+- it: external.catalogEvents takes no key it does not know
+  set:
+    external.catalogEvents.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/external/catalogEvents'': additional properties ''surplus'' not allowed'
+- it: external.catalogEvents.kafka takes no key it does not know
+  set:
+    external.catalogEvents.kafka.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/external/catalogEvents/kafka'': additional properties ''surplus'' not allowed'
+- it: external.metricsHistory takes no key it does not know
+  set:
+    external.metricsHistory.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/external/metricsHistory'': additional properties ''surplus'' not allowed'
+- it: external.metricsHistory.prometheus takes no key it does not know
+  set:
+    external.metricsHistory.prometheus.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/external/metricsHistory/prometheus'': additional properties ''surplus'' not allowed'
+- it: backend takes no key it does not know
+  set:
+    backend.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend'': additional properties ''surplus'' not allowed'
+- it: backend.api.httpRoute takes no key it does not know
+  set:
+    backend.api.httpRoute.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/httpRoute'': additional properties ''surplus'' not allowed'
+- it: backend.api.httpRoute.gateway takes no key it does not know
+  set:
+    backend.api.httpRoute.gateway.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/httpRoute/gateway'': additional properties ''surplus'' not allowed'
+- it: backend.worker.serviceAccount takes no key it does not know
+  set:
+    backend.worker.serviceAccount.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/worker/serviceAccount'': additional properties ''surplus'' not allowed'
+- it: backend.worker.rbac takes no key it does not know
+  set:
+    backend.worker.rbac.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/worker/rbac'': additional properties ''surplus'' not allowed'
+- it: backend.migrate.waitForDatabase takes no key it does not know
+  set:
+    backend.migrate.waitForDatabase.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/migrate/waitForDatabase'': additional properties ''surplus'' not allowed'
+- it: frontend takes no key it does not know
+  set:
+    frontend.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/frontend'': additional properties ''surplus'' not allowed'
+- it: maintenance takes no key it does not know
+  set:
+    maintenance.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance'': additional properties ''surplus'' not allowed'
+- it: maintenance.discovery takes no key it does not know
+  set:
+    maintenance.discovery.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/discovery'': additional properties ''surplus'' not allowed'
+- it: maintenance.cooldowns takes no key it does not know
+  set:
+    maintenance.cooldowns.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/cooldowns'': additional properties ''surplus'' not allowed'
+- it: maintenance.partitionSelection takes no key it does not know
+  set:
+    maintenance.partitionSelection.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/partitionSelection'': additional properties ''surplus'' not allowed'
+- it: maintenance.jobs takes no key it does not know
+  set:
+    maintenance.jobs.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs'': additional properties ''surplus'' not allowed'
+- it: maintenance.jobs.limits takes no key it does not know
+  set:
+    maintenance.jobs.limits.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/limits'': additional properties ''surplus'' not allowed'
+- it: maintenance.jobs.cores takes no key it does not know
+  set:
+    maintenance.jobs.cores.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/cores'': additional properties ''surplus'' not allowed'
+- it: maintenance.jobs.sizes.S takes no key it does not know
+  set:
+    maintenance.jobs.sizes.S.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/sizes/S'': additional properties ''surplus'' not allowed'
+- it: maintenance.jobs.spark takes no key it does not know
+  set:
+    maintenance.jobs.spark.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/spark'': additional properties ''surplus'' not allowed'
+- it: maintenance.jobs.scheduling takes no key it does not know
+  set:
+    maintenance.jobs.scheduling.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/scheduling'': additional properties ''surplus'' not allowed'
+- it: maintenance.jobs.scheduling.queues takes no key it does not know
+  set:
+    maintenance.jobs.scheduling.queues.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/scheduling/queues'': additional properties ''surplus'' not allowed'
+- it: maintenance.jobs.scheduling.queues.maintenance takes no key it does not know
+  set:
+    maintenance.jobs.scheduling.queues.maintenance.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/scheduling/queues/maintenance'': additional properties ''surplus'' not allowed'
+- it: maintenance.jobs.scheduling.queues.urgent.capability takes no key it does not know
+  set:
+    maintenance.jobs.scheduling.queues.urgent.capability.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/scheduling/queues/urgent/capability'': additional properties ''surplus'' not allowed'
+- it: backend.api.port is not below its minimum
+  set:
+    backend.api.port: 0
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/port'': minimum: got 0'
+- it: frontend.console.port is not below its minimum
+  set:
+    frontend.console.port: 0
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/frontend/console/port'': minimum: got 0'
+- it: backend.worker.terminationGracePeriodSeconds is not below its minimum
+  set:
+    backend.worker.terminationGracePeriodSeconds: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/worker/terminationGracePeriodSeconds'': minimum: got -1'
+- it: maintenance.discovery.intervalSeconds is not below its minimum
+  set:
+    maintenance.discovery.intervalSeconds: 0
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/discovery/intervalSeconds'': minimum: got 0'
+- it: maintenance.cooldowns.rewriteDataFilesSeconds is not below its minimum
+  set:
+    maintenance.cooldowns.rewriteDataFilesSeconds: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/cooldowns/rewriteDataFilesSeconds'': minimum: got -1'
+- it: maintenance.cooldowns.rewriteManifestsSeconds is not below its minimum
+  set:
+    maintenance.cooldowns.rewriteManifestsSeconds: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/cooldowns/rewriteManifestsSeconds'': minimum: got -1'
+- it: maintenance.cooldowns.expireSnapshotsSeconds is not below its minimum
+  set:
+    maintenance.cooldowns.expireSnapshotsSeconds: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/cooldowns/expireSnapshotsSeconds'': minimum: got -1'
+- it: maintenance.cooldowns.removeOrphanFilesIntervalSeconds is not below its minimum
+  set:
+    maintenance.cooldowns.removeOrphanFilesIntervalSeconds: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/cooldowns/removeOrphanFilesIntervalSeconds'': minimum: got -1'
+- it: maintenance.failureBackoffCapSeconds is not below its minimum
+  set:
+    maintenance.failureBackoffCapSeconds: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/failureBackoffCapSeconds'': minimum: got -1'
+- it: maintenance.partitionSelection.partitionsPerJob is not below its minimum
+  set:
+    maintenance.partitionSelection.partitionsPerJob: 0
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/partitionSelection/partitionsPerJob'': minimum: got 0'
+- it: maintenance.partitionSelection.quietSeconds is not below its minimum
+  set:
+    maintenance.partitionSelection.quietSeconds: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/partitionSelection/quietSeconds'': minimum: got -1'
+- it: maintenance.partitionSelection.maxQuietWaitSeconds is not below its minimum
+  set:
+    maintenance.partitionSelection.maxQuietWaitSeconds: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/partitionSelection/maxQuietWaitSeconds'': minimum: got -1'
+- it: maintenance.jobs.limits.attemptDeadlineSeconds is not below its minimum
+  set:
+    maintenance.jobs.limits.attemptDeadlineSeconds: 0
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/limits/attemptDeadlineSeconds'': minimum: got 0'
+- it: maintenance.jobs.limits.queueWaitLimitSeconds is not below its minimum
+  set:
+    maintenance.jobs.limits.queueWaitLimitSeconds: 0
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/limits/queueWaitLimitSeconds'': minimum: got 0'
+- it: maintenance.jobs.cores.driver is not below its minimum
+  set:
+    maintenance.jobs.cores.driver: 0
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/cores/driver'': minimum: got 0'
+- it: maintenance.jobs.cores.executor is not below its minimum
+  set:
+    maintenance.jobs.cores.executor: 0
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/cores/executor'': minimum: got 0'
+- it: maintenance.jobs.scheduling.priorities.P0 is not below its minimum
+  set:
+    maintenance.jobs.scheduling.priorities.P0: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/scheduling/priorities/P0'': minimum: got -1'
+- it: maintenance.jobs.scheduling.priorities.P1 is not below its minimum
+  set:
+    maintenance.jobs.scheduling.priorities.P1: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/scheduling/priorities/P1'': minimum: got -1'
+- it: maintenance.jobs.scheduling.priorities.P2 is not below its minimum
+  set:
+    maintenance.jobs.scheduling.priorities.P2: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/scheduling/priorities/P2'': minimum: got -1'
+- it: maintenance.jobs.scheduling.priorities.P3 is not below its minimum
+  set:
+    maintenance.jobs.scheduling.priorities.P3: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/scheduling/priorities/P3'': minimum: got -1'
+- it: backend.image.repository is not empty
+  set:
+    backend.image.repository: ''
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/image/repository'': minLength'
+- it: maintenance.jobs.sizes.M.executorMemory is not empty
+  set:
+    maintenance.jobs.sizes.M.executorMemory: ''
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/sizes/M/executorMemory'': minLength'
+- it: backend.migrate.waitForDatabase.image is not empty
+  set:
+    backend.migrate.waitForDatabase.image: ''
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/migrate/waitForDatabase/image'': minLength'
+- it: external.catalog.polaris.scope is not empty
+  set:
+    external.catalog.polaris.scope: ''
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/external/catalog/polaris/scope'': minLength'
+- it: a job size names all three of its values
+  set:
+    maintenance.jobs.sizes.S.driverMemory: null
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/maintenance/jobs/sizes/S'': missing property ''driverMemory'''
+- it: the API's route prefix starts with a slash
+  set:
+    backend.api.rootPath: api
+  asserts:
+  - failedTemplate:
+      errorPattern: at '/backend/api/rootPath'
+- it: an env entry names its variable
+  set:
+    global.env:
+    - value: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/global/env/0'': missing property ''name'''
+- it: a secretMount takes no key it does not know
+  set:
+    global.secretMounts:
+    - name: a
+      secretName: b
+      path: /c
+      surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/global/secretMounts/0'': additional properties ''surplus'' not allowed'
+- it: an image pull secret names its Secret
+  set:
+    imagePullSecrets:
+    - {}
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/imagePullSecrets/0'': missing property ''name'''
+- it: an image pull secret takes no key it does not know
+  set:
+    imagePullSecrets:
+    - name: a
+      surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/imagePullSecrets/0'': additional properties ''surplus'' not allowed'
+- it: backend.api.readinessProbe takes no key it does not know
+  set:
+    backend.api.readinessProbe.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/readinessProbe'': additional properties ''surplus'' not allowed'
+- it: backend.api.livenessProbe takes no key it does not know
+  set:
+    backend.api.livenessProbe.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/livenessProbe'': additional properties ''surplus'' not allowed'
+- it: frontend.console.readinessProbe takes no key it does not know
+  set:
+    frontend.console.readinessProbe.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/frontend/console/readinessProbe'': additional properties ''surplus'' not allowed'
+- it: frontend.console.livenessProbe takes no key it does not know
+  set:
+    frontend.console.livenessProbe.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/frontend/console/livenessProbe'': additional properties ''surplus'' not allowed'
+- it: backend.api.connectionTest takes no key it does not know
+  set:
+    backend.api.connectionTest.surplus: x
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/connectionTest'': additional properties ''surplus'' not allowed'
+- it: backend.api.readinessProbe.path starts with a slash
+  set:
+    backend.api.readinessProbe.path: healthz
+  asserts:
+  - failedTemplate:
+      errorPattern: at '/backend/api/readinessProbe/path'
+- it: backend.api.readinessProbe names its path
+  set:
+    backend.api.readinessProbe.path: null
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/readinessProbe'': missing property ''path'''
+- it: backend.api.readinessProbe.initialDelaySeconds is not below its minimum
+  set:
+    backend.api.readinessProbe.initialDelaySeconds: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/readinessProbe/initialDelaySeconds'': minimum: got -1'
+- it: backend.api.readinessProbe.periodSeconds is not below its minimum
+  set:
+    backend.api.readinessProbe.periodSeconds: 0
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/readinessProbe/periodSeconds'': minimum: got 0'
+- it: backend.api.readinessProbe.timeoutSeconds is not below its minimum
+  set:
+    backend.api.readinessProbe.timeoutSeconds: 0
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/readinessProbe/timeoutSeconds'': minimum: got 0'
+- it: backend.api.readinessProbe.failureThreshold is not below its minimum
+  set:
+    backend.api.readinessProbe.failureThreshold: 0
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/readinessProbe/failureThreshold'': minimum: got 0'
+- it: backend.api.livenessProbe.path starts with a slash
+  set:
+    backend.api.livenessProbe.path: healthz
+  asserts:
+  - failedTemplate:
+      errorPattern: at '/backend/api/livenessProbe/path'
+- it: backend.api.livenessProbe names its path
+  set:
+    backend.api.livenessProbe.path: null
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/livenessProbe'': missing property ''path'''
+- it: backend.api.livenessProbe.initialDelaySeconds is not below its minimum
+  set:
+    backend.api.livenessProbe.initialDelaySeconds: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/livenessProbe/initialDelaySeconds'': minimum: got -1'
+- it: backend.api.livenessProbe.periodSeconds is not below its minimum
+  set:
+    backend.api.livenessProbe.periodSeconds: 0
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/livenessProbe/periodSeconds'': minimum: got 0'
+- it: backend.api.livenessProbe.timeoutSeconds is not below its minimum
+  set:
+    backend.api.livenessProbe.timeoutSeconds: 0
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/livenessProbe/timeoutSeconds'': minimum: got 0'
+- it: backend.api.livenessProbe.failureThreshold is not below its minimum
+  set:
+    backend.api.livenessProbe.failureThreshold: 0
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/livenessProbe/failureThreshold'': minimum: got 0'
+- it: backend.api.readinessProbe.successThreshold is not below its minimum
+  set:
+    backend.api.readinessProbe.successThreshold: 0
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/api/readinessProbe/successThreshold'': minimum: got 0'
+- it: a liveness probe succeeds after one check, as Kubernetes requires
+  set:
+    backend.api.livenessProbe.successThreshold: 2
+  asserts:
+  - failedTemplate:
+      errorPattern: at '/backend/api/livenessProbe/successThreshold'
+- it: backend.migrate.backoffLimit is not below its minimum
+  set:
+    backend.migrate.backoffLimit: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/migrate/backoffLimit'': minimum: got -1'
+- it: backend.eventConsumer.terminationGracePeriodSeconds is not below its minimum
+  set:
+    backend.eventConsumer.terminationGracePeriodSeconds: -1
+  asserts:
+  - failedTemplate:
+      errorPattern: 'at ''/backend/eventConsumer/terminationGracePeriodSeconds'': minimum: got -1'

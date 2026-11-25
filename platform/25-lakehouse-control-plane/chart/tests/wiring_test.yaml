@@ -20,3 +20,80 @@ tests:
         documentSelector: {path: kind, value: Service}
       - equal: {path: "spec.rules[0].backendRefs", value: [{name: table-maintenance-console, port: 9080}]}
         documentSelector: {path: kind, value: HTTPRoute}
+
+  - it: the API's probes ask the path and keep the timings its values set
+    set:
+      backend.api.readinessProbe: {path: /ready, initialDelaySeconds: 7, periodSeconds: 8, timeoutSeconds: 2, failureThreshold: 4, successThreshold: 2}
+      backend.api.livenessProbe: {path: /live, initialDelaySeconds: 30, periodSeconds: 15, timeoutSeconds: 3, failureThreshold: 5, successThreshold: 1}
+    template: templates/api.yaml
+    documentSelector: {path: kind, value: Deployment}
+    asserts:
+      - equal:
+          path: "spec.template.spec.containers[0].readinessProbe"
+          value: {httpGet: {path: /ready, port: http}, initialDelaySeconds: 7, periodSeconds: 8, timeoutSeconds: 2, failureThreshold: 4, successThreshold: 2}
+      - equal:
+          path: "spec.template.spec.containers[0].livenessProbe"
+          value: {httpGet: {path: /live, port: http}, initialDelaySeconds: 30, periodSeconds: 15, timeoutSeconds: 3, failureThreshold: 5, successThreshold: 1}
+
+  - it: the console's probes ask the path and keep the timings its values set
+    set:
+      frontend.console.readinessProbe: {path: /ui/, initialDelaySeconds: 3, periodSeconds: 4, timeoutSeconds: 2, failureThreshold: 6, successThreshold: 2}
+      frontend.console.livenessProbe: {path: /ui/live, initialDelaySeconds: 11, periodSeconds: 12, timeoutSeconds: 3, failureThreshold: 7, successThreshold: 1}
+    template: templates/console.yaml
+    documentSelector: {path: kind, value: Deployment}
+    asserts:
+      - equal:
+          path: "spec.template.spec.containers[0].readinessProbe"
+          value: {httpGet: {path: /ui/, port: http}, initialDelaySeconds: 3, periodSeconds: 4, timeoutSeconds: 2, failureThreshold: 6, successThreshold: 2}
+      - equal:
+          path: "spec.template.spec.containers[0].livenessProbe"
+          value: {httpGet: {path: /ui/live, port: http}, initialDelaySeconds: 11, periodSeconds: 12, timeoutSeconds: 3, failureThreshold: 7, successThreshold: 1}
+
+  - it: the connection test asks the API's readiness path with the resources its values set
+    set:
+      backend.api.port: 9000
+      backend.api.readinessProbe.path: /ready
+      backend.api.connectionTest.resources: {requests: {cpu: 20m, memory: 96Mi}, limits: {memory: 160Mi}}
+    template: templates/tests/test-connection.yaml
+    asserts:
+      - equal:
+          path: "spec.containers[0].command[2]"
+          value: import urllib.request; urllib.request.urlopen('http://table-maintenance-api:9000/ready', timeout=10)
+      - equal: {path: "spec.containers[0].resources", value: {requests: {cpu: 20m, memory: 96Mi}, limits: {memory: 160Mi}}}
+
+  - it: the migration retries as often as its values allow
+    set:
+      backend.migrate.backoffLimit: 2
+    template: templates/migrate-job.yaml
+    asserts:
+      - equal: {path: spec.backoffLimit, value: 2}
+
+  - it: the event consumer is given the time its values set to stop
+    set:
+      backend.eventConsumer.terminationGracePeriodSeconds: 45
+    template: templates/event-consumer.yaml
+    asserts:
+      - equal: {path: spec.template.spec.terminationGracePeriodSeconds, value: 45}
+
+  - it: the database wait takes its own resources and the schema wait takes the migration's
+    set:
+      backend.migrate.waitForDatabase.resources: {requests: {cpu: 5m, memory: 8Mi}, limits: {memory: 24Mi}}
+      backend.migrate.resources: {requests: {cpu: 70m, memory: 200Mi}, limits: {memory: 300Mi}}
+    asserts:
+      - equal:
+          path: "spec.template.spec.initContainers[0].resources"
+          value: {requests: {cpu: 5m, memory: 8Mi}, limits: {memory: 24Mi}}
+        template: templates/migrate-job.yaml
+      - equal:
+          path: "spec.template.spec.initContainers[0].resources"
+          value: {requests: {cpu: 70m, memory: 200Mi}, limits: {memory: 300Mi}}
+        template: templates/api.yaml
+        documentSelector: {path: kind, value: Deployment}
+      - equal:
+          path: "spec.template.spec.initContainers[0].resources"
+          value: {requests: {cpu: 70m, memory: 200Mi}, limits: {memory: 300Mi}}
+        template: templates/worker.yaml
+      - equal:
+          path: "spec.template.spec.initContainers[0].resources"
+          value: {requests: {cpu: 70m, memory: 200Mi}, limits: {memory: 300Mi}}
+        template: templates/event-consumer.yaml

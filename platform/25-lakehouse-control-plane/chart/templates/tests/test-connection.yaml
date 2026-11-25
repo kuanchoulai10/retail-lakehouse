@@ -10,6 +10,7 @@ metadata:
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
 spec:
   restartPolicy: Never
+  enableServiceLinks: false
   automountServiceAccountToken: false
   {{- include "table-maintenance.podSecurity" . | nindent 2 }}
   {{- with .Values.imagePullSecrets }}
@@ -23,11 +24,7 @@ spec:
       command:
         - python
         - -c
-        - import urllib.request; urllib.request.urlopen('http://{{ include "table-maintenance.api.fullname" . }}:{{ .Values.backend.api.port }}/healthz', timeout=10)
+        - import urllib.request; urllib.request.urlopen('http://{{ include "table-maintenance.api.fullname" . }}:{{ .Values.backend.api.port }}{{ .Values.backend.api.readinessProbe.path }}', timeout=10)
       {{- include "table-maintenance.containerSecurity" . | nindent 6 }}
       resources:
-        requests:
-          cpu: 10m
-          memory: 64Mi
-        limits:
-          memory: 128Mi
+        {{- toYaml .Values.backend.api.connectionTest.resources | nindent 8 }}

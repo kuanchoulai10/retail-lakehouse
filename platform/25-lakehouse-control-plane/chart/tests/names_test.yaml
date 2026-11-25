@@ -151,3 +151,32 @@ tests:
     asserts:
       - equal: {path: "metadata.labels[\"app.kubernetes.io/name\"]", value: maint}
       - equal: {path: "spec.selector.matchLabels[\"app.kubernetes.io/name\"]", value: maint}
+
+  - it: a long fullnameOverride is cut at 63 characters, without a dash at the cut
+    set:
+      fullnameOverride: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bcdef
+    template: templates/worker.yaml
+    asserts:
+      - equal: {path: metadata.name, value: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
+
+  - it: a role's name is cut at 63 characters too, without a dash at the cut
+    set:
+      fullnameOverride: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    template: templates/worker.yaml
+    asserts:
+      - equal: {path: metadata.name, value: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
+      - equal: {path: spec.template.spec.serviceAccountName, value: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
+
+  - it: a long nameOverride is cut at 63 characters in the name label, without a dash at the cut
+    set:
+      nameOverride: nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn-x
+    template: templates/worker.yaml
+    asserts:
+      - equal: {path: 'metadata.labels["app.kubernetes.io/name"]', value: nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn}
+
+  - it: the release name and a nameOverride together are cut at 63 characters, without a dash at the cut
+    set:
+      nameOverride: nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn-zzz
+    template: templates/worker.yaml
+    asserts:
+      - equal: {path: metadata.name, value: table-maintenance-nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn}

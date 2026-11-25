@@ -130,6 +130,7 @@ extraManifests:
     kind: ConfigMap
     metadata:
       name: {{ include "table-maintenance.fullname" . }}-extra
+      namespace: {{ .Release.Namespace }}
       labels:
         {{- include "table-maintenance.labels" (dict "root" . "component" "extra") | nindent 8 }}
     data:

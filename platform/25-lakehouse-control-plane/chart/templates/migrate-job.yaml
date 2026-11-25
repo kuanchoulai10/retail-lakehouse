@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- include "table-maintenance.workloadMetadata" $labels | nindent 2 }}
 spec:
-  backoffLimit: 6
+  backoffLimit: {{ .Values.backend.migrate.backoffLimit }}
   template:
     metadata:
       {{- include "table-maintenance.podMetadata" $labels | nindent 6 }}
