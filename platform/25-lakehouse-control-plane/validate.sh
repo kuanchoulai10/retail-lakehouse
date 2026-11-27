@@ -101,13 +101,7 @@ api_get /v1/catalogs
 DEFAULT_POLICY="$(api_body /v1/maintenance-policies/default)"
 grep -q '"name":"default"' <<<"${DEFAULT_POLICY}" || { echo "policy default is missing" >&2; exit 1; }
 
-DEFAULT_DISCOVERY_POLICY="$(api_body /v1/discovery-policies/default)"
-grep -qF '"is_default":true' <<<"${DEFAULT_DISCOVERY_POLICY}" \
-  || { echo "discovery policy default is missing or not the default: ${DEFAULT_DISCOVERY_POLICY}" >&2; exit 1; }
-grep -qF '"rules":[]' <<<"${DEFAULT_DISCOVERY_POLICY}" \
-  || { echo "discovery policy default holds rules, expected none: ${DEFAULT_DISCOVERY_POLICY}" >&2; exit 1; }
-
-for old_route in /v1/policy-templates /v1/compaction-rounds /v1/discovery-rules; do
+for old_route in /v1/policy-templates /v1/compaction-rounds /v1/discovery-rules /v1/discovery-policies/default; do
   OLD_ROUTE_STATUS="$(kubectl exec deployment/table-maintenance-api \
     --namespace "${NAMESPACE}" \
     --context "${KUBE_CONTEXT}" \
@@ -122,49 +116,42 @@ done
 
 ADMIN_TOOLS="deployment/temporal-admintools"
 
-DISCOVERY_SCHEDULE_PREFIX="table-discovery:catalog="
-WANTED_SCHEDULES=""
-LISTED_SCHEDULES=""
-for _ in $(seq 1 30); do
-  WANTED_SCHEDULES="$(api_body /v1/scanned-catalogs \
-    | jq -r --arg prefix "${DISCOVERY_SCHEDULE_PREFIX}" '.catalogs[].catalog | $prefix + .' \
-    | sort -u)"
-  LISTED_SCHEDULES="$(kubectl exec "${ADMIN_TOOLS}" \
+temporal_admin() {
+  kubectl exec "${ADMIN_TOOLS}" \
     --namespace temporal \
     --context "${KUBE_CONTEXT}" \
-    -- temporal schedule list --output json \
-    --address temporal-frontend.temporal.svc.cluster.local:7233 \
-    | jq -r --arg prefix "${DISCOVERY_SCHEDULE_PREFIX}" \
-      '(if type == "array" then .[] else . end) | (.scheduleId // .id // empty) | select(startswith($prefix))' \
-    | sort -u)"
-  [[ "${WANTED_SCHEDULES}" == "${LISTED_SCHEDULES}" ]] && break
-  sleep 2
-done
-[[ "${WANTED_SCHEDULES}" == "${LISTED_SCHEDULES}" ]] || {
-  echo "discovery schedules are not the scanned catalogs' schedules" >&2
-  echo "missing: $(comm -23 <(echo "${WANTED_SCHEDULES}") <(echo "${LISTED_SCHEDULES}") | xargs)" >&2
-  echo "extra: $(comm -13 <(echo "${WANTED_SCHEDULES}") <(echo "${LISTED_SCHEDULES}") | xargs)" >&2
-  exit 1
+    -- temporal "$@" \
+    --address temporal-frontend.temporal.svc.cluster.local:7233
 }
 
-if RETIRED_WORKFLOW="$(kubectl exec "${ADMIN_TOOLS}" \
-  --namespace temporal \
-  --context "${KUBE_CONTEXT}" \
-  -- temporal workflow describe \
-  --address temporal-frontend.temporal.svc.cluster.local:7233 \
-  --workflow-id table-maintenance-admission 2>&1)"; then
+DISCOVERY_SCHEDULE="table-discovery"
+CATALOG_SCHEDULE_PREFIX="table-discovery:catalog="
+DISCOVERY_SCHEDULES=""
+for _ in $(seq 1 30); do
+  DISCOVERY_SCHEDULES="$(temporal_admin schedule list --output json \
+    | jq -r --arg prefix "${DISCOVERY_SCHEDULE}" \
+      '(if type == "array" then .[] else . end) | (.scheduleId // .id // empty) | select(startswith($prefix))' \
+    | sort -u)"
+  [[ "${DISCOVERY_SCHEDULES}" == "${DISCOVERY_SCHEDULE}" ]] && break
+  sleep 2
+done
+CATALOG_SCHEDULES="$(grep -F "${CATALOG_SCHEDULE_PREFIX}" <<<"${DISCOVERY_SCHEDULES}" | xargs || true)"
+[[ -z "${CATALOG_SCHEDULES}" ]] \
+  || { echo "per-catalog discovery schedules remain: ${CATALOG_SCHEDULES}" >&2; exit 1; }
+[[ "${DISCOVERY_SCHEDULES}" == "${DISCOVERY_SCHEDULE}" ]] \
+  || { echo "expected exactly one schedule ${DISCOVERY_SCHEDULE}, found: $(xargs <<<"${DISCOVERY_SCHEDULES}")" >&2; exit 1; }
+DESCRIBED_SCHEDULE="$(temporal_admin schedule describe --output json --schedule-id "${DISCOVERY_SCHEDULE}")"
+jq -e '[.. | objects | .paused] | any(. == true) | not' <<<"${DESCRIBED_SCHEDULE}" >/dev/null \
+  || { echo "schedule ${DISCOVERY_SCHEDULE} is paused" >&2; exit 1; }
+
+if RETIRED_WORKFLOW="$(temporal_admin workflow describe --workflow-id table-maintenance-admission 2>&1)"; then
   echo "workflow table-maintenance-admission exists, expected it to be gone" >&2
   exit 1
 fi
 grep -qiE 'workflow not found' <<<"${RETIRED_WORKFLOW}" \
   || { echo "describing workflow table-maintenance-admission failed for another reason: ${RETIRED_WORKFLOW}" >&2; exit 1; }
 
-if RETIRED_SCHEDULE="$(kubectl exec "${ADMIN_TOOLS}" \
-  --namespace temporal \
-  --context "${KUBE_CONTEXT}" \
-  -- temporal schedule describe \
-  --address temporal-frontend.temporal.svc.cluster.local:7233 \
-  --schedule-id compaction-rounds 2>&1)"; then
+if RETIRED_SCHEDULE="$(temporal_admin schedule describe --schedule-id compaction-rounds 2>&1)"; then
   echo "schedule compaction-rounds exists, expected it to be gone" >&2
   exit 1
 fi
