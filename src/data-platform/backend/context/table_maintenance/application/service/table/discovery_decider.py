@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.application.domain.service.shared import candidate_policy_targets
 from context.table_maintenance.application.domain.service.table_discovery_policy_attachment import (
     decide_table_discovery,
-    scanned_catalogs,
 )
 
 if TYPE_CHECKING:
@@ -84,11 +83,14 @@ class DiscoveryDecider:
         """Decide the table by its current name and its uuid."""
         return decide_table_discovery(name, table_uuid, self._attachments, self._policies)
 
-    def has_any_policy(self) -> bool:
-        """Return whether an attachment read points at a stored policy.
+    def can_include_any(self) -> bool:
+        """Return whether an attachment read points at a stored policy that could include some table.
 
-        Read ``for_catalog``, this says whether the catalog is scanned. When it is not, nothing is
-        attached in the catalog and every table there is not managed, so a scan needs no catalog read
-        to decide them.
+        Read ``for_catalog``, this says whether a table in the catalog could end up managed. When it
+        cannot (nothing is attached, or every attached policy only excludes), every table there is not
+        managed, so a catalog-wide scan unmanages the stored managed tables without reading the catalog.
         """
-        return bool(scanned_catalogs(self._attachments, self._policies))
+        return any(
+            attachment.policy_id in self._policies and self._policies[attachment.policy_id].can_include()
+            for attachment in self._attachments
+        )

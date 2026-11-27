@@ -62,3 +62,16 @@ def test_no_rules_is_refused() -> None:
     """No rules is refused."""
     with pytest.raises(InvariantViolation, match="at least one rule"):
         DiscoveryRules(rules=())
+
+
+@pytest.mark.parametrize(
+    ("specs", "expected"),
+    [
+        ([(EXCLUDE, "*")], False),
+        ([(EXCLUDE, "*_tmp"), (EXCLUDE, "*")], False),
+        ([(INCLUDE, "*"), (EXCLUDE, "*_tmp")], True),
+    ],
+)
+def test_has_include_tells_whether_any_rule_includes(specs: list[tuple[RuleAction, str]], expected: bool) -> None:
+    """Rules with an include somewhere can include a table; exclude-only rules never can."""
+    assert _rules(*specs).has_include() is expected

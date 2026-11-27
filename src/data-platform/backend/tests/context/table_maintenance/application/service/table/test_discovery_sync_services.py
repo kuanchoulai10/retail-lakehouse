@@ -28,6 +28,7 @@ from context.table_maintenance.application.domain.model.table_discovery_policy i
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,
 )
+from context.table_maintenance.application.domain.service.table_discovery_policy_attachment import scanned_catalogs
 from context.table_maintenance.application.exceptions import ConcurrentUpdateError, ConflictError
 from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCaseInput,
@@ -376,7 +377,7 @@ def test_a_refused_catalog_with_nothing_attached_unmanages_its_managed_tables(sy
 
 
 def test_a_missing_catalog_with_nothing_attached_unmanages_its_managed_tables(sync, world, signals, now):
-    """A catalog that is gone and has nothing attached decides by the default: its managed tables are unmanaged."""
+    """A catalog that is gone and has nothing attached manages nothing: its managed tables are unmanaged."""
     _row(world.tables, now, "u-1", _name("orders"))
     world.catalog.drop_catalog("iceberg")
 
@@ -402,17 +403,27 @@ def test_a_namespace_policy_keeps_its_unread_catalog_scanned(sync, world, signal
     assert signals.calls == []
 
 
-def test_an_exclude_only_policy_keeps_its_unread_catalog_scanned(sync, world, signals, now):
-    """A catalog whose only policy excludes every table is still scanned, so an unread scan changes no table."""
+def test_an_exclude_only_policy_keeps_its_unread_catalog_scanned_and_retires_its_managed_tables(
+    sync, world, signals, now
+):
+    """A catalog whose only policy cannot include stays scanned, yet its managed tables are unmanaged unread.
+
+    No table there can end up managed, so the stored managed table is unmanaged from its row, decided by
+    the exclude-only policy's rule, and sent ``stopped``.
+    """
     world.attach_to_catalog(UNMANAGE_ALL)
     _row(world.tables, now, "u-1", _name("orders"))
     world.catalog.deny("iceberg")
 
     out = sync.execute(_catalog_wide())
 
-    assert (out.failure, out.unmanaged) == ("cannot_access", 0)
-    assert world.tables.get(TableId("u-1")).status == TableStatus.MANAGED
-    assert signals.calls == []
+    policies = {p.id: p for p in world.policies.list_all()}
+    assert scanned_catalogs(world.attachments.list_all(), policies) == ("iceberg",)
+    assert (out.failure, out.unmanaged) == ("cannot_access", 1)
+    table = world.tables.get(TableId("u-1"))
+    assert table.status == TableStatus.UNMANAGED
+    assert table.decided_by == DecidedBy(policy_id=UNMANAGE_ALL.id, policy_version=1, rule_position=1)
+    assert _calls(signals) == [("u-1", "stopped", False)]
 
 
 def test_a_catalog_with_nothing_attached_unmanages_a_managed_table_it_cannot_load(sync, world, signals, now):
@@ -558,7 +569,7 @@ def test_sync_registers_an_excluded_table_and_one_no_rule_matches_as_unmanaged(
 
 
 def test_sync_leaves_a_registered_unmanaged_table_alone(sync, tables_repo, catalog, signals):
-    """A second sync of a table the default decides neither stores it again nor signals it."""
+    """A second sync of a table nothing attached decides neither stores it again nor signals it."""
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     sync.execute(_catalog_wide())
     out = sync.execute(_catalog_wide())

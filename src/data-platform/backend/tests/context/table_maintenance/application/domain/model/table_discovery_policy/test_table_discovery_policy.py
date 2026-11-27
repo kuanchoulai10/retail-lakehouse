@@ -156,3 +156,13 @@ def test_invalid_name_is_rejected(name: str):
 def test_a_stale_version_is_a_value_error():
     """A stale version is a conflict of its own, a ``ValueError``."""
     assert issubclass(StaleDiscoveryPolicyVersion, ValueError)
+
+
+def test_an_exclude_only_policy_cannot_include():
+    """A policy whose rules all exclude can include no table."""
+    assert not TableDiscoveryPolicy.create(NAME, "", _rules((RuleAction.EXCLUDE, "*")), T0).can_include()
+
+
+def test_a_policy_with_an_include_rule_can_include():
+    """A policy with an include rule, even followed by an exclude, can include a table."""
+    assert TableDiscoveryPolicy.create(NAME, "", INCLUDE_ALL_BUT_TMP, T0).can_include()

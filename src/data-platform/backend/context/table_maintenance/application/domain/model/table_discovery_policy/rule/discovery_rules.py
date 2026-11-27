@@ -25,6 +25,10 @@ class DiscoveryRules(ValueObject):
             raise ValueError("a discovery policy needs at least one rule")
         return rules
 
+    def has_include(self) -> bool:
+        """Return whether any rule includes, so that some table could be managed by these rules."""
+        return any(rule.action is RuleAction.INCLUDE for rule in self.rules)
+
     def deciding_position(self, table: str) -> int | None:
         """Return the 1-based position of the last rule that matches the table, or None when none does."""
         for position in range(len(self.rules), 0, -1):

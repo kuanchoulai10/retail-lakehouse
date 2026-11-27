@@ -132,18 +132,20 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         and that scan drops no table, since a table that cannot be read must never read
         as dropped.
 
-        A catalog-wide scan of a catalog that is no longer scanned (nothing is attached in it)
-        also unmanages, from its stored row, each managed table it could not read: all of them when the
-        catalog cannot be read, the ones it could not load otherwise (the drop pass handles the rest).
-        Each is sent ``stopped``. Every table there is not managed, so no catalog read is needed,
-        and no table is left managed under no policy.
+        A catalog-wide scan of a catalog where no table can end up managed (nothing is attached in it,
+        or every attached policy only excludes) also unmanages, from its stored row, each managed table
+        it could not read: all of them when the catalog cannot be read, the ones it could not load
+        otherwise (the drop pass handles the rest).
+        Each is sent ``stopped`` and records what decided it (the excluding policy, or nothing). Every
+        table there is not managed, so no catalog read is needed, and no table is left managed under no
+        policy that could include it.
         """
         now = self._clock()
         decider = DiscoveryDecider.for_catalog(
             request.catalog, self._discovery_attachments_repo, self._discovery_policies_repo
         )
         seen_change = TableChange.SEEN if request.namespace is None else None
-        retires = request.namespace is None and not decider.has_any_policy()
+        retires = request.namespace is None and not decider.can_include_any()
         try:
             refs = self._catalog_gateway.list_tables(
                 ReadTableMetadataGatewayListInput(request.catalog, request.namespace)
@@ -240,8 +242,8 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
     ) -> tuple[int, int]:
         """Unmanage the catalog's stored managed tables not in ``seen``, by stored name; return (unmanaged, skipped).
 
-        Only for a catalog nothing is attached in, where every table is not managed: no catalog
-        read is needed, so even a catalog the credential cannot read, or that is gone, has its managed
+        Only for a catalog where no attached policy can include, so every table is not managed: no
+        catalog read is needed, so even a catalog the credential cannot read, or that is gone, has its managed
         tables unmanaged and each sent ``stopped``. A table the scan read was decided already.
         """
         unmanaged = skipped = 0

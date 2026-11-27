@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def client() -> TestClient:
-    """Provide a client over the default discovery policy."""
+    """Provide a client over no discovery policy."""
     return DiscoveryPolicyWebWorld().client
 
 

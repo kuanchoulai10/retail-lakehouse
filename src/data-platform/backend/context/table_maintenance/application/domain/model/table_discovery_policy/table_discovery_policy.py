@@ -88,6 +88,10 @@ class TableDiscoveryPolicy(AggregateRoot[TableDiscoveryPolicyId]):
             created_at=self.updated_at,
         )
 
+    def can_include(self) -> bool:
+        """Return whether some table could be managed by this policy: one of its rules includes."""
+        return self.rules.has_include()
+
     def should_manage(self, table: TableName) -> ManagementDecision:
         """Decide the table by the last rule its table name matches, naming this version and that rule's position."""
         manage, position = self.rules.manages(table.table)
