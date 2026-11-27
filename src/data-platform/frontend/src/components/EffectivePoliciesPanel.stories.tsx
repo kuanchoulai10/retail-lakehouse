@@ -81,7 +81,9 @@ export const PlatformDefaultInDryRun: Story = {
     const [maintenance, discovery] = await rows(canvasElement);
     await expect(within(maintenance!).getByText("Platform default")).toBeVisible();
     await expect(within(maintenance!).getByText("Dry run")).toBeVisible();
-    await expect(within(discovery!).getByText("Platform default")).toBeVisible();
+    await expect(within(discovery!).getByText("No discovery policy applies")).toBeVisible();
+    await expect(within(discovery!).queryByText("Platform default")).toBeNull();
+    await expect(within(discovery!).getByRole("button", { name: "Attach policy for discovery" })).toBeVisible();
   },
 };
 

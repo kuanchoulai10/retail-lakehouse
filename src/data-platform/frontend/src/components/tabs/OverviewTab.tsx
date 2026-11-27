@@ -1,11 +1,8 @@
 import { Panel, TextLink } from "@retail-lakehouse/design-system";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import {
-  useGetTableDiscoveryPolicyVersion,
-  useListTableDiscoveryPolicies,
-} from "@/api/generated/discovery-policies/discovery-policies";
-import type { CatalogTableApiResponse, TableApiResponse } from "@/api/generated/model";
+import { useListTableDiscoveryPolicies } from "@/api/generated/discovery-policies/discovery-policies";
+import type { CatalogTableApiResponse, DecidedByApiResponse, TableApiResponse } from "@/api/generated/model";
 import { EffectivePoliciesPanel } from "@/components/EffectivePoliciesPanel";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
 import { TablePrioritySelect } from "@/components/TablePrioritySelect";
@@ -38,44 +35,42 @@ function Fact({ label, children, mono }: { label: string; children: ReactNode; m
   );
 }
 
-// What decided a managed table: the discovery policy and version, linked to that version's page, and
-// the deciding rule's position in that version, or that no rule matched. The policy is found by id in
-// the list; one deleted since shows its id only, with no link and no rule.
-function DecidedBy({ table }: { table: TableApiResponse }) {
+// What decided the table: the discovery policy and version, linked to that version's page, then the
+// position of the rule that decided it in that version, or that no rule matched (the table is then not
+// managed). The policy's name is found by id in the list; one deleted since shows its id, with no link.
+function DecidedByPolicy({ decidedBy }: { decidedBy: DecidedByApiResponse }) {
   const policies = useListTableDiscoveryPolicies();
-  const policy = policies.data?.policies.find((p) => p.id === table.matched_policy_id);
-  const ruleId = table.matched_rule_id;
-  const version = useGetTableDiscoveryPolicyVersion(policy?.name ?? "", table.matched_policy_version, {
-    query: { enabled: policy !== undefined && ruleId !== null },
-  });
   if (policies.data === undefined) return null;
-  if (policy === undefined) {
-    return (
-      <>
-        {" · discovery policy "}
-        <span className="font-mono">{table.matched_policy_id}</span>
-        {` v${table.matched_policy_version}`}
-      </>
-    );
-  }
-  const position = ruleId === null ? -1 : (version.data?.rules.findIndex((rule) => rule.id === ruleId) ?? -1);
+  const policy = policies.data.policies.find((p) => p.id === decidedBy.policy_id);
+  const version = decidedBy.policy_version;
   return (
     <>
       {" · discovery policy "}
-      <TextLink asChild inline>
-        <Link to={discoveryPolicyVersionPath(policy.name, table.matched_policy_version)}>
-          {`${policy.name} v${table.matched_policy_version}`}
-        </Link>
-      </TextLink>
-      {ruleId === null && " · no rule matched"}
-      {position >= 0 && (
+      {policy === undefined ? (
+        <>
+          <span className="font-mono">{decidedBy.policy_id}</span>
+          {` v${version}`}
+        </>
+      ) : (
+        <TextLink asChild inline>
+          <Link to={discoveryPolicyVersionPath(policy.name, version)}>{`${policy.name} v${version}`}</Link>
+        </TextLink>
+      )}
+      {decidedBy.rule_position === null ? (
+        " · no rule matched"
+      ) : (
         <>
           {" · rule "}
-          <span className="tabular-nums">{position + 1}</span>
+          <span className="tabular-nums">{decidedBy.rule_position}</span>
         </>
       )}
     </>
   );
+}
+
+function DecidedBy({ table }: { table: TableApiResponse }) {
+  if (table.decided_by === null) return <>{" · No discovery policy applies"}</>;
+  return <DecidedByPolicy decidedBy={table.decided_by} />;
 }
 
 // A managed table's metrics first; then what the catalog holds, plus whether maintenance manages the
@@ -86,14 +81,18 @@ function DecidedBy({ table }: { table: TableApiResponse }) {
 // the policy's skeleton and the panel marker are the only loading signs.
 export function OverviewTab({ table, maintenance, record }: Props) {
   const managed = maintenance.kind === "managed" ? maintenance.table : null;
+  const decided =
+    maintenance.kind === "managed" || (maintenance.kind === "unmanaged" && maintenance.reason === "unmanaged")
+      ? (record.data ?? null)
+      : null;
   return (
     <div className="grid grid-cols-1 gap-4">
       {managed !== null && <TableMetricsDashboard tableUuid={managed.uuid} />}
       <Panel title="Table" actions={
           <span className="type-body-small text-on-surface-variant">
             <span>{MARKER[maintenance.kind]}</span>
-            {/* What decided the table is asked for only when maintenance manages it. */}
-            {managed !== null && <DecidedBy table={managed} />}
+            {/* What decided the table, for one discovery has decided; a dropped table is decided no more. */}
+            {decided !== null && <DecidedBy table={decided} />}
           </span>
         }
       >

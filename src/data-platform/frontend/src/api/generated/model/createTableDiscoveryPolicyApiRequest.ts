@@ -4,17 +4,17 @@
  * Data Platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { CreateTableDiscoveryPolicyApiRequestNoMatchOutcome } from './createTableDiscoveryPolicyApiRequestNoMatchOutcome';
 import type { DiscoveryRuleApiRequest } from './discoveryRuleApiRequest';
 
 /**
- * Carry a new discovery policy's name and its whole content; its rules may not name an id.
+ * Carry a new discovery policy's name, description and rules.
  */
 export interface CreateTableDiscoveryPolicyApiRequest {
   description?: string;
   name: string;
-  /** What happens to a table that no rule matches: managed or not. */
-  no_match_outcome: CreateTableDiscoveryPolicyApiRequestNoMatchOutcome;
-  /** The rules, read top to bottom; the first whose conditions all hold decides. */
+  /**
+     * The rules, at least one, read top to bottom; the last whose pattern matches a table decides it, and a table no rule matches is not managed.
+     * @minItems 1
+     */
   rules: DiscoveryRuleApiRequest[];
 }

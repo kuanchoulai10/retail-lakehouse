@@ -46,14 +46,13 @@ export const Empty: Story = {
     await screen.findByRole("dialog", { name: "New discovery policy" });
     await expect(within(dialog()).getByRole("textbox", { name: "Name" })).toHaveValue("");
     await expect(within(dialog()).getByRole("textbox", { name: "Description" })).toHaveValue("");
-    await expect(within(dialog()).getByRole("combobox", { name: "When no rule matches" })).toHaveTextContent(
-      "Do not manage",
-    );
+    await expect(within(dialog()).getByRole("combobox", { name: "Action" })).toHaveTextContent("Include");
+    await expect(within(dialog()).getByRole("textbox", { name: "Table name pattern" })).toHaveValue("");
   },
 };
 
-// The dialog opens on its Close button; every field is reached with Tab from there, the outcome
-// is picked with the arrow keys, and Enter on Create policy creates.
+// The dialog opens on its Close button; every field is reached with Tab from there, the first
+// rule's action is picked with the arrow keys, and Enter on Create policy creates.
 export const Keyboard: Story = {
   play: async () => {
     await screen.findByRole("dialog", { name: "New discovery policy" });
@@ -65,14 +64,16 @@ export const Keyboard: Story = {
     await userEvent.tab();
     await expect(within(dialog()).getByRole("textbox", { name: "Description" })).toHaveFocus();
     await userEvent.tab();
-    const outcome = within(dialog()).getByRole("combobox", { name: "When no rule matches" });
-    await expect(outcome).toHaveFocus();
+    const action = within(dialog()).getByRole("combobox", { name: "Action" });
+    await expect(action).toHaveFocus();
     await userEvent.keyboard("{Enter}");
     await screen.findByRole("listbox");
-    await userEvent.keyboard("{ArrowUp}{Enter}");
-    await waitFor(() => expect(outcome).toHaveTextContent("Manage"));
-    await expect(outcome).not.toHaveTextContent("Do not manage");
-    await expect(outcome).toHaveFocus();
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() => expect(action).toHaveTextContent("Exclude"));
+    await expect(action).toHaveFocus();
+    await userEvent.tab();
+    await expect(within(dialog()).getByRole("textbox", { name: "Table name pattern" })).toHaveFocus();
+    await userEvent.keyboard("tmp_*");
     await userEvent.tab();
     await expect(within(dialog()).getByRole("button", { name: "Cancel" })).toHaveFocus();
     await userEvent.tab();
@@ -94,6 +95,7 @@ export const Created: Story = {
   play: async ({ args }) => {
     await screen.findByRole("dialog", { name: "New discovery policy" });
     await userEvent.type(within(dialog()).getByRole("textbox", { name: "Name" }), "orders-only");
+    await userEvent.type(within(dialog()).getByRole("textbox", { name: "Table name pattern" }), "orders*");
     await userEvent.click(within(dialog()).getByRole("button", { name: "Create policy" }));
     await expect(await screen.findByText("Policy page orders-only")).toBeVisible();
     await expect(args.onClose).toHaveBeenCalled();
@@ -107,6 +109,7 @@ export const NameTaken: Story = {
   play: async () => {
     await screen.findByRole("dialog", { name: "New discovery policy" });
     await userEvent.type(within(dialog()).getByRole("textbox", { name: "Name" }), "sales-tables");
+    await userEvent.type(within(dialog()).getByRole("textbox", { name: "Table name pattern" }), "*");
     await userEvent.click(within(dialog()).getByRole("button", { name: "Create policy" }));
     await expect(
       await within(dialog()).findByText("a discovery policy named sales-tables already exists"),
@@ -121,6 +124,7 @@ export const Refused: Story = {
   play: async () => {
     await screen.findByRole("dialog", { name: "New discovery policy" });
     await userEvent.type(within(dialog()).getByRole("textbox", { name: "Name" }), "dp-01m7s6c3tqee0rhg00xry2zqqv");
+    await userEvent.type(within(dialog()).getByRole("textbox", { name: "Table name pattern" }), "*");
     await userEvent.click(within(dialog()).getByRole("button", { name: "Create policy" }));
     await expect(await within(dialog()).findByText("a policy name is not shaped like a prefixed id")).toBeVisible();
   },

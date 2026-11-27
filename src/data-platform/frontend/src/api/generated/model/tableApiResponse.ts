@@ -4,6 +4,7 @@
  * Data Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { DecidedByApiResponse } from './decidedByApiResponse';
 import type { TableApiResponseOperationStates } from './tableApiResponseOperationStates';
 
 /**
@@ -11,16 +12,12 @@ import type { TableApiResponseOperationStates } from './tableApiResponseOperatio
  */
 export interface TableApiResponse {
   catalog: string;
+  /** What decided whether the table is managed: the discovery policy of its nearest attachment, its version and the deciding rule's position; null when nothing on the table's walk is attached, so no policy applies and the table is not managed. */
+  decided_by: DecidedByApiResponse | null;
   /** When the table's newest commit landed in the catalog; null until one is seen. */
   last_committed_at: string | null;
   /** When discovery last saw the table: for a live table its catalog's last full scan, or its registration if that came later; for a dropped table the last time before it was dropped. Null when unknown. */
   last_discovered_at: string | null;
-  /** The `dp-` id of the discovery policy that decided whether the table is managed: the policy of its nearest attachment, or the default when nothing on its walk is attached. */
-  matched_policy_id: string;
-  /** The version of that discovery policy that decided the table. */
-  matched_policy_version: number;
-  /** The `dr-` id of the rule that decided the table, in the version `matched_policy_version` of the discovery policy `matched_policy_id`; null when the policy's no-match outcome decided it. */
-  matched_rule_id: string | null;
   namespace: string;
   operation_states: TableApiResponseOperationStates;
   /** The table's maintenance priority, `P0` (urgent) to `P3` (the default). */

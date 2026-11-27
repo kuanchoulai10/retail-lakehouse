@@ -24,6 +24,7 @@ import { DESKTOP, PHONE } from "@/stories/phone";
 import {
   CANCELLED_RUN,
   CANCELLED_RUN_ID,
+  CORE_TABLES_POLICY_ID,
   DRY_RUN_DEFAULT_MAINTENANCE,
   effectivePolicies,
   ESCALATED_RUN,
@@ -861,11 +862,20 @@ export const PropertiesPhone: Story = {
 
 export const Unmanaged: Story = {
   beforeEach({ msw }) {
-    msw.use(getGetTableMockHandler({ ...MAINTAINED_ORDERS, status: "unmanaged", matched_rule_id: null }));
+    msw.use(
+      getGetTableMockHandler({
+        ...MAINTAINED_ORDERS,
+        status: "unmanaged",
+        decided_by: { policy_id: CORE_TABLES_POLICY_ID, policy_version: 1, rule_position: null },
+      }),
+    );
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText("the discovery policy that applies does not manage this table")).toBeVisible();
+    await expect(await canvas.findByText("no discovery policy that applies to this table manages it")).toBeVisible();
+    const table = canvas.getByRole("region", { name: "Table" });
+    await expect(await within(table).findByRole("link", { name: "core-tables v1" })).toBeVisible();
+    await expect(table).toHaveTextContent("Maintenance: not managed · discovery policy core-tables v1 · no rule matched");
     await expect(canvas.queryByRole("button", { name: /Pause|Resume/ })).toBeNull();
   },
 };
@@ -912,16 +922,28 @@ export const CannotAccess: Story = {
   },
 };
 
-// The policy that decided the table has been deleted since: its id, in mono, with no link and no rule.
+// No discovery policy applies to the table any more.
+export const NoDiscoveryPolicy: Story = {
+  beforeEach({ msw }) {
+    msw.use(getGetTableMockHandler({ ...MAINTAINED_ORDERS, status: "unmanaged", decided_by: null }));
+  },
+  play: async ({ canvasElement }) => {
+    const table = await within(canvasElement).findByRole("region", { name: "Table" });
+    await waitFor(() =>
+      expect(table).toHaveTextContent("Maintenance: not managed · No discovery policy applies"),
+    );
+  },
+};
+
+// The policy that decided the table has been deleted since: its id, in mono, with no link.
 export const DecidedByDeletedPolicy: Story = {
   beforeEach({ msw }) {
     msw.use(getListTableDiscoveryPoliciesMockHandler({ policies: [] }));
   },
   play: async ({ canvasElement }) => {
     const table = within(await within(canvasElement).findByRole("region", { name: "Table" }));
-    await expect(await table.findByText(MAINTAINED_ORDERS.matched_policy_id)).toHaveClass("font-mono");
+    await expect(await table.findByText(CORE_TABLES_POLICY_ID)).toHaveClass("font-mono");
     await expect(table.queryByRole("link", { name: /v1/ })).toBeNull();
-    await expect(table.queryByText(/rule/)).toBeNull();
   },
 };
 

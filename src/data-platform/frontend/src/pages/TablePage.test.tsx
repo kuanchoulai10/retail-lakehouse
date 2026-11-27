@@ -56,9 +56,7 @@ function renderAt(path: string, namespacePage: ReactNode = <p>namespace page</p>
 function maintenance(overrides: Partial<TableApiResponse> = {}): TableApiResponse {
   return tableFixture({
     namespace: "retail",
-    matched_policy_id: SALES_TABLES_ID,
-    matched_policy_version: 2,
-    matched_rule_id: ORDERS_RULE_ID,
+    decided_by: { policy_id: SALES_TABLES_ID, policy_version: 2, rule_position: 1 },
     ...overrides,
   });
 }
@@ -80,7 +78,6 @@ function stubTable({ table = catalogTableFixture(), scanned = [ICEBERG_SCANNED],
     [`GET ${TABLE}/partition-spec-versions/0/comparison*`]: () => jsonResponse(SPEC_COMPARISON),
     "GET /v1/scanned-catalogs": () => jsonResponse({ catalogs: scanned }),
     "GET /v1/discovery-policies": () => jsonResponse({ policies: [SALES_TABLES] }),
-    "GET /v1/discovery-policies/sales-tables/versions/2": () => jsonResponse(SALES_TABLES_V2),
     "GET /v1/tables/uuid-orders": maintenanceTable ?? (() => jsonResponse(maintenance())),
     "GET /v1/tables/uuid-orders/commits*": () => jsonResponse({ items: [], truncated: false }),
     "GET /v1/tables/uuid-orders/metrics/current": () => jsonResponse(CURRENT_METRICS),
@@ -194,35 +191,16 @@ const ICEBERG_REFUSED: ScannedCatalogApiResponse = {
 
 // sales-tables decided the table at v2 by its first rule, which the current v3 has moved to second.
 const SALES_TABLES_ID = "dp-01m7s6c3tqee0rhg00xry2zqqv";
-const ORDERS_RULE_ID = "dr-01m7s6c3tqee0rhg00xn5s97gw";
-const ORDERS_RULE = {
-  id: ORDERS_RULE_ID,
-  outcome: "manage",
-  conditions: [
-    { attribute: "namespace", operator: "glob", values: ["retail"] },
-    { attribute: "table_name", operator: "glob", values: ["orders*"] },
-  ],
-};
-const TEMPORARY_RULE = {
-  id: "dr-01m7s6c3tqee0rhg00xz1dk9cs",
-  outcome: "unmanage",
-  conditions: [{ attribute: "table_name", operator: "glob", values: ["tmp_*"] }],
-};
-const SALES_TABLES_V2 = {
+const ORDERS_RULE = { action: "include", table_name_pattern: "orders*" };
+const TEMPORARY_RULE = { action: "exclude", table_name_pattern: "tmp_*" };
+const SALES_TABLES = {
   id: SALES_TABLES_ID,
   name: "sales-tables",
-  is_default: false,
-  version: 2,
-  description: "",
-  no_match_outcome: "unmanage",
-  rules: [ORDERS_RULE, TEMPORARY_RULE],
-  created_at: "2026-11-02T09:00:00Z",
-};
-const SALES_TABLES = {
-  ...SALES_TABLES_V2,
   version: 3,
+  description: "",
   rules: [TEMPORARY_RULE, ORDERS_RULE],
   attachment_count: 1,
+  created_at: "2026-11-02T09:00:00Z",
   updated_at: "2026-11-05T09:00:00Z",
 };
 
@@ -241,7 +219,7 @@ const UNMANAGED: [string, Options, string][] = [
   [
     "unmanaged",
     { maintenanceTable: () => jsonResponse(maintenance({ status: "unmanaged" })) },
-    "the discovery policy that applies does not manage this table",
+    "no discovery policy that applies to this table manages it",
   ],
   [
     "dropped",
@@ -354,7 +332,8 @@ describe("TablePage", { timeout: 15_000 }, () => {
       },
     });
     renderAt(PAGE);
-    expect(await screen.findAllByText("Platform default")).toHaveLength(2);
+    expect(await screen.findAllByText("Platform default")).toHaveLength(1);
+    expect(screen.getByText("No discovery policy applies")).toBeInTheDocument();
     expect(screen.getByText("no discovery policy in this catalog manages tables")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Attach policy for maintenance" }));
     const dialog = await screen.findByRole("dialog");
@@ -433,52 +412,63 @@ describe("TablePage", { timeout: 15_000 }, () => {
     const summary = await screen.findByRole("region", { name: "Table" });
     const link = await within(summary).findByRole("link", { name: "sales-tables v2" });
     expect(link).toHaveAttribute("href", "/discovery-policies/sales-tables/versions/2");
-    await waitFor(() =>
-      expect(summary).toHaveTextContent("Maintenance: managed · discovery policy sales-tables v2 · rule 1"),
-    );
-    expect(within(summary).queryByText(ORDERS_RULE_ID)).not.toBeInTheDocument();
-    expect(calls.filter((call) => call.path.startsWith("/v1/discovery-rules"))).toHaveLength(0);
-  });
-
-  it("overview says no rule matched when the policy's no-match outcome decided the table", async () => {
-    const calls = stubTable({ maintenanceTable: () => jsonResponse(maintenance({ matched_rule_id: null })) });
-    renderAt(PAGE);
-    const summary = await screen.findByRole("region", { name: "Table" });
-    await within(summary).findByRole("link", { name: "sales-tables v2" });
-    await waitFor(() =>
-      expect(summary).toHaveTextContent("Maintenance: managed · discovery policy sales-tables v2 · no rule matched"),
-    );
-    expect(summary).not.toHaveTextContent("· rule ");
-    await settle();
+    expect(summary).toHaveTextContent("Maintenance: managed · discovery policy sales-tables v2 · rule 1");
+    // The position comes with the table; no version is read to find it.
     expect(calls.filter((call) => call.path.includes("/versions/"))).toHaveLength(0);
   });
 
-  it.each([
-    ["pending", () => new Promise<Response>(() => {})],
-    ["failed", () => jsonResponse({ detail: "boom" }, 500)],
-  ])("overview names no rule while the deciding version is %s", async (_state, version) => {
-    const calls = stubTable({ extra: { "GET /v1/discovery-policies/sales-tables/versions/2": version } });
+  it("overview says no rule matched for a table the applying policy left unmanaged", async () => {
+    stubTable({
+      maintenanceTable: () =>
+        jsonResponse(
+          maintenance({
+            status: "unmanaged",
+            decided_by: { policy_id: SALES_TABLES_ID, policy_version: 2, rule_position: null },
+          }),
+        ),
+    });
     renderAt(PAGE);
     const summary = await screen.findByRole("region", { name: "Table" });
     await within(summary).findByRole("link", { name: "sales-tables v2" });
-    await waitFor(() => expect(callsTo(calls, "GET", "/v1/discovery-policies/sales-tables/versions/2")).toHaveLength(1));
-    await settle();
-    expect(summary).toHaveTextContent("Maintenance: managed · discovery policy sales-tables v2");
-    expect(summary).not.toHaveTextContent("no rule matched");
+    expect(summary).toHaveTextContent("Maintenance: not managed · discovery policy sales-tables v2 · no rule matched");
     expect(summary).not.toHaveTextContent("· rule ");
   });
 
-  it("overview shows a deleted policy's id, with no link and no rule", async () => {
-    const calls = stubTable({ extra: { "GET /v1/discovery-policies": () => jsonResponse({ policies: [] }) } });
+  it("overview names the exclude rule that left a table unmanaged", async () => {
+    stubTable({
+      maintenanceTable: () =>
+        jsonResponse(
+          maintenance({
+            status: "unmanaged",
+            decided_by: { policy_id: SALES_TABLES_ID, policy_version: 3, rule_position: 2 },
+          }),
+        ),
+    });
+    renderAt(PAGE);
+    const summary = await screen.findByRole("region", { name: "Table" });
+    await within(summary).findByRole("link", { name: "sales-tables v3" });
+    expect(summary).toHaveTextContent("Maintenance: not managed · discovery policy sales-tables v3 · rule 2");
+  });
+
+  it("overview says no discovery policy applies, without asking for the policies", async () => {
+    const calls = stubTable({
+      maintenanceTable: () => jsonResponse(maintenance({ status: "unmanaged", decided_by: null })),
+    });
+    renderAt(PAGE);
+    const summary = await screen.findByRole("region", { name: "Table" });
+    await waitFor(() => expect(summary).toHaveTextContent("Maintenance: not managed · No discovery policy applies"));
+    await settle();
+    expect(callsTo(calls, "GET", "/v1/discovery-policies")).toHaveLength(0);
+  });
+
+  it("overview shows a deleted policy's id, with no link, and still its rule", async () => {
+    stubTable({ extra: { "GET /v1/discovery-policies": () => jsonResponse({ policies: [] }) } });
     renderAt(PAGE);
     const summary = await screen.findByRole("region", { name: "Table" });
     const id = await within(summary).findByText(SALES_TABLES_ID);
     expect(id).toHaveClass("font-mono");
-    await settle();
-    expect(summary).toHaveTextContent(`Maintenance: managed · discovery policy ${SALES_TABLES_ID} v2`);
-    expect(summary).not.toHaveTextContent("rule");
+    expect(summary).toHaveTextContent(`Maintenance: managed · discovery policy ${SALES_TABLES_ID} v2 · rule 1`);
     expect(within(summary).queryByRole("link", { name: /v2/ })).not.toBeInTheDocument();
-    expect(calls.filter((call) => call.path.includes("/versions/"))).toHaveLength(0);
   });
 
   it("overview shows the table's priority and saves a new one, then reads the record again", async () => {
@@ -521,12 +511,13 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(screen.queryByRole("combobox", { name: "Priority" })).not.toBeInTheDocument();
   });
 
-  it("overview does not ask for the discovery policies when the table is not managed", async () => {
-    const calls = stubTable({ maintenanceTable: () => jsonResponse(maintenance({ status: "unmanaged" })) });
+  it("overview says nothing of a discovery policy for a dropped table", async () => {
+    const calls = stubTable({ maintenanceTable: () => jsonResponse(maintenance({ status: "dropped" })) });
     renderAt(PAGE);
     await screen.findByText("Maintenance: not managed");
     await settle();
-    expect(calls.filter((call) => call.path.startsWith("/v1/discovery-"))).toHaveLength(0);
+    expect(screen.getByRole("region", { name: "Table" })).not.toHaveTextContent("discovery policy");
+    expect(callsTo(calls, "GET", "/v1/discovery-policies")).toHaveLength(0);
   });
 
   it("names a scanned catalog discovery cannot read on the overview, and links to the discovery policies", async () => {
@@ -551,7 +542,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
     renderAt(PAGE);
     const summary = await screen.findByRole("region", { name: "Table" });
     expect(await within(summary).findByText("Maintenance: not managed")).toBeInTheDocument();
-    expect(screen.getByText("the discovery policy that applies does not manage this table")).toBeInTheDocument();
+    expect(screen.getByText("no discovery policy that applies to this table manages it")).toBeInTheDocument();
   });
 
   it("shows the header numbers from the catalog summary", async () => {

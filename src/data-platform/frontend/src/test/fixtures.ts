@@ -21,9 +21,7 @@ export function tableFixture(overrides: Partial<TableApiResponse> = {}): TableAp
     table: "orders",
     status: "managed",
     priority: "P3",
-    matched_rule_id: "dr-01m7s6c3tqee0rhg00xn5s97gw",
-    matched_policy_id: "dp-01m7s6c3tqee0rhg00xn5s97gv",
-    matched_policy_version: 1,
+    decided_by: { policy_id: "dp-01m7s6c3tqee0rhg00xn5s97gv", policy_version: 1, rule_position: 1 },
     operation_states: {},
     registered_at: "2026-10-30T10:00:00Z",
     updated_at: "2026-10-31T08:00:00Z",
@@ -73,7 +71,8 @@ export function policyFixture(
 }
 
 // What a page's effective-policies answer holds for each kind; an entry with a target is attached
-// there and carries that attachment's id, one without is the platform default.
+// there and carries that attachment's id. A maintenance entry without one is the platform default; a
+// discovery entry without one says no discovery policy applies, and names no policy.
 export function effectiveMaintenanceFixture(
   overrides: Partial<MaintenanceEffectivePolicyApiResponse> = {},
 ): MaintenanceEffectivePolicyApiResponse {
@@ -95,15 +94,26 @@ export function effectiveDiscoveryFixture(
   overrides: Partial<DiscoveryEffectivePolicyApiResponse> = {},
 ): DiscoveryEffectivePolicyApiResponse {
   const target = overrides.target ?? null;
+  if (target === null) {
+    return {
+      kind: "discovery",
+      policy_id: null,
+      policy_name: null,
+      version: null,
+      description: null,
+      target: null,
+      attachment_id: null,
+      ...overrides,
+    };
+  }
   return {
     kind: "discovery",
-    policy_id: target === null ? "dp-00000000000000000000000000" : "dp-01m7s6c3tqee0rhg00xry2zqqv",
-    policy_name: target === null ? "default" : "sales-tables",
-    version: target === null ? 1 : 2,
+    policy_id: "dp-01m7s6c3tqee0rhg00xry2zqqv",
+    policy_name: "sales-tables",
+    version: 2,
     description: "",
-    no_match_outcome: "unmanage",
     target,
-    attachment_id: target === null ? null : "da-01m7s6c3tqee0rhg00xry2zqqx",
+    attachment_id: "da-01m7s6c3tqee0rhg00xry2zqqx",
     ...overrides,
   };
 }

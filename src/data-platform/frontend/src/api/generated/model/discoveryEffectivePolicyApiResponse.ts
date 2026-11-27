@@ -4,22 +4,21 @@
  * Data Platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { DiscoveryEffectivePolicyApiResponseNoMatchOutcome } from './discoveryEffectivePolicyApiResponseNoMatchOutcome';
 import type { PolicyTargetApiResponse } from './policyTargetApiResponse';
 
 /**
  * Describe the discovery policy that applies, at its latest version, and the level it applies from.
  *
- * ``target`` is the nearest attachment's target and ``attachment_id`` its ``da-`` id; both are null when
- * the platform default applies.
+ * ``target`` is the nearest attachment's target and ``attachment_id`` its ``da-`` id. When nothing is
+ * attached no discovery policy applies, the place's tables are not managed, and every field but ``kind``
+ * is null: there is no discovery default.
  */
 export interface DiscoveryEffectivePolicyApiResponse {
   attachment_id: string | null;
-  description: string;
+  description: string | null;
   kind: 'discovery';
-  no_match_outcome: DiscoveryEffectivePolicyApiResponseNoMatchOutcome;
-  policy_id: string;
-  policy_name: string;
+  policy_id: string | null;
+  policy_name: string | null;
   target: PolicyTargetApiResponse | null;
-  version: number;
+  version: number | null;
 }

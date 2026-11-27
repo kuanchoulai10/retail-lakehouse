@@ -26,9 +26,10 @@ export const Loaded: Story = {
     await expect(await canvas.findByRole("heading", { level: 1, name: "sales-tables v2" })).toBeVisible();
     const facts = within(canvas.getByRole("region", { name: "Policy" }));
     await expect(facts.getByText("Sales tables, without the temporary ones")).toBeVisible();
-    await expect(facts.getByText("Do not manage")).toBeVisible();
+    await expect(facts.queryByText("When no rule matches")).toBeNull();
     const rules = within(canvas.getByRole("table", { name: RULES_TABLE }));
     await expect(rules.getByText("tmp_*")).toBeVisible();
+    await expect(rules.getAllByText("Exclude")).toHaveLength(2);
     await expect(rules.queryByRole("button")).toBeNull();
     const crumbs = within(canvas.getByRole("navigation", { name: "Breadcrumb" }));
     await expect(crumbs.getByRole("link", { name: "sales-tables" })).toBeVisible();
@@ -36,27 +37,25 @@ export const Loaded: Story = {
   },
 };
 
-// v2 swapped v1's archive rule for the temporary-tables rule.
+// v2 dropped v1's archive rule and added the temporary and staging ones.
 export const Changes: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const list = within(await canvas.findByRole("list", { name: "Changes from v1" }));
     const rows = list.getAllByRole("listitem");
-    await expect(rows).toHaveLength(2);
-    await expect(rows.filter((row) => within(row).queryByText("Added") !== null)).toHaveLength(1);
-    await expect(rows.filter((row) => within(row).queryByText("Removed") !== null)).toHaveLength(1);
-    await expect(list.getByText("Do not manage: table name tmp_*, staging_*")).toBeVisible();
-    await expect(list.getByText("Do not manage: table name archive_*")).toBeVisible();
+    await expect(rows).toHaveLength(3);
+    await expect(rows[0]).toHaveTextContent("Rule #2RemovedExclude archive_*");
+    await expect(rows[1]).toHaveTextContent("Rule #2AddedExclude tmp_*");
+    await expect(rows[2]).toHaveTextContent("Rule #3AddedExclude staging_*");
   },
 };
 
-// The default has one version, which is its first.
-export const Default: Story = {
-  args: { route: "/discovery-policies/default/versions/1" },
+export const FirstVersion: Story = {
+  args: { route: "/discovery-policies/sales-tables/versions/1" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole("heading", { level: 1, name: "default v1" })).toBeVisible();
-    await expect(canvas.getByText("No rules.")).toBeVisible();
+    await expect(await canvas.findByRole("heading", { level: 1, name: "sales-tables v1" })).toBeVisible();
+    await expect(canvas.getByText("archive_*")).toBeVisible();
     await expect(canvas.getByText("First version")).toBeVisible();
   },
 };

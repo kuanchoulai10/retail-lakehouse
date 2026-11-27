@@ -65,7 +65,7 @@ describe("CatalogPage", { timeout: 15_000 }, () => {
     expect(maintenance).toHaveTextContent("Attached here");
     expect(within(maintenance!).getByRole("link", { name: "nightly v4" })).toBeInTheDocument();
     expect(within(maintenance!).getByRole("button", { name: "Detach maintenance policy" })).toBeInTheDocument();
-    expect(discovery).toHaveTextContent("Platform default");
+    expect(discovery).toHaveTextContent("No discovery policy applies");
     expect(callsTo(calls, "GET", "/v1/effective-policies?catalog=iceberg")).toHaveLength(1);
   });
 

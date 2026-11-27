@@ -18,39 +18,17 @@ function policy(overrides: Partial<TableDiscoveryPolicyApiResponse> = {}): Table
   return {
     id: "dp-01m7s6c3tqee0rhg00xry2zqqv",
     name: "sales-tables",
-    is_default: false,
     version: 3,
     description: "Sales tables",
-    no_match_outcome: "unmanage",
     rules: [
-      {
-        id: "dr-orders",
-        outcome: "manage",
-        conditions: [
-          { attribute: "namespace", operator: "glob", values: ["sales"] },
-          { attribute: "table_name", operator: "glob", values: ["orders*"] },
-        ],
-      },
-      {
-        id: "dr-temporary",
-        outcome: "unmanage",
-        conditions: [{ attribute: "table_name", operator: "glob", values: ["tmp_*"] }],
-      },
+      { action: "include", table_name_pattern: "orders*" },
+      { action: "exclude", table_name_pattern: "tmp_*" },
     ],
     created_at: "2026-11-01T09:00:00Z",
     updated_at: "2026-11-05T09:00:00Z",
     ...overrides,
   };
 }
-
-const DEFAULT_POLICY = policy({
-  id: "dp-00000000000000000000000000",
-  name: "default",
-  is_default: true,
-  version: 1,
-  description: "Manages nothing. Attach another discovery policy to a catalog, namespace or table to manage its tables.",
-  rules: [],
-});
 
 function attachment(type: string, path: string[]): ListedTableDiscoveryPolicyAttachmentApiResponse {
   return {
@@ -70,10 +48,8 @@ function stubApi(
 ) {
   return stubCatalogApi({
     [`GET ${PATH}`]: () => jsonResponse(saved),
-    "GET /v1/discovery-policies/default": () => jsonResponse(DEFAULT_POLICY),
     "GET /v1/discovery-policies": () => jsonResponse({ policies: [] }),
     [`GET ${PATH}/attachments`]: () => jsonResponse({ attachments }),
-    "GET /v1/discovery-policies/default/attachments": () => jsonResponse({ attachments: [] }),
     "GET /v1/scanned-catalogs": () => jsonResponse({ catalogs: [] }),
     ...responses,
   });
@@ -106,6 +82,10 @@ function ruleRow(position: number): HTMLElement {
 // The rules are there; the attachments may still be loading, and the rules' controls must work meanwhile.
 async function loaded() {
   await screen.findByRole("table", { name: "Discovery rules, read top to bottom" });
+}
+
+function patternField(position: number): HTMLElement {
+  return screen.getByRole("textbox", { name: `Table name pattern of rule ${position}` });
 }
 
 function saveButton(): HTMLElement {
@@ -149,13 +129,15 @@ describe("DiscoveryPolicyPage", () => {
     expect(within(versions).getByRole("link", { name: "v2" })).toHaveFocus();
   });
 
-  it("edits the description, the no-match outcome and the rules", async () => {
+  it("edits the description and the rules, with no no-match outcome", async () => {
     stubApi();
     renderAt();
     await loaded();
     expect(screen.getByRole("textbox", { name: "Description" })).toHaveValue("Sales tables");
-    expect(screen.getByRole("combobox", { name: "When no rule matches" })).toHaveTextContent("Do not manage");
-    expect(within(ruleRow(1)).getByText("orders*")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "When no rule matches" })).not.toBeInTheDocument();
+    expect(within(ruleRow(1)).getByRole("combobox", { name: "Action of rule 1" })).toHaveTextContent("Include");
+    expect(patternField(1)).toHaveValue("orders*");
+    expect(within(ruleRow(2)).getByRole("combobox", { name: "Action of rule 2" })).toHaveTextContent("Exclude");
     expect(screen.getByRole("button", { name: "Add rule" })).toBeEnabled();
   });
 
@@ -181,8 +163,8 @@ describe("DiscoveryPolicyPage", () => {
     renderAt();
     await loaded();
     await user.click(screen.getByRole("button", { name: "Move rule 2 up" }));
-    await user.click(screen.getByRole("combobox", { name: "When no rule matches" }));
-    await user.click(await screen.findByRole("option", { name: "Manage" }));
+    await user.click(screen.getByRole("combobox", { name: "Action of rule 2" }));
+    await user.click(await screen.findByRole("option", { name: "Exclude" }));
     await waitFor(() => expect(callsTo(calls, "GET", "/v1/scanned-catalogs")).toHaveLength(1));
     await user.click(saveButton());
 
@@ -193,14 +175,16 @@ describe("DiscoveryPolicyPage", () => {
       {
         version: 3,
         description: "Sales tables",
-        no_match_outcome: "manage",
-        rules: [policy().rules[1], policy().rules[0]],
+        rules: [
+          { action: "exclude", table_name_pattern: "tmp_*" },
+          { action: "exclude", table_name_pattern: "orders*" },
+        ],
       },
     ]);
     expect(callsTo(calls, "GET", PATH).length).toBeGreaterThan(1);
   });
 
-  it("marks what applies anywhere stale after a save, since the version and the no-match outcome changed", async () => {
+  it("marks what applies anywhere stale after a save, since the version changed", async () => {
     stubApi({ [`PUT ${PATH}`]: () => jsonResponse(policy({ version: 4 })) });
     const user = userEvent.setup();
     const client = renderAt();
@@ -217,39 +201,50 @@ describe("DiscoveryPolicyPage", () => {
     expect(client.getQueryState(byUuid)?.isInvalidated).toBe(true);
   });
 
-  it("adds a rule, sent without an id", async () => {
+  it("adds a rule as include with an empty pattern, focused, and saves it once it has one", async () => {
     const calls = stubApi({ [`PUT ${PATH}`]: () => jsonResponse(policy({ version: 4 })) });
     const user = userEvent.setup();
     renderAt();
     await loaded();
     await user.click(screen.getByRole("button", { name: "Add rule" }));
-    const dialog = await screen.findByRole("dialog", { name: "Add rule" });
-    await user.type(within(dialog).getByRole("textbox", { name: "New namespace glob" }), "finance{Enter}");
-    await user.click(within(dialog).getByRole("button", { name: "Add rule" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(within(ruleRow(3)).getByText("finance")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(within(ruleRow(3)).getByRole("combobox", { name: "Action of rule 3" })).toHaveTextContent("Include");
+    await waitFor(() => expect(patternField(3)).toHaveFocus());
+    expect(patternField(3)).toHaveValue("");
+    expect(saveButton()).toBeDisabled();
+    expect(screen.getByText("Every rule needs a table name pattern before the policy can be saved.")).toBeInTheDocument();
+    await user.keyboard("finance_*");
+    expect(saveButton()).toBeEnabled();
+    expect(screen.queryByText(/Every rule needs a table name pattern/)).not.toBeInTheDocument();
     await user.click(saveButton());
 
     await screen.findByText("Saved. Discovering tables…");
     const body = callsTo(calls, "PUT", PATH)[0]?.body as { rules: Record<string, unknown>[] };
-    expect(body.rules[2]).toEqual({
-      outcome: "manage",
-      conditions: [{ attribute: "namespace", operator: "glob", values: ["finance"] }],
-    });
+    expect(body.rules[2]).toEqual({ action: "include", table_name_pattern: "finance_*" });
   });
 
-  it("edits a rule in the editor", async () => {
+  it("keeps the pattern field focused while it is typed in", async () => {
     stubApi();
     const user = userEvent.setup();
     renderAt();
     await loaded();
-    await user.click(screen.getByRole("button", { name: "Edit rule 2" }));
-    const dialog = await screen.findByRole("dialog", { name: "Edit rule" });
-    await user.type(within(dialog).getByRole("textbox", { name: "New table name glob" }), "staging_*{Enter}");
-    await user.click(within(dialog).getByRole("button", { name: "Update rule" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(within(ruleRow(2)).getByText("staging_*")).toBeInTheDocument();
+    await user.clear(patternField(2));
+    await user.type(patternField(2), "staging_*");
+    expect(patternField(2)).toHaveFocus();
+    expect(patternField(2)).toHaveValue("staging_*");
     expect(saveButton()).toBeEnabled();
+  });
+
+  it("cannot save a policy with no rules", async () => {
+    stubApi();
+    const user = userEvent.setup();
+    renderAt();
+    await loaded();
+    await user.click(screen.getByRole("button", { name: "Delete rule 1" }));
+    await user.click(screen.getByRole("button", { name: "Delete rule 1" }));
+    expect(screen.getByText("No rules. A policy needs at least one.")).toBeInTheDocument();
+    expect(saveButton()).toBeDisabled();
+    expect(discardButton()).toBeEnabled();
   });
 
   it("deletes a rule of the draft without asking, and Discard brings it back", async () => {
@@ -259,9 +254,9 @@ describe("DiscoveryPolicyPage", () => {
     await loaded();
     await user.click(screen.getByRole("button", { name: "Delete rule 1" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.queryByText("orders*")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("orders*")).not.toBeInTheDocument();
     await user.click(discardButton());
-    expect(screen.getByText("orders*")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("orders*")).toBeInTheDocument();
     expect(saveButton()).toBeDisabled();
   });
 
@@ -283,14 +278,14 @@ describe("DiscoveryPolicyPage", () => {
     expect(
       await screen.findByText("Someone else changed this policy. Reload to see their version."),
     ).toBeInTheDocument();
-    expect(screen.queryByText("tmp_*")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("tmp_*")).not.toBeInTheDocument();
     await waitFor(() => expect(reads).toBe(2));
     await user.click(saveButton());
     await waitFor(() => expect(callsTo(calls, "PUT", PATH)).toHaveLength(2));
     expect(callsTo(calls, "PUT", PATH).map((call) => (call.body as { version: number }).version)).toEqual([3, 3]);
 
     await user.click(screen.getByRole("button", { name: "Reload" }));
-    expect(await screen.findByText("tmp_*")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("tmp_*")).toBeInTheDocument();
     expect(screen.getByText(/^Version 4, saved/)).toBeInTheDocument();
     expect(screen.queryByText(/Someone else changed/)).not.toBeInTheDocument();
   });
@@ -318,28 +313,15 @@ describe("DiscoveryPolicyPage", () => {
   });
 
   it("shows the API's detail when the content is refused", async () => {
-    stubApi({ [`PUT ${PATH}`]: () => jsonResponse({ detail: "unknown discovery rule id dr-gone" }, 422) });
+    stubApi({ [`PUT ${PATH}`]: () => jsonResponse({ detail: "a discovery policy needs at least one rule" }, 422) });
     const user = userEvent.setup();
     renderAt();
     await loaded();
     await user.type(screen.getByRole("textbox", { name: "Description" }), "!");
     await user.click(saveButton());
-    expect(await screen.findByText("unknown discovery rule id dr-gone")).toBeInTheDocument();
+    expect(await screen.findByText("a discovery policy needs at least one rule")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reload" })).not.toBeInTheDocument();
     expect(screen.queryByText("Saved. Discovering tables…")).not.toBeInTheDocument();
-  });
-
-  it("shows the default read only, with its fixed description", async () => {
-    stubApi();
-    renderAt("default");
-    expect(await screen.findByRole("heading", { level: 1, name: "default" })).toBeInTheDocument();
-    await loaded();
-    expect(screen.getByText(DEFAULT_POLICY.description)).toBeInTheDocument();
-    expect(screen.getByText("Do not manage")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Add rule" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 
   it("lists where the policy is attached, under its rules", async () => {
@@ -349,50 +331,6 @@ describe("DiscoveryPolicyPage", () => {
     const attached = screen.getByRole("region", { name: "Attached to" });
     expect(await within(attached).findByRole("link", { name: "iceberg" })).toHaveAttribute("href", "/catalogs/iceberg");
     expect(rulesTable().compareDocumentPosition(attached) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it("hints under each rule which conditions cannot tell tables apart where the policy is attached", async () => {
-    stubApi({}, policy(), [
-      attachment("namespace", ["iceberg", "sales"]),
-      attachment("table", ["iceberg", "finance", "ledger"]),
-    ]);
-    renderAt();
-    await loaded();
-    const tableHint = "On a table, a rule either always or never matches it.";
-    const namespaceHint = "Attached to namespace iceberg.sales: a namespace glob only tells its child namespaces apart.";
-    await waitFor(() => expect(within(ruleRow(1)).getByText(namespaceHint)).toBeInTheDocument());
-    expect(within(ruleRow(1)).getByText(tableHint)).toBeInTheDocument();
-    expect(within(ruleRow(2)).getByText(tableHint)).toBeInTheDocument();
-    expect(within(ruleRow(2)).queryByText(namespaceHint)).not.toBeInTheDocument();
-  });
-
-  it("hints on a rule of the draft before it is saved", async () => {
-    stubApi({}, policy({ rules: [] }), [attachment("namespace", ["iceberg", "sales"])]);
-    const user = userEvent.setup();
-    renderAt();
-    await loaded();
-    await screen.findByRole("button", { name: "Detach from iceberg.sales" });
-    await user.click(screen.getByRole("button", { name: "Add rule" }));
-    const dialog = await screen.findByRole("dialog", { name: "Add rule" });
-    await user.type(within(dialog).getByRole("textbox", { name: "New namespace glob" }), "finance{Enter}");
-    await user.click(within(dialog).getByRole("button", { name: "Add rule" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(
-      within(ruleRow(1)).getByText(
-        "Attached to namespace iceberg.sales: a namespace glob only tells its child namespaces apart.",
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("lets the default be attached too", async () => {
-    stubApi();
-    renderAt("default");
-    await loaded();
-    const attached = screen.getByRole("region", { name: "Attached to" });
-    expect(
-      await within(attached).findByText("Not attached. Attach it to a catalog, namespace or table to apply it."),
-    ).toBeInTheDocument();
-    expect(within(attached).getByRole("button", { name: "Attach" })).toBeEnabled();
   });
 
   it("says when the policy cannot be loaded", async () => {

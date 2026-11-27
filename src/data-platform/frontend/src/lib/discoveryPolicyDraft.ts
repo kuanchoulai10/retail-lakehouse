@@ -1,96 +1,67 @@
 import type {
-  DiscoveryConditionApiRequest,
-  DiscoveryRuleApiRequest,
   DiscoveryRuleApiResponse,
   TableDiscoveryPolicyApiResponse,
   UpdateTableDiscoveryPolicyApiRequest,
 } from "@/api/generated/model";
 
-export type DiscoveryOutcome = "manage" | "unmanage";
+export type RuleAction = "include" | "exclude";
 
-// One rule as the page edits it. `key` names it on the page; `id` is the server's `dr-` id, null
-// until the rule is saved (the server issues ids, so a new rule is sent without one). An empty glob
-// list means the rule puts no condition on that attribute.
+// One rule as the page edits it. A rule has no id of its own: `key` only names its row on the page,
+// and the rule is its action and its table name pattern, at its position.
 export interface DiscoveryRuleDraft {
   key: string;
-  id: string | null;
-  outcome: DiscoveryOutcome;
-  namespaces: string[];
-  tableNames: string[];
+  action: RuleAction;
+  tableNamePattern: string;
 }
 
 // The policy's content as the page edits it, with the version it was read at.
 export interface DiscoveryPolicyDraft {
   version: number;
   description: string;
-  noMatchOutcome: DiscoveryOutcome;
   rules: DiscoveryRuleDraft[];
 }
 
 // The content a policy and each of its kept versions share.
-type PolicyContent = Pick<TableDiscoveryPolicyApiResponse, "version" | "description" | "no_match_outcome" | "rules">;
+type PolicyContent = Pick<TableDiscoveryPolicyApiResponse, "version" | "description" | "rules">;
 
-const OUTCOME_LABELS: Record<DiscoveryOutcome, string> = {
-  manage: "Manage",
-  unmanage: "Do not manage",
+const ACTION_LABELS: Record<RuleAction, string> = {
+  include: "Include",
+  exclude: "Exclude",
 };
 
-export function outcomeLabel(outcome: DiscoveryOutcome): string {
-  return OUTCOME_LABELS[outcome];
+// The one place a rule's action gets its words.
+export function actionLabel(action: RuleAction): string {
+  return ACTION_LABELS[action];
 }
 
-function outcomeOf(value: string): DiscoveryOutcome {
-  return value === "manage" ? "manage" : "unmanage";
+function actionOf(value: string): RuleAction {
+  return value === "include" ? "include" : "exclude";
 }
 
-function globsOf(rule: DiscoveryRuleApiResponse, attribute: DiscoveryConditionApiRequest["attribute"]): string[] {
-  return rule.conditions.find((condition) => condition.attribute === attribute)?.values ?? [];
-}
-
-export function draftFromRule(rule: DiscoveryRuleApiResponse): DiscoveryRuleDraft {
-  return {
-    key: rule.id,
-    id: rule.id,
-    outcome: outcomeOf(rule.outcome),
-    namespaces: globsOf(rule, "namespace"),
-    tableNames: globsOf(rule, "table_name"),
-  };
+function draftFromRule(rule: DiscoveryRuleApiResponse, index: number): DiscoveryRuleDraft {
+  return { key: `rule-${index + 1}`, action: actionOf(rule.action), tableNamePattern: rule.table_name_pattern };
 }
 
 export function draftFromPolicy(policy: PolicyContent): DiscoveryPolicyDraft {
   return {
     version: policy.version,
     description: policy.description,
-    noMatchOutcome: outcomeOf(policy.no_match_outcome),
     rules: policy.rules.map(draftFromRule),
   };
 }
 
-// Only the conditions the rule has, namespace first, each a glob match.
-function conditionsOf(rule: DiscoveryRuleDraft): DiscoveryConditionApiRequest[] {
-  const conditions: DiscoveryConditionApiRequest[] = [];
-  if (rule.namespaces.length > 0) conditions.push({ attribute: "namespace", operator: "glob", values: rule.namespaces });
-  if (rule.tableNames.length > 0) conditions.push({ attribute: "table_name", operator: "glob", values: rule.tableNames });
-  return conditions;
-}
-
-function ruleRequest(rule: DiscoveryRuleDraft): DiscoveryRuleApiRequest {
-  return { ...(rule.id === null ? {} : { id: rule.id }), outcome: rule.outcome, conditions: conditionsOf(rule) };
-}
-
-// The draft as the API takes it: the rules in the draft's order, a new rule without an id.
+// The draft as the API takes it: the rules in the draft's order.
 export function updateRequest(draft: DiscoveryPolicyDraft): UpdateTableDiscoveryPolicyApiRequest {
   return {
     version: draft.version,
     description: draft.description,
-    no_match_outcome: draft.noMatchOutcome,
-    rules: draft.rules.map(ruleRequest),
+    rules: draft.rules.map((rule) => ({ action: rule.action, table_name_pattern: rule.tableNamePattern })),
   };
 }
 
-// A new rule with no globs: the user names what it matches.
+// A new rule includes and has no pattern yet: the user names what it matches.
 export function newRuleDraft(key: string): DiscoveryRuleDraft {
-  return { key, id: null, outcome: "manage", namespaces: [], tableNames: [] };
+  return { key, action: "include", tableNamePattern: "" };
 }
 
 // The rules with the one keyed `key` swapped with its neighbour; at an end, the rules unchanged.
@@ -103,16 +74,12 @@ export function movedRule(rules: DiscoveryRuleDraft[], key: string, by: -1 | 1):
   return next;
 }
 
-// The API refuses a rule without a condition; the editor says so first.
-export function ruleHasCondition(rule: DiscoveryRuleDraft): boolean {
-  return rule.namespaces.length > 0 || rule.tableNames.length > 0;
+// The API keeps a policy only with at least one rule; the page also waits for every pattern.
+export function isDraftComplete(draft: Pick<DiscoveryPolicyDraft, "rules">): boolean {
+  return draft.rules.length > 0 && draft.rules.every((rule) => rule.tableNamePattern.trim() !== "");
 }
 
-// A rule in one line, as the version page compares rules: "Manage: namespace sales; table name orders*".
-export function ruleText(rule: DiscoveryRuleDraft): string {
-  const conditions = [
-    ...(rule.namespaces.length > 0 ? [`namespace ${rule.namespaces.join(", ")}`] : []),
-    ...(rule.tableNames.length > 0 ? [`table name ${rule.tableNames.join(", ")}`] : []),
-  ];
-  return `${outcomeLabel(rule.outcome)}: ${conditions.length > 0 ? conditions.join("; ") : "every table"}`;
+// A rule in one line, as the version page compares rules: "Exclude tmp_*".
+export function ruleText(rule: Pick<DiscoveryRuleDraft, "action" | "tableNamePattern">): string {
+  return `${actionLabel(rule.action)} ${rule.tableNamePattern}`;
 }

@@ -4,14 +4,14 @@
  * Data Platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { DiscoveryConditionApiResponse } from './discoveryConditionApiResponse';
-import type { DiscoveryRuleApiResponseOutcome } from './discoveryRuleApiResponseOutcome';
+import type { DiscoveryRuleApiResponseAction } from './discoveryRuleApiResponseAction';
 
 /**
- * Describe one rule, with the ``dr-`` id that links it across versions.
+ * Describe one rule of a policy; its place in the list is its position, counted from 1.
  */
 export interface DiscoveryRuleApiResponse {
-  conditions: DiscoveryConditionApiResponse[];
-  id: string;
-  outcome: DiscoveryRuleApiResponseOutcome;
+  /** `include` brings the matching tables under management; `exclude` leaves them out. */
+  action: DiscoveryRuleApiResponseAction;
+  /** A case-sensitive glob on the table name alone (`*`, `?`, `[...]`), never on its namespace or catalog. */
+  table_name_pattern: string;
 }

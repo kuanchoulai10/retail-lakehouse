@@ -5,16 +5,16 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { DiscoveryRuleApiRequest } from './discoveryRuleApiRequest';
-import type { UpdateTableDiscoveryPolicyApiRequestNoMatchOutcome } from './updateTableDiscoveryPolicyApiRequestNoMatchOutcome';
 
 /**
- * Carry a discovery policy's whole new content and the version it was edited from.
+ * Carry a discovery policy's new description and rules and the version it was edited from.
  */
 export interface UpdateTableDiscoveryPolicyApiRequest {
   description: string;
-  /** What happens to a table that no rule matches: managed or not. */
-  no_match_outcome: UpdateTableDiscoveryPolicyApiRequestNoMatchOutcome;
-  /** The rules, read top to bottom; the first whose conditions all hold decides. */
+  /**
+     * The rules, at least one, read top to bottom; the last whose pattern matches a table decides it, and a table no rule matches is not managed.
+     * @minItems 1
+     */
   rules: DiscoveryRuleApiRequest[];
   version: number;
 }

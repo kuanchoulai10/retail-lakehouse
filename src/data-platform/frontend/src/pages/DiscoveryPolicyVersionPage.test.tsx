@@ -7,21 +7,9 @@ import { callsTo, stubCatalogApi, type StubHandler } from "../test/catalogApiStu
 import { jsonResponse } from "../test/fixtures";
 import { DiscoveryPolicyVersionPage } from "./DiscoveryPolicyVersionPage";
 
-const ORDERS: DiscoveryRuleApiResponse = {
-  id: "dr-orders",
-  outcome: "manage",
-  conditions: [{ attribute: "namespace", operator: "glob", values: ["sales"] }],
-};
-const TEMPORARY: DiscoveryRuleApiResponse = {
-  id: "dr-temporary",
-  outcome: "unmanage",
-  conditions: [{ attribute: "table_name", operator: "glob", values: ["tmp_*"] }],
-};
-const ARCHIVE: DiscoveryRuleApiResponse = {
-  id: "dr-archive",
-  outcome: "unmanage",
-  conditions: [{ attribute: "table_name", operator: "glob", values: ["archive_*"] }],
-};
+const ORDERS: DiscoveryRuleApiResponse = { action: "include", table_name_pattern: "orders*" };
+const TEMPORARY: DiscoveryRuleApiResponse = { action: "exclude", table_name_pattern: "tmp_*" };
+const ARCHIVE: DiscoveryRuleApiResponse = { action: "exclude", table_name_pattern: "archive_*" };
 
 function version(
   number: number,
@@ -30,10 +18,8 @@ function version(
   return {
     id: "dp-01m7s6c3tqee0rhg00xry2zqqv",
     name: "sales-tables",
-    is_default: false,
     version: number,
     description: "Sales tables",
-    no_match_outcome: "unmanage",
     rules: [ORDERS, TEMPORARY],
     created_at: "2026-11-05T09:00:00Z",
     ...overrides,
@@ -44,7 +30,7 @@ const VERSIONS = "/v1/discovery-policies/sales-tables/versions";
 
 function stubApi(responses: Record<string, StubHandler> = {}) {
   return stubCatalogApi({
-    [`GET ${VERSIONS}/1`]: () => jsonResponse(version(1, { rules: [ORDERS, ARCHIVE], no_match_outcome: "manage" })),
+    [`GET ${VERSIONS}/1`]: () => jsonResponse(version(1, { rules: [ORDERS, ARCHIVE], description: "" })),
     [`GET ${VERSIONS}/2`]: () => jsonResponse(version(2)),
     ...responses,
   });
@@ -74,9 +60,10 @@ describe("DiscoveryPolicyVersionPage", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "sales-tables v2" })).toBeInTheDocument();
     const facts = screen.getByRole("region", { name: "Policy" });
     expect(within(facts).getByText("Sales tables")).toBeInTheDocument();
-    expect(within(facts).getByText("Do not manage")).toBeInTheDocument();
+    expect(within(facts).queryByText("When no rule matches")).not.toBeInTheDocument();
     const rules = screen.getByRole("table", { name: "Discovery rules, read top to bottom" });
     expect(within(rules).getByText("tmp_*")).toBeInTheDocument();
+    expect(within(rules).getByText("Exclude")).toBeInTheDocument();
     expect(within(rules).queryByRole("button")).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
@@ -99,12 +86,12 @@ describe("DiscoveryPolicyVersionPage", () => {
     const list = await screen.findByRole("list", { name: "Changes from v1" });
     const rows = within(list).getAllByRole("listitem").map((row) => row.textContent);
     expect(rows).toEqual([
-      expect.stringContaining("When no rule matches"),
-      expect.stringContaining("Do not manage: table name tmp_*"),
-      expect.stringContaining("Do not manage: table name archive_*"),
+      expect.stringContaining("Description"),
+      expect.stringContaining("Exclude archive_*"),
+      expect.stringContaining("Exclude tmp_*"),
     ]);
-    expect(within(changes()).getByText("Added")).toBeInTheDocument();
-    expect(within(changes()).getByText("Removed")).toBeInTheDocument();
+    expect(within(changes()).getByText("Removed").closest("li")).toHaveTextContent("Rule #2RemovedExclude archive_*");
+    expect(within(changes()).getByText("Added").closest("li")).toHaveTextContent("Rule #2AddedExclude tmp_*");
   });
 
   it("says the first version is the first", async () => {

@@ -196,19 +196,14 @@ export function lakehouseHandlers() {
       }
       return kept;
     }),
-    // The saved policy moves one version on; a rule sent without an id gets one, as the server does.
+    // The saved policy moves one version on, with the rules as sent.
     getUpdateTableDiscoveryPolicyMockHandler(async ({ params, request }) => {
       const found = DISCOVERY_POLICIES.find((p) => p.name === params.name) ?? SALES_TABLES;
       const body = await request.json();
       return {
         ...found,
         description: body.description,
-        no_match_outcome: body.no_match_outcome,
-        rules: body.rules.map((rule, index) => ({
-          id: rule.id ?? `dr-01m7s6c3tqee0rhg00xz1dka${index}`,
-          outcome: rule.outcome,
-          conditions: rule.conditions,
-        })),
+        rules: body.rules,
         version: found.version + 1,
         updated_at: "2026-11-09T09:00:00Z",
       };
@@ -216,7 +211,6 @@ export function lakehouseHandlers() {
     getCreateTableDiscoveryPolicyMockHandler(async ({ request }) => ({
       ...DISCOVERY_POLICIES[0]!,
       id: "dp-01m7s6c3tqee0rhg00xry2zqqw",
-      is_default: false,
       description: "",
       ...((await request.json()) as object),
       version: 1,

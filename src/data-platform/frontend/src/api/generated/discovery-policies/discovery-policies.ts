@@ -67,7 +67,7 @@ export const getListTableDiscoveryPoliciesUrl = () => {
 }
 
 /**
- * List every discovery policy at its current version with its attachment count, the default first.
+ * List every discovery policy at its current version with its attachment count, by name.
  * @summary List Table Discovery Policies
  */
 export const listTableDiscoveryPolicies = async ( options?: Parameters<typeof apiFetch>[1]): Promise<TableDiscoveryPoliciesApiResponse> => {
@@ -168,7 +168,7 @@ export const getCreateTableDiscoveryPolicyUrl = () => {
 }
 
 /**
- * Create a discovery policy at version 1; each rule gets a new ``dr-`` id.
+ * Create a discovery policy at version 1 with the rules in the order sent.
  * @summary Create Table Discovery Policy
  */
 export const createTableDiscoveryPolicy = async (createTableDiscoveryPolicyApiRequest: CreateTableDiscoveryPolicyApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<TableDiscoveryPolicyApiResponse> => {
@@ -256,7 +256,7 @@ export const useCreateTableDiscoveryPolicy = <TError = HTTPValidationError,
 }
 
 /**
- * Delete a discovery policy and its versions; 409 while it is attached or when it is the default.
+ * Delete a discovery policy and its versions; 409 while it is attached.
  * @summary Delete Table Discovery Policy
  */
 export const deleteTableDiscoveryPolicy = async (name: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
@@ -431,7 +431,7 @@ export const getUpdateTableDiscoveryPolicyUrl = (name: string,) => {
 }
 
 /**
- * Replace a discovery policy's content from the version read (409 if stale); the version increments.
+ * Revise a discovery policy from the version read (409 if stale); the version increments.
  * @summary Update Table Discovery Policy
  */
 export const updateTableDiscoveryPolicy = async (name: string,

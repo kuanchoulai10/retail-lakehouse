@@ -65,9 +65,8 @@ const MAINTENANCE_POLICIES = [
   policyFixture({ id: SCRATCH_POLICY_ID, name: "scratch" }),
 ];
 const DISCOVERY_POLICIES = [
-  { id: "dp-00000000000000000000000000", name: "default", is_default: true },
-  { id: "dp-01m7s6c3tqee0rhg00xry2zqqv", name: "sales-tables", is_default: false },
-  { id: "dp-01m7s6c3tqee0rhg00xry2zqqw", name: "core-tables", is_default: false },
+  { id: "dp-01m7s6c3tqee0rhg00xry2zqqv", name: "sales-tables" },
+  { id: "dp-01m7s6c3tqee0rhg00xry2zqqw", name: "core-tables" },
 ];
 
 function stubApi(routes: Record<string, StubHandler>) {
@@ -146,18 +145,21 @@ describe("EffectivePoliciesPanel", { timeout: 15_000 }, () => {
     expect(screen.queryByText("Dry run")).not.toBeInTheDocument();
   });
 
-  it("says the platform default applies, and marks a maintenance policy in dry run", async () => {
+  it("says the maintenance platform default applies, and that no discovery policy does", async () => {
     stubApi({
       [`GET ${NAMESPACE_EFFECTIVE}`]: effective(
         maintenance(null, { policy_name: "default", version: 3, dry_run: true }),
-        discovery(null, { policy_name: "default", version: 1 }),
+        discovery(null),
       ),
     });
     renderPanel(NAMESPACE_SCOPE);
     const [first, second] = await rows();
     expect(within(first!).getByText("Platform default")).toBeInTheDocument();
     expect(within(first!).getByText("Dry run")).toBeInTheDocument();
-    expect(within(second!).getByText("Platform default")).toBeInTheDocument();
+    expect(within(second!).getByText("Discovery")).toBeInTheDocument();
+    expect(within(second!).getByText("No discovery policy applies")).toBeInTheDocument();
+    expect(within(second!).queryByText("Platform default")).not.toBeInTheDocument();
+    expect(within(second!).queryByRole("link")).not.toBeInTheDocument();
     expect(within(second!).queryByText("Dry run")).not.toBeInTheDocument();
     expect(visibleText(screen.getByRole("button", { name: "Attach policy for maintenance" }))).toBe("Attach policy");
     expect(visibleText(screen.getByRole("button", { name: "Attach policy for discovery" }))).toBe("Attach policy");

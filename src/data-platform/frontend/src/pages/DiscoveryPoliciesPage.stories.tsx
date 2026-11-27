@@ -9,7 +9,6 @@ import { ConsolePage } from "@/stories/ConsolePage";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
 import { PHONE } from "@/stories/phone";
-import { DISCOVERY_POLICIES } from "@/stories/storyData";
 
 const meta = {
   title: "Pages/Discovery policies",
@@ -39,22 +38,25 @@ export const Loaded: Story = {
     const sales = row(canvasElement, "sales-tables");
     await expect(within(sales).getByRole("link", { name: "sales-tables" })).toBeVisible();
     await expect(within(sales).getByRole("button", { name: "Delete sales-tables" })).toBeDisabled();
-    const defaultRow = row(canvasElement, "default");
-    await expect(within(defaultRow).getByText("Default")).toBeVisible();
-    await expect(within(defaultRow).getByRole("button", { name: "Delete default" })).toBeDisabled();
+    const names = within(canvasElement)
+      .getAllByRole("row")
+      .slice(1)
+      .map((r) => within(r).getAllByRole("cell")[0]?.textContent);
+    await expect(names).toEqual(["core-tables", "sales-tables"]);
+    await expect(canvas.queryByText("Default")).toBeNull();
     await expect(canvas.getByRole("link", { name: "Discovery policies" })).toHaveAttribute("aria-current", "page");
     await expect(canvas.queryByRole("alert")).toBeNull();
   },
 };
 
-export const OnlyDefault: Story = {
+// No discovery policy exists until one is created: there is no default one.
+export const Empty: Story = {
   beforeEach({ msw }) {
-    msw.use(getListTableDiscoveryPoliciesMockHandler({ policies: [DISCOVERY_POLICIES[0]!] }));
+    msw.use(getListTableDiscoveryPoliciesMockHandler({ policies: [] }));
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole("link", { name: "default" })).toBeVisible();
-    await expect(canvas.queryByRole("link", { name: "sales-tables" })).toBeNull();
+    await expect(await canvas.findByText("No discovery policies.")).toBeVisible();
     await expect(canvas.getByRole("button", { name: "New policy" })).toBeEnabled();
   },
 };
@@ -64,9 +66,8 @@ export const NewPolicy: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole("button", { name: "New policy" }));
     const dialog = await screen.findByRole("dialog", { name: "New discovery policy" });
-    await expect(within(dialog).getByRole("combobox", { name: "When no rule matches" })).toHaveTextContent(
-      "Do not manage",
-    );
+    await expect(within(dialog).getByRole("combobox", { name: "Action" })).toHaveTextContent("Include");
+    await expect(within(dialog).getByRole("textbox", { name: "Table name pattern" })).toBeVisible();
   },
 };
 

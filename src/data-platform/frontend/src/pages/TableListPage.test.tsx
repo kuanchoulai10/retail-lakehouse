@@ -16,9 +16,7 @@ function table(overrides: Partial<TableApiResponse>): TableApiResponse {
     table: "orders",
     status: "managed",
     priority: "P3",
-    matched_rule_id: "dr-01m7s6c3tqee0rhg00xn5s97gw",
-    matched_policy_id: "dp-01m7s6c3tqee0rhg00xn5s97gv",
-    matched_policy_version: 1,
+    decided_by: { policy_id: "dp-01m7s6c3tqee0rhg00xn5s97gv", policy_version: 1, rule_position: 1 },
     operation_states: {},
     registered_at: "2026-10-30T10:00:00Z",
     updated_at: "2026-10-31T08:00:00Z",
@@ -35,7 +33,7 @@ const TABLES: TableApiResponse[] = [
     namespace: "e2e",
     table: "tm_e2e_regions",
     status: "unmanaged",
-    matched_rule_id: null,
+    decided_by: { policy_id: "dp-01m7s6c3tqee0rhg00xn5s97gv", policy_version: 1, rule_position: null },
   }),
 ];
 

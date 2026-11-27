@@ -5,7 +5,6 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { DiscoveryRuleApiResponse } from './discoveryRuleApiResponse';
-import type { ListedTableDiscoveryPolicyApiResponseNoMatchOutcome } from './listedTableDiscoveryPolicyApiResponseNoMatchOutcome';
 
 /**
  * Describe a listed discovery policy at its current version with how many targets it is attached to.
@@ -15,12 +14,8 @@ export interface ListedTableDiscoveryPolicyApiResponse {
   created_at: string;
   description: string;
   id: string;
-  /** Whether this is the platform default discovery policy, which decides where nothing is attached. */
-  is_default: boolean;
   name: string;
-  /** What happens to a table that no rule matches: managed or not. */
-  no_match_outcome: ListedTableDiscoveryPolicyApiResponseNoMatchOutcome;
-  /** The rules, read top to bottom; the first whose conditions all hold decides. */
+  /** The rules, at least one, read top to bottom; the last whose pattern matches a table decides it, and a table no rule matches is not managed. */
   rules: DiscoveryRuleApiResponse[];
   updated_at: string;
   version: number;

@@ -15,13 +15,11 @@ function discoveryPolicy(
   overrides: Partial<ListedTableDiscoveryPolicyApiResponse>,
 ): ListedTableDiscoveryPolicyApiResponse {
   return {
-    id: "dp-00000000000000000000000000",
-    name: "default",
-    is_default: false,
+    id: "dp-01m7s6c3tqee0rhg00xry2zqqx",
+    name: "core-tables",
     version: 1,
     description: "",
-    no_match_outcome: "unmanage",
-    rules: [],
+    rules: [{ action: "include", table_name_pattern: "*" }],
     attachment_count: 0,
     created_at: "2026-11-01T09:00:00Z",
     updated_at: "2026-11-01T09:00:00Z",
@@ -30,16 +28,8 @@ function discoveryPolicy(
 }
 
 const SALES_RULES: ListedTableDiscoveryPolicyApiResponse["rules"] = [
-  {
-    id: "dr-01m7s6c3tqee0rhg00xry2zqqt",
-    outcome: "manage",
-    conditions: [{ attribute: "namespace", operator: "glob", values: ["sales", "sales.*"] }],
-  },
-  {
-    id: "dr-01m7s6c3tqee0rhg00xz1dk9cs",
-    outcome: "unmanage",
-    conditions: [{ attribute: "table_name", operator: "glob", values: ["tmp_*"] }],
-  },
+  { action: "include", table_name_pattern: "orders*" },
+  { action: "exclude", table_name_pattern: "tmp_*" },
 ];
 
 // Listed out of order, as the page must not rely on the API's order.
@@ -48,13 +38,12 @@ const POLICIES = [
     id: "dp-01m7s6c3tqee0rhg00xry2zqqv",
     name: "sales-tables",
     description: "Sales tables",
-    no_match_outcome: "manage",
     version: 2,
     rules: SALES_RULES,
     attachment_count: 1,
   }),
   discoveryPolicy({ id: "dp-01m7s6c3tqee0rhg00xry2zqqw", name: "archive" }),
-  discoveryPolicy({ name: "default", is_default: true, description: "Manages nothing." }),
+  discoveryPolicy({ name: "core-tables", description: "Every table" }),
 ];
 
 function stubApi(responses: Record<string, StubHandler> = {}, catalogs: ScannedCatalogApiResponse[] = []) {
@@ -92,7 +81,7 @@ function cellUnder(row: HTMLElement, header: string): HTMLElement {
 }
 
 describe("DiscoveryPoliciesPage", { timeout: 15_000 }, () => {
-  it("lists the default first and tagged, then the rest by name", async () => {
+  it("lists the policies by name, with no default among them", async () => {
     stubApi();
     renderPage();
     await screen.findByText("Sales tables");
@@ -100,8 +89,8 @@ describe("DiscoveryPoliciesPage", { timeout: 15_000 }, () => {
       .getAllByRole("row")
       .slice(1)
       .map((row) => within(row).getAllByRole("cell")[0]?.textContent);
-    expect(names).toEqual(["defaultDefault", "archive", "sales-tables"]);
-    expect(within(policyRow("sales-tables")).queryByText("Default")).not.toBeInTheDocument();
+    expect(names).toEqual(["archive", "core-tables", "sales-tables"]);
+    expect(screen.queryByText("Default")).not.toBeInTheDocument();
   });
 
   it("links each name to the policy's page", async () => {
@@ -114,21 +103,19 @@ describe("DiscoveryPoliciesPage", { timeout: 15_000 }, () => {
     );
   });
 
-  it("shows each policy's description, no-match outcome, rule count, version and attachment count", async () => {
+  it("shows each policy's description, rule count, version and attachment count", async () => {
     stubApi();
     renderPage();
     await screen.findByText("Sales tables");
     expect(screen.getAllByRole("columnheader").map((h) => h.textContent)).toEqual([
       "Name",
       "Description",
-      "When no rule matches",
       "Rules",
       "Version",
       "Attached to",
       "Actions",
     ]);
     const sales = policyRow("sales-tables");
-    expect(cellUnder(sales, "When no rule matches")).toHaveTextContent("Manage");
     expect(cellUnder(sales, "Rules")).toHaveTextContent("2");
     expect(cellUnder(sales, "Rules").querySelector(".tabular-nums")).not.toBeNull();
     expect(cellUnder(sales, "Version")).toHaveTextContent("2");
@@ -136,17 +123,14 @@ describe("DiscoveryPoliciesPage", { timeout: 15_000 }, () => {
     expect(cellUnder(sales, "Attached to").querySelector(".tabular-nums")).not.toBeNull();
     const archive = policyRow("archive");
     expect(cellUnder(archive, "Description")).toHaveTextContent("—");
-    expect(cellUnder(archive, "When no rule matches")).toHaveTextContent("Do not manage");
-    expect(cellUnder(archive, "Rules")).toHaveTextContent("0");
+    expect(cellUnder(archive, "Rules")).toHaveTextContent("1");
   });
 
-  it("disables delete of the default with its reason", async () => {
+  it("lets an unattached policy be deleted", async () => {
     stubApi();
     renderPage();
     await screen.findByText("Sales tables");
-    const remove = within(policyRow("default")).getByRole("button", { name: "Delete default" });
-    expect(remove).toBeDisabled();
-    expect(remove).toHaveAccessibleDescription("The default policy cannot be deleted.");
+    expect(within(policyRow("core-tables")).getByRole("button", { name: "Delete core-tables" })).toBeEnabled();
   });
 
   it("disables delete of an attached policy with its reason", async () => {

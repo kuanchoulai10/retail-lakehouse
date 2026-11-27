@@ -1,110 +1,104 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
-import type { DiscoveryRuleDraft } from "@/lib/discoveryPolicyDraft";
+import { useState } from "react";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { draftFromPolicy, type DiscoveryRuleDraft } from "@/lib/discoveryPolicyDraft";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { PHONE } from "@/stories/phone";
+import { SALES_TABLES } from "@/stories/storyData";
 import { DiscoveryRuleEditor } from "./DiscoveryRuleEditor";
 
-const RULE_ID = "dr-01m7s6c3tqee0rhg00xz1dk9cs";
+const RULES = draftFromPolicy(SALES_TABLES).rules;
 
-const RULE: DiscoveryRuleDraft = {
-  key: RULE_ID,
-  id: RULE_ID,
-  outcome: "unmanage",
-  namespaces: [],
-  tableNames: ["tmp_*", "staging_*"],
-};
+// The page holds the draft; the story holds it here, so every edit shows.
+function Stateful({ initial, focusKey }: { initial: DiscoveryRuleDraft[]; focusKey?: string | null }) {
+  const [rules, setRules] = useState(initial);
+  return <DiscoveryRuleEditor rules={rules} onChange={(edit) => setRules(edit)} focusKey={focusKey} />;
+}
 
 const meta = {
   title: "Components/Discovery rule editor",
-  component: DiscoveryRuleEditor,
-  args: { title: "Edit rule", submitLabel: "Update rule", rule: RULE, onSubmit: fn(), onClose: fn() },
-} satisfies Meta<typeof DiscoveryRuleEditor>;
+  component: Stateful,
+  args: { initial: RULES },
+} satisfies Meta<typeof Stateful>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-function dialog(): HTMLElement {
-  return screen.getByRole("dialog", { name: "Edit rule" });
+function pattern(canvasElement: HTMLElement, position: number): HTMLElement {
+  return within(canvasElement).getByRole("textbox", { name: `Table name pattern of rule ${position}` });
 }
 
-export const Edit: Story = {
-  play: async ({ args }) => {
-    await screen.findByRole("dialog", { name: "Edit rule" });
-    await userEvent.type(within(dialog()).getByRole("textbox", { name: "New table name glob" }), "scratch_*{Enter}");
-    await userEvent.click(within(dialog()).getByRole("button", { name: "Update rule" }));
-    await expect(args.onSubmit).toHaveBeenCalledWith({ ...RULE, tableNames: ["tmp_*", "staging_*", "scratch_*"] });
+export const Rules: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const table = canvas.getByRole("table", { name: "Discovery rules, read top to bottom" });
+    await expect(within(table).getByRole("combobox", { name: "Action of rule 1" })).toHaveTextContent("Include");
+    await expect(within(table).getByRole("combobox", { name: "Action of rule 2" })).toHaveTextContent("Exclude");
+    await expect(pattern(canvasElement, 2)).toHaveValue("tmp_*");
   },
 };
 
-export const Add: Story = {
-  args: { title: "Add rule", submitLabel: "Add rule", rule: { key: "new-1", id: null, outcome: "manage", namespaces: [], tableNames: [] } },
-  play: async () => {
-    const added = await screen.findByRole("dialog", { name: "Add rule" });
-    await expect(within(added).getByRole("combobox", { name: "Outcome" })).toHaveTextContent("Manage");
+export const Move: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "Move rule 1 up" })).toBeDisabled();
+    await userEvent.click(canvas.getByRole("button", { name: "Move rule 3 up" }));
+    await expect(pattern(canvasElement, 2)).toHaveValue("staging_*");
+    await expect(pattern(canvasElement, 3)).toHaveValue("tmp_*");
   },
 };
 
-export const NoCondition: Story = {
-  args: { rule: { ...RULE, tableNames: ["tmp_*"] } },
-  play: async ({ args }) => {
-    await screen.findByRole("dialog", { name: "Edit rule" });
-    await userEvent.click(within(dialog()).getByRole("button", { name: "Remove table name glob tmp_*" }));
-    await userEvent.click(within(dialog()).getByRole("button", { name: "Update rule" }));
-    await expect(within(dialog()).getByRole("alert")).toHaveTextContent(
-      "A rule needs at least one condition: a namespace or a table name glob.",
-    );
-    await expect(args.onSubmit).not.toHaveBeenCalled();
-  },
-};
-
-// The dialog opens on its Close button; Tab reaches every control in order, the outcome is picked
-// with the arrow keys, a glob is added with Enter, and Enter on Update rule submits.
+// Tab goes through a row's action, its pattern, then its buttons, and on to the next row; the action
+// is picked with the arrow keys and the pattern keeps focus while it is typed in.
 export const Keyboard: Story = {
-  args: { rule: { ...RULE, tableNames: ["tmp_*"] } },
-  play: async ({ args }) => {
-    await screen.findByRole("dialog", { name: "Edit rule" });
-    await waitFor(() => expect(within(dialog()).getByRole("button", { name: "Close" })).toHaveFocus());
-    await userEvent.tab();
-    const outcome = within(dialog()).getByRole("combobox", { name: "Outcome" });
-    await expect(outcome).toHaveFocus();
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const action = canvas.getByRole("combobox", { name: "Action of rule 1" });
+    action.focus();
     await userEvent.keyboard("{Enter}");
     await screen.findByRole("listbox");
-    await userEvent.keyboard("{ArrowUp}{Enter}");
-    await waitFor(() => expect(outcome).toHaveTextContent("Manage"));
-    await expect(outcome).toHaveFocus();
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() => expect(action).toHaveTextContent("Exclude"));
+    await expect(action).toHaveFocus();
     await userEvent.tab();
-    await expect(within(dialog()).getByRole("textbox", { name: "New namespace glob" })).toHaveFocus();
-    await userEvent.keyboard("sales{Enter}");
+    await expect(pattern(canvasElement, 1)).toHaveFocus();
+    await userEvent.keyboard("{Backspace}s");
+    await expect(pattern(canvasElement, 1)).toHaveValue("s");
+    await expect(pattern(canvasElement, 1)).toHaveFocus();
     await userEvent.tab();
-    await expect(within(dialog()).getByRole("button", { name: "Add namespace glob" })).toHaveFocus();
+    await expect(canvas.getByRole("button", { name: "Move rule 1 down" })).toHaveFocus();
     await userEvent.tab();
-    await expect(within(dialog()).getByRole("button", { name: "Remove table name glob tmp_*" })).toHaveFocus();
+    await expect(canvas.getByRole("button", { name: "Delete rule 1" })).toHaveFocus();
     await userEvent.tab();
-    await expect(within(dialog()).getByRole("textbox", { name: "New table name glob" })).toHaveFocus();
-    await userEvent.tab();
-    await expect(within(dialog()).getByRole("button", { name: "Add table name glob" })).toHaveFocus();
-    await userEvent.tab();
-    await expect(within(dialog()).getByRole("button", { name: "Cancel" })).toHaveFocus();
-    await userEvent.tab();
-    await expect(within(dialog()).getByRole("button", { name: "Update rule" })).toHaveFocus();
-    await userEvent.keyboard("{Enter}");
-    await expect(args.onSubmit).toHaveBeenCalledWith({ ...RULE, outcome: "manage", namespaces: ["sales"], tableNames: ["tmp_*"] });
+    await expect(canvas.getByRole("combobox", { name: "Action of rule 2" })).toHaveFocus();
   },
 };
 
-export const Escape: Story = {
-  play: async ({ args }) => {
-    await screen.findByRole("dialog", { name: "Edit rule" });
-    await userEvent.keyboard("{Escape}");
-    await waitFor(() => expect(args.onClose).toHaveBeenCalled());
+export const Delete: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Delete rule 1" }));
+    await expect(pattern(canvasElement, 1)).toHaveValue("tmp_*");
+  },
+};
+
+export const FocusesNewRule: Story = {
+  args: { initial: [...RULES, { key: "new-1", action: "include", tableNamePattern: "" }], focusKey: "new-1" },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => expect(pattern(canvasElement, 4)).toHaveFocus());
+  },
+};
+
+export const Empty: Story = {
+  args: { initial: [] },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("No rules. A policy needs at least one.")).toBeVisible();
   },
 };
 
 export const Phone: Story = {
   globals: PHONE,
   play: async ({ canvasElement }) => {
-    await screen.findByRole("dialog", { name: "Edit rule" });
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };

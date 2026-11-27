@@ -7,28 +7,31 @@ import {
 } from "@/api/generated/discovery-policies/discovery-policies";
 import type { CreateTableDiscoveryPolicyApiRequest } from "@/api/generated/model";
 import { errorMessage } from "@/format";
-import type { DiscoveryOutcome } from "@/lib/discoveryPolicyDraft";
+import type { RuleAction } from "@/lib/discoveryPolicyDraft";
 import { discoveryPolicyPath } from "@/lib/discoveryPolicyPaths";
 import { POLICY_NAME_PATTERN } from "@/lib/policyDraft";
 import { FormDialog } from "./forms/FormDialog";
-import { DISCOVERY_OUTCOME_OPTIONS } from "./forms/discoveryOutcomeOptions";
+import { RULE_ACTION_OPTIONS } from "./forms/ruleActionOptions";
 import { SelectField } from "./forms/SelectField";
 import { TextField } from "./forms/TextField";
 
 const NAME_MESSAGE = "A name uses letters, digits, - and _ only, at most 64 characters.";
+const PATTERN_MESSAGE = "The first rule needs a table name pattern.";
 
 interface Props {
   onClose: () => void;
 }
 
-// Creates a discovery policy with no rules; its rules are written on its own page, where it
-// goes once created. A new policy decides no table until it is attached.
+// Creates a discovery policy with its first rule, since a policy holds at least one; any further
+// rules are written on its own page, where it goes once created. A new policy decides no table
+// until it is attached.
 export function CreateDiscoveryPolicyDialog({ onClose }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [noMatchOutcome, setNoMatchOutcome] = useState<DiscoveryOutcome>("unmanage");
+  const [action, setAction] = useState<RuleAction>("include");
+  const [tableNamePattern, setTableNamePattern] = useState("");
   const [invalid, setInvalid] = useState<string | null>(null);
 
   const create = useMutation({
@@ -46,16 +49,18 @@ export function CreateDiscoveryPolicyDialog({ onClose }: Props) {
 
   function submit() {
     const trimmed = name.trim();
-    const problem = POLICY_NAME_PATTERN.test(trimmed) ? null : NAME_MESSAGE;
+    let problem: string | null = null;
+    if (!POLICY_NAME_PATTERN.test(trimmed)) problem = NAME_MESSAGE;
+    else if (tableNamePattern.trim() === "") problem = PATTERN_MESSAGE;
     setInvalid(problem);
     if (problem !== null) return;
-    create.mutate({ name: trimmed, description, no_match_outcome: noMatchOutcome, rules: [] });
+    create.mutate({ name: trimmed, description, rules: [{ action, table_name_pattern: tableNamePattern }] });
   }
 
   return (
     <FormDialog
       title="New discovery policy"
-      description="Starts with no rules; add them on the policy's page. A new policy decides no table until it is attached."
+      description="Starts with one rule; add more on the policy's page. A new policy decides no table until it is attached."
       submitLabel="Create policy"
       isPending={create.isPending}
       error={invalid ?? (create.isError ? errorMessage(create.error) : null)}
@@ -70,11 +75,13 @@ export function CreateDiscoveryPolicyDialog({ onClose }: Props) {
         onChange={setName}
       />
       <TextField label="Description" value={description} onChange={setDescription} />
-      <SelectField
-        label="When no rule matches"
-        value={noMatchOutcome}
-        options={DISCOVERY_OUTCOME_OPTIONS}
-        onChange={setNoMatchOutcome}
+      <SelectField label="Action" value={action} options={RULE_ACTION_OPTIONS} onChange={setAction} />
+      <TextField
+        label="Table name pattern"
+        mono
+        hint="A glob on the table name alone, such as orders_*."
+        value={tableNamePattern}
+        onChange={setTableNamePattern}
       />
     </FormDialog>
   );

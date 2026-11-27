@@ -13,7 +13,7 @@ const MESSAGES: Record<MaintenanceEmptyReason, string> = {
   "catalog-not-scanned": "no discovery policy in this catalog manages tables",
   "catalog-cannot-access": "discovery cannot read this catalog with the platform's catalog credential",
   "not-found": "discovery has not found this table yet",
-  unmanaged: "the discovery policy that applies does not manage this table",
+  unmanaged: "no discovery policy that applies to this table manages it",
   dropped: "maintenance recorded this table as dropped",
 };
 

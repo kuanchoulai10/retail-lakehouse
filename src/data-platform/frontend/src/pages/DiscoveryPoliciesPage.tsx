@@ -1,4 +1,4 @@
-import { Badge, Banner, TextLink } from "@retail-lakehouse/design-system";
+import { Banner, TextLink } from "@retail-lakehouse/design-system";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import {
@@ -15,22 +15,17 @@ import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { ResourceListPage } from "@/components/ResourceListPage";
 import { errorMessage } from "@/format";
 import { scanFailureLabel } from "@/lib/catalogScanState";
-import { outcomeLabel } from "@/lib/discoveryPolicyDraft";
 import { discoveryPolicyPath } from "@/lib/discoveryPolicyPaths";
 
 type Policy = ListedTableDiscoveryPolicyApiResponse;
 
 function deleteDisabledReason(policy: Policy): string | null {
-  if (policy.is_default) return "The default policy cannot be deleted.";
   if (policy.attachment_count > 0) return "Detach it from every target before deleting it.";
   return null;
 }
 
-// The default first, then by name.
 function inListOrder(policies: Policy[]): Policy[] {
-  return [...policies].sort(
-    (a, b) => Number(b.is_default) - Number(a.is_default) || a.name.localeCompare(b.name),
-  );
+  return [...policies].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function ScanFailureBanner({ catalog }: { catalog: ScannedCatalogApiResponse }) {
@@ -99,12 +94,9 @@ export function DiscoveryPoliciesPage() {
         {
           header: "Name",
           cell: (row) => (
-            <span className="flex flex-wrap items-center gap-2">
-              <TextLink asChild className="font-mono font-medium">
-                <Link to={discoveryPolicyPath(row.name)}>{row.name}</Link>
-              </TextLink>
-              {row.is_default && <Badge>Default</Badge>}
-            </span>
+            <TextLink asChild className="font-mono font-medium">
+              <Link to={discoveryPolicyPath(row.name)}>{row.name}</Link>
+            </TextLink>
           ),
         },
         {
@@ -112,7 +104,6 @@ export function DiscoveryPoliciesPage() {
           cell: (row) =>
             row.description === "" ? <span className="text-on-surface-variant">—</span> : row.description,
         },
-        { header: "When no rule matches", cell: (row) => outcomeLabel(row.no_match_outcome) },
         { header: "Rules", cell: (row) => <span className="tabular-nums">{row.rules.length}</span> },
         { header: "Version", cell: (row) => <span className="tabular-nums">{row.version}</span> },
         { header: "Attached to", cell: (row) => <span className="tabular-nums">{row.attachment_count}</span> },

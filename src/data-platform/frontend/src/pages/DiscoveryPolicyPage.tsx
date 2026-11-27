@@ -1,6 +1,6 @@
-import { Banner, Button, DescriptionList, TextArea, TextLink } from "@retail-lakehouse/design-system";
+import { Banner, Button, TextArea, TextLink } from "@retail-lakehouse/design-system";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import {
   getGetTableDiscoveryPolicyQueryKey,
@@ -8,40 +8,30 @@ import {
   getListTableDiscoveryPoliciesQueryKey,
   updateTableDiscoveryPolicy,
   useGetTableDiscoveryPolicy,
-  useListTableDiscoveryPolicyAttachments,
 } from "@/api/generated/discovery-policies/discovery-policies";
 import type { TableDiscoveryPolicyApiResponse, UpdateTableDiscoveryPolicyApiRequest } from "@/api/generated/model";
 import { invalidateEffectivePolicies } from "@/api/invalidateEffectivePolicies";
 import { DiscoveryPolicyAttachments } from "@/components/DiscoveryPolicyAttachments";
 import { DiscoveryRuleEditor } from "@/components/DiscoveryRuleEditor";
-import { DiscoveryRulesTable, type DiscoveryRuleActions } from "@/components/DiscoveryRulesTable";
-import { DISCOVERY_OUTCOME_OPTIONS } from "@/components/forms/discoveryOutcomeOptions";
-import { SelectField } from "@/components/forms/SelectField";
 import { PageHeader } from "@/components/PageHeader";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { errorMessage, formatTimestamp } from "@/format";
 import { discoveryPoliciesPath, discoveryPolicyVersionPath } from "@/lib/discoveryPolicyPaths";
 import {
   draftFromPolicy,
-  movedRule,
+  isDraftComplete,
   newRuleDraft,
-  outcomeLabel,
   updateRequest,
   type DiscoveryPolicyDraft,
   type DiscoveryRuleDraft,
 } from "@/lib/discoveryPolicyDraft";
-import { ruleHints } from "@/lib/discoveryRuleHints";
 import { isConflict } from "@/lib/updateErrorMessage";
 
 const CONFLICT_MESSAGE = "Someone else changed this policy. Reload to see their version.";
+const INCOMPLETE_MESSAGE = "Every rule needs a table name pattern before the policy can be saved.";
 const VISIBLE_VERSIONS = 10;
 
 type Policy = TableDiscoveryPolicyApiResponse;
-
-interface Editing {
-  mode: "add" | "edit";
-  rule: DiscoveryRuleDraft;
-}
 
 // The content the API would store, without the version, so a draft equal to what is saved is not dirty.
 function contentKey(draft: DiscoveryPolicyDraft): string {
@@ -90,21 +80,6 @@ function VersionLinks({ name, latest }: { name: string; latest: number }) {
   );
 }
 
-// The platform default has fixed content: the page shows it and offers nothing to change.
-function DefaultPolicy({ policy }: { policy: Policy }) {
-  const draft = draftFromPolicy(policy);
-  return (
-    <div className="flex flex-col gap-4">
-      <Banner type="information" title="The platform default decides wherever no other policy is attached. It cannot be changed.">
-        {policy.description}
-      </Banner>
-      <DescriptionList items={[{ term: "When no rule matches", description: outcomeLabel(draft.noMatchOutcome) }]} />
-      <DiscoveryRulesTable rules={draft.rules} readOnly />
-      <DiscoveryPolicyAttachments policyName={policy.name} />
-    </div>
-  );
-}
-
 // The policy's content as a page-level draft, saved whole with the version it was read at.
 function PolicyDraftEditor({ policy }: { policy: Policy }) {
   const queryClient = useQueryClient();
@@ -112,19 +87,15 @@ function PolicyDraftEditor({ policy }: { policy: Policy }) {
   // A refetch while the user edits must not move the draft's version forward, or the save would
   // overwrite a change made meanwhile; Reload drops the draft on purpose.
   const [draft, setDraft] = useState<DiscoveryPolicyDraft | null>(null);
-  const [editing, setEditing] = useState<Editing | null>(null);
   const [savedNotice, setSavedNotice] = useState(false);
+  // The rule just added, whose pattern field takes focus.
+  const [focusKey, setFocusKey] = useState<string | null>(null);
   const newKeys = useRef(0);
   const rulesHeadingId = useId();
-  const attachments = useListTableDiscoveryPolicyAttachments(policy.name);
 
   const current = draft ?? base;
   const dirty = draft !== null && contentKey(draft) !== contentKey(base);
-  // The hints follow the draft, so a rule shows them before it is saved.
-  const hints = useMemo(() => {
-    const targets = (attachments.data?.attachments ?? []).map((attachment) => attachment.target);
-    return Object.fromEntries(current.rules.map((rule) => [rule.key, ruleHints(rule, targets)]));
-  }, [current.rules, attachments.data]);
+  const complete = isDraftComplete(current);
 
   const save = useMutation({
     mutationFn: (body: UpdateTableDiscoveryPolicyApiRequest) => updateTableDiscoveryPolicy(policy.name, body),
@@ -146,7 +117,7 @@ function PolicyDraftEditor({ policy }: { policy: Policy }) {
   });
 
   function change(edit: (draft: DiscoveryPolicyDraft) => DiscoveryPolicyDraft) {
-    setDraft(edit(current));
+    setDraft((previous) => edit(previous ?? base));
     setSavedNotice(false);
     if (!isConflict(save.error)) save.reset();
   }
@@ -155,30 +126,11 @@ function PolicyDraftEditor({ policy }: { policy: Policy }) {
     change((d) => ({ ...d, rules: edit(d.rules) }));
   }
 
-  // The row actions stay one object for the page's life, so a re-render (the attachments loading,
-  // a refetch) never remounts the rules' buttons under a click; each call runs this render's edit.
-  const latestChangeRules = useRef(changeRules);
-  useLayoutEffect(() => {
-    latestChangeRules.current = changeRules;
-  });
-  const actions = useMemo<DiscoveryRuleActions>(
-    () => ({
-      move: (rule, by) => latestChangeRules.current((rules) => movedRule(rules, rule.key, by)),
-      edit: (rule) => setEditing({ mode: "edit", rule }),
-      remove: (rule) => latestChangeRules.current((rules) => rules.filter((r) => r.key !== rule.key)),
-    }),
-    [],
-  );
-
   function addRule() {
     newKeys.current += 1;
-    setEditing({ mode: "add", rule: newRuleDraft(`new-${newKeys.current}`) });
-  }
-
-  function applyEdit(rule: DiscoveryRuleDraft) {
-    const mode = editing?.mode;
-    changeRules((rules) => (mode === "add" ? [...rules, rule] : rules.map((r) => (r.key === rule.key ? rule : r))));
-    setEditing(null);
+    const rule = newRuleDraft(`new-${newKeys.current}`);
+    changeRules((rules) => [...rules, rule]);
+    setFocusKey(rule.key);
   }
 
   function submit() {
@@ -203,7 +155,12 @@ function PolicyDraftEditor({ policy }: { policy: Policy }) {
         <Button type="button" styleType="outlined" disabled={!dirty || save.isPending} onClick={discard}>
           Discard changes
         </Button>
-        <Button type="button" disabled={!dirty || save.isPending} isLoading={save.isPending} onClick={submit}>
+        <Button
+          type="button"
+          disabled={!dirty || !complete || save.isPending}
+          isLoading={save.isPending}
+          onClick={submit}
+        >
           Save
         </Button>
       </div>
@@ -228,12 +185,6 @@ function PolicyDraftEditor({ policy }: { policy: Policy }) {
           value={current.description}
           onChange={(event) => change((d) => ({ ...d, description: event.target.value }))}
         />
-        <SelectField
-          label="When no rule matches"
-          value={current.noMatchOutcome}
-          options={DISCOVERY_OUTCOME_OPTIONS}
-          onChange={(noMatchOutcome) => change((d) => ({ ...d, noMatchOutcome }))}
-        />
       </div>
       {/* Unframed, like the Tables page: the table's own header row separates it from the page. */}
       <section aria-labelledby={rulesHeadingId} className="flex min-w-0 flex-col gap-3">
@@ -245,29 +196,21 @@ function PolicyDraftEditor({ policy }: { policy: Policy }) {
             Add rule
           </Button>
         </header>
-        <DiscoveryRulesTable
-          rules={current.rules}
-          readOnly={false}
-          actions={actions}
-          hints={hints}
-          emptyState={`No rules. ${outcomeLabel(current.noMatchOutcome)} every table.`}
-        />
+        <p className="type-body-small text-on-surface-variant">
+          Read top to bottom: the last rule whose pattern matches a table's name decides it. A table no rule matches is
+          not managed.
+        </p>
+        <DiscoveryRuleEditor rules={current.rules} onChange={changeRules} focusKey={focusKey} />
+        {dirty && current.rules.length > 0 && !complete && (
+          <p className="type-body-small text-on-surface-variant">{INCOMPLETE_MESSAGE}</p>
+        )}
       </section>
       <DiscoveryPolicyAttachments policyName={policy.name} />
-      {editing !== null && (
-        <DiscoveryRuleEditor
-          title={editing.mode === "add" ? "Add rule" : "Edit rule"}
-          submitLabel={editing.mode === "add" ? "Add rule" : "Update rule"}
-          rule={editing.rule}
-          onSubmit={applyEdit}
-          onClose={() => setEditing(null)}
-        />
-      )}
     </div>
   );
 }
 
-// One discovery policy: its versions, and its content to edit as a draft (the default only reads).
+// One discovery policy: its versions, and its content to edit as a draft.
 export function DiscoveryPolicyPage() {
   const { name = "" } = useParams();
   const query = useGetTableDiscoveryPolicy(name);
@@ -298,7 +241,7 @@ export function DiscoveryPolicyPage() {
   return (
     <section>
       {header}
-      {policy.is_default ? <DefaultPolicy policy={policy} /> : <PolicyDraftEditor key={policy.name} policy={policy} />}
+      <PolicyDraftEditor key={policy.name} policy={policy} />
     </section>
   );
 }

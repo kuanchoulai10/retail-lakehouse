@@ -1,106 +1,93 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { DiscoveryRuleDraft } from "@/lib/discoveryPolicyDraft";
 import { DiscoveryRuleEditor } from "./DiscoveryRuleEditor";
 
-const RULE: DiscoveryRuleDraft = {
-  key: "dr-1",
-  id: "dr-1",
-  outcome: "manage",
-  namespaces: ["sales"],
-  tableNames: [],
-};
+const RULES: DiscoveryRuleDraft[] = [
+  { key: "a", action: "include", tableNamePattern: "orders*" },
+  { key: "b", action: "exclude", tableNamePattern: "tmp_*" },
+];
 
-function renderEditor(onSubmit = vi.fn(), rule = RULE) {
-  render(<DiscoveryRuleEditor title="Edit rule" submitLabel="Update rule" rule={rule} onSubmit={onSubmit} onClose={() => {}} />);
-  return { onSubmit, dialog: screen.getByRole("dialog", { name: "Edit rule" }) };
-}
-
-// The page's Edit button opens the editor and the editor closes itself; focus must come back.
-function Harness() {
-  const [open, setOpen] = useState(false);
+// The page holds the draft; the editor hands it each change as an edit of the rules.
+function Harness({ initial = RULES, focusKey = null }: { initial?: DiscoveryRuleDraft[]; focusKey?: string | null }) {
+  const [rules, setRules] = useState(initial);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)}>
-        Edit rule 1
-      </button>
-      {open && (
-        <DiscoveryRuleEditor
-          title="Edit rule"
-          submitLabel="Update rule"
-          rule={RULE}
-          onSubmit={() => setOpen(false)}
-          onClose={() => setOpen(false)}
-        />
-      )}
+      <DiscoveryRuleEditor rules={rules} onChange={(edit) => setRules(edit)} focusKey={focusKey} />
+      <output aria-label="Draft">{JSON.stringify(rules)}</output>
     </>
   );
 }
 
+function table(): HTMLElement {
+  return screen.getByRole("table", { name: "Discovery rules, read top to bottom" });
+}
+
+function rows(): HTMLElement[] {
+  return within(table()).getAllByRole("row").slice(1);
+}
+
+function draft(): DiscoveryRuleDraft[] {
+  return JSON.parse(screen.getByRole("status", { name: "Draft" }).textContent ?? "[]") as DiscoveryRuleDraft[];
+}
+
 describe("DiscoveryRuleEditor", () => {
-  it("has an Outcome select, Namespace globs and Table name globs", () => {
-    const { dialog } = renderEditor();
-    expect(within(dialog).getByRole("combobox", { name: "Outcome" })).toHaveTextContent("Manage");
-    expect(within(dialog).getByRole("group", { name: "Namespace" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("group", { name: "Table name" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("textbox", { name: "New namespace glob" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("textbox", { name: "New table name glob" })).toBeInTheDocument();
-    expect(within(dialog).queryByRole("spinbutton")).not.toBeInTheDocument();
-    expect(within(dialog).queryByRole("checkbox")).not.toBeInTheDocument();
+  it("has one row per rule, holding an action select and a pattern field", () => {
+    render(<Harness />);
+    const headers = within(table()).getAllByRole("columnheader").map((header) => header.textContent);
+    expect(headers).toEqual(["#", "Action", "Table name pattern", "Actions"]);
+    const [first, second] = rows();
+    expect(within(first!).getByRole("combobox", { name: "Action of rule 1" })).toHaveTextContent("Include");
+    expect(within(first!).getByRole("textbox", { name: "Table name pattern of rule 1" })).toHaveValue("orders*");
+    expect(within(second!).getByRole("combobox", { name: "Action of rule 2" })).toHaveTextContent("Exclude");
+    expect(within(second!).getByRole("textbox", { name: "Table name pattern of rule 2" })).toHaveValue("tmp_*");
+    expect(within(first!).getByRole("textbox", { name: "Table name pattern of rule 1" })).toHaveClass("font-mono");
   });
 
-  it("returns the edited rule", async () => {
-    const user = userEvent.setup();
-    const { onSubmit, dialog } = renderEditor();
-    await user.click(within(dialog).getByRole("combobox", { name: "Outcome" }));
-    await user.click(await screen.findByRole("option", { name: "Do not manage" }));
-    await user.click(within(dialog).getByRole("button", { name: "Remove namespace glob sales" }));
-    await user.type(within(dialog).getByRole("textbox", { name: "New table name glob" }), "tmp_*{Enter}");
-    await user.click(within(dialog).getByRole("button", { name: "Update rule" }));
-    expect(onSubmit).toHaveBeenCalledWith({ ...RULE, outcome: "unmanage", namespaces: [], tableNames: ["tmp_*"] });
-  });
-
-  it("refuses a rule with no condition", async () => {
-    const user = userEvent.setup();
-    const { onSubmit, dialog } = renderEditor();
-    await user.click(within(dialog).getByRole("button", { name: "Remove namespace glob sales" }));
-    await user.click(within(dialog).getByRole("button", { name: "Update rule" }));
-    expect(within(dialog).getByRole("alert")).toHaveTextContent(
-      "A rule needs at least one condition: a namespace or a table name glob.",
-    );
-    expect(onSubmit).not.toHaveBeenCalled();
-  });
-
-  it("is reached field by field with Tab", async () => {
-    const user = userEvent.setup();
-    const { dialog } = renderEditor();
-    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Close" })).toHaveFocus());
-    const order = [
-      within(dialog).getByRole("combobox", { name: "Outcome" }),
-      within(dialog).getByRole("button", { name: "Remove namespace glob sales" }),
-      within(dialog).getByRole("textbox", { name: "New namespace glob" }),
-      within(dialog).getByRole("button", { name: "Add namespace glob" }),
-      within(dialog).getByRole("textbox", { name: "New table name glob" }),
-      within(dialog).getByRole("button", { name: "Add table name glob" }),
-      within(dialog).getByRole("button", { name: "Cancel" }),
-      within(dialog).getByRole("button", { name: "Update rule" }),
-    ];
-    for (const control of order) {
-      await user.tab();
-      expect(control).toHaveFocus();
-    }
-  });
-
-  it("closes on Escape and gives focus back to the button that opened it", async () => {
+  it("changes a rule's action and pattern in the draft", async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    const opener = screen.getByRole("button", { name: "Edit rule 1" });
-    await user.click(opener);
-    await screen.findByRole("dialog", { name: "Edit rule" });
-    await user.keyboard("{Escape}");
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    await waitFor(() => expect(opener).toHaveFocus());
+    await user.click(screen.getByRole("combobox", { name: "Action of rule 1" }));
+    await user.click(await screen.findByRole("option", { name: "Exclude" }));
+    const pattern = screen.getByRole("textbox", { name: "Table name pattern of rule 2" });
+    await user.clear(pattern);
+    await user.type(pattern, "staging_*");
+    expect(pattern).toHaveFocus();
+    expect(draft()).toEqual([
+      { key: "a", action: "exclude", tableNamePattern: "orders*" },
+      { key: "b", action: "exclude", tableNamePattern: "staging_*" },
+    ]);
+  });
+
+  it("moving a row reorders the rules, and the ends cannot move further", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    expect(screen.getByRole("button", { name: "Move rule 1 up" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move rule 2 down" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Move rule 2 up" }));
+    expect(draft().map((rule) => rule.key)).toEqual(["b", "a"]);
+    expect(screen.getByRole("textbox", { name: "Table name pattern of rule 1" })).toHaveValue("tmp_*");
+    await user.click(screen.getByRole("button", { name: "Move rule 1 down" }));
+    expect(draft().map((rule) => rule.key)).toEqual(["a", "b"]);
+  });
+
+  it("deletes a row at once", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "Delete rule 1" }));
+    expect(draft()).toEqual([RULES[1]]);
+    expect(rows()).toHaveLength(1);
+  });
+
+  it("says when there are no rules", () => {
+    render(<Harness initial={[]} />);
+    expect(screen.getByText("No rules. A policy needs at least one.")).toBeInTheDocument();
+  });
+
+  it("gives focus to the pattern field of the rule it is told to", async () => {
+    render(<Harness focusKey="b" />);
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Table name pattern of rule 2" })).toHaveFocus());
   });
 });

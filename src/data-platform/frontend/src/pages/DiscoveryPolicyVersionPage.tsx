@@ -9,7 +9,7 @@ import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { errorMessage, formatTimestamp } from "@/format";
 import { discoveryPoliciesPath, discoveryPolicyPath } from "@/lib/discoveryPolicyPaths";
 import { discoveryPolicyChanges } from "@/lib/discoveryPolicyChanges";
-import { draftFromPolicy, outcomeLabel } from "@/lib/discoveryPolicyDraft";
+import { draftFromPolicy } from "@/lib/discoveryPolicyDraft";
 
 type Version = TableDiscoveryPolicyVersionApiResponse;
 
@@ -107,11 +107,10 @@ export function DiscoveryPolicyVersionPage() {
               term: "Description",
               description: content.description || <span className="text-on-surface-variant">—</span>,
             },
-            { term: "When no rule matches", description: outcomeLabel(content.noMatchOutcome) },
           ]}
         />
       </Panel>
-      <DiscoveryRulesTable rules={content.rules} readOnly />
+      <DiscoveryRulesTable rules={content.rules} />
       <Changes key={query.data.version} name={name} current={query.data} />
     </section>
   );

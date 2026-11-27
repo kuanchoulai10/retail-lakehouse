@@ -11,11 +11,9 @@ import { CreateDiscoveryPolicyDialog } from "./CreateDiscoveryPolicyDialog";
 const CREATED: TableDiscoveryPolicyApiResponse = {
   id: "dp-01m7s6c3tqee0rhg00xry2zqqw",
   name: "orders-only",
-  is_default: false,
   version: 1,
   description: "",
-  no_match_outcome: "unmanage",
-  rules: [],
+  rules: [{ action: "include", table_name_pattern: "orders*" }],
   created_at: "2026-11-21T09:00:00Z",
   updated_at: "2026-11-21T09:00:00Z",
 };
@@ -50,43 +48,57 @@ function dialog(): HTMLElement {
 }
 
 describe("CreateDiscoveryPolicyDialog", { timeout: 15_000 }, () => {
-  it("asks for a name, a description and what happens when no rule matches, preset to Do not manage", () => {
+  it("asks for a name, a description and a first rule, preset to Include", () => {
     renderDialog();
     expect(within(dialog()).getByRole("textbox", { name: "Name" })).toHaveValue("");
     expect(within(dialog()).getByRole("textbox", { name: "Description" })).toHaveValue("");
-    expect(within(dialog()).getByRole("combobox", { name: "When no rule matches" })).toHaveTextContent(
-      "Do not manage",
-    );
+    expect(within(dialog()).getByRole("combobox", { name: "Action" })).toHaveTextContent("Include");
+    expect(within(dialog()).getByRole("textbox", { name: "Table name pattern" })).toHaveValue("");
+    expect(within(dialog()).queryByRole("combobox", { name: "When no rule matches" })).not.toBeInTheDocument();
   });
 
-  it("creates a policy with no rules and goes to its page", async () => {
+  it("creates a policy with its first rule and goes to its page", async () => {
     const user = userEvent.setup();
     const { calls, onClose } = renderDialog();
     await user.type(within(dialog()).getByRole("textbox", { name: "Name" }), " orders-only ");
     await user.type(within(dialog()).getByRole("textbox", { name: "Description" }), "Orders tables");
+    await user.type(within(dialog()).getByRole("textbox", { name: "Table name pattern" }), "orders*");
     await user.click(within(dialog()).getByRole("button", { name: "Create policy" }));
 
     expect(await screen.findByText("Policy page orders-only")).toBeInTheDocument();
     expect(bodyOf(calls, "POST", "/v1/discovery-policies")).toEqual({
       name: "orders-only",
       description: "Orders tables",
-      no_match_outcome: "unmanage",
-      rules: [],
+      rules: [{ action: "include", table_name_pattern: "orders*" }],
     });
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("sends Manage when it is picked for tables no rule matches", async () => {
+  it("sends Exclude when it is picked for the first rule", async () => {
     const user = userEvent.setup();
     const { calls } = renderDialog();
-    await user.type(within(dialog()).getByRole("textbox", { name: "Name" }), "everything");
-    await user.click(within(dialog()).getByRole("combobox", { name: "When no rule matches" }));
-    await user.click(await screen.findByRole("option", { name: "Manage" }));
+    await user.type(within(dialog()).getByRole("textbox", { name: "Name" }), "no-temporary");
+    await user.click(within(dialog()).getByRole("combobox", { name: "Action" }));
+    await user.click(await screen.findByRole("option", { name: "Exclude" }));
+    await user.type(within(dialog()).getByRole("textbox", { name: "Table name pattern" }), "tmp_*");
     await user.click(within(dialog()).getByRole("button", { name: "Create policy" }));
 
     await waitFor(() =>
-      expect(bodyOf(calls, "POST", "/v1/discovery-policies")).toMatchObject({ no_match_outcome: "manage" }),
+      expect(bodyOf(calls, "POST", "/v1/discovery-policies")).toMatchObject({
+        rules: [{ action: "exclude", table_name_pattern: "tmp_*" }],
+      }),
     );
+  });
+
+  it("refuses a first rule with no pattern without asking the API", async () => {
+    const user = userEvent.setup();
+    const { calls } = renderDialog();
+    await user.type(within(dialog()).getByRole("textbox", { name: "Name" }), "orders-only");
+    await user.type(within(dialog()).getByRole("textbox", { name: "Table name pattern" }), "   ");
+    await user.click(within(dialog()).getByRole("button", { name: "Create policy" }));
+
+    expect(await within(dialog()).findByText("The first rule needs a table name pattern.")).toBeInTheDocument();
+    expect(callsTo(calls, "POST", "/v1/discovery-policies")).toEqual([]);
   });
 
   it("refetches the policy list after a create", async () => {
@@ -94,6 +106,7 @@ describe("CreateDiscoveryPolicyDialog", { timeout: 15_000 }, () => {
     const { client } = renderDialog();
     const invalidate = vi.spyOn(client, "invalidateQueries");
     await user.type(within(dialog()).getByRole("textbox", { name: "Name" }), "orders-only");
+    await user.type(within(dialog()).getByRole("textbox", { name: "Table name pattern" }), "orders*");
     await user.click(within(dialog()).getByRole("button", { name: "Create policy" }));
 
     await screen.findByText("Policy page orders-only");
@@ -119,6 +132,7 @@ describe("CreateDiscoveryPolicyDialog", { timeout: 15_000 }, () => {
     const user = userEvent.setup();
     const { onClose } = renderDialog(() => jsonResponse({ detail }, status));
     await user.type(within(dialog()).getByRole("textbox", { name: "Name" }), "orders-only");
+    await user.type(within(dialog()).getByRole("textbox", { name: "Table name pattern" }), "orders*");
     await user.click(within(dialog()).getByRole("button", { name: "Create policy" }));
 
     expect(await within(dialog()).findByText(detail)).toBeInTheDocument();

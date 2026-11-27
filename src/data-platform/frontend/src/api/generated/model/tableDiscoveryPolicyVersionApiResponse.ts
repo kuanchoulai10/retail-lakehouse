@@ -5,7 +5,6 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { DiscoveryRuleApiResponse } from './discoveryRuleApiResponse';
-import type { TableDiscoveryPolicyVersionApiResponseNoMatchOutcome } from './tableDiscoveryPolicyVersionApiResponseNoMatchOutcome';
 
 /**
  * Describe one stored version of a discovery policy; ``created_at`` is when that version was written.
@@ -14,12 +13,8 @@ export interface TableDiscoveryPolicyVersionApiResponse {
   created_at: string;
   description: string;
   id: string;
-  /** Whether this is the platform default discovery policy, which decides where nothing is attached. */
-  is_default: boolean;
   name: string;
-  /** What happens to a table that no rule matches: managed or not. */
-  no_match_outcome: TableDiscoveryPolicyVersionApiResponseNoMatchOutcome;
-  /** The rules, read top to bottom; the first whose conditions all hold decides. */
+  /** The rules, at least one, read top to bottom; the last whose pattern matches a table decides it, and a table no rule matches is not managed. */
   rules: DiscoveryRuleApiResponse[];
   version: number;
 }

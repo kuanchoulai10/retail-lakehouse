@@ -7,7 +7,7 @@
 import type { ListedTableDiscoveryPolicyApiResponse } from './listedTableDiscoveryPolicyApiResponse';
 
 /**
- * List every discovery policy, the default first, then by name.
+ * List every discovery policy by name.
  */
 export interface TableDiscoveryPoliciesApiResponse {
   policies: ListedTableDiscoveryPolicyApiResponse[];

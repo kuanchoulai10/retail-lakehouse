@@ -37,18 +37,32 @@ function effectiveQuery(scope: PolicyScope) {
   );
 }
 
-// Removes the attachment the entry names, by its pa- or da- id; the platform default has none.
-function detachEntry(entry: Entry): Promise<void> {
-  if (entry.attachment_id === null) return Promise.reject(new Error("the platform default is not attached"));
-  return entry.kind === "maintenance"
-    ? detachTableMaintenancePolicy(entry.policy_name, entry.attachment_id)
-    : detachTableDiscoveryPolicy(entry.policy_name, entry.attachment_id);
+// The policy an entry names; a discovery entry names none when no discovery policy applies.
+interface AppliedPolicy {
+  name: string;
+  version: number;
 }
 
-function versionPath(entry: Entry): string {
+function appliedPolicy(entry: Entry): AppliedPolicy | null {
+  if (entry.policy_name === null || entry.version === null) return null;
+  return { name: entry.policy_name, version: entry.version };
+}
+
+// Removes the attachment the entry names, by its pa- or da- id; the platform default has none.
+function detachEntry(entry: Entry): Promise<void> {
+  const policy = appliedPolicy(entry);
+  if (entry.attachment_id === null || policy === null) {
+    return Promise.reject(new Error("no policy is attached here"));
+  }
   return entry.kind === "maintenance"
-    ? policyVersionPath(entry.policy_name, entry.version)
-    : discoveryPolicyVersionPath(entry.policy_name, entry.version);
+    ? detachTableMaintenancePolicy(policy.name, entry.attachment_id)
+    : detachTableDiscoveryPolicy(policy.name, entry.attachment_id);
+}
+
+function versionPath(kind: PolicyKind, policy: AppliedPolicy): string {
+  return kind === "maintenance"
+    ? policyVersionPath(policy.name, policy.version)
+    : discoveryPolicyVersionPath(policy.name, policy.version);
 }
 
 function Origin({ origin }: { origin: EffectivePolicyOrigin }) {
@@ -80,20 +94,25 @@ interface RowProps {
 }
 
 function EntryRow({ scope, entry, detaching, onAttach, onDetach, attachRef, detachRef }: RowProps) {
+  const policy = appliedPolicy(entry);
   const origin = effectivePolicyOrigin(scope, entry);
-  const here = origin.level === "here";
+  const here = policy !== null && origin.level === "here";
   return (
     <li className="flex flex-col gap-1 border-b border-outline py-2 last:border-b-0">
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="text-on-surface-variant">{LABELS[entry.kind]}</span>
-        <TextLink asChild className="font-mono break-all">
-          <Link to={versionPath(entry)}>
-            {entry.policy_name} v{entry.version}
-          </Link>
-        </TextLink>
+        {policy === null ? (
+          <span>{`No ${entry.kind} policy applies`}</span>
+        ) : (
+          <TextLink asChild className="font-mono break-all">
+            <Link to={versionPath(entry.kind, policy)}>
+              {policy.name} v{policy.version}
+            </Link>
+          </TextLink>
+        )}
         {entry.kind === "maintenance" && entry.dry_run && <Badge>Dry run</Badge>}
       </p>
-      <Origin origin={origin} />
+      {policy !== null && <Origin origin={origin} />}
       {/* Each button says its kind to a screen reader; the row label says it on screen. The name starts
           with the visible label ("Attach policy for maintenance"), so voice control finds it (WCAG 2.5.3). */}
       <div className="flex flex-wrap gap-2 pt-1">

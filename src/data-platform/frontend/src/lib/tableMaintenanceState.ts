@@ -6,7 +6,8 @@ import { catalogScanState } from "@/lib/catalogScanState";
 // Whether maintenance manages a catalog table, worked out from the catalogs discovery scans and
 // maintenance's record for the table's uuid, in the spec's order: a catalog no discovery policy
 // manages tables in first, then one discovery cannot read, then a missing record, then an
-// unmanaged or dropped one.
+// unmanaged one (no discovery policy applies to it, or the one that applies does not manage it) or a
+// dropped one.
 export type TableMaintenanceState =
   | { kind: "loading" }
   | { kind: "failed"; error: unknown }

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { apiError } from "@/stories/apiError";
 import { ConsolePage } from "@/stories/ConsolePage";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
@@ -20,7 +20,7 @@ type Story = StoryObj<typeof meta>;
 
 const RULES_TABLE = "Discovery rules, read top to bottom";
 
-// sales-tables v2: manage the sales namespaces' orders and returns, keep temporary tables out.
+// sales-tables v2: include every table, then exclude the temporary and the staging ones.
 export const Loaded: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -31,39 +31,18 @@ export const Loaded: Story = {
     await expect(canvas.getByRole("textbox", { name: "Description" })).toHaveValue(
       "Sales tables, without the temporary ones",
     );
-    await expect(canvas.getByRole("combobox", { name: "When no rule matches" })).toHaveTextContent("Do not manage");
+    await expect(canvas.queryByRole("combobox", { name: "When no rule matches" })).toBeNull();
     const rules = within(canvas.getByRole("table", { name: RULES_TABLE }));
-    await expect(rules.getByText("orders*")).toBeVisible();
-    await expect(rules.getByText("tmp_*")).toBeVisible();
-    // Attached to namespace iceberg.sales, so rule 1's namespace globs only tell its child namespaces apart.
-    await expect(
-      await rules.findByText(
-        "Attached to namespace iceberg.sales: a namespace glob only tells its child namespaces apart.",
-      ),
-    ).toBeVisible();
+    await expect(rules.getByRole("combobox", { name: "Action of rule 1" })).toHaveTextContent("Include");
+    await expect(rules.getByRole("textbox", { name: "Table name pattern of rule 1" })).toHaveValue("*");
+    await expect(rules.getByRole("combobox", { name: "Action of rule 2" })).toHaveTextContent("Exclude");
+    await expect(rules.getByRole("textbox", { name: "Table name pattern of rule 2" })).toHaveValue("tmp_*");
     const attached = within(canvas.getByRole("region", { name: "Attached to" }));
-    await expect(attached.getByRole("link", { name: "iceberg.sales" })).toBeVisible();
+    await expect(await attached.findByRole("link", { name: "iceberg.sales" })).toBeVisible();
     await expect(await attached.findByText(/^Scanned/)).toBeVisible();
     await expect(canvas.getByRole("button", { name: "Save" })).toBeDisabled();
     const current = canvas.getAllByRole("link", { name: "Discovery policies" }).filter((link) => link.getAttribute("aria-current") === "page");
     await expect(current).toHaveLength(1);
-  },
-};
-
-// The platform default reads only: its fixed description, no rules and nothing to save.
-export const Default: Story = {
-  args: { route: "/discovery-policies/default" },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByRole("heading", { level: 1, name: "default" })).toBeVisible();
-    await expect(
-      canvas.getByText(
-        "Manages nothing. Attach another discovery policy to a catalog, namespace or table to manage its tables.",
-      ),
-    ).toBeVisible();
-    await expect(canvas.getByText("No rules.")).toBeVisible();
-    await expect(canvas.queryByRole("button", { name: "Save" })).toBeNull();
-    await expect(canvas.queryByRole("textbox")).toBeNull();
   },
 };
 
@@ -89,24 +68,38 @@ export const Conflict: Story = {
       await canvas.findByText("Someone else changed this policy. Reload to see their version."),
     ).toBeVisible();
     await expect(canvas.getByRole("button", { name: "Reload" })).toBeVisible();
-    await expect(canvas.queryByText("tmp_*")).toBeNull();
+    await expect(canvas.queryByDisplayValue("tmp_*")).toBeNull();
   },
 };
 
 export const Refused: Story = {
   beforeEach({ msw }) {
-    msw.use(apiError("put", "/v1/discovery-policies/:name", "unknown discovery rule id dr-01m7s6c3tqee0rhg00xz1dk9cz", 422));
+    msw.use(apiError("put", "/v1/discovery-policies/:name", "a discovery policy needs at least one rule", 422));
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.type(await canvas.findByRole("textbox", { name: "Description" }), "!");
     await userEvent.click(canvas.getByRole("button", { name: "Save" }));
-    await expect(await canvas.findByText("unknown discovery rule id dr-01m7s6c3tqee0rhg00xz1dk9cz")).toBeVisible();
+    await expect(await canvas.findByText("a discovery policy needs at least one rule")).toBeVisible();
   },
 };
 
-// The whole edit by keyboard: the description, a new rule through the editor, focus back on Add
-// rule when it closes, then back up to Save.
+// A new rule starts as include with no pattern, and Save waits until it has one.
+export const AddRule: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole("button", { name: "Add rule" }));
+    const rules = within(canvas.getByRole("table", { name: RULES_TABLE }));
+    await expect(rules.getByRole("combobox", { name: "Action of rule 4" })).toHaveTextContent("Include");
+    await expect(canvas.getByRole("button", { name: "Save" })).toBeDisabled();
+    await expect(
+      canvas.getByText("Every rule needs a table name pattern before the policy can be saved."),
+    ).toBeVisible();
+  },
+};
+
+// The whole edit by keyboard: the description, a new rule whose pattern field takes focus, then back
+// up to Save.
 export const Keyboard: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -114,27 +107,16 @@ export const Keyboard: Story = {
     description.focus();
     await userEvent.keyboard(" (EU)");
     await userEvent.tab();
-    await expect(canvas.getByRole("combobox", { name: "When no rule matches" })).toHaveFocus();
-    await userEvent.tab();
     const addRule = canvas.getByRole("button", { name: "Add rule" });
     await expect(addRule).toHaveFocus();
     await userEvent.keyboard("{Enter}");
-    const dialog = await screen.findByRole("dialog", { name: "Add rule" });
-    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Close" })).toHaveFocus());
-    await userEvent.tab();
-    await expect(within(dialog).getByRole("combobox", { name: "Outcome" })).toHaveFocus();
-    await userEvent.tab();
-    await userEvent.keyboard("finance{Enter}");
-    for (let i = 0; i < 5; i += 1) await userEvent.tab();
-    await expect(within(dialog).getByRole("button", { name: "Add rule" })).toHaveFocus();
-    await userEvent.keyboard("{Enter}");
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    await waitFor(() => expect(addRule).toHaveFocus());
-    await expect(within(canvas.getByRole("table", { name: RULES_TABLE })).getByText("finance")).toBeVisible();
-    await userEvent.tab({ shift: true });
-    await userEvent.tab({ shift: true });
-    await userEvent.tab({ shift: true });
-    await expect(canvas.getByRole("button", { name: "Save" })).toHaveFocus();
+    const pattern = await canvas.findByRole("textbox", { name: "Table name pattern of rule 4" });
+    await waitFor(() => expect(pattern).toHaveFocus());
+    await userEvent.keyboard("finance_*");
+    await expect(pattern).toHaveValue("finance_*");
+    const save = canvas.getByRole("button", { name: "Save" });
+    for (let i = 0; i < 30 && document.activeElement !== save; i += 1) await userEvent.tab({ shift: true });
+    await expect(save).toHaveFocus();
     await userEvent.keyboard("{Enter}");
     await expect(await canvas.findByText("Saved. Discovering tables…")).toBeVisible();
   },
