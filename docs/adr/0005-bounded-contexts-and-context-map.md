@@ -24,7 +24,7 @@ Option 3. The backend has three contexts under `context/<name>/`:
 
 | Context | Owns | Source of truth |
 |---|---|---|
-| `table_maintenance` | `CatalogDiscovery`, `Table`, `TableMaintenancePolicy`, `TableMaintenancePolicyAttachment`, `TableDiscoveryPolicy`, `TableDiscoveryPolicyAttachment`, `TableMaintenanceRun`, `TableReconciliation` | Our database |
+| `table_maintenance` | `Catalog`, `CatalogDiscovery`, `Namespace`, `Table`, `TableMaintenancePolicy`, `TableDiscoveryPolicy`, `TableMaintenanceRun`, `TableReconciliation` | Our database |
 | `catalog` | Catalogs, namespaces, tables, views | Polaris |
 | `access` | Principals, principal roles, catalog roles (grants live inside the catalog-role aggregate) | Polaris |
 
@@ -33,6 +33,8 @@ Updated 2026-11-12: maintenance presets and discovery settings were replaced by 
 Updated 2026-11-20 (KCL-93): the maintenance flow is one reconciliation per table, which starts one maintenance workflow per table (`table-maintenance:table-uuid={uuid}`) whose Spark jobs go straight to Volcano queues. The global compaction round, the compaction candidates and the admission workflow were removed, so the `CompactionCandidate` and `CompactionRound` aggregates no longer exist.
 
 Updated 2026-11-21 (KCL-71): the one discovery rules list became versioned discovery policies attached on the catalog hierarchy (ADR 0012), so `TableDiscoveryRules` is replaced by the aggregates `TableDiscoveryPolicy` and `TableDiscoveryPolicyAttachment`.
+
+Updated 2026-11-27 (KCL-117): the places hold their policies (ADR 0018). The attachment aggregates `TableDiscoveryPolicyAttachment` and `TableMaintenancePolicyAttachment` are gone. Table maintenance now has `Catalog` and `Namespace` aggregates of its own, which hold a discovery and a maintenance policy id and a version. They are distinct from the catalog context's catalogs and namespaces. They are linked to them by path (the catalog name, and the catalog with the namespace levels), as an identifier value, the same way the two `Table` models are linked by the Iceberg table UUID. Catalogs and namespaces have no UUID (ADR 0014). A maintenance catalog or namespace record outlives its Polaris object until its policies are detached.
 
 Relations between the contexts:
 

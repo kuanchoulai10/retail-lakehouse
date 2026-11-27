@@ -4,6 +4,15 @@ Date: 2026-11-19
 
 Status: Accepted.
 
+2026-11-27 note (KCL-116, KCL-117): ADR 0018 supersedes these points of this record:
+
+- the fixed default discovery policy;
+- the discovery content of ordered rules of conditions with a no-match outcome, and conditions that do not depend on the level (now ordered `include` / `exclude` rules on the table name, where the last match decides);
+- the scanned catalogs derived from policies that can manage, and the `dr-` rule ids;
+- one attachment aggregate per kind ("Aggregates and API"), the `da-` and `pa-` ids and detaching by `attachment_id` (now the catalog, namespace or table holds the policy, and a detach names the place).
+
+The nearest-wins resolution rule and the maintenance policy stand. The body below is kept as written.
+
 ## Context
 
 The table maintenance context has two kinds of policy that work in different ways. A maintenance policy has a name and kept versions and is attached to a catalog, a namespace or a table; the attachment nearest the table wins. Discovery rules are one platform-wide ordered list of include and exclude rules, each with catalog, namespace and table globs, where the first match wins and no match means unmanaged. A user has to learn two models, the API and the console grow one shape per kind, and discovery cannot be set per catalog or namespace.
