@@ -162,6 +162,8 @@ export function EffectivePoliciesPanel({ scope }: { scope: PolicyScope }) {
   const detachButtons = useRef(new Map<PolicyKind, HTMLButtonElement>());
   // The kind whose Detach gets focus back once a refused detach settles and the button is enabled again.
   const refocus = useRef<PolicyKind | null>(null);
+  // Bumped once each detach settles, so the refocus below runs even when no render saw it pending.
+  const [settled, setSettled] = useState(0);
   const effective = useQuery(effectiveQuery(scope));
 
   const detach = useMutation({
@@ -175,6 +177,7 @@ export function EffectivePoliciesPanel({ scope }: { scope: PolicyScope }) {
         : invalidateDiscoveryPolicyAttachments(queryClient));
       if (error === null) attachButtons.current.get(entry.kind)?.focus();
       else refocus.current = entry.kind;
+      setSettled((count) => count + 1);
     },
   });
 
@@ -182,7 +185,7 @@ export function EffectivePoliciesPanel({ scope }: { scope: PolicyScope }) {
     if (detach.isPending || refocus.current === null) return;
     detachButtons.current.get(refocus.current)?.focus();
     refocus.current = null;
-  }, [detach.isPending]);
+  }, [settled, detach.isPending]);
 
   let body;
   if (effective.isPending) {

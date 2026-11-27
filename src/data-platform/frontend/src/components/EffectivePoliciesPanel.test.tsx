@@ -339,8 +339,11 @@ describe("EffectivePoliciesPanel", { timeout: 15_000 }, () => {
   it("shows a refused detach and gives focus back to that Detach", async () => {
     const calls = stubApi({
       [`GET ${NAMESPACE_EFFECTIVE}`]: effective(maintenance(AT_RETAIL), discovery(AT_RETAIL)),
-      [`DELETE ${DISCOVERY_DETACH_RETAIL}`]: () =>
-        jsonResponse({ detail: "database unavailable" }, 500),
+      // A browser drops focus from the button it disables while the detach runs; jsdom keeps it.
+      [`DELETE ${DISCOVERY_DETACH_RETAIL}`]: () => {
+        (document.activeElement as HTMLElement | null)?.blur();
+        return jsonResponse({ detail: "database unavailable" }, 500);
+      },
     });
     const user = userEvent.setup();
     renderPanel(NAMESPACE_SCOPE);

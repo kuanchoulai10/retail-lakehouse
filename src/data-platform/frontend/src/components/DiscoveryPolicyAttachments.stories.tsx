@@ -8,7 +8,6 @@ import {
   getListTableDiscoveryPolicyAttachmentsMockHandler,
 } from "@/api/generated/discovery-policies/discovery-policies.msw";
 import type { ListedTableDiscoveryPolicyAttachmentApiResponse } from "@/api/generated/model";
-import { policyTargetKey } from "@/lib/policyTargetKey";
 import { apiError } from "@/stories/apiError";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
@@ -147,8 +146,9 @@ export const Detach: Story = {
       getDetachTableDiscoveryPolicyMockHandler(({ request }) => {
         // The place comes as its type and its path, repeated once per part.
         const query = new URL(request.url).searchParams;
-        const place = policyTargetKey({ type: query.get("target_type") ?? "", path: query.getAll("path") });
-        attachments = attachments.filter((a) => policyTargetKey(a.target) !== place);
+        const type = query.get("target_type");
+        const path = query.getAll("path").join("\u001f");
+        attachments = attachments.filter((a) => a.target.type !== type || a.target.path.join("\u001f") !== path);
       }),
     );
   },

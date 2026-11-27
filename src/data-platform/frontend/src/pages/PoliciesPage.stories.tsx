@@ -1,13 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
-import { getListTableMaintenancePoliciesMockHandler } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
+import {
+  getDetachTableMaintenancePolicyMockHandler,
+  getListTableMaintenancePoliciesMockHandler,
+  getListTableMaintenancePolicyAttachmentsMockHandler,
+} from "@/api/generated/maintenance-policies/maintenance-policies.msw";
 import { apiError } from "@/stories/apiError";
 import { apiPending } from "@/stories/apiPending";
 import { ConsolePage } from "@/stories/ConsolePage";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
 import { PHONE } from "@/stories/phone";
-import { POLICIES } from "@/stories/storyData";
+import { POLICIES, POLICY_ATTACHMENTS } from "@/stories/storyData";
 
 const meta = {
   title: "Pages/Policies",
@@ -41,6 +45,52 @@ export const Default: Story = {
     await expect(canvas.getByRole("columnheader", { name: "Checks" })).toBeVisible();
     await expect(within(row(canvasElement, "default")).getByText("Every 1 h, and 5 min after a commit")).toBeVisible();
     await expect(within(nightly).getByText("Every 1 d")).toBeVisible();
+    await expect(within(nightly).getByRole("button", { name: "Detach retail-nightly from iceberg.retail" })).toBeVisible();
+    await expect(within(nightly).getByRole("button", { name: "Detach retail-nightly from legacy" })).toBeVisible();
+  },
+};
+
+// A catalog that left Polaris has no page, so its place is detached here, by keyboard and without a
+// confirmation; the row goes and focus moves to the next place's Detach.
+export const DetachOrphaned: Story = {
+  beforeEach({ msw }) {
+    let attachments = POLICY_ATTACHMENTS;
+    msw.use(
+      getListTableMaintenancePolicyAttachmentsMockHandler(() => ({ attachments })),
+      getDetachTableMaintenancePolicyMockHandler(({ request }) => {
+        // The place comes as its type and its path, repeated once per part.
+        const query = new URL(request.url).searchParams;
+        const type = query.get("target_type");
+        const path = query.getAll("path").join("\u001f");
+        attachments = attachments.filter((a) => a.target.type !== type || a.target.path.join("\u001f") !== path);
+      }),
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const detach = await canvas.findByRole("button", { name: "Detach retail-nightly from legacy" });
+    detach.focus();
+    await userEvent.keyboard("{Enter}");
+    await expect(screen.queryByRole("alertdialog")).toBeNull();
+    await waitFor(() => expect(canvas.queryByText("No longer in the catalog")).toBeNull());
+    await waitFor(() =>
+      expect(canvas.getByRole("button", { name: "Detach retail-nightly from iceberg.retail" })).toHaveFocus(),
+    );
+  },
+};
+
+// A refused detach keeps the place, says why, and hands focus back to that place's Detach.
+export const DetachFails: Story = {
+  beforeEach({ msw }) {
+    msw.use(apiError("delete", "/v1/maintenance-policies/:name/attachments", "database unavailable", 500));
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const detach = await canvas.findByRole("button", { name: "Detach retail-nightly from legacy" });
+    detach.focus();
+    await userEvent.keyboard("{Enter}");
+    await expect(await canvas.findByText(/Could not detach retail-nightly from legacy: database unavailable/)).toBeVisible();
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Detach retail-nightly from legacy" })).toHaveFocus());
   },
 };
 
@@ -138,6 +188,7 @@ export const Phone: Story = {
     const canvas = within(canvasElement);
     await canvas.findByText("Compacts whole tables once a day");
     await waitFor(() => expect(canvas.getAllByRole("link", { name: "iceberg.retail" }).length).toBeGreaterThan(0));
+    await expect(canvas.getAllByRole("button", { name: "Detach retail-nightly from legacy" }).length).toBeGreaterThan(0);
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };

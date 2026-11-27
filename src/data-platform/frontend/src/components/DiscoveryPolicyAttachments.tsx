@@ -115,6 +115,8 @@ export function DiscoveryPolicyAttachments({ policyName }: { policyName: string 
   const detachButtons = useRef(new Map<string, HTMLButtonElement>());
   // The row whose Detach gets focus back once a refused detach settles and the button is enabled again.
   const refocus = useRef<string | null>(null);
+  // Bumped once each detach settles, so the refocus below runs even when no render saw it pending.
+  const [settled, setSettled] = useState(0);
   const [attaching, setAttaching] = useState(false);
   const attachments = useListTableDiscoveryPolicyAttachments(policyName);
   const scanned = useListScannedCatalogs();
@@ -128,6 +130,7 @@ export function DiscoveryPolicyAttachments({ policyName }: { policyName: string 
       await invalidateDiscoveryPolicyAttachments(queryClient);
       if (error === null) attachButton.current?.focus();
       else refocus.current = policyTargetKey(attachment.target);
+      setSettled((count) => count + 1);
     },
   });
 
@@ -135,7 +138,7 @@ export function DiscoveryPolicyAttachments({ policyName }: { policyName: string 
     if (detach.isPending || refocus.current === null) return;
     detachButtons.current.get(refocus.current)?.focus();
     refocus.current = null;
-  }, [detach.isPending]);
+  }, [settled, detach.isPending]);
 
   let body;
   if (attachments.isPending) {

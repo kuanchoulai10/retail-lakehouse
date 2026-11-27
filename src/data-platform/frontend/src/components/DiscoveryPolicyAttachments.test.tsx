@@ -260,9 +260,25 @@ describe("DiscoveryPolicyAttachments", { timeout: 15_000 }, () => {
     expect(calls.filter((call) => call.method === "DELETE")).toHaveLength(1);
   });
 
+  it("keeps two table rows of one path apart, an old record and a recreated table", async () => {
+    const old = attachment({ target: { type: "table", path: ["iceberg", "finance", "ledger"], table_uuid: "uuid-ledger-old" }, orphaned: true });
+    const recreated = attachment({ target: { type: "table", path: ["iceberg", "finance", "ledger"], table_uuid: "uuid-ledger" } });
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    stubApi([old, recreated], [scanned("iceberg")]);
+    renderAttachments();
+
+    expect(await screen.findAllByRole("button", { name: "Detach from iceberg.finance.ledger" })).toHaveLength(2);
+    expect(errors.mock.calls.flat().join(" ")).not.toMatch(/same key/);
+    errors.mockRestore();
+  });
+
   it("returns focus to the row's Detach after a refused detach", async () => {
     stubApi([CATALOG, NAMESPACE], [scanned("iceberg")], {
-      [`DELETE ${DETACH_SALES}`]: () => jsonResponse({ detail: "database unavailable" }, 500),
+      // A browser drops focus from the button it disables while the detach runs; jsdom keeps it.
+      [`DELETE ${DETACH_SALES}`]: () => {
+        (document.activeElement as HTMLElement | null)?.blur();
+        return jsonResponse({ detail: "database unavailable" }, 500);
+      },
     });
     const user = userEvent.setup();
     renderAttachments();
