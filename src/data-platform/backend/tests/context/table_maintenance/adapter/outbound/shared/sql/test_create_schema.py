@@ -109,3 +109,16 @@ def test_tables_columns_current_writers_always_fill_are_not_null(table: str, col
     for package in AGGREGATE_SQL_PACKAGES:
         importlib.import_module(package)
     assert metadata.tables[table].columns[column].nullable is False
+
+
+def test_no_column_carries_a_server_default() -> None:
+    """Every writer fills every not-null column, and the cluster is rebuilt on a schema change, so no default stands in.
+
+    A server default only fills rows written before a column existed, which is compatibility code.
+    """
+    for package in AGGREGATE_SQL_PACKAGES:
+        importlib.import_module(package)
+    defaulted = [
+        f"{t.name}.{c.name}" for t in metadata.sorted_tables for c in t.columns if c.server_default is not None
+    ]
+    assert defaulted == []
