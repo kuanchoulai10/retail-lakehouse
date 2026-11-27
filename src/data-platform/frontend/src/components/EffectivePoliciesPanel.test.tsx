@@ -50,6 +50,10 @@ const AT_CATALOG: PolicyTargetApiResponse = { type: "catalog", path: ["iceberg"]
 const AT_RETAIL: PolicyTargetApiResponse = { type: "namespace", path: ["iceberg", "retail"], table_uuid: null };
 const AT_ORDERS: PolicyTargetApiResponse = { type: "table", path: ["iceberg", "retail", "orders"], table_uuid: "uuid-orders" };
 
+// A detach names the place by its type and path, the path repeated once per part.
+const DISCOVERY_DETACH_RETAIL = "/v1/discovery-policies/sales-tables/attachments?target_type=namespace&path=iceberg&path=retail";
+const MAINTENANCE_DETACH_RETAIL = "/v1/maintenance-policies/nightly/attachments?target_type=namespace&path=iceberg&path=retail";
+
 const maintenance = (target: PolicyTargetApiResponse | null, overrides: Partial<MaintenanceEffectivePolicyApiResponse> = {}) =>
   effectiveMaintenanceFixture({ ...overrides, target });
 const discovery = (target: PolicyTargetApiResponse | null, overrides: Partial<DiscoveryEffectivePolicyApiResponse> = {}) =>
@@ -186,11 +190,10 @@ describe("EffectivePoliciesPanel", { timeout: 15_000 }, () => {
     expect(screen.queryByRole("button", { name: /^Detach/ })).not.toBeInTheDocument();
   });
 
-  it("detaches the discovery policy attached here by its attachment id and refetches what it changed", async () => {
+  it("detaches the discovery policy from this namespace by its place and refetches what it changed", async () => {
     const calls = stubApi({
       [`GET ${NAMESPACE_EFFECTIVE}`]: effective(maintenance(AT_CATALOG), discovery(AT_RETAIL)),
-      "DELETE /v1/discovery-policies/sales-tables/attachments/da-01m7s6c3tqee0rhg00xry2zqqx": () =>
-        new Response(null, { status: 204 }),
+      [`DELETE ${DISCOVERY_DETACH_RETAIL}`]: () => new Response(null, { status: 204 }),
     });
     const client = renderPanel(NAMESPACE_SCOPE);
     const stale = seed(client, {
@@ -201,19 +204,14 @@ describe("EffectivePoliciesPanel", { timeout: 15_000 }, () => {
     });
     await userEvent.click(await screen.findByRole("button", { name: "Detach discovery policy" }));
     await waitFor(() => expect(callsTo(calls, "GET", NAMESPACE_EFFECTIVE)).toHaveLength(2));
-    expect(
-      callsTo(calls, "DELETE", "/v1/discovery-policies/sales-tables/attachments/da-01m7s6c3tqee0rhg00xry2zqqx"),
-    ).toHaveLength(1);
+    expect(callsTo(calls, "DELETE", DISCOVERY_DETACH_RETAIL)).toHaveLength(1);
     expect(stale()).toEqual(["attachments", "discoveryPolicies", "scanned"]);
   });
 
-  it("detaches the maintenance policy attached to a recorded table by its attachment id and refetches what it changed", async () => {
-    const detachUrl = "/v1/maintenance-policies/nightly/attachments/pa-01m7sdb2kq9e4z5r7t8vwx3y6d";
+  it("detaches the maintenance policy from a recorded table by its place and refetches what it changed", async () => {
+    const detachUrl = "/v1/maintenance-policies/nightly/attachments?target_type=table&path=iceberg&path=retail&path=orders";
     const calls = stubApi({
-      [`GET ${TABLE_EFFECTIVE}`]: effective(
-        maintenance(AT_ORDERS, { attachment_id: "pa-01m7sdb2kq9e4z5r7t8vwx3y6d" }),
-        discovery(AT_CATALOG),
-      ),
+      [`GET ${TABLE_EFFECTIVE}`]: effective(maintenance(AT_ORDERS), discovery(AT_CATALOG)),
       [`DELETE ${detachUrl}`]: () => new Response(null, { status: 204 }),
     });
     const client = renderPanel(TABLE_SCOPE);
@@ -226,6 +224,30 @@ describe("EffectivePoliciesPanel", { timeout: 15_000 }, () => {
     await waitFor(() => expect(callsTo(calls, "GET", TABLE_EFFECTIVE)).toHaveLength(2));
     expect(callsTo(calls, "DELETE", detachUrl)).toHaveLength(1);
     expect(stale()).toEqual(["attachments", "maintenancePolicies"]);
+  });
+
+  it("detaches a table's policy by the place the answer names, which can be behind a rename the page shows", async () => {
+    // Matched by uuid, so it is this table's; the record still has the name it had before the rename.
+    const before = { ...AT_ORDERS, path: ["iceberg", "retail", "orders_v1"] };
+    const detachUrl = "/v1/discovery-policies/sales-tables/attachments?target_type=table&path=iceberg&path=retail&path=orders_v1";
+    const calls = stubApi({
+      [`GET ${TABLE_EFFECTIVE}`]: effective(maintenance(AT_CATALOG), discovery(before)),
+      [`DELETE ${detachUrl}`]: () => new Response(null, { status: 204 }),
+    });
+    renderPanel(TABLE_SCOPE);
+    const [, second] = await rows();
+    expect(second).toHaveTextContent("Attached here");
+    await userEvent.click(await screen.findByRole("button", { name: "Detach discovery policy" }));
+    await waitFor(() => expect(callsTo(calls, "DELETE", detachUrl)).toHaveLength(1));
+    expect(calls.filter((call) => call.method === "DELETE")).toHaveLength(1);
+  });
+
+  it("does not offer Detach for a policy attached to another table of the same name", async () => {
+    const other = { ...AT_ORDERS, table_uuid: "uuid-orders-before-recreate" };
+    stubApi({ [`GET ${TABLE_EFFECTIVE}`]: effective(maintenance(other), discovery(null)) });
+    renderPanel(TABLE_SCOPE);
+    await rows();
+    expect(screen.queryByRole("button", { name: /^Detach/ })).not.toBeInTheDocument();
   });
 
   it("asks by location for a table maintenance has no record of", async () => {
@@ -243,11 +265,9 @@ describe("EffectivePoliciesPanel", { timeout: 15_000 }, () => {
       [`GET ${NAMESPACE_EFFECTIVE}`]: effective(maintenance(null), discovery(AT_CATALOG, { policy_name: "core-tables" })),
       "PUT /v1/discovery-policies/sales-tables/attachments": () =>
         jsonResponse({
-          id: "da-new",
           policy_id: "dp-01m7s6c3tqee0rhg00xry2zqqv",
           policy_name: "sales-tables",
           target: AT_RETAIL,
-          attached_at: "2026-11-21T09:00:00Z",
         }),
     });
     const client = renderPanel(NAMESPACE_SCOPE);
@@ -276,11 +296,9 @@ describe("EffectivePoliciesPanel", { timeout: 15_000 }, () => {
       [`GET ${NAMESPACE_EFFECTIVE}`]: effective(maintenance(AT_RETAIL), discovery(AT_CATALOG)),
       "PUT /v1/maintenance-policies/scratch/attachments": () =>
         jsonResponse({
-          id: "pa-01m7sd16b1ef2vww335cwcg9k8",
           policy_name: "scratch",
           policy_id: SCRATCH_POLICY_ID,
           target: AT_RETAIL,
-          attached_at: "2026-11-21T09:00:00Z",
         }),
     });
     const client = renderPanel(NAMESPACE_SCOPE);
@@ -321,7 +339,7 @@ describe("EffectivePoliciesPanel", { timeout: 15_000 }, () => {
   it("shows a refused detach and gives focus back to that Detach", async () => {
     const calls = stubApi({
       [`GET ${NAMESPACE_EFFECTIVE}`]: effective(maintenance(AT_RETAIL), discovery(AT_RETAIL)),
-      "DELETE /v1/discovery-policies/sales-tables/attachments/da-01m7s6c3tqee0rhg00xry2zqqx": () =>
+      [`DELETE ${DISCOVERY_DETACH_RETAIL}`]: () =>
         jsonResponse({ detail: "database unavailable" }, 500),
     });
     const user = userEvent.setup();
@@ -337,7 +355,7 @@ describe("EffectivePoliciesPanel", { timeout: 15_000 }, () => {
     stubApi({
       [`GET ${NAMESPACE_EFFECTIVE}`]: () =>
         jsonResponse({ policies: [maintenance(attached ? AT_RETAIL : AT_CATALOG), discovery(AT_CATALOG)] }),
-      "DELETE /v1/maintenance-policies/nightly/attachments/pa-01m7sd16b1ef2vww335cwcg9k8": () => {
+      [`DELETE ${MAINTENANCE_DETACH_RETAIL}`]: () => {
         attached = false;
         return new Response(null, { status: 204 });
       },
@@ -357,5 +375,39 @@ describe("EffectivePoliciesPanel", { timeout: 15_000 }, () => {
     await user.keyboard("{Enter}");
     await waitFor(() => expect(screen.getByRole("button", { name: "Attach policy for maintenance" })).toHaveFocus());
     expect(screen.queryByRole("button", { name: "Detach maintenance policy" })).not.toBeInTheDocument();
+  });
+});
+
+describe("EffectivePoliciesPanel attach errors", { timeout: 15_000 }, () => {
+  it("shows the API's 422 for a namespace level holding a dot in the dialog, which stays open", async () => {
+    const dotted: PolicyScope = { type: "namespace", catalog: "iceberg", namespace: ["sales.eu"] };
+    const detail = "namespace level 'sales.eu' holds a dot, which a policy target cannot name";
+    const calls = stubApi({
+      "GET /v1/effective-policies?catalog=iceberg&namespace=sales.eu": effective(maintenance(null), discovery(null)),
+      "PUT /v1/discovery-policies/sales-tables/attachments": () => jsonResponse({ detail }, 422),
+    });
+    renderPanel(dotted);
+    await userEvent.click(await screen.findByRole("button", { name: "Attach policy for discovery" }));
+    const dialog = await screen.findByRole("dialog", { name: "Attach policy" });
+    await pickPolicy(dialog, "sales-tables");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Attach" }));
+    expect(await within(dialog).findByText(detail)).toBeInTheDocument();
+    expect(bodyOf(calls, "PUT", "/v1/discovery-policies/sales-tables/attachments")).toEqual({
+      target: { type: "namespace", path: ["iceberg", "sales.eu"] },
+    });
+  });
+
+  it("shows the API's 403 in the dialog", async () => {
+    const detail = "the platform's credential cannot read catalog iceberg";
+    stubApi({
+      [`GET ${NAMESPACE_EFFECTIVE}`]: effective(maintenance(null), discovery(null)),
+      "PUT /v1/maintenance-policies/nightly/attachments": () => jsonResponse({ detail }, 403),
+    });
+    renderPanel(NAMESPACE_SCOPE);
+    await userEvent.click(await screen.findByRole("button", { name: "Attach policy for maintenance" }));
+    const dialog = await screen.findByRole("dialog", { name: "Attach policy" });
+    await pickPolicy(dialog, "nightly");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Attach" }));
+    expect(await within(dialog).findByText(detail)).toBeInTheDocument();
   });
 });

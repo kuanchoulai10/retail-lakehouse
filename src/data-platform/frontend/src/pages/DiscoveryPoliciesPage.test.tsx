@@ -160,6 +160,22 @@ describe("DiscoveryPoliciesPage", { timeout: 15_000 }, () => {
     await waitFor(() => expect(callsTo(calls, "GET", "/v1/discovery-policies")).toHaveLength(2));
   });
 
+  it("shows the API's 409 when the policy was attached since the list was read, and keeps the dialog open", async () => {
+    const detail = "discovery policy archive is still attached to catalog:lake, table:lake.sales.orders";
+    const calls = stubApi({ "DELETE /v1/discovery-policies/archive": () => jsonResponse({ detail }, 409) });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Sales tables");
+    await user.click(within(policyRow("archive")).getByRole("button", { name: "Delete archive" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Delete discovery policy" });
+    await user.type(within(dialog).getByRole("textbox", { name: "Type archive to confirm" }), "archive");
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+
+    expect(await within(dialog).findByText(detail)).toBeInTheDocument();
+    expect(callsTo(calls, "DELETE", "/v1/discovery-policies/archive")).toHaveLength(1);
+    await waitFor(() => expect(callsTo(calls, "GET", "/v1/discovery-policies")).toHaveLength(2));
+  });
+
   it("opens the create dialog from New policy", async () => {
     stubApi();
     const user = userEvent.setup();

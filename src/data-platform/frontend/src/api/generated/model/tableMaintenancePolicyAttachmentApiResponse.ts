@@ -7,11 +7,9 @@
 import type { PolicyTargetApiResponse } from './policyTargetApiResponse';
 
 /**
- * Describe a maintenance policy attached to a target, under the attachment's ``pa-`` id.
+ * Describe a maintenance policy attached to a catalog, namespace or table.
  */
 export interface TableMaintenancePolicyAttachmentApiResponse {
-  attached_at: string;
-  id: string;
   policy_id: string;
   policy_name: string;
   target: PolicyTargetApiResponse;

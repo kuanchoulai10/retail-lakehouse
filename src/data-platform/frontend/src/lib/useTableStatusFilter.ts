@@ -1,10 +1,11 @@
 import { useSearchParams } from "react-router";
 
-export const TABLE_STATUSES = ["managed", "unmanaged", "dropped"] as const;
+export const TABLE_STATUSES = ["managed", "unmanaged", "undecided", "dropped"] as const;
 export type TableStatus = (typeof TABLE_STATUSES)[number];
 
 const PARAM = "status";
-const DEFAULT_STATUSES: readonly TableStatus[] = ["managed", "unmanaged"];
+// Every live table: an undecided one has a policy attached to it, so it is not hidden.
+const DEFAULT_STATUSES: readonly TableStatus[] = ["managed", "unmanaged", "undecided"];
 
 function isDefault(statuses: readonly TableStatus[]): boolean {
   return statuses.length === DEFAULT_STATUSES.length && DEFAULT_STATUSES.every((s) => statuses.includes(s));

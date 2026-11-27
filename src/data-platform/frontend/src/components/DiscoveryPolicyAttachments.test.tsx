@@ -12,25 +12,25 @@ import { jsonResponse } from "../test/fixtures";
 import { DiscoveryPolicyAttachments } from "./DiscoveryPolicyAttachments";
 
 const ATTACHMENTS = "/v1/discovery-policies/sales-tables/attachments";
+// A detach names the place by its type and path, the path repeated once per part.
+const DETACH_SALES = `${ATTACHMENTS}?target_type=namespace&path=iceberg&path=sales`;
+const DETACH_LEDGER = `${ATTACHMENTS}?target_type=table&path=iceberg&path=finance&path=ledger`;
 
 function attachment(
   overrides: Partial<ListedTableDiscoveryPolicyAttachmentApiResponse> = {},
 ): ListedTableDiscoveryPolicyAttachmentApiResponse {
   return {
-    id: "da-01m7s6c3tqee0rhg00xry2zqqx",
     policy_id: "dp-01m7s6c3tqee0rhg00xry2zqqv",
     policy_name: "sales-tables",
     target: { type: "namespace", path: ["iceberg", "sales"], table_uuid: null },
     orphaned: false,
-    attached_at: "2026-11-05T09:00:00Z",
     ...overrides,
   };
 }
 
-const CATALOG = attachment({ id: "da-catalog", target: { type: "catalog", path: ["analytics"], table_uuid: null } });
-const NAMESPACE = attachment({ id: "da-namespace" });
+const CATALOG = attachment({ target: { type: "catalog", path: ["analytics"], table_uuid: null } });
+const NAMESPACE = attachment();
 const TABLE = attachment({
-  id: "da-table",
   target: { type: "table", path: ["iceberg", "finance", "ledger"], table_uuid: "uuid-ledger" },
 });
 
@@ -211,12 +211,12 @@ describe("DiscoveryPolicyAttachments", { timeout: 15_000 }, () => {
     expect(await screen.findByText("Could not load where sales-tables is attached: database unavailable")).toBeInTheDocument();
   });
 
-  it("detaches by the attachment's id without asking, then refetches the attachments, the policies and the scan states", async () => {
+  it("detaches by the row's place without asking, then refetches the attachments, the policies and the scan states", async () => {
     let attachments = [NAMESPACE, CATALOG];
     const calls = stubCatalogApi({
       [`GET ${ATTACHMENTS}`]: () => jsonResponse({ attachments }),
       "GET /v1/scanned-catalogs": () => jsonResponse({ catalogs: [scanned("iceberg")] }),
-      [`DELETE ${ATTACHMENTS}/da-namespace`]: () => {
+      [`DELETE ${DETACH_SALES}`]: () => {
         attachments = [CATALOG];
         return new Response(null, { status: 204 });
       },
@@ -228,29 +228,41 @@ describe("DiscoveryPolicyAttachments", { timeout: 15_000 }, () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole("button", { name: "Detach from iceberg.sales" })).not.toBeInTheDocument());
-    expect(callsTo(calls, "DELETE", `${ATTACHMENTS}/da-namespace`)).toHaveLength(1);
+    expect(callsTo(calls, "DELETE", DETACH_SALES)).toHaveLength(1);
     expect(callsTo(calls, "GET", ATTACHMENTS)).toHaveLength(2);
     expect(callsTo(calls, "GET", "/v1/scanned-catalogs")).toHaveLength(2);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["/v1/discovery-policies"], exact: true });
     expect(within(section()).getByRole("button", { name: "Attach" })).toHaveFocus();
   });
 
-  it("detaches an orphaned target by its id", async () => {
+  it("detaches an orphaned place by its type and path", async () => {
     const calls = stubApi([attachment({ orphaned: true })], [scanned("iceberg")], {
-      [`DELETE ${ATTACHMENTS}/da-01m7s6c3tqee0rhg00xry2zqqx`]: () => new Response(null, { status: 204 }),
+      [`DELETE ${DETACH_SALES}`]: () => new Response(null, { status: 204 }),
     });
     const user = userEvent.setup();
     renderAttachments();
     await user.click(await screen.findByRole("button", { name: "Detach from iceberg.sales" }));
 
     await waitFor(() =>
-      expect(callsTo(calls, "DELETE", `${ATTACHMENTS}/da-01m7s6c3tqee0rhg00xry2zqqx`)).toHaveLength(1),
+      expect(callsTo(calls, "DELETE", DETACH_SALES)).toHaveLength(1),
     );
+  });
+
+  it("detaches a table row by its type and path, leaving the other rows", async () => {
+    const calls = stubApi([CATALOG, NAMESPACE, TABLE], [scanned("iceberg"), scanned("analytics")], {
+      [`DELETE ${DETACH_LEDGER}`]: () => new Response(null, { status: 204 }),
+    });
+    const user = userEvent.setup();
+    renderAttachments();
+    await user.click(await screen.findByRole("button", { name: "Detach from iceberg.finance.ledger" }));
+
+    await waitFor(() => expect(callsTo(calls, "DELETE", DETACH_LEDGER)).toHaveLength(1));
+    expect(calls.filter((call) => call.method === "DELETE")).toHaveLength(1);
   });
 
   it("returns focus to the row's Detach after a refused detach", async () => {
     stubApi([CATALOG, NAMESPACE], [scanned("iceberg")], {
-      [`DELETE ${ATTACHMENTS}/da-namespace`]: () => jsonResponse({ detail: "database unavailable" }, 500),
+      [`DELETE ${DETACH_SALES}`]: () => jsonResponse({ detail: "database unavailable" }, 500),
     });
     const user = userEvent.setup();
     renderAttachments();
@@ -263,15 +275,15 @@ describe("DiscoveryPolicyAttachments", { timeout: 15_000 }, () => {
 
   it("shows a refused detach and refetches anyway", async () => {
     const calls = stubApi([NAMESPACE], [scanned("iceberg")], {
-      [`DELETE ${ATTACHMENTS}/da-namespace`]: () =>
-        jsonResponse({ detail: "discovery attachment da-namespace not found" }, 404),
+      [`DELETE ${DETACH_SALES}`]: () =>
+        jsonResponse({ detail: "namespace iceberg.sales does not hold discovery policy sales-tables" }, 404),
     });
     const user = userEvent.setup();
     renderAttachments();
     await user.click(await screen.findByRole("button", { name: "Detach from iceberg.sales" }));
 
     expect(
-      await screen.findByText("Could not detach from iceberg.sales: discovery attachment da-namespace not found"),
+      await screen.findByText("Could not detach from iceberg.sales: namespace iceberg.sales does not hold discovery policy sales-tables"),
     ).toBeInTheDocument();
     await waitFor(() => expect(callsTo(calls, "GET", ATTACHMENTS)).toHaveLength(2));
     expect(callsTo(calls, "GET", "/v1/scanned-catalogs")).toHaveLength(2);

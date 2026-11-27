@@ -9,12 +9,11 @@ import type { PolicyTargetApiResponse } from './policyTargetApiResponse';
 /**
  * Describe the discovery policy that applies, at its latest version, and the level it applies from.
  *
- * ``target`` is the nearest attachment's target and ``attachment_id`` its ``da-`` id. When nothing is
- * attached no discovery policy applies, the place's tables are not managed, and every field but ``kind``
- * is null: there is no discovery default.
+ * ``target`` is the nearest catalog, namespace or table holding a discovery policy. When none holds one
+ * no discovery policy applies, the place's tables are not managed, and every field but ``kind`` is
+ * null: there is no discovery default.
  */
 export interface DiscoveryEffectivePolicyApiResponse {
-  attachment_id: string | null;
   description: string | null;
   kind: 'discovery';
   policy_id: string | null;

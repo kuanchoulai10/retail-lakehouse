@@ -286,6 +286,19 @@ export const MAINTAINED_TABLES: TableApiResponse[] = [
     last_committed_at: "2026-11-05T16:20:00Z",
     last_discovered_at: "2026-11-06T09:00:00Z",
   },
+  // A policy was attached to it before discovery saw it, so discovery has not decided it yet.
+  {
+    ...MAINTAINED_ORDERS,
+    uuid: "7b9d1f3a-5c7e-4d9f-a1b3-c5d7e9f1a3b5",
+    namespace: "sales",
+    table: "returns",
+    status: "undecided",
+    decided_by: null,
+    registered_at: "2026-11-09T08:30:00Z",
+    updated_at: "2026-11-09T08:30:00Z",
+    last_committed_at: null,
+    last_discovered_at: null,
+  },
 ];
 
 function schemaRow(
@@ -952,20 +965,16 @@ export const DISCOVERY_POLICY_VERSIONS: TableDiscoveryPolicyVersionApiResponse[]
 
 export const DISCOVERY_POLICY_ATTACHMENTS: ListedTableDiscoveryPolicyAttachmentApiResponse[] = [
   {
-    id: "da-01m7s6c3tqee0rhg00xry2zqqx",
     policy_id: SALES_TABLES_POLICY_ID,
     policy_name: "sales-tables",
     target: { type: "namespace", path: ["iceberg", "sales"], table_uuid: null },
     orphaned: false,
-    attached_at: "2026-11-05T09:00:00Z",
   },
   {
-    id: "da-01m7s6c3tqee0rhg00xry2zqqz",
     policy_id: CORE_TABLES_POLICY_ID,
     policy_name: "core-tables",
     target: { type: "catalog", path: ["iceberg"], table_uuid: null },
     orphaned: false,
-    attached_at: "2026-11-02T09:00:00Z",
   },
 ];
 
@@ -1191,20 +1200,16 @@ export const POLICIES: ListedTableMaintenancePolicyApiResponse[] = [
 
 export const POLICY_ATTACHMENTS: ListedTableMaintenancePolicyAttachmentApiResponse[] = [
   {
-    id: "pa-01m7sd16b1ef2vww335cwcg9k8",
     policy_id: RETAIL_NIGHTLY_POLICY_ID,
     policy_name: "retail-nightly",
     target: { type: "namespace", path: ["iceberg", "retail"], table_uuid: null },
     orphaned: false,
-    attached_at: "2026-11-03T09:00:00Z",
   },
   {
-    id: "pa-01m7s9x4ht0e1r6zq8fkd2wmnc",
     policy_id: RETAIL_NIGHTLY_POLICY_ID,
     policy_name: "retail-nightly",
     target: { type: "catalog", path: ["legacy"], table_uuid: null },
     orphaned: true,
-    attached_at: "2026-11-02T09:00:00Z",
   },
 ];
 
@@ -1243,7 +1248,6 @@ export function effectivePolicies(catalog: string, namespace: string[] = [], tab
     description: maintenancePolicy.description,
     dry_run: maintenancePolicy.dry_run,
     target: maintenanceAttachment?.target ?? null,
-    attachment_id: maintenanceAttachment?.id ?? null,
   };
   const attachment = nearest(
     DISCOVERY_POLICY_ATTACHMENTS.filter((a) => !a.orphaned),
@@ -1258,7 +1262,6 @@ export function effectivePolicies(catalog: string, namespace: string[] = [], tab
     version: discoveryPolicy?.version ?? null,
     description: discoveryPolicy?.description ?? null,
     target: attachment?.target ?? null,
-    attachment_id: attachment?.id ?? null,
   };
   return { policies: [maintenance, discovery] };
 }
@@ -1274,7 +1277,6 @@ export const DRY_RUN_DEFAULT_MAINTENANCE: MaintenanceEffectivePolicyApiResponse 
   description: DRY_RUN_POLICY.description,
   dry_run: true,
   target: null,
-  attachment_id: null,
 };
 
 function setting(

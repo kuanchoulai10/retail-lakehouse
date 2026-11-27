@@ -39,9 +39,9 @@ export const getGetTableDiscoveryPolicyResponseMock = (overrideResponse: Partial
 
 export const getUpdateTableDiscoveryPolicyResponseMock = (overrideResponse: Partial<Extract<TableDiscoveryPolicyApiResponse, object>> = {}): TableDiscoveryPolicyApiResponse => ({created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', description: faker.string.alpha({length: {min: 10, max: 20}}), id: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), rules: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({action: faker.helpers.arrayElement(['include','exclude'] as const), table_name_pattern: faker.string.alpha({length: {min: 10, max: 20}})})), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', version: faker.number.int(), ...overrideResponse})
 
-export const getListTableDiscoveryPolicyAttachmentsResponseMock = (overrideResponse: Partial<Extract<TableDiscoveryPolicyAttachmentsApiResponse, object>> = {}): TableDiscoveryPolicyAttachmentsApiResponse => ({attachments: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({attached_at: faker.date.past().toISOString().slice(0, 19) + 'Z', id: faker.string.alpha({length: {min: 10, max: 20}}), orphaned: faker.datatype.boolean(), policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), target: {path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), table_uuid: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), type: faker.string.alpha({length: {min: 10, max: 20}})}})), ...overrideResponse})
+export const getListTableDiscoveryPolicyAttachmentsResponseMock = (overrideResponse: Partial<Extract<TableDiscoveryPolicyAttachmentsApiResponse, object>> = {}): TableDiscoveryPolicyAttachmentsApiResponse => ({attachments: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({orphaned: faker.datatype.boolean(), policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), target: {path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), table_uuid: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), type: faker.string.alpha({length: {min: 10, max: 20}})}})), ...overrideResponse})
 
-export const getAttachTableDiscoveryPolicyResponseMock = (overrideResponse: Partial<Extract<TableDiscoveryPolicyAttachmentApiResponse, object>> = {}): TableDiscoveryPolicyAttachmentApiResponse => ({attached_at: faker.date.past().toISOString().slice(0, 19) + 'Z', id: faker.string.alpha({length: {min: 10, max: 20}}), policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), target: {path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), table_uuid: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), type: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse})
+export const getAttachTableDiscoveryPolicyResponseMock = (overrideResponse: Partial<Extract<TableDiscoveryPolicyAttachmentApiResponse, object>> = {}): TableDiscoveryPolicyAttachmentApiResponse => ({policy_id: faker.string.alpha({length: {min: 10, max: 20}}), policy_name: faker.string.alpha({length: {min: 10, max: 20}}), target: {path: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), table_uuid: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), type: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse})
 
 export const getGetTableDiscoveryPolicyVersionResponseMock = (overrideResponse: Partial<Extract<TableDiscoveryPolicyVersionApiResponse, object>> = {}): TableDiscoveryPolicyVersionApiResponse => ({created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', description: faker.string.alpha({length: {min: 10, max: 20}}), id: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), rules: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({action: faker.helpers.arrayElement(['include','exclude'] as const), table_name_pattern: faker.string.alpha({length: {min: 10, max: 20}})})), version: faker.number.int(), ...overrideResponse})
 
@@ -106,6 +106,16 @@ export const getUpdateTableDiscoveryPolicyMockHandler = (overrideResponse?: Tabl
   }, options)
 }
 
+export const getDetachTableDiscoveryPolicyMockHandler = (overrideResponse?: void | ((info: Parameters<HttpResponseResolver<{ name: string }>>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.delete<{ name: string }>('*/v1/discovery-policies/:name/attachments', async (info: Parameters<HttpResponseResolver<{ name: string }>>[0]) => {
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+
+    return new HttpResponse(null,
+      { status: 204
+      })
+  }, options)
+}
+
 export const getListTableDiscoveryPolicyAttachmentsMockHandler = (overrideResponse?: TableDiscoveryPolicyAttachmentsApiResponse | ((info: Parameters<HttpResponseResolver<{ name: string }>>[0]) => Promise<TableDiscoveryPolicyAttachmentsApiResponse> | TableDiscoveryPolicyAttachmentsApiResponse), options?: RequestHandlerOptions) => {
   return http.get<{ name: string }>('*/v1/discovery-policies/:name/attachments', async (info: Parameters<HttpResponseResolver<{ name: string }>>[0]) => {
 
@@ -126,16 +136,6 @@ export const getAttachTableDiscoveryPolicyMockHandler = (overrideResponse?: Tabl
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getAttachTableDiscoveryPolicyResponseMock(),
       { status: 200
-      })
-  }, options)
-}
-
-export const getDetachTableDiscoveryPolicyMockHandler = (overrideResponse?: void | ((info: Parameters<HttpResponseResolver<{ name: string; attachmentId: string }>>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
-  return http.delete<{ name: string; attachmentId: string }>('*/v1/discovery-policies/:name/attachments/:attachmentId', async (info: Parameters<HttpResponseResolver<{ name: string; attachmentId: string }>>[0]) => {
-  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
-
-    return new HttpResponse(null,
-      { status: 204
       })
   }, options)
 }
@@ -169,9 +169,9 @@ export const getDiscoveryPoliciesMock = () => [
   getDeleteTableDiscoveryPolicyMockHandler(),
   getGetTableDiscoveryPolicyMockHandler(),
   getUpdateTableDiscoveryPolicyMockHandler(),
+  getDetachTableDiscoveryPolicyMockHandler(),
   getListTableDiscoveryPolicyAttachmentsMockHandler(),
   getAttachTableDiscoveryPolicyMockHandler(),
-  getDetachTableDiscoveryPolicyMockHandler(),
   getGetTableDiscoveryPolicyVersionMockHandler(),
   getListScannedCatalogsMockHandler()
 ]

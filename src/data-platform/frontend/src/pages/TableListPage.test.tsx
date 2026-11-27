@@ -35,6 +35,8 @@ const TABLES: TableApiResponse[] = [
     status: "unmanaged",
     decided_by: { policy_id: "dp-01m7s6c3tqee0rhg00xn5s97gv", policy_version: 1, rule_position: null },
   }),
+  // Attached to before discovery saw it: discovery has not decided it yet.
+  table({ uuid: "uuid-pending", namespace: "sales", table: "pending", status: "undecided", decided_by: null }),
 ];
 
 function stubTables(tables: TableApiResponse[]) {
@@ -150,12 +152,35 @@ describe("TableListPage", () => {
 
     expect(screen.getByText("iceberg.e2e.tm_e2e_regions")).toBeInTheDocument();
     expect(screen.queryByText("iceberg.inventory.gone")).not.toBeInTheDocument();
-    expect(statusFilter()).toHaveTextContent("Managed, Unmanaged");
+    expect(statusFilter()).toHaveTextContent("Managed, Unmanaged, Undecided");
 
     await toggleStatus(user, "Dropped");
 
     expect(screen.getByText("iceberg.inventory.gone")).toBeInTheDocument();
     expect(screen.getByText("iceberg.inventory.orders")).toBeInTheDocument();
+  });
+
+  it("shows undecided tables by default, as a neutral group badge, and hides them when unchecked", async () => {
+    const user = userEvent.setup();
+    const router = renderPage();
+
+    const pending = within((await screen.findByText("iceberg.sales.pending")).closest("tr") as HTMLElement);
+    expect(pending.getByText("Undecided")).toHaveClass("bg-surface-container-dim");
+    expect(router.state.location.search).toBe("");
+
+    await toggleStatus(user, "Undecided");
+
+    expect(screen.queryByText("iceberg.sales.pending")).not.toBeInTheDocument();
+    expect(screen.getByText("iceberg.inventory.orders")).toBeInTheDocument();
+    expect(router.state.location.search).toBe("?status=managed%2Cunmanaged");
+  });
+
+  it("reads undecided from the url", async () => {
+    renderPage("/?status=undecided");
+
+    expect(await screen.findByText("iceberg.sales.pending")).toBeInTheDocument();
+    expect(screen.queryByText("iceberg.inventory.orders")).not.toBeInTheDocument();
+    expect(statusFilter()).toHaveTextContent("Undecided");
   });
 
   it("combines any statuses, so each unchecked status hides its rows", async () => {
@@ -186,11 +211,11 @@ describe("TableListPage", () => {
     expect(router.state.location.search).toBe("");
 
     await toggleStatus(user, "Dropped");
-    expect(router.state.location.search).toBe("?status=managed%2Cunmanaged%2Cdropped");
+    expect(router.state.location.search).toBe("?status=managed%2Cunmanaged%2Cundecided%2Cdropped");
     expect(router.state.historyAction).toBe("REPLACE");
 
     await toggleStatus(user, "Managed");
-    expect(router.state.location.search).toBe("?status=unmanaged%2Cdropped");
+    expect(router.state.location.search).toBe("?status=unmanaged%2Cundecided%2Cdropped");
 
     await toggleStatus(user, "Dropped");
     await toggleStatus(user, "Managed");
@@ -225,6 +250,7 @@ describe("TableListPage", () => {
     expect(await screen.findByText("iceberg.inventory.gone")).toBeInTheDocument();
     expect(screen.getByText("iceberg.inventory.orders")).toBeInTheDocument();
     expect(screen.queryByText("iceberg.e2e.tm_e2e_regions")).not.toBeInTheDocument();
+    expect(screen.queryByText("iceberg.sales.pending")).not.toBeInTheDocument();
   });
 
   it("ignores unknown statuses in the url", async () => {
@@ -260,6 +286,7 @@ describe("TableListPage", () => {
 
     await toggleStatus(user, "Managed");
     await toggleStatus(user, "Unmanaged");
+    await toggleStatus(user, "Undecided");
 
     expect(router.state.location.search).toBe("?status=");
     expect(screen.getByText("No status selected.")).toBeInTheDocument();

@@ -42,6 +42,8 @@ export * from './createTableDiscoveryPolicyApiRequest';
 export * from './createTableMaintenancePolicyApiRequest';
 export * from './createViewApiRequest';
 export * from './decidedByApiResponse';
+export * from './detachTableDiscoveryPolicyParams';
+export * from './detachTableMaintenancePolicyParams';
 export * from './discoveryEffectivePolicyApiResponse';
 export * from './discoveryRuleApiRequest';
 export * from './discoveryRuleApiRequestAction';

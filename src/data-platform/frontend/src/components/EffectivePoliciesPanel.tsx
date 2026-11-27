@@ -17,6 +17,7 @@ import { invalidatePolicyAttachments } from "@/api/invalidatePolicyAttachments";
 import { AttachPolicyDialog, type PolicyKind } from "@/components/AttachPolicyDialog";
 import { errorMessage } from "@/format";
 import { discoveryPolicyVersionPath } from "@/lib/discoveryPolicyPaths";
+import { detachPlace } from "@/lib/detachPlace";
 import { effectivePolicyOrigin, type EffectivePolicyOrigin } from "@/lib/effectivePolicyOrigin";
 import { policyVersionPath, targetPagePath } from "@/lib/policyPaths";
 import type { PolicyScope } from "@/lib/policyScope";
@@ -26,8 +27,8 @@ type Entry = MaintenanceEffectivePolicyApiResponse | DiscoveryEffectivePolicyApi
 const LABELS: Record<PolicyKind, string> = { maintenance: "Maintenance", discovery: "Discovery" };
 
 // A table maintenance has a record of is asked by uuid, the name it plans under; any other
-// target is asked by location, the namespace dot-joined as the API takes it. Either answer counts
-// a table attachment, since the API finds an unrecorded table's uuid in the catalog.
+// target is asked by location, the namespace dot-joined as the API takes it. Either answer finds
+// a policy attached to the table, since the API finds an unrecorded table's uuid in the catalog.
 function effectiveQuery(scope: PolicyScope) {
   if (scope.type === "table" && scope.recorded) return getGetTableEffectivePoliciesQueryOptions(scope.tableUuid);
   if (scope.type === "catalog") return getGetEffectivePoliciesQueryOptions({ catalog: scope.catalog });
@@ -48,15 +49,18 @@ function appliedPolicy(entry: Entry): AppliedPolicy | null {
   return { name: entry.policy_name, version: entry.version };
 }
 
-// Removes the attachment the entry names, by its pa- or da- id; the platform default has none.
+// Detaches the entry's policy from the place holding it, named by its type and path as the answer
+// gives them (a table's path is its record's, which can trail a rename the page already shows); the
+// platform default is held nowhere.
 function detachEntry(entry: Entry): Promise<void> {
   const policy = appliedPolicy(entry);
-  if (entry.attachment_id === null || policy === null) {
+  if (entry.target === null || policy === null) {
     return Promise.reject(new Error("no policy is attached here"));
   }
+  const place = detachPlace(entry.target);
   return entry.kind === "maintenance"
-    ? detachTableMaintenancePolicy(policy.name, entry.attachment_id)
-    : detachTableDiscoveryPolicy(policy.name, entry.attachment_id);
+    ? detachTableMaintenancePolicy(policy.name, place)
+    : detachTableDiscoveryPolicy(policy.name, place);
 }
 
 function versionPath(kind: PolicyKind, policy: AppliedPolicy): string {
@@ -149,7 +153,8 @@ function remember(buttons: Map<PolicyKind, HTMLButtonElement>, kind: PolicyKind,
 
 // The policy of each kind that applies to a catalog, namespace or table, the level it comes from,
 // and the attach, replace and detach actions for this target. Attaching here overrides what is
-// inherited, for that kind only. Detaching removes an attachment, not the policy, so it does not ask.
+// inherited, for that kind only. Detaching takes the policy off this place without deleting it,
+// so it does not ask.
 export function EffectivePoliciesPanel({ scope }: { scope: PolicyScope }) {
   const queryClient = useQueryClient();
   const [attaching, setAttaching] = useState<{ kind: PolicyKind; current: string | null } | null>(null);

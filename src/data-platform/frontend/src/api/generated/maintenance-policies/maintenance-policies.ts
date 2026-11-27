@@ -26,6 +26,7 @@ import type {
 import type {
   AttachTableMaintenancePolicyApiRequest,
   CreateTableMaintenancePolicyApiRequest,
+  DetachTableMaintenancePolicyParams,
   HTTPValidationError,
   TableMaintenancePoliciesApiResponse,
   TableMaintenancePolicyApiResponse,
@@ -510,6 +511,100 @@ export const useUpdateTableMaintenancePolicy = <TError = HTTPValidationError,
       > => {
       return useMutation(getUpdateTableMaintenancePolicyMutationOptions(options), queryClient);
     }
+    export const getDetachTableMaintenancePolicyUrl = (name: string,
+    params: DetachTableMaintenancePolicyParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    const explodeParameters = ["path"];
+
+    if (Array.isArray(value) && explodeParameters.includes(key)) {
+      value.forEach((v) => {
+        normalizedParams.append(key, v === null ? 'null' : String(v));
+      });
+      return;
+    }
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/maintenance-policies/${encodeURIComponent(String(name))}/attachments?${stringifiedParams}` : `/v1/maintenance-policies/${encodeURIComponent(String(name))}/attachments`
+}
+
+/**
+ * Detach a maintenance policy from the place ``target_type`` and ``path`` name, whether or not it still exists.
+ *
+ * ``path`` repeats once per part: the catalog, the namespace levels, then the table name for a table.
+ * 404 when the place does not hold this policy.
+ * @summary Detach Table Maintenance Policy
+ */
+export const detachTableMaintenancePolicy = async (name: string,
+    params: DetachTableMaintenancePolicyParams, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDetachTableMaintenancePolicyUrl(name,params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDetachTableMaintenancePolicyMutationKey = () => ['detachTableMaintenancePolicy'] as const;
+
+export const getDetachTableMaintenancePolicyMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, TError,DetachTableMaintenancePolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, TError,DetachTableMaintenancePolicyMutationVariables, TContext> => {
+
+const mutationKey = getDetachTableMaintenancePolicyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, DetachTableMaintenancePolicyMutationVariables> = (props) => {
+          const {name,params} = props ?? {};
+
+          return  detachTableMaintenancePolicy(name,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DetachTableMaintenancePolicyMutationResult = NonNullable<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>>
+
+    export type DetachTableMaintenancePolicyMutationError = HTTPValidationError
+    export type DetachTableMaintenancePolicyMutationVariables = {name: string;params: DetachTableMaintenancePolicyParams}
+
+    /**
+ * @summary Detach Table Maintenance Policy
+ */
+export const useDetachTableMaintenancePolicy = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, TError,DetachTableMaintenancePolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof detachTableMaintenancePolicy>>,
+        TError,
+        DetachTableMaintenancePolicyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDetachTableMaintenancePolicyMutationOptions(options), queryClient);
+    }
     export const getListTableMaintenancePolicyAttachmentsUrl = (name: string,) => {
 
 
@@ -519,7 +614,7 @@ export const useUpdateTableMaintenancePolicy = <TError = HTTPValidationError,
 }
 
 /**
- * List the targets a maintenance policy is attached to, marking those no longer in the catalog as orphaned.
+ * List the catalogs, namespaces and tables a maintenance policy is attached to, marking those gone as orphaned.
  * @summary List Table Maintenance Policy Attachments
  */
 export const listTableMaintenancePolicyAttachments = async (name: string, options?: Parameters<typeof apiFetch>[1]): Promise<TableMaintenancePolicyAttachmentsApiResponse> => {
@@ -620,9 +715,10 @@ export const getAttachTableMaintenancePolicyUrl = (name: string,) => {
 }
 
 /**
- * Attach a maintenance policy to a target that exists in the catalog, replacing the target's attachment.
+ * Attach a maintenance policy to a catalog, namespace or table that exists, replacing the one it holds.
  *
- * The target keeps its attachment's id. A catalog the platform's credential cannot read answers 403.
+ * A catalog the platform's credential cannot read answers 403, a namespace level holding a dot 422, and
+ * a place changed by someone else meanwhile 409.
  * @summary Attach Table Maintenance Policy
  */
 export const attachTableMaintenancePolicy = async (name: string,
@@ -701,84 +797,6 @@ export const useAttachTableMaintenancePolicy = <TError = HTTPValidationError,
         TContext
       > => {
       return useMutation(getAttachTableMaintenancePolicyMutationOptions(options), queryClient);
-    }
-    export const getDetachTableMaintenancePolicyUrl = (name: string,
-    attachmentId: string,) => {
-
-
-
-
-  return `/v1/maintenance-policies/${encodeURIComponent(String(name))}/attachments/${encodeURIComponent(String(attachmentId))}`
-}
-
-/**
- * Detach one of a maintenance policy's attachments by its ``pa-`` id, whether or not its target still exists.
- *
- * 404 when the policy has no such attachment.
- * @summary Detach Table Maintenance Policy
- */
-export const detachTableMaintenancePolicy = async (name: string,
-    attachmentId: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
-
-  return apiFetch<void>(getDetachTableMaintenancePolicyUrl(name,attachmentId),
-  {
-    ...options,
-    method: 'DELETE'
-
-
-  }
-);}
-
-
-
-
-
-export const getDetachTableMaintenancePolicyMutationKey = () => ['detachTableMaintenancePolicy'] as const;
-
-export const getDetachTableMaintenancePolicyMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, TError,DetachTableMaintenancePolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, TError,DetachTableMaintenancePolicyMutationVariables, TContext> => {
-
-const mutationKey = getDetachTableMaintenancePolicyMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, DetachTableMaintenancePolicyMutationVariables> = (props) => {
-          const {name,attachmentId} = props ?? {};
-
-          return  detachTableMaintenancePolicy(name,attachmentId,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type DetachTableMaintenancePolicyMutationResult = NonNullable<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>>
-
-    export type DetachTableMaintenancePolicyMutationError = HTTPValidationError
-    export type DetachTableMaintenancePolicyMutationVariables = {name: string;attachmentId: string}
-
-    /**
- * @summary Detach Table Maintenance Policy
- */
-export const useDetachTableMaintenancePolicy = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachTableMaintenancePolicy>>, TError,DetachTableMaintenancePolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof detachTableMaintenancePolicy>>,
-        TError,
-        DetachTableMaintenancePolicyMutationVariables,
-        TContext
-      > => {
-      return useMutation(getDetachTableMaintenancePolicyMutationOptions(options), queryClient);
     }
     export const getGetTableMaintenancePolicyVersionUrl = (name: string,
     version: number,) => {

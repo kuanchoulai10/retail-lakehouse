@@ -30,7 +30,22 @@ export const Default: Story = {
     await expect(await canvas.findByText("iceberg.inventory.stock_levels")).toBeVisible();
     await expect(canvas.getByText("iceberg.retail.customers")).toBeVisible();
     await expect(canvas.queryByText("iceberg.retail.legacy_orders")).toBeNull();
-    await expect(statusFilter(canvasElement)).toHaveTextContent("Managed, Unmanaged");
+    await expect(statusFilter(canvasElement)).toHaveTextContent("Managed, Unmanaged, Undecided");
+  },
+};
+
+// A table a policy was attached to before discovery saw it shows by default, in the grey group badge.
+export const Undecided: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const row = (await canvas.findByText("iceberg.sales.returns")).closest("tr") as HTMLElement;
+    await expect(within(row).getByText("Undecided")).toBeVisible();
+    await userEvent.click(statusFilter(canvasElement));
+    const portal = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await portal.findByRole("menuitemcheckbox", { name: "Undecided" }));
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(canvas.queryByText("iceberg.sales.returns")).toBeNull());
+    await expect(canvas.getByText("iceberg.retail.customers")).toBeVisible();
   },
 };
 
@@ -47,7 +62,7 @@ export const MultiSelect: Story = {
     await expect(canvas.getByText("iceberg.retail.legacy_orders")).toBeVisible();
     await expect(canvas.getByText("iceberg.retail.customers")).toBeVisible();
     await expect(canvas.queryByText("iceberg.retail.orders")).toBeNull();
-    await expect(statusFilter(canvasElement)).toHaveTextContent("Unmanaged, Dropped");
+    await expect(statusFilter(canvasElement)).toHaveTextContent("Unmanaged, Undecided, Dropped");
   },
 };
 
@@ -102,10 +117,10 @@ export const Phone: Story = {
 
 export const PhoneAllStatuses: Story = {
   globals: PHONE,
-  args: { route: "/?status=managed,unmanaged,dropped" },
+  args: { route: "/?status=managed,unmanaged,undecided,dropped" },
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByText("iceberg.retail.legacy_orders");
-    await expect(statusFilter(canvasElement)).toHaveTextContent("Managed, Unmanaged, Dropped");
+    await expect(statusFilter(canvasElement)).toHaveTextContent("Managed, Unmanaged, Undecided, Dropped");
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };

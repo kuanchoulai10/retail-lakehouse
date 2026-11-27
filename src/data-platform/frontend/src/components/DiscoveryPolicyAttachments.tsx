@@ -14,7 +14,9 @@ import type {
 import { invalidateDiscoveryPolicyAttachments } from "@/api/invalidateDiscoveryPolicyAttachments";
 import { errorMessage, formatRelativeTime, formatTimestamp } from "@/format";
 import { catalogScanState, scanFailureLabel } from "@/lib/catalogScanState";
+import { detachPlace } from "@/lib/detachPlace";
 import { targetName, targetPagePath } from "@/lib/policyPaths";
+import { policyTargetKey } from "@/lib/policyTargetKey";
 import { AttachDiscoveryPolicyDialog } from "./AttachDiscoveryPolicyDialog";
 
 type Attachment = ListedTableDiscoveryPolicyAttachmentApiResponse;
@@ -103,8 +105,9 @@ function AttachmentRow({ attachment, scanned, detaching, onDetach, detachRef }: 
   );
 }
 
-// Where one discovery policy is attached, each target with its catalog's scan state, and the
-// attach and detach actions. Detaching removes an attachment, not the policy, so it does not ask.
+// Where one discovery policy is attached, each place with its catalog's scan state, and the attach
+// and detach actions. A row is its place, so a detach names it by type and path; detaching takes the
+// policy off that place without deleting it, so it does not ask.
 export function DiscoveryPolicyAttachments({ policyName }: { policyName: string }) {
   const queryClient = useQueryClient();
   const headingId = useId();
@@ -117,14 +120,14 @@ export function DiscoveryPolicyAttachments({ policyName }: { policyName: string 
   const scanned = useListScannedCatalogs();
 
   const detach = useMutation({
-    mutationFn: (attachment: Attachment) => detachTableDiscoveryPolicy(policyName, attachment.id),
+    mutationFn: (attachment: Attachment) => detachTableDiscoveryPolicy(policyName, detachPlace(attachment.target)),
     // A write can fail after part of it landed, so the page refetches either way. The detached row
     // is gone once the list is read again, so focus moves to Attach rather than being lost; a refused
     // detach keeps the row, and focus goes back to its Detach, which the browser drops while disabled.
     onSettled: async (_result, error, attachment) => {
       await invalidateDiscoveryPolicyAttachments(queryClient);
       if (error === null) attachButton.current?.focus();
-      else refocus.current = attachment.id;
+      else refocus.current = policyTargetKey(attachment.target);
     },
   });
 
@@ -158,19 +161,22 @@ export function DiscoveryPolicyAttachments({ policyName }: { policyName: string 
   } else {
     body = (
       <ul className="type-body-medium m-0 flex list-none flex-col p-0">
-        {attachments.data.attachments.map((attachment) => (
-          <AttachmentRow
-            key={attachment.id}
-            attachment={attachment}
-            scanned={scanned.data?.catalogs ?? null}
-            detaching={detach.isPending}
-            onDetach={(chosen) => detach.mutate(chosen)}
-            detachRef={(button) => {
-              if (button === null) detachButtons.current.delete(attachment.id);
-              else detachButtons.current.set(attachment.id, button);
-            }}
-          />
-        ))}
+        {attachments.data.attachments.map((attachment) => {
+          const key = policyTargetKey(attachment.target);
+          return (
+            <AttachmentRow
+              key={key}
+              attachment={attachment}
+              scanned={scanned.data?.catalogs ?? null}
+              detaching={detach.isPending}
+              onDetach={(chosen) => detach.mutate(chosen)}
+              detachRef={(button) => {
+                if (button === null) detachButtons.current.delete(key);
+                else detachButtons.current.set(key, button);
+              }}
+            />
+          );
+        })}
       </ul>
     );
   }

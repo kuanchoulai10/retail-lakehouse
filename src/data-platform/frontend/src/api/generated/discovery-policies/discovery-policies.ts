@@ -26,6 +26,7 @@ import type {
 import type {
   AttachTableDiscoveryPolicyApiRequest,
   CreateTableDiscoveryPolicyApiRequest,
+  DetachTableDiscoveryPolicyParams,
   HTTPValidationError,
   ScannedCatalogsApiResponse,
   TableDiscoveryPoliciesApiResponse,
@@ -511,6 +512,100 @@ export const useUpdateTableDiscoveryPolicy = <TError = HTTPValidationError,
       > => {
       return useMutation(getUpdateTableDiscoveryPolicyMutationOptions(options), queryClient);
     }
+    export const getDetachTableDiscoveryPolicyUrl = (name: string,
+    params: DetachTableDiscoveryPolicyParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    const explodeParameters = ["path"];
+
+    if (Array.isArray(value) && explodeParameters.includes(key)) {
+      value.forEach((v) => {
+        normalizedParams.append(key, v === null ? 'null' : String(v));
+      });
+      return;
+    }
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/discovery-policies/${encodeURIComponent(String(name))}/attachments?${stringifiedParams}` : `/v1/discovery-policies/${encodeURIComponent(String(name))}/attachments`
+}
+
+/**
+ * Detach a discovery policy from the place ``target_type`` and ``path`` name, whether or not it still exists.
+ *
+ * ``path`` repeats once per part: the catalog, the namespace levels, then the table name for a table.
+ * 404 when the place does not hold this policy.
+ * @summary Detach Table Discovery Policy
+ */
+export const detachTableDiscoveryPolicy = async (name: string,
+    params: DetachTableDiscoveryPolicyParams, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDetachTableDiscoveryPolicyUrl(name,params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDetachTableDiscoveryPolicyMutationKey = () => ['detachTableDiscoveryPolicy'] as const;
+
+export const getDetachTableDiscoveryPolicyMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>, TError,DetachTableDiscoveryPolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>, TError,DetachTableDiscoveryPolicyMutationVariables, TContext> => {
+
+const mutationKey = getDetachTableDiscoveryPolicyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>, DetachTableDiscoveryPolicyMutationVariables> = (props) => {
+          const {name,params} = props ?? {};
+
+          return  detachTableDiscoveryPolicy(name,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DetachTableDiscoveryPolicyMutationResult = NonNullable<Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>>
+
+    export type DetachTableDiscoveryPolicyMutationError = HTTPValidationError
+    export type DetachTableDiscoveryPolicyMutationVariables = {name: string;params: DetachTableDiscoveryPolicyParams}
+
+    /**
+ * @summary Detach Table Discovery Policy
+ */
+export const useDetachTableDiscoveryPolicy = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>, TError,DetachTableDiscoveryPolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>,
+        TError,
+        DetachTableDiscoveryPolicyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDetachTableDiscoveryPolicyMutationOptions(options), queryClient);
+    }
     export const getListTableDiscoveryPolicyAttachmentsUrl = (name: string,) => {
 
 
@@ -520,7 +615,7 @@ export const useUpdateTableDiscoveryPolicy = <TError = HTTPValidationError,
 }
 
 /**
- * List the targets a discovery policy is attached to, marking those no longer in the catalog as orphaned.
+ * List the catalogs, namespaces and tables a discovery policy is attached to, marking those gone as orphaned.
  * @summary List Table Discovery Policy Attachments
  */
 export const listTableDiscoveryPolicyAttachments = async (name: string, options?: Parameters<typeof apiFetch>[1]): Promise<TableDiscoveryPolicyAttachmentsApiResponse> => {
@@ -621,9 +716,9 @@ export const getAttachTableDiscoveryPolicyUrl = (name: string,) => {
 }
 
 /**
- * Attach a discovery policy to a target that exists in the catalog, replacing the target's attachment.
+ * Attach a discovery policy to a catalog, namespace or table that exists, replacing the one it holds.
  *
- * The target keeps its attachment's id. A catalog the platform's credential cannot read answers 403.
+ * A catalog the platform's credential cannot read answers 403, and a namespace level holding a dot 422.
  * @summary Attach Table Discovery Policy
  */
 export const attachTableDiscoveryPolicy = async (name: string,
@@ -702,84 +797,6 @@ export const useAttachTableDiscoveryPolicy = <TError = HTTPValidationError,
         TContext
       > => {
       return useMutation(getAttachTableDiscoveryPolicyMutationOptions(options), queryClient);
-    }
-    export const getDetachTableDiscoveryPolicyUrl = (name: string,
-    attachmentId: string,) => {
-
-
-
-
-  return `/v1/discovery-policies/${encodeURIComponent(String(name))}/attachments/${encodeURIComponent(String(attachmentId))}`
-}
-
-/**
- * Detach one of a discovery policy's attachments by its ``da-`` id, whether or not its target still exists.
- *
- * 404 when the policy has no such attachment.
- * @summary Detach Table Discovery Policy
- */
-export const detachTableDiscoveryPolicy = async (name: string,
-    attachmentId: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
-
-  return apiFetch<void>(getDetachTableDiscoveryPolicyUrl(name,attachmentId),
-  {
-    ...options,
-    method: 'DELETE'
-
-
-  }
-);}
-
-
-
-
-
-export const getDetachTableDiscoveryPolicyMutationKey = () => ['detachTableDiscoveryPolicy'] as const;
-
-export const getDetachTableDiscoveryPolicyMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>, TError,DetachTableDiscoveryPolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>, TError,DetachTableDiscoveryPolicyMutationVariables, TContext> => {
-
-const mutationKey = getDetachTableDiscoveryPolicyMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>, DetachTableDiscoveryPolicyMutationVariables> = (props) => {
-          const {name,attachmentId} = props ?? {};
-
-          return  detachTableDiscoveryPolicy(name,attachmentId,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type DetachTableDiscoveryPolicyMutationResult = NonNullable<Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>>
-
-    export type DetachTableDiscoveryPolicyMutationError = HTTPValidationError
-    export type DetachTableDiscoveryPolicyMutationVariables = {name: string;attachmentId: string}
-
-    /**
- * @summary Detach Table Discovery Policy
- */
-export const useDetachTableDiscoveryPolicy = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>, TError,DetachTableDiscoveryPolicyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof detachTableDiscoveryPolicy>>,
-        TError,
-        DetachTableDiscoveryPolicyMutationVariables,
-        TContext
-      > => {
-      return useMutation(getDetachTableDiscoveryPolicyMutationOptions(options), queryClient);
     }
     export const getGetTableDiscoveryPolicyVersionUrl = (name: string,
     version: number,) => {
@@ -899,7 +916,10 @@ export const getListScannedCatalogsUrl = () => {
 }
 
 /**
- * List the catalogs a managing discovery policy is attached in, with each one's last scan and current failure.
+ * List the catalogs discovery scans, with each one's last scan and current failure.
+ *
+ * A catalog is scanned while a discovery policy is attached in it (to it, a namespace or a table) or it
+ * still holds managed tables.
  * @summary List Scanned Catalogs
  */
 export const listScannedCatalogs = async ( options?: Parameters<typeof apiFetch>[1]): Promise<ScannedCatalogsApiResponse> => {

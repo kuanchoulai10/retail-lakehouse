@@ -70,8 +70,8 @@ export function policyFixture(
   };
 }
 
-// What a page's effective-policies answer holds for each kind; an entry with a target is attached
-// there and carries that attachment's id. A maintenance entry without one is the platform default; a
+// What a page's effective-policies answer holds for each kind; an entry with a target names the
+// catalog, namespace or table holding its policy. A maintenance entry without one is the platform default; a
 // discovery entry without one says no discovery policy applies, and names no policy.
 export function effectiveMaintenanceFixture(
   overrides: Partial<MaintenanceEffectivePolicyApiResponse> = {},
@@ -85,7 +85,6 @@ export function effectiveMaintenanceFixture(
     description: "Compacts once a day",
     dry_run: false,
     target,
-    attachment_id: target === null ? null : "pa-01m7sd16b1ef2vww335cwcg9k8",
     ...overrides,
   };
 }
@@ -102,7 +101,6 @@ export function effectiveDiscoveryFixture(
       version: null,
       description: null,
       target: null,
-      attachment_id: null,
       ...overrides,
     };
   }
@@ -113,7 +111,6 @@ export function effectiveDiscoveryFixture(
     version: 2,
     description: "",
     target,
-    attachment_id: "da-01m7s6c3tqee0rhg00xry2zqqx",
     ...overrides,
   };
 }

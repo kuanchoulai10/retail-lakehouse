@@ -9,11 +9,10 @@ import type { PolicyTargetApiResponse } from './policyTargetApiResponse';
 /**
  * Describe the maintenance policy that applies, at its latest version, and the level it applies from.
  *
- * ``target`` is the nearest attachment's target and ``attachment_id`` its ``pa-`` id; both are null when
- * the platform default applies.
+ * ``target`` is the nearest catalog, namespace or table holding a maintenance policy; it is null when
+ * none holds one and the platform default applies.
  */
 export interface MaintenanceEffectivePolicyApiResponse {
-  attachment_id: string | null;
   description: string;
   dry_run: boolean;
   kind: 'maintenance';

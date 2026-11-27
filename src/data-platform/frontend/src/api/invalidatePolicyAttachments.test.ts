@@ -8,12 +8,14 @@ import {
 import {
   getGetEffectivePoliciesQueryKey,
   getGetTableEffectivePoliciesQueryKey,
+  getGetTableCurrentMetricsQueryKey,
   getGetTableQueryKey,
+  getListTablesQueryKey,
 } from "./generated/tables/tables";
 import { invalidatePolicyAttachments } from "./invalidatePolicyAttachments";
 
 describe("invalidatePolicyAttachments", () => {
-  it("marks what applies anywhere, the policy list and the named policies' attachments stale, nothing else", async () => {
+  it("marks what applies anywhere, the policy list, the named policies' attachments and the table records stale, nothing else", async () => {
     const client = new QueryClient();
     const keys = {
       catalog: getGetEffectivePoliciesQueryKey({ catalog: "iceberg" }),
@@ -25,6 +27,8 @@ describe("invalidatePolicyAttachments", () => {
       other: getListTableMaintenancePolicyAttachmentsQueryKey("other"),
       policy: getGetTableMaintenancePolicyQueryKey("nightly"),
       record: getGetTableQueryKey("uuid-orders"),
+      tables: getListTablesQueryKey(),
+      metrics: getGetTableCurrentMetricsQueryKey("uuid-orders"),
     };
     for (const key of Object.values(keys)) client.setQueryData(key, {});
 
@@ -33,6 +37,6 @@ describe("invalidatePolicyAttachments", () => {
     const stale = Object.entries(keys)
       .filter(([, key]) => client.getQueryState(key)?.isInvalidated)
       .map(([name]) => name);
-    expect(stale).toEqual(["catalog", "namespace", "table", "list", "nightly", "scratch"]);
+    expect(stale).toEqual(["catalog", "namespace", "table", "list", "nightly", "scratch", "record", "tables"]);
   });
 });

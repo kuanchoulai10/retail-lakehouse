@@ -17,6 +17,14 @@ describe("TableStatusBadge", () => {
     expect(screen.getByText("Unmanaged")).toHaveClass("bg-surface-container-dim");
   });
 
+  it("shows undecided as the neutral category, never a status colour", () => {
+    render(<TableStatusBadge status="undecided" />);
+
+    const badge = screen.getByText("Undecided");
+    expect(badge).toHaveClass("bg-surface-container-dim");
+    expect(badge).not.toHaveClass("bg-notice-container");
+  });
+
   it("shows dropped struck through and italic, with its text", () => {
     render(<TableStatusBadge status="dropped" />);
 

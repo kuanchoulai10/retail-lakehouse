@@ -7,11 +7,9 @@
 import type { PolicyTargetApiResponse } from './policyTargetApiResponse';
 
 /**
- * Describe a listed attachment; ``orphaned`` when its target no longer exists in the catalog.
+ * Describe a place the policy is attached to; ``orphaned`` when it no longer exists in the catalog.
  */
 export interface ListedTableMaintenancePolicyAttachmentApiResponse {
-  attached_at: string;
-  id: string;
   orphaned: boolean;
   policy_id: string;
   policy_name: string;

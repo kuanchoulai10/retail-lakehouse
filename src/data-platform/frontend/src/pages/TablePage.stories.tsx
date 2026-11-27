@@ -880,6 +880,23 @@ export const Unmanaged: Story = {
   },
 };
 
+// A policy was attached to the table before discovery saw it; discovery has not decided it yet, so the
+// Table panel names no discovery policy.
+export const Undecided: Story = {
+  beforeEach({ msw }) {
+    msw.use(getGetTableMockHandler({ ...MAINTAINED_ORDERS, status: "undecided", decided_by: null }));
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const reason = await canvas.findByText("discovery has not decided this table yet");
+    await expect(reason).toBeVisible();
+    await expect(within(reason.parentElement as HTMLElement).getByRole("link", { name: "Discovery policies" })).toHaveAttribute("href", "/discovery-policies");
+    const table = canvas.getByRole("region", { name: "Table" });
+    await expect(table).toHaveTextContent("Maintenance: not managed");
+    await expect(table).not.toHaveTextContent("No discovery policy applies");
+  },
+};
+
 // No discovery policy that can manage tables is attached in iceberg, so discovery does not scan it.
 export const NotScanned: Story = {
   beforeEach({ msw }) {

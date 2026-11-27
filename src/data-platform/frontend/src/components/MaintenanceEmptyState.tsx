@@ -6,6 +6,7 @@ export type MaintenanceEmptyReason =
   | "catalog-not-scanned"
   | "catalog-cannot-access"
   | "not-found"
+  | "undecided"
   | "unmanaged"
   | "dropped";
 
@@ -13,6 +14,7 @@ const MESSAGES: Record<MaintenanceEmptyReason, string> = {
   "catalog-not-scanned": "no discovery policy in this catalog manages tables",
   "catalog-cannot-access": "discovery cannot read this catalog with the platform's catalog credential",
   "not-found": "discovery has not found this table yet",
+  undecided: "discovery has not decided this table yet",
   unmanaged: "no discovery policy that applies to this table manages it",
   dropped: "maintenance recorded this table as dropped",
 };
@@ -22,6 +24,7 @@ const LINKS_TO_POLICIES: ReadonlySet<MaintenanceEmptyReason> = new Set<Maintenan
   "catalog-not-scanned",
   "catalog-cannot-access",
   "not-found",
+  "undecided",
   "unmanaged",
 ]);
 

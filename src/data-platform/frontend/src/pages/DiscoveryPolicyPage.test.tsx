@@ -32,12 +32,10 @@ function policy(overrides: Partial<TableDiscoveryPolicyApiResponse> = {}): Table
 
 function attachment(type: string, path: string[]): ListedTableDiscoveryPolicyAttachmentApiResponse {
   return {
-    id: `da-${path.join("-")}`,
     policy_id: "dp-01m7s6c3tqee0rhg00xry2zqqv",
     policy_name: "sales-tables",
     target: { type, path, table_uuid: null },
     orphaned: false,
-    attached_at: "2026-11-05T09:00:00Z",
   };
 }
 

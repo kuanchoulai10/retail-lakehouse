@@ -28,23 +28,20 @@ const POLICIES = [
 ];
 
 function attachment(
-  id: string,
   target: ListedTableMaintenancePolicyAttachmentApiResponse["target"],
   orphaned = false,
 ): ListedTableMaintenancePolicyAttachmentApiResponse {
   return {
-    id,
     policy_id: NIGHTLY_POLICY_ID,
     policy_name: "nightly",
     target,
     orphaned,
-    attached_at: "2026-11-03T09:00:00Z",
   };
 }
 
 const NIGHTLY_ATTACHMENTS = [
-  attachment("pa-01m7sd16b1ef2vww335cwcg9k8", { type: "namespace", path: ["iceberg", "retail"], table_uuid: null }),
-  attachment("pa-01m7sd16b1ef2vww335cwcg9k9", { type: "catalog", path: ["legacy"], table_uuid: null }, true),
+  attachment({ type: "namespace", path: ["iceberg", "retail"], table_uuid: null }),
+  attachment({ type: "catalog", path: ["legacy"], table_uuid: null }, true),
 ];
 
 function stubApi(responses: Record<string, StubHandler> = {}) {
@@ -208,6 +205,21 @@ describe("PoliciesPage", () => {
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
     expect(callsTo(calls, "DELETE", "/v1/maintenance-policies/scratch")).toHaveLength(1);
     await waitFor(() => expect(callsTo(calls, "GET", "/v1/maintenance-policies")).toHaveLength(2));
+  });
+
+  it("shows the API's 409 when the policy was attached since the list was read, and keeps the dialog open", async () => {
+    const detail = "maintenance policy scratch is still attached to namespace:iceberg.retail";
+    const calls = stubApi({ "DELETE /v1/maintenance-policies/scratch": () => jsonResponse({ detail }, 409) });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Nightly compaction");
+    await user.click(within(policyRow("scratch")).getByRole("button", { name: "Delete scratch" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Delete policy" });
+    await user.type(within(dialog).getByRole("textbox", { name: "Type scratch to confirm" }), "scratch");
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+
+    expect(await within(dialog).findByText(detail)).toBeInTheDocument();
+    expect(callsTo(calls, "DELETE", "/v1/maintenance-policies/scratch")).toHaveLength(1);
   });
 
   it("disables New policy and says why when the list has no default to start from", async () => {

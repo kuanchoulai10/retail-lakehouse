@@ -8,6 +8,7 @@ import {
   getListTableDiscoveryPolicyAttachmentsMockHandler,
 } from "@/api/generated/discovery-policies/discovery-policies.msw";
 import type { ListedTableDiscoveryPolicyAttachmentApiResponse } from "@/api/generated/model";
+import { policyTargetKey } from "@/lib/policyTargetKey";
 import { apiError } from "@/stories/apiError";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
@@ -16,27 +17,24 @@ import { DISCOVERY_POLICY_ATTACHMENTS, SALES_TABLES_POLICY_ID } from "@/stories/
 import { DiscoveryPolicyAttachments } from "./DiscoveryPolicyAttachments";
 
 function attachment(
-  id: string,
   type: string,
   path: string[],
   orphaned = false,
 ): ListedTableDiscoveryPolicyAttachmentApiResponse {
   return {
-    id,
     policy_id: SALES_TABLES_POLICY_ID,
     policy_name: "sales-tables",
     target: { type, path, table_uuid: type === "table" ? "0b6e1c2a-5d3f-4f7e-8a90-1c2d3e4f5a6b" : null },
     orphaned,
-    attached_at: "2026-11-05T09:00:00Z",
   };
 }
 
 // One target of each kind: analytics, where nothing manages tables, and two in iceberg, which
 // discovery scans; the table has since been dropped.
 const THREE_KINDS = [
-  attachment("da-01m7s6c3tqee0rhg00xry2zqr0", "catalog", ["analytics"]),
+  attachment("catalog", ["analytics"]),
   DISCOVERY_POLICY_ATTACHMENTS[0]!,
-  attachment("da-01m7s6c3tqee0rhg00xry2zqr1", "table", ["iceberg", "finance", "ledger_2025_archive_with_a_long_name"], true),
+  attachment("table", ["iceberg", "finance", "ledger_2025_archive_with_a_long_name"], true),
 ];
 
 const meta = {
@@ -146,8 +144,11 @@ export const Detach: Story = {
     let attachments = THREE_KINDS;
     msw.use(
       getListTableDiscoveryPolicyAttachmentsMockHandler(() => ({ attachments })),
-      getDetachTableDiscoveryPolicyMockHandler(({ params }) => {
-        attachments = attachments.filter((a) => a.id !== params.attachmentId);
+      getDetachTableDiscoveryPolicyMockHandler(({ request }) => {
+        // The place comes as its type and its path, repeated once per part.
+        const query = new URL(request.url).searchParams;
+        const place = policyTargetKey({ type: query.get("target_type") ?? "", path: query.getAll("path") });
+        attachments = attachments.filter((a) => policyTargetKey(a.target) !== place);
       }),
     );
   },
@@ -164,7 +165,7 @@ export const Detach: Story = {
 // A refused detach keeps the row, says why, and hands focus back to that row's Detach.
 export const DetachFails: Story = {
   beforeEach({ msw }) {
-    msw.use(apiError("delete", "/v1/discovery-policies/:name/attachments/:attachmentId", "database unavailable", 500));
+    msw.use(apiError("delete", "/v1/discovery-policies/:name/attachments", "database unavailable", 500));
   },
   play: async () => {
     const detach = await screen.findByRole("button", { name: "Detach from iceberg.sales" });

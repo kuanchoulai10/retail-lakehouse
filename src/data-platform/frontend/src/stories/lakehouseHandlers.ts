@@ -220,11 +220,9 @@ export function lakehouseHandlers() {
       attachments: DISCOVERY_POLICY_ATTACHMENTS.filter((attachment) => attachment.policy_name === params.name),
     })),
     getAttachTableDiscoveryPolicyMockHandler(async ({ params, request }) => ({
-      id: "da-01m7s6c3tqee0rhg00xry2zqqy",
       policy_id: (DISCOVERY_POLICIES.find((p) => p.name === params.name) ?? SALES_TABLES).id,
       policy_name: params.name,
       target: { ...(await request.json()).target, table_uuid: null },
-      attached_at: "2026-11-09T09:00:00Z",
     })),
     getDetachTableDiscoveryPolicyMockHandler(),
     getListScannedCatalogsMockHandler(SCANNED_CATALOGS),
@@ -257,11 +255,9 @@ export function lakehouseHandlers() {
     }),
     getGetTableEffectivePoliciesMockHandler(effectivePolicies(ORDERS.catalog, ORDERS.namespace, ORDERS.name)),
     getAttachTableMaintenancePolicyMockHandler(async ({ params, request }) => ({
-      id: "pa-01m7sdb2kq9e4z5r7t8vwx3y6c",
       policy_id: (POLICIES.find((p) => p.name === params.name) ?? POLICIES[0]!).id,
       policy_name: params.name,
       target: { ...((await request.json()).target), table_uuid: null },
-      attached_at: "2026-11-12T09:00:00Z",
     })),
     getDetachTableMaintenancePolicyMockHandler(),
   ];

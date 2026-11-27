@@ -7,7 +7,7 @@
 import type { PolicyTargetApiRequest } from './policyTargetApiRequest';
 
 /**
- * Carry the target to attach the discovery policy to; it replaces whatever is attached there.
+ * Carry the catalog, namespace or table to attach the discovery policy to; it replaces the one held there.
  */
 export interface AttachTableDiscoveryPolicyApiRequest {
   target: PolicyTargetApiRequest;

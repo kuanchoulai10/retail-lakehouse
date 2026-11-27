@@ -5,9 +5,10 @@ import { catalogScanState } from "@/lib/catalogScanState";
 
 // Whether maintenance manages a catalog table, worked out from the catalogs discovery scans and
 // maintenance's record for the table's uuid, in the spec's order: a catalog no discovery policy
-// manages tables in first, then one discovery cannot read, then a missing record, then an
-// unmanaged one (no discovery policy applies to it, or the one that applies does not manage it) or a
-// dropped one.
+// manages tables in first, then one discovery cannot read, then a missing record, then an undecided
+// one (attached to before discovery saw it), then an unmanaged one (no discovery policy applies to
+// it, or the one that applies does not manage it) or a dropped one. A catalog discovery cannot read
+// comes before an undecided record because it is why the record stays undecided.
 export type TableMaintenanceState =
   | { kind: "loading" }
   | { kind: "failed"; error: unknown }
@@ -40,6 +41,8 @@ export function tableMaintenanceState(
   }
   if (maintenance.data === undefined) return { kind: "loading" };
   const status = maintenance.data.status.toLowerCase();
-  if (status === "unmanaged" || status === "dropped") return { kind: "unmanaged", reason: status };
+  if (status === "undecided" || status === "unmanaged" || status === "dropped") {
+    return { kind: "unmanaged", reason: status };
+  }
   return { kind: "managed", table: maintenance.data };
 }

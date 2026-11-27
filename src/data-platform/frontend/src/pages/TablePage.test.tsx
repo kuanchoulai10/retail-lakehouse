@@ -217,6 +217,11 @@ const UNMANAGED: [string, Options, string][] = [
     "discovery has not found this table yet",
   ],
   [
+    "undecided",
+    { maintenanceTable: () => jsonResponse(maintenance({ status: "undecided", decided_by: null })) },
+    "discovery has not decided this table yet",
+  ],
+  [
     "unmanaged",
     { maintenanceTable: () => jsonResponse(maintenance({ status: "unmanaged" })) },
     "no discovery policy that applies to this table manages it",
@@ -324,10 +329,9 @@ describe("TablePage", { timeout: 15_000 }, () => {
           jsonResponse({ policies: [policyFixture({ name: "default" }), policyFixture({ name: "scratch" })] }),
         "PUT /v1/maintenance-policies/scratch/attachments": () =>
           jsonResponse({
-            id: "pa-01m7sd16b1ef2vww335cwcg9k8",
+            policy_id: "pol-01m7sd16b1ef2vww335cwcg9k8",
             policy_name: "scratch",
             target: { type: "table", path: ["iceberg", "retail", "orders"], table_uuid: "uuid-orders" },
-            attached_at: "2026-11-12T09:00:00Z",
           }),
       },
     });
@@ -345,6 +349,46 @@ describe("TablePage", { timeout: 15_000 }, () => {
       target: { type: "table", path: ["iceberg", "retail", "orders"] },
     });
     expect(callsTo(calls, "GET", "/v1/tables/uuid-orders/effective-policies")).toHaveLength(0);
+  });
+
+  it("reads the record again after an attach to a table discovery has not found, which is then undecided", async () => {
+    const byName = "/v1/effective-policies?catalog=iceberg&namespace=retail&table=orders";
+    const byUuid = "/v1/tables/uuid-orders/effective-policies";
+    const attachedHere = { type: "table", path: ["iceberg", "retail", "orders"], table_uuid: "uuid-orders" };
+    let recorded = false;
+    const calls = stubTable({
+      maintenanceTable: () =>
+        recorded
+          ? jsonResponse(maintenance({ status: "undecided", decided_by: null }))
+          : jsonResponse({ detail: "table uuid-orders not found" }, 404),
+      extra: {
+        [`GET ${byName}`]: () =>
+          jsonResponse({ policies: [effectiveMaintenanceFixture({ policy_name: "default", version: 1 }), effectiveDiscoveryFixture()] }),
+        [`GET ${byUuid}`]: () =>
+          jsonResponse({
+            policies: [
+              effectiveMaintenanceFixture({ policy_name: "default", version: 1 }),
+              effectiveDiscoveryFixture({ target: attachedHere }),
+            ],
+          }),
+        "PUT /v1/discovery-policies/sales-tables/attachments": () => {
+          recorded = true;
+          return jsonResponse({ policy_id: SALES_TABLES_ID, policy_name: "sales-tables", target: attachedHere });
+        },
+      },
+    });
+    renderAt(PAGE);
+    expect(await screen.findByText("discovery has not found this table yet")).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: "Attach policy for discovery" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("combobox", { name: "Policy" }));
+    await userEvent.click(await screen.findByRole("option", { name: "sales-tables" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Attach" }));
+
+    expect(await screen.findByText("discovery has not decided this table yet")).toBeInTheDocument();
+    expect(await screen.findByText("Attached here")).toBeInTheDocument();
+    expect(callsTo(calls, "GET", byUuid)).toHaveLength(1);
+    expect(screen.queryByText(/No discovery policy applies/)).not.toBeInTheDocument();
   });
 
   it("never asks maintenance about a catalog discovery does not scan for the commits tab", async () => {

@@ -56,16 +56,34 @@ describe("tableMaintenanceState", () => {
     });
   });
 
-  it("reads a scanned catalog's record: missing, unmanaged, dropped or managed", () => {
+  it("reads a scanned catalog's record: missing, undecided, unmanaged, dropped or managed", () => {
     const catalogs = loaded([scanned()]);
     const missing = failed(new ApiError(404, "table uuid-orders not found"));
     expect(tableMaintenanceState("iceberg", catalogs, missing)).toEqual({ kind: "unmanaged", reason: "not-found" });
-    for (const status of ["unmanaged", "dropped"] as const) {
+    for (const status of ["undecided", "unmanaged", "dropped"] as const) {
       expect(tableMaintenanceState("iceberg", catalogs, loaded(tableFixture({ status })))).toEqual({
         kind: "unmanaged",
         reason: status,
       });
     }
     expect(tableMaintenanceState("iceberg", catalogs, loaded(MANAGED))).toEqual({ kind: "managed", table: MANAGED });
+  });
+});
+
+describe("tableMaintenanceState for an undecided table", () => {
+  it("names a catalog discovery cannot read before an undecided record, since that is why it stays undecided", () => {
+    const undecided = loaded(tableFixture({ status: "undecided", decided_by: null }));
+    expect(tableMaintenanceState("iceberg", loaded([scanned(failure("cannot_access"))]), undecided)).toEqual({
+      kind: "unmanaged",
+      reason: "catalog-cannot-access",
+    });
+  });
+
+  it("reads the status case-insensitively", () => {
+    const undecided = loaded(tableFixture({ status: "UNDECIDED", decided_by: null }));
+    expect(tableMaintenanceState("iceberg", loaded([scanned()]), undecided)).toEqual({
+      kind: "unmanaged",
+      reason: "undecided",
+    });
   });
 });

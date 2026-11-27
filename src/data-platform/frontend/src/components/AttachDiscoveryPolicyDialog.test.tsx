@@ -15,11 +15,9 @@ const ATTACHMENTS = "/v1/discovery-policies/sales-tables/attachments";
 function attached(body: unknown): Response {
   const { target } = body as { target: { type: string; path: string[] } };
   return jsonResponse({
-    id: "da-01m7s6c3tqee0rhg00xry2zqqx",
     policy_id: "dp-01m7s6c3tqee0rhg00xry2zqqv",
     policy_name: "sales-tables",
     target: { ...target, table_uuid: null },
-    attached_at: "2026-11-21T09:00:00Z",
   });
 }
 
@@ -151,6 +149,7 @@ describe("AttachDiscoveryPolicyDialog", { timeout: 15_000 }, () => {
   it.each([
     [404, "namespace iceberg.sales.eu not found"],
     [403, "the platform's catalog credential cannot read catalog iceberg"],
+    [422, "namespace level 'sales.eu' holds a dot, which a policy target cannot name"],
   ])("shows the API's detail for a %i inside the dialog and stays open", async (status, detail) => {
     const user = userEvent.setup();
     const { onClose } = renderDialog(() => jsonResponse({ detail }, status));

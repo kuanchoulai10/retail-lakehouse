@@ -4,6 +4,7 @@ import { useListTableMaintenancePolicyAttachments } from "@/api/generated/mainte
 import type { PolicyTargetApiResponse } from "@/api/generated/model";
 import { errorMessage } from "@/format";
 import { targetPagePath } from "@/lib/policyPaths";
+import { policyTargetKey } from "@/lib/policyTargetKey";
 
 const TARGET_TYPES: Record<string, string> = {
   catalog: "Catalog",
@@ -48,7 +49,7 @@ export function PolicyAttachments({ name, count }: { name: string; count: number
   return (
     <ul className="m-0 flex list-none flex-col gap-1 p-0">
       {attachments.data.attachments.map((attachment) => (
-        <Target key={attachment.id} {...attachment} />
+        <Target key={policyTargetKey(attachment.target)} {...attachment} />
       ))}
     </ul>
   );

@@ -7,11 +7,9 @@
 import type { PolicyTargetApiResponse } from './policyTargetApiResponse';
 
 /**
- * Describe a discovery policy attached to a target, under the attachment's ``da-`` id.
+ * Describe a discovery policy attached to a catalog, namespace or table.
  */
 export interface TableDiscoveryPolicyAttachmentApiResponse {
-  attached_at: string;
-  id: string;
   policy_id: string;
   policy_name: string;
   target: PolicyTargetApiResponse;

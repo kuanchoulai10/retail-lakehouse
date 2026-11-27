@@ -4,9 +4,11 @@ import {
   getListTableMaintenancePolicyAttachmentsQueryKey,
 } from "./generated/maintenance-policies/maintenance-policies";
 import { invalidateEffectivePolicies } from "./invalidateEffectivePolicies";
+import { invalidateTableRecords } from "./invalidateTableRecords";
 
 // After an attach or detach: what applies anywhere (one attachment changes it for every target
-// below), the policy list (its attachment counts) and where each named policy is attached.
+// below), the policy list (its attachment counts), where each named policy is attached and the table
+// records (an attach can register a table discovery has not seen).
 export function invalidatePolicyAttachments(queryClient: QueryClient, policyNames: string[]): Promise<void[]> {
   return Promise.all([
     invalidateEffectivePolicies(queryClient),
@@ -14,5 +16,6 @@ export function invalidatePolicyAttachments(queryClient: QueryClient, policyName
     ...policyNames.map((name) =>
       queryClient.invalidateQueries({ queryKey: getListTableMaintenancePolicyAttachmentsQueryKey(name) }),
     ),
+    invalidateTableRecords(queryClient),
   ]);
 }

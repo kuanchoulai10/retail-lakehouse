@@ -8,11 +8,17 @@ import {
   getListTableDiscoveryPoliciesQueryKey,
   getListTableDiscoveryPolicyAttachmentsQueryKey,
 } from "./generated/discovery-policies/discovery-policies";
-import { getGetEffectivePoliciesQueryKey, getGetTableEffectivePoliciesQueryKey } from "./generated/tables/tables";
+import {
+  getGetEffectivePoliciesQueryKey,
+  getGetTableCurrentMetricsQueryKey,
+  getGetTableEffectivePoliciesQueryKey,
+  getGetTableQueryKey,
+  getListTablesQueryKey,
+} from "./generated/tables/tables";
 import { invalidateDiscoveryPolicyAttachments } from "./invalidateDiscoveryPolicyAttachments";
 
 describe("invalidateDiscoveryPolicyAttachments", () => {
-  it("marks every policy's attachments, the policy list, the scanned catalogs and what applies anywhere stale, nothing else", async () => {
+  it("marks every policy's attachments, the policy list, the scanned catalogs, what applies anywhere and the table records stale, nothing else", async () => {
     const client = new QueryClient();
     const keys = {
       sales: getListTableDiscoveryPolicyAttachmentsQueryKey("sales-tables"),
@@ -24,6 +30,9 @@ describe("invalidateDiscoveryPolicyAttachments", () => {
       catalogs: getListCatalogsQueryKey(),
       effective: getGetEffectivePoliciesQueryKey({ catalog: "iceberg", namespace: "sales" }),
       tableEffective: getGetTableEffectivePoliciesQueryKey("uuid-orders"),
+      record: getGetTableQueryKey("uuid-orders"),
+      tables: getListTablesQueryKey(),
+      metrics: getGetTableCurrentMetricsQueryKey("uuid-orders"),
     };
     for (const key of Object.values(keys)) client.setQueryData(key, {});
 
@@ -32,6 +41,6 @@ describe("invalidateDiscoveryPolicyAttachments", () => {
     const stale = Object.entries(keys)
       .filter(([, key]) => client.getQueryState(key)?.isInvalidated)
       .map(([name]) => name);
-    expect(stale).toEqual(["sales", "finance", "list", "scanned", "effective", "tableEffective"]);
+    expect(stale).toEqual(["sales", "finance", "list", "scanned", "effective", "tableEffective", "record", "tables"]);
   });
 });

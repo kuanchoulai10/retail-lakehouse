@@ -99,7 +99,7 @@ export const LoadError: Story = {
 
 export const DetachFails: Story = {
   beforeEach({ msw }) {
-    msw.use(apiError("delete", "/v1/maintenance-policies/:name/attachments/:attachmentId", "database unavailable", 500));
+    msw.use(apiError("delete", "/v1/maintenance-policies/:name/attachments", "database unavailable", 500));
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

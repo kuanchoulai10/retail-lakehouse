@@ -7,7 +7,7 @@
 import type { ListedTableMaintenancePolicyAttachmentApiResponse } from './listedTableMaintenancePolicyAttachmentApiResponse';
 
 /**
- * List a maintenance policy's attachments.
+ * List the places a maintenance policy is attached to: catalogs, then namespaces, then tables, each by path.
  */
 export interface TableMaintenancePolicyAttachmentsApiResponse {
   attachments: ListedTableMaintenancePolicyAttachmentApiResponse[];

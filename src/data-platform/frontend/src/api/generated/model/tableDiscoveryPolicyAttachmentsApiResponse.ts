@@ -7,7 +7,7 @@
 import type { ListedTableDiscoveryPolicyAttachmentApiResponse } from './listedTableDiscoveryPolicyAttachmentApiResponse';
 
 /**
- * List a discovery policy's attachments.
+ * List the places a discovery policy is attached to: catalogs, then namespaces, then tables, each by path.
  */
 export interface TableDiscoveryPolicyAttachmentsApiResponse {
   attachments: ListedTableDiscoveryPolicyAttachmentApiResponse[];
