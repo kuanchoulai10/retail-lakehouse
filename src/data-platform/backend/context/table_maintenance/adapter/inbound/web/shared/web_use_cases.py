@@ -31,17 +31,15 @@ if TYPE_CHECKING:
         UpdateTableDiscoveryPolicyUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
+        AttachTableMaintenancePolicyUseCase,
         CreateTableMaintenancePolicyUseCase,
         DeleteTableMaintenancePolicyUseCase,
+        DetachTableMaintenancePolicyUseCase,
         GetTableMaintenancePolicyUseCase,
         GetTableMaintenancePolicyVersionUseCase,
         ListTableMaintenancePoliciesUseCase,
-        UpdateTableMaintenancePolicyUseCase,
-    )
-    from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
-        AttachTableMaintenancePolicyUseCase,
-        DetachTableMaintenancePolicyUseCase,
         ListTableMaintenancePolicyAttachmentsUseCase,
+        UpdateTableMaintenancePolicyUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
         ForwardTableMaintenanceResultUseCase,

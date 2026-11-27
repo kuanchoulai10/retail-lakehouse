@@ -1,4 +1,4 @@
-"""Test GetEffectivePoliciesService: which policy of each kind applies, from which level, through which attachment."""
+"""Test GetEffectivePoliciesService: which policy of each kind applies to a place, and from which level."""
 
 from __future__ import annotations
 
@@ -6,12 +6,12 @@ from datetime import UTC, datetime
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import (
-    TableId,
-    TableMaintenancePolicyAttachmentId,
-)
+from context.table_maintenance.application.domain.model.shared import TableId
 from context.table_maintenance.application.domain.model.table import Table, TableName
-from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePolicyContent
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    MaintenancePolicyContent,
+    TableMaintenancePolicyName,
+)
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table import (
     GetEffectivePoliciesUseCaseInput,
@@ -23,12 +23,10 @@ from context.table_maintenance.application.port.inbound.table_discovery_policy i
     UpdateTableDiscoveryPolicyUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
+    AttachTableMaintenancePolicyUseCaseInput,
     CreateTableMaintenancePolicyUseCaseInput,
     EnsureDefaultTableMaintenancePolicyUseCaseInput,
     UpdateTableMaintenancePolicyUseCaseInput,
-)
-from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
-    AttachTableMaintenancePolicyUseCaseInput,
 )
 from context.table_maintenance.application.port.outbound.table import CatalogAccessDeniedError
 from context.table_maintenance.application.service.table import GetEffectivePoliciesService
@@ -38,12 +36,10 @@ from context.table_maintenance.application.service.table_discovery_policy import
     UpdateTableDiscoveryPolicyService,
 )
 from context.table_maintenance.application.service.table_maintenance_policy import (
+    AttachTableMaintenancePolicyService,
     CreateTableMaintenancePolicyService,
     EnsureDefaultTableMaintenancePolicyService,
     UpdateTableMaintenancePolicyService,
-)
-from context.table_maintenance.application.service.table_maintenance_policy_attachment import (
-    AttachTableMaintenancePolicyService,
 )
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import FakeReadTableMetadataGateway
@@ -56,9 +52,6 @@ from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_re
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
     InMemoryTableMaintenancePoliciesRepo,
 )
-from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policy_attachments_repo import (
-    InMemoryTableMaintenancePolicyAttachmentsRepo,
-)
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.context.table_maintenance.fakes.recording_send_discovery_request_gateway import (
     RecordingSendDiscoveryRequestGateway,
@@ -67,10 +60,8 @@ from tests.context.table_maintenance.fakes.recording_send_table_change_gateway i
     RecordingSendTableChangeGateway,
 )
 from tests.context.table_maintenance.fakes.track_calls import track_calls
-from tests.context.table_maintenance.id_shape import IdShape
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
-PA_ID = IdShape(TableMaintenancePolicyAttachmentId)
 MAINTENANCE_CONTENT = MaintenancePolicyContent.platform_default().to_primitives()
 DISCOVERY_RULES = ({"action": "include", "table_name_pattern": "orders_*"},)
 ORDERS = ("prod", "sales", "eu", "orders")
@@ -86,7 +77,6 @@ class _World:
 
     def __init__(self) -> None:
         self.maintenance_policies = InMemoryTableMaintenancePoliciesRepo()
-        self.maintenance_attachments = InMemoryTableMaintenancePolicyAttachmentsRepo()
         self.discovery_policies = InMemoryTableDiscoveryPoliciesRepo()
         self.gateway = FakeReadTableMetadataGateway()
         self.catalogs = InMemoryCatalogsRepo()
@@ -108,7 +98,6 @@ class _World:
         )
         self.service = GetEffectivePoliciesService(
             self.maintenance_policies,
-            self.maintenance_attachments,
             self.discovery_policies,
             self.catalogs,
             self.namespaces,
@@ -129,12 +118,13 @@ class _World:
     def attach_maintenance(self, policy: str, type_: str, path: tuple[str, ...]) -> None:
         AttachTableMaintenancePolicyService(
             self.maintenance_policies,
-            self.maintenance_attachments,
-            self.gateway,
+            self.catalogs,
+            self.namespaces,
             self.tables,
+            self.gateway,
             self.changes,
             clock=lambda: NOW,
-        ).execute(AttachTableMaintenancePolicyUseCaseInput(target_type=type_, path=path, policy_name=policy))
+        ).execute(AttachTableMaintenancePolicyUseCaseInput(policy_name=policy, target_type=type_, path=path))
 
     def attach_discovery(self, policy: str, type_: str, path: tuple[str, ...]) -> None:
         AttachTableDiscoveryPolicyService(
@@ -146,10 +136,6 @@ class _World:
             RecordingSendDiscoveryRequestGateway(),
             clock=lambda: NOW,
         ).execute(AttachTableDiscoveryPolicyUseCaseInput(policy_name=policy, target_type=type_, path=path))
-
-    def maintenance_attachment_id(self) -> str:
-        (attachment,) = self.maintenance_attachments.list_all()
-        return attachment.id.value
 
     def by_uuid(self, table_uuid: str) -> GetEffectivePoliciesUseCaseOutput:
         return self.service.execute(GetEffectivePoliciesUseCaseInput(table_uuid=table_uuid))
@@ -179,14 +165,14 @@ def test_a_table_with_nothing_attached_gets_the_maintenance_default_and_no_disco
         1,
     )
     assert (maintenance.description, maintenance.dry_run) == ("Platform default", False)
-    assert (maintenance.target, maintenance.attachment_id) == (None, None)
+    assert maintenance.target is None
     assert discovery == GetEffectivePoliciesUseCaseOutput.DiscoveryEntry(
         policy_id=None, policy_name=None, version=None, description=None, target=None
     )
 
 
-def test_each_kind_takes_its_own_nearest_attachment(world: _World) -> None:
-    """A table attachment wins for its kind only; the other kind still answers from its own level."""
+def test_each_kind_takes_its_own_nearest_holder(world: _World) -> None:
+    """A table holding a policy of one kind wins for that kind only; the other kind answers from its own level."""
     world.record_orders()
     world.attach_maintenance("gold", "table", ORDERS)
     world.attach_maintenance("default", "namespace", ("prod", "sales"))
@@ -194,24 +180,22 @@ def test_each_kind_takes_its_own_nearest_attachment(world: _World) -> None:
 
     out = world.by_uuid("u-1")
 
-    gold_attachment = next(a for a in world.maintenance_attachments.list_all() if a.target.type == "table")
-    assert out.maintenance.policy_name == "gold"
-    assert out.maintenance.policy_id == gold_attachment.policy_id.value
+    gold = world.maintenance_policies.get_by_name(TableMaintenancePolicyName(value="gold"))
+    assert gold is not None
+    assert (out.maintenance.policy_id, out.maintenance.policy_name) == (gold.id.value, "gold")
     assert out.maintenance.target == {"type": "table", "path": list(ORDERS), "table_uuid": "u-1"}
-    assert out.maintenance.attachment_id == gold_attachment.id.value
-    assert PA_ID.fullmatch(out.maintenance.attachment_id or "")
     assert out.discovery.policy_name == "sales-tables"
     assert (out.discovery.version, out.discovery.description) == (1, "Sales tables")
     assert out.discovery.target == {"type": "namespace", "path": ["prod", "sales"]}
 
 
 def test_the_version_is_the_policys_latest(world: _World) -> None:
-    """An attachment means the policy's latest version, so updating either kind's policy moves its answer."""
+    """Attaching a policy means its latest version, so updating either kind's policy moves its answer."""
     world.record_orders()
     world.attach_maintenance("gold", "catalog", ("prod",))
     world.attach_discovery("sales-tables", "catalog", ("prod",))
     UpdateTableMaintenancePolicyService(
-        world.maintenance_policies, world.maintenance_attachments, world.tables, world.changes, clock=lambda: NOW
+        world.maintenance_policies, world.catalogs, world.namespaces, world.tables, world.changes, clock=lambda: NOW
     ).execute(
         UpdateTableMaintenancePolicyUseCaseInput(
             name="gold", content={**MAINTENANCE_CONTENT, "description": "Gold v2", "dry_run": True}, version=1
@@ -239,17 +223,16 @@ def test_the_version_is_the_policys_latest(world: _World) -> None:
 
 
 def test_a_table_unknown_to_maintenance_is_answered_by_location(world: _World) -> None:
-    """A table not recorded is placed by the catalog; a table attachment made by uuid is found.
+    """A table discovery has not seen is placed by the catalog, and found by the uuid the catalog gives it.
 
-    Attaching a discovery policy to a table discovery has not seen records it undecided, holding the policy.
+    Attaching either kind of policy to a table discovery has not seen records it undecided, holding the policy.
     """
     world.attach_maintenance("gold", "table", ORDERS)
-    assert world.tables.list_all() == []
     world.attach_discovery("sales-tables", "table", ORDERS)
 
     out = world.by_location("prod", "sales.eu", "orders")
 
-    assert (out.maintenance.policy_name, out.maintenance.attachment_id) == ("gold", world.maintenance_attachment_id())
+    assert out.maintenance.policy_name == "gold"
     assert out.discovery.policy_name == "sales-tables"
     assert (
         out.maintenance.target == out.discovery.target == {"type": "table", "path": list(ORDERS), "table_uuid": "u-1"}
@@ -257,7 +240,7 @@ def test_a_table_unknown_to_maintenance_is_answered_by_location(world: _World) -
 
 
 def test_a_namespace_or_catalog_is_answered_by_location(world: _World) -> None:
-    """A namespace starts at itself, a catalog at itself; table attachments below them do not count."""
+    """A namespace starts at itself, a catalog at itself; policies tables below them hold do not count."""
     world.attach_maintenance("gold", "table", ORDERS)
     world.attach_maintenance("default", "namespace", ("prod", "sales"))
     world.attach_discovery("sales-tables", "catalog", ("prod",))
@@ -275,12 +258,16 @@ def test_a_namespace_or_catalog_is_answered_by_location(world: _World) -> None:
 
 
 def test_by_uuid_the_table_is_placed_by_its_record_not_where_it_was_attached(world: _World) -> None:
-    """After a rename the table attachment follows the uuid and names the table where it is now."""
+    """After a rename the table's own policy follows the uuid and names the table where it is now."""
+    world.record_orders()
     world.attach_maintenance("gold", "table", ORDERS)
     world.attach_discovery("sales-tables", "namespace", ("prod", "sales"))
     world.gateway.drop_table("prod", "sales.eu", "orders")
     world.gateway.add_table("prod", "archive", "orders_old", "u-1")
-    world.record_orders(TableName(catalog="prod", namespace="archive", table="orders_old"))
+    renamed = world.tables.get(TableId("u-1"))
+    assert renamed is not None
+    renamed.rename(TableName(catalog="prod", namespace="archive", table="orders_old"), NOW)
+    world.tables.update(renamed)
 
     out = world.by_uuid("u-1")
 
@@ -415,3 +402,26 @@ def test_the_discovery_entry_reads_the_enclosing_namespaces_in_one_read(world: _
 
 def _levels(namespace_ids) -> str:  # noqa: ANN001
     return ",".join(sorted(".".join(namespace_id.levels) for namespace_id in namespace_ids))
+
+
+@pytest.mark.parametrize("place", ["uuid", "table", "namespace"])
+def test_the_deepest_namespace_holding_a_maintenance_policy_wins_over_its_parent_and_the_catalog(
+    world: _World, place: str
+) -> None:
+    """The maintenance entry is the nearest holder too: ``prod.sales.eu`` beats ``prod.sales`` and ``prod``."""
+    world.record_orders()
+    world.gateway.add_namespace("prod", "sales")
+    world.attach_maintenance("default", "catalog", ("prod",))
+    world.attach_maintenance("default", "namespace", ("prod", "sales"))
+    world.attach_maintenance("gold", "namespace", ("prod", "sales", "eu"))
+
+    out = {
+        "uuid": lambda: world.by_uuid("u-1"),
+        "table": lambda: world.by_location("prod", "sales.eu", "orders"),
+        "namespace": lambda: world.by_location("prod", "sales.eu"),
+    }[place]()
+
+    assert (out.maintenance.policy_name, out.maintenance.target) == (
+        "gold",
+        {"type": "namespace", "path": ["prod", "sales", "eu"]},
+    )

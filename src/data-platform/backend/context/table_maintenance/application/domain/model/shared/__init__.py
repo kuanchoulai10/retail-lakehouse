@@ -99,9 +99,6 @@ from context.table_maintenance.application.domain.model.shared.spec_partitions i
 )
 from context.table_maintenance.application.domain.model.shared.table_discovery_policy_id import TableDiscoveryPolicyId
 from context.table_maintenance.application.domain.model.shared.table_id import TableId
-from context.table_maintenance.application.domain.model.shared.table_maintenance_policy_attachment_id import (
-    TableMaintenancePolicyAttachmentId,
-)
 from context.table_maintenance.application.domain.model.shared.table_maintenance_policy_id import (
     TableMaintenancePolicyId,
 )
@@ -154,7 +151,6 @@ __all__ = [
     "SpecPartitions",
     "TableDiscoveryPolicyId",
     "TableId",
-    "TableMaintenancePolicyAttachmentId",
     "TableMaintenancePolicyId",
     "TableMaintenanceRunId",
     "TableObservation",

@@ -35,7 +35,7 @@ from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCaseInput,
     PlanTableMaintenanceUseCaseOutput,
 )
-from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
+from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     ResolveApplicableTableMaintenancePolicyUseCase,
     ResolveApplicableTableMaintenancePolicyUseCaseInput,
     ResolveApplicableTableMaintenancePolicyUseCaseOutput,

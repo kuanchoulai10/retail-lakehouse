@@ -10,11 +10,10 @@ from base import UseCaseOutput
 class GetEffectivePoliciesUseCaseOutput(UseCaseOutput):
     """Carry the policy of each kind that applies and the level it applies from.
 
-    ``version`` is the policy's latest version, since an attachment always means it. ``target`` is
-    ``{"type", "path", ["table_uuid"]}`` of the nearest place holding a policy of the kind, and the
-    maintenance ``attachment_id`` is its ``pa-`` id; they are None when nothing is attached. Then
-    maintenance falls back to its platform default, while discovery has none: no discovery policy
-    applies and every discovery field is None.
+    ``version`` is the policy's latest version, since attaching a policy always means its latest.
+    ``target`` is ``{"type", "path", ["table_uuid"]}`` of the nearest place holding a policy of the
+    kind, None when no place holds one. Then maintenance falls back to its platform default, while
+    discovery has none: no discovery policy applies and every discovery field is None.
     """
 
     class MaintenanceEntry(UseCaseOutput):
@@ -26,7 +25,6 @@ class GetEffectivePoliciesUseCaseOutput(UseCaseOutput):
         description: str
         dry_run: bool
         target: dict[str, Any] | None
-        attachment_id: str | None
 
     class DiscoveryEntry(UseCaseOutput):
         """The discovery policy that applies, every field None when none does."""

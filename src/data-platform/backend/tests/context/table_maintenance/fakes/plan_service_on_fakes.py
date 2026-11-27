@@ -10,7 +10,7 @@ from tests.context.table_maintenance.fakes.in_memory_table_metrics_store import 
 if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table import PartitionSelectionSettings
     from context.table_maintenance.application.port.inbound.table import PlanTableMaintenanceUseCase
-    from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
+    from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
         ResolveApplicableTableMaintenancePolicyUseCase,
     )
     from context.table_maintenance.application.port.outbound.table import (

@@ -21,7 +21,6 @@ AGGREGATE_SQL_PACKAGES = (
     "context.table_maintenance.adapter.outbound.table_reconciliation.sql",
     "context.table_maintenance.adapter.outbound.table.sql",
     "context.table_maintenance.adapter.outbound.table_maintenance_policy.sql",
-    "context.table_maintenance.adapter.outbound.table_maintenance_policy_attachment.sql",
 )
 
 

@@ -19,9 +19,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
         TableMaintenancePoliciesRepo,
     )
-    from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
-        TableMaintenancePolicyAttachmentsRepo,
-    )
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         TableMaintenanceRunsRepo,
     )
@@ -38,7 +35,6 @@ class Repositories:
     table_maintenance_runs: TableMaintenanceRunsRepo
     tables: TablesRepo
     table_maintenance_policies: TableMaintenancePoliciesRepo
-    table_maintenance_policy_attachments: TableMaintenancePolicyAttachmentsRepo
     table_reconciliations: TableReconciliationsRepo
     catalog_discoveries: CatalogDiscoveriesRepo
     catalogs: CatalogsRepo

@@ -23,11 +23,9 @@ from context.table_maintenance.application.service.table_discovery_policy import
     UpdateTableDiscoveryPolicyService,
 )
 from context.table_maintenance.application.service.table_maintenance_policy import (
+    AttachTableMaintenancePolicyService,
     CreateTableMaintenancePolicyService,
     EnsureDefaultTableMaintenancePolicyService,
-)
-from context.table_maintenance.application.service.table_maintenance_policy_attachment import (
-    AttachTableMaintenancePolicyService,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import build_client
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED
@@ -41,9 +39,6 @@ from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_re
 )
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
     InMemoryTableMaintenancePoliciesRepo,
-)
-from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policy_attachments_repo import (
-    InMemoryTableMaintenancePolicyAttachmentsRepo,
 )
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.context.table_maintenance.fakes.recording_send_discovery_request_gateway import (
@@ -71,7 +66,6 @@ class EffectivePoliciesWebWorld:
     def __init__(self) -> None:
         """Seed the maintenance default, one policy of each kind and the catalog, then build the client."""
         self.maintenance_policies = InMemoryTableMaintenancePoliciesRepo()
-        self.maintenance_attachments = InMemoryTableMaintenancePolicyAttachmentsRepo()
         self.discovery_policies = InMemoryTableDiscoveryPoliciesRepo()
         self.catalog = FakeReadTableMetadataGateway()
         self.catalogs = InMemoryCatalogsRepo()
@@ -101,9 +95,10 @@ class EffectivePoliciesWebWorld:
         self.client: TestClient = build_client(
             attach_table_maintenance_policy=AttachTableMaintenancePolicyService(
                 self.maintenance_policies,
-                self.maintenance_attachments,
-                self.catalog,
+                self.catalogs,
+                self.namespaces,
                 self.tables,
+                self.catalog,
                 RecordingSendTableChangeGateway(),
                 clock=lambda: NOW,
             ),
@@ -119,7 +114,6 @@ class EffectivePoliciesWebWorld:
             get_table=GetTableService(self.tables, InMemoryCatalogDiscoveriesRepo(), self.maintenance_policies),
             get_effective_policies=GetEffectivePoliciesService(
                 self.maintenance_policies,
-                self.maintenance_attachments,
                 self.discovery_policies,
                 self.catalogs,
                 self.namespaces,

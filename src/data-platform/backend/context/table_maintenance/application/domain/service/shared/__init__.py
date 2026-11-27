@@ -2,17 +2,8 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.application.domain.service.shared.candidate_policy_targets import (
-    candidate_policy_targets,
-)
 from context.table_maintenance.application.domain.service.shared.default_orphan_older_than import (
     DEFAULT_ORPHAN_OLDER_THAN,
-)
-from context.table_maintenance.application.domain.service.shared.enclosing_policy_targets import (
-    enclosing_policy_targets,
-)
-from context.table_maintenance.application.domain.service.shared.nearest_attached import (
-    nearest_attached,
 )
 from context.table_maintenance.application.domain.service.shared.nearest_discovery_policy import (
     nearest_discovery_policy,
@@ -41,9 +32,6 @@ __all__ = [
     "DEFAULT_ORPHAN_OLDER_THAN",
     "TARGET_FILE_SIZE_PROPERTY",
     "NearestPolicy",
-    "candidate_policy_targets",
-    "enclosing_policy_targets",
-    "nearest_attached",
     "nearest_discovery_policy",
     "nearest_maintenance_policy",
     "policy_holders_nearest_first",

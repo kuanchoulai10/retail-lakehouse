@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
@@ -15,34 +14,30 @@ from context.table_maintenance.application.service.table_maintenance_policy.tabl
 )
 
 if TYPE_CHECKING:
+    from context.table_maintenance.application.port.outbound.shared import PolicyPlacementsStore
     from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
         TableMaintenancePoliciesRepo,
-    )
-    from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
-        TableMaintenancePolicyAttachmentsRepo,
     )
 
 
 class ListTableMaintenancePoliciesService(ListTableMaintenancePoliciesUseCase):
-    """List all table maintenance policies, each with how many targets it is attached to."""
+    """List all table maintenance policies, each with how many places it is attached to."""
 
-    def __init__(
-        self, policies_repo: TableMaintenancePoliciesRepo, attachments_repo: TableMaintenancePolicyAttachmentsRepo
-    ) -> None:
-        """Bind the repos."""
+    def __init__(self, policies_repo: TableMaintenancePoliciesRepo, placements: PolicyPlacementsStore) -> None:
+        """Bind the policies and the placements."""
         self._policies_repo = policies_repo
-        self._attachments_repo = attachments_repo
+        self._placements = placements
 
     def execute(
         self,
         request: ListTableMaintenancePoliciesUseCaseInput,  # noqa: ARG002
     ) -> ListTableMaintenancePoliciesUseCaseOutput:
-        """Return every policy at its current version with its attachment count."""
-        counts = Counter(a.policy_id.value for a in self._attachments_repo.list_all())
+        """Return every policy at its current version with the number of places it is attached to."""
         return ListTableMaintenancePoliciesUseCaseOutput(
             items=tuple(
                 ListTableMaintenancePoliciesUseCaseOutput.TableMaintenancePolicy(
-                    **table_maintenance_policy_output_fields(p), attachment_count=counts[p.id.value]
+                    **table_maintenance_policy_output_fields(p),
+                    attachment_count=len(self._placements.maintenance_placements(p.id)),
                 )
                 for p in self._policies_repo.list_all()
             )

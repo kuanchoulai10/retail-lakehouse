@@ -39,18 +39,16 @@ from context.table_maintenance.application.service.table_discovery_policy import
     UpdateTableDiscoveryPolicyService,
 )
 from context.table_maintenance.application.service.table_maintenance_policy import (
+    AttachTableMaintenancePolicyService,
     CreateTableMaintenancePolicyService,
     DeleteTableMaintenancePolicyService,
+    DetachTableMaintenancePolicyService,
     GetTableMaintenancePolicyService,
     GetTableMaintenancePolicyVersionService,
     ListTableMaintenancePoliciesService,
-    UpdateTableMaintenancePolicyService,
-)
-from context.table_maintenance.application.service.table_maintenance_policy_attachment import (
-    AttachTableMaintenancePolicyService,
-    DetachTableMaintenancePolicyService,
     ListTableMaintenancePolicyAttachmentsService,
     ResolveApplicableTableMaintenancePolicyService,
+    UpdateTableMaintenancePolicyService,
 )
 from context.table_maintenance.application.service.table_maintenance_run import (
     CancelTableMaintenanceRunService,
@@ -115,7 +113,6 @@ def build_use_cases(
     placements = repos.policy_placements
     catalogs, namespaces = repos.catalogs, repos.namespaces
     policies = repos.table_maintenance_policies
-    attachments = repos.table_maintenance_policy_attachments
     runs = repos.table_maintenance_runs
     reconciliations = repos.table_reconciliations
     discoveries = repos.catalog_discoveries
@@ -123,7 +120,9 @@ def build_use_cases(
     table_changes = gateways.send_table_change
     discovery_requests = gateways.send_discovery_request
     discovery_schedules = gateways.sync_discovery_schedules
-    resolve_applicable_policy = ResolveApplicableTableMaintenancePolicyService(policies, attachments, catalog, tables)
+    resolve_applicable_policy = ResolveApplicableTableMaintenancePolicyService(
+        policies, catalogs, namespaces, catalog, tables
+    )
     return UseCases(
         process_table_hint=ProcessTableHintService(
             tables,
@@ -168,25 +167,25 @@ def build_use_cases(
         ),
         list_scanned_catalogs=ListScannedCatalogsService(placements, tables, discoveries),
         attach_table_maintenance_policy=AttachTableMaintenancePolicyService(
-            policies, attachments, catalog, tables, table_changes, clock=clock
+            policies, catalogs, namespaces, tables, catalog, table_changes, clock=clock
         ),
         detach_table_maintenance_policy=DetachTableMaintenancePolicyService(
-            policies, attachments, tables, table_changes
+            policies, catalogs, namespaces, tables, table_changes, clock=clock
         ),
         list_table_maintenance_policy_attachments=ListTableMaintenancePolicyAttachmentsService(
-            policies, attachments, catalog, tables
+            policies, placements, catalog, tables
         ),
         resolve_applicable_table_maintenance_policy=resolve_applicable_policy,
         get_effective_policies=GetEffectivePoliciesService(
-            policies, attachments, discovery_policies, catalogs, namespaces, catalog, tables
+            policies, discovery_policies, catalogs, namespaces, catalog, tables
         ),
         create_table_maintenance_policy=CreateTableMaintenancePolicyService(policies, clock=clock),
-        delete_table_maintenance_policy=DeleteTableMaintenancePolicyService(policies, attachments),
+        delete_table_maintenance_policy=DeleteTableMaintenancePolicyService(policies, placements),
         get_table_maintenance_policy=GetTableMaintenancePolicyService(policies),
         get_table_maintenance_policy_version=GetTableMaintenancePolicyVersionService(policies),
-        list_table_maintenance_policies=ListTableMaintenancePoliciesService(policies, attachments),
+        list_table_maintenance_policies=ListTableMaintenancePoliciesService(policies, placements),
         update_table_maintenance_policy=UpdateTableMaintenancePolicyService(
-            policies, attachments, tables, table_changes, clock=clock
+            policies, catalogs, namespaces, tables, table_changes, clock=clock
         ),
         get_table=GetTableService(tables, discoveries, policies),
         get_table_current_metrics=GetTableCurrentMetricsService(tables, repos.table_metrics),

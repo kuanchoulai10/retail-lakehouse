@@ -15,7 +15,7 @@ class PolicyTarget(ValueObject):
 
     ``path`` is the catalog name followed by the namespace levels, followed by
     the table name for a table. A table is also identified by its uuid, so a
-    renamed or moved table keeps its attachment.
+    renamed or moved table keeps the policy it holds.
     """
 
     type: PolicyTargetType
@@ -38,10 +38,10 @@ class PolicyTarget(ValueObject):
         return self
 
     def key(self) -> str:
-        """Return the key that names this target, one attachment per key.
+        """Return the key that names this target: one place, whatever path it is read under.
 
-        A table is keyed by its uuid (``table:<uuid>``), so a renamed or moved table keeps its
-        attachment; a catalog or namespace by its type and unit-separated path.
+        A table is keyed by its uuid (``table:<uuid>``), so a renamed or moved table is the same
+        place; a catalog or namespace by its type and unit-separated path.
         """
         if self.type == PolicyTargetType.TABLE:
             return f"table:{self.table_uuid}"

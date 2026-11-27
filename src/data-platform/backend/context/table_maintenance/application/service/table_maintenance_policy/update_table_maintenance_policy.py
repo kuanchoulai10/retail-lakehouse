@@ -18,10 +18,12 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
 from context.table_maintenance.application.service.shared import (
     translate_domain_errors,
 )
+from context.table_maintenance.application.service.table_maintenance_policy.notify_policy_change import (  # noqa: E501
+    notify_policy_change,
+)
 from context.table_maintenance.application.service.table_maintenance_policy.table_maintenance_policy_output_fields import (  # noqa: E501
     table_maintenance_policy_output_fields,
 )
-from context.table_maintenance.application.service.table_maintenance_policy_attachment import notify_policy_change
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -29,30 +31,31 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table_maintenance_policy import (
         TableMaintenancePolicy,
     )
+    from context.table_maintenance.application.port.outbound.catalog import CatalogsRepo
+    from context.table_maintenance.application.port.outbound.namespace import NamespacesRepo
     from context.table_maintenance.application.port.outbound.table import SendTableChangeGateway, TablesRepo
     from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
         TableMaintenancePoliciesRepo,
-    )
-    from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
-        TableMaintenancePolicyAttachmentsRepo,
     )
 
 
 class UpdateTableMaintenancePolicyService(UpdateTableMaintenancePolicyUseCase):
     """Replace a table maintenance policy's content as a new version."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         policies_repo: TableMaintenancePoliciesRepo,
-        attachments_repo: TableMaintenancePolicyAttachmentsRepo,
+        catalogs_repo: CatalogsRepo,
+        namespaces_repo: NamespacesRepo,
         tables_repo: TablesRepo,
         table_changes: SendTableChangeGateway,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
-        """Bind the repos, the table change gateway and the clock."""
+        """Bind the policy and place repos, the table change gateway and the clock."""
         self._policies_repo = policies_repo
-        self._attachments_repo = attachments_repo
+        self._catalogs_repo = catalogs_repo
+        self._namespaces_repo = namespaces_repo
         self._tables_repo = tables_repo
         self._table_changes = table_changes
         self._clock = clock
@@ -71,7 +74,8 @@ class UpdateTableMaintenancePolicyService(UpdateTableMaintenancePolicyUseCase):
         notify_policy_change(
             self._tables_repo,
             self._policies_repo,
-            self._attachments_repo,
+            self._catalogs_repo,
+            self._namespaces_repo,
             self._table_changes,
             lambda: self._replace(policy, content, request.version),
         )

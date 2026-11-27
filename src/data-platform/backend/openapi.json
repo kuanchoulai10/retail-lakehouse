@@ -32,7 +32,7 @@
       },
       "AttachTableMaintenancePolicyApiRequest": {
         "additionalProperties": false,
-        "description": "Carry the target to attach the policy to; it replaces whatever is attached there.",
+        "description": "Carry the catalog, namespace or table to attach the maintenance policy to; it replaces the one held there.",
         "properties": {
           "target": {
             "$ref": "#/components/schemas/PolicyTargetApiRequest"
@@ -1832,17 +1832,8 @@
         "type": "object"
       },
       "ListedTableMaintenancePolicyAttachmentApiResponse": {
-        "description": "Describe a listed attachment; ``orphaned`` when its target no longer exists in the catalog.",
+        "description": "Describe a place the policy is attached to; ``orphaned`` when it no longer exists in the catalog.",
         "properties": {
-          "attached_at": {
-            "format": "date-time",
-            "title": "Attached At",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
           "orphaned": {
             "title": "Orphaned",
             "type": "boolean"
@@ -1860,30 +1851,17 @@
           }
         },
         "required": [
-          "id",
           "target",
           "policy_id",
           "policy_name",
-          "attached_at",
           "orphaned"
         ],
         "title": "ListedTableMaintenancePolicyAttachmentApiResponse",
         "type": "object"
       },
       "MaintenanceEffectivePolicyApiResponse": {
-        "description": "Describe the maintenance policy that applies, at its latest version, and the level it applies from.\n\n``target`` is the nearest attachment's target and ``attachment_id`` its ``pa-`` id; both are null when\nthe platform default applies.",
+        "description": "Describe the maintenance policy that applies, at its latest version, and the level it applies from.\n\n``target`` is the nearest catalog, namespace or table holding a maintenance policy; it is null when\nnone holds one and the platform default applies.",
         "properties": {
-          "attachment_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Attachment Id"
-          },
           "description": {
             "title": "Description",
             "type": "string"
@@ -1927,8 +1905,7 @@
           "version",
           "description",
           "dry_run",
-          "target",
-          "attachment_id"
+          "target"
         ],
         "title": "MaintenanceEffectivePolicyApiResponse",
         "type": "object"
@@ -4307,17 +4284,8 @@
         "type": "object"
       },
       "TableMaintenancePolicyAttachmentApiResponse": {
-        "description": "Describe a maintenance policy attached to a target, under the attachment's ``pa-`` id.",
+        "description": "Describe a maintenance policy attached to a catalog, namespace or table.",
         "properties": {
-          "attached_at": {
-            "format": "date-time",
-            "title": "Attached At",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
           "policy_id": {
             "title": "Policy Id",
             "type": "string"
@@ -4331,17 +4299,15 @@
           }
         },
         "required": [
-          "id",
           "target",
           "policy_id",
-          "policy_name",
-          "attached_at"
+          "policy_name"
         ],
         "title": "TableMaintenancePolicyAttachmentApiResponse",
         "type": "object"
       },
       "TableMaintenancePolicyAttachmentsApiResponse": {
-        "description": "List a maintenance policy's attachments.",
+        "description": "List the places a maintenance policy is attached to: catalogs, then namespaces, then tables, each by path.",
         "properties": {
           "attachments": {
             "items": {
@@ -7890,8 +7856,63 @@
       }
     },
     "/v1/maintenance-policies/{name}/attachments": {
+      "delete": {
+        "description": "Detach a maintenance policy from the place ``target_type`` and ``path`` name, whether or not it still exists.\n\n``path`` repeats once per part: the catalog, the namespace levels, then the table name for a table.\n404 when the place does not hold this policy.",
+        "operationId": "detach_table_maintenance_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_type",
+            "required": true,
+            "schema": {
+              "title": "Target Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Path",
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Detach Table Maintenance Policy",
+        "tags": [
+          "maintenance-policies"
+        ]
+      },
       "get": {
-        "description": "List the targets a maintenance policy is attached to, marking those no longer in the catalog as orphaned.",
+        "description": "List the catalogs, namespaces and tables a maintenance policy is attached to, marking those gone as orphaned.",
         "operationId": "list_table_maintenance_policy_attachments",
         "parameters": [
           {
@@ -7932,7 +7953,7 @@
         ]
       },
       "put": {
-        "description": "Attach a maintenance policy to a target that exists in the catalog, replacing the target's attachment.\n\nThe target keeps its attachment's id. A catalog the platform's credential cannot read answers 403.",
+        "description": "Attach a maintenance policy to a catalog, namespace or table that exists, replacing the one it holds.\n\nA catalog the platform's credential cannot read answers 403, a namespace level holding a dot 422, and\na place changed by someone else meanwhile 409.",
         "operationId": "attach_table_maintenance_policy",
         "parameters": [
           {
@@ -7978,51 +7999,6 @@
           }
         },
         "summary": "Attach Table Maintenance Policy",
-        "tags": [
-          "maintenance-policies"
-        ]
-      }
-    },
-    "/v1/maintenance-policies/{name}/attachments/{attachment_id}": {
-      "delete": {
-        "description": "Detach one of a maintenance policy's attachments by its ``pa-`` id, whether or not its target still exists.\n\n404 when the policy has no such attachment.",
-        "operationId": "detach_table_maintenance_policy",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "attachment_id",
-            "required": true,
-            "schema": {
-              "title": "Attachment Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Detach Table Maintenance Policy",
         "tags": [
           "maintenance-policies"
         ]

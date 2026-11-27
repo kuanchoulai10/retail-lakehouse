@@ -8,7 +8,7 @@ from context.table_maintenance.application.domain.model.shared import (
     TableMaintenancePolicyId,
 )
 from context.table_maintenance.application.domain.model.table import AppliedPolicyRef
-from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
+from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     ResolveApplicableTableMaintenancePolicyUseCaseOutput,
 )
 from context.table_maintenance.application.service.shared import applied_policy_ref_of

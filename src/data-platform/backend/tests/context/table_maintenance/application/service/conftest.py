@@ -12,8 +12,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
 )
 from context.table_maintenance.application.service.table_maintenance_policy import (
     EnsureDefaultTableMaintenancePolicyService,
-)
-from context.table_maintenance.application.service.table_maintenance_policy_attachment import (
     ResolveApplicableTableMaintenancePolicyService,
 )
 from tests.context.table_maintenance.fakes.fake_read_maintenance_job_gateway import (
@@ -33,9 +31,6 @@ from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_re
 )
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
     InMemoryTableMaintenancePoliciesRepo,
-)
-from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policy_attachments_repo import (
-    InMemoryTableMaintenancePolicyAttachmentsRepo,
 )
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_runs_repo import (
     InMemoryTableMaintenanceRunsRepo,
@@ -196,17 +191,14 @@ def policies_repo() -> InMemoryTableMaintenancePoliciesRepo:
 
 
 @pytest.fixture
-def attachments_repo() -> InMemoryTableMaintenancePolicyAttachmentsRepo:
-    """Provide an empty policy attachments repo."""
-    return InMemoryTableMaintenancePolicyAttachmentsRepo()
-
-
-@pytest.fixture
 def resolve_applicable_policy(
     policies_repo: InMemoryTableMaintenancePoliciesRepo,
-    attachments_repo: InMemoryTableMaintenancePolicyAttachmentsRepo,
+    catalogs_repo: InMemoryCatalogsRepo,
+    namespaces_repo: InMemoryNamespacesRepo,
     catalog: FakeReadTableMetadataGateway,
     tables_repo: InMemoryTablesRepo,
 ) -> ResolveApplicableTableMaintenancePolicyService:
     """Provide the applicable policy resolution on the fakes."""
-    return ResolveApplicableTableMaintenancePolicyService(policies_repo, attachments_repo, catalog, tables_repo)
+    return ResolveApplicableTableMaintenancePolicyService(
+        policies_repo, catalogs_repo, namespaces_repo, catalog, tables_repo
+    )

@@ -1,4 +1,4 @@
-"""Test the SQL repository of the TableMaintenancePolicy aggregate."""
+"""Test the SQL repository of the TableMaintenancePolicy aggregate, and the in-memory fake where they must agree."""
 
 from __future__ import annotations
 
@@ -9,31 +9,47 @@ import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.pool import StaticPool
 
+from context.table_maintenance.adapter.outbound.catalog.sql import CatalogsSqlRepo
+from context.table_maintenance.adapter.outbound.namespace.sql import NamespacesSqlRepo
 from context.table_maintenance.adapter.outbound.shared.sql import create_schema
+from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo
 from context.table_maintenance.adapter.outbound.table_maintenance_policy.sql import (
     TableMaintenancePoliciesSqlRepo,
 )
-from context.table_maintenance.adapter.outbound.table_maintenance_policy_attachment.sql import (
-    TableMaintenancePolicyAttachmentsSqlRepo,
-)
+from context.table_maintenance.application.domain.model.catalog import Catalog
+from context.table_maintenance.application.domain.model.namespace import Namespace
 from context.table_maintenance.application.domain.model.shared import (
-    PolicyTarget,
-    PolicyTargetType,
+    CatalogId,
+    NamespaceId,
+    TableId,
     TableMaintenancePolicyId,
 )
+from context.table_maintenance.application.domain.model.table import Table, TableName
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     MaintenancePolicyContent,
     StalePolicyVersion,
     TableMaintenancePolicy,
     TableMaintenancePolicyName,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
-    TableMaintenancePolicyAttachment,
-)
 from context.table_maintenance.application.exceptions import ConflictError
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED
+from tests.context.table_maintenance.fakes.in_memory_catalogs_repo import InMemoryCatalogsRepo
+from tests.context.table_maintenance.fakes.in_memory_namespaces_repo import InMemoryNamespacesRepo
+from tests.context.table_maintenance.fakes.in_memory_policy_placements_store import InMemoryPolicyPlacementsStore
+from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
+    InMemoryTableMaintenancePoliciesRepo,
+)
+from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
+
+    from context.table_maintenance.application.port.outbound.catalog import CatalogsRepo
+    from context.table_maintenance.application.port.outbound.namespace import NamespacesRepo
+    from context.table_maintenance.application.port.outbound.table import TablesRepo
+    from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
+        TableMaintenancePoliciesRepo,
+    )
 
 NOW = datetime(2026, 10, 24, tzinfo=UTC)
 NAME = TableMaintenancePolicyName(value="gold")
@@ -199,17 +215,69 @@ def _engine_enforcing_foreign_keys() -> Engine:
     return engine
 
 
-def test_delete_of_a_policy_attached_meanwhile_conflicts():
-    """An attachment landing after the delete's check makes the delete a ConflictError and keeps the policy."""
-    engine = _engine_enforcing_foreign_keys()
-    repo = TableMaintenancePoliciesSqlRepo(engine)
+type _Repos = tuple[TableMaintenancePoliciesRepo, CatalogsRepo, NamespacesRepo, TablesRepo]
+
+
+@pytest.fixture(params=["sql", "memory"])
+def repos(request: pytest.FixtureRequest) -> _Repos:
+    """Provide a policies repository and the three holder repositories sharing its storage.
+
+    So a catalog, namespace or table holding a policy pins it: the SQL foreign keys refuse its delete,
+    and the fake refuses it through the placements it reads from the holder fakes.
+    """
+    if request.param == "sql":
+        engine = _engine_enforcing_foreign_keys()
+        return (
+            TableMaintenancePoliciesSqlRepo(engine),
+            CatalogsSqlRepo(engine),
+            NamespacesSqlRepo(engine),
+            TablesSqlRepo(engine),
+        )
+    catalogs, namespaces, tables = InMemoryCatalogsRepo(), InMemoryNamespacesRepo(), InMemoryTablesRepo()
+    placements = InMemoryPolicyPlacementsStore(catalogs, namespaces, tables)
+    return InMemoryTableMaintenancePoliciesRepo(placements=placements), catalogs, namespaces, tables
+
+
+def _hold(repos: _Repos, holder: str, policy_id: TableMaintenancePolicyId) -> None:
+    _, catalogs, namespaces, tables = repos
+    if holder == "catalog":
+        catalog = Catalog.register(CatalogId("prod"), NOW)
+        catalog.attach_maintenance_policy(policy_id, NOW)
+        catalogs.create(catalog)
+    elif holder == "namespace":
+        namespace = Namespace.register(NamespaceId.of("prod", ("sales",)), NOW)
+        namespace.attach_maintenance_policy(policy_id, NOW)
+        namespaces.create(namespace)
+    else:
+        table = Table.register(TableId("u-1"), TableName(catalog="prod", namespace="sales", table="t"), MANAGED, NOW)
+        table.attach_maintenance_policy(policy_id, NOW)
+        tables.create(table)
+
+
+@pytest.mark.parametrize("holder", ["catalog", "namespace", "table"])
+def test_delete_of_a_policy_a_place_holds_conflicts(repos: _Repos, holder: str):
+    """A policy a catalog, namespace or table holds is not deleted: ConflictError, and the policy and its version stay.
+
+    The service checks first; this is the refusal of a place attached between its check and the delete.
+    """
+    policies = repos[0]
     policy = _policy()
-    repo.create(policy)
-    target = PolicyTarget(type=PolicyTargetType.CATALOG, path=("prod",))
-    TableMaintenancePolicyAttachmentsSqlRepo(engine).create(
-        TableMaintenancePolicyAttachment.attach(target, policy.id, NOW)
-    )
+    policies.create(policy)
+    _hold(repos, holder, policy.id)
+
     with pytest.raises(ConflictError):
-        repo.delete(policy.id)
-    assert repo.get(policy.id) is not None
-    assert repo.get_version(policy.id, 1) is not None
+        policies.delete(policy.id)
+
+    assert policies.get(policy.id) is not None
+    assert policies.get_version(policy.id, 1) is not None
+
+
+def test_delete_of_a_policy_no_place_holds_removes_it(repos: _Repos):
+    """With no place holding it, the policy and its versions are deleted."""
+    policies = repos[0]
+    policy = _policy()
+    policies.create(policy)
+
+    policies.delete(policy.id)
+
+    assert (policies.get(policy.id), policies.get_version(policy.id, 1)) == (None, None)

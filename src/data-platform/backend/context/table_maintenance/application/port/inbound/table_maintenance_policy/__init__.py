@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.port.inbound.table_maintenance_policy.attach_table_maintenance_policy import (  # noqa: E501
+    AttachTableMaintenancePolicyUseCase,
+    AttachTableMaintenancePolicyUseCaseInput,
+    AttachTableMaintenancePolicyUseCaseOutput,
+)
 from context.table_maintenance.application.port.inbound.table_maintenance_policy.create_table_maintenance_policy import (  # noqa: E501
     CreateTableMaintenancePolicyUseCase,
     CreateTableMaintenancePolicyUseCaseInput,
@@ -11,6 +16,11 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     DeleteTableMaintenancePolicyUseCase,
     DeleteTableMaintenancePolicyUseCaseInput,
     DeleteTableMaintenancePolicyUseCaseOutput,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_policy.detach_table_maintenance_policy import (  # noqa: E501
+    DetachTableMaintenancePolicyUseCase,
+    DetachTableMaintenancePolicyUseCaseInput,
+    DetachTableMaintenancePolicyUseCaseOutput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy.ensure_default_table_maintenance_policy import (  # noqa: E501
     EnsureDefaultTableMaintenancePolicyUseCase,
@@ -32,6 +42,16 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     ListTableMaintenancePoliciesUseCaseInput,
     ListTableMaintenancePoliciesUseCaseOutput,
 )
+from context.table_maintenance.application.port.inbound.table_maintenance_policy.list_table_maintenance_policy_attachments import (  # noqa: E501
+    ListTableMaintenancePolicyAttachmentsUseCase,
+    ListTableMaintenancePolicyAttachmentsUseCaseInput,
+    ListTableMaintenancePolicyAttachmentsUseCaseOutput,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_policy.resolve_applicable_table_maintenance_policy import (  # noqa: E501
+    ResolveApplicableTableMaintenancePolicyUseCase,
+    ResolveApplicableTableMaintenancePolicyUseCaseInput,
+    ResolveApplicableTableMaintenancePolicyUseCaseOutput,
+)
 from context.table_maintenance.application.port.inbound.table_maintenance_policy.update_table_maintenance_policy import (  # noqa: E501
     UpdateTableMaintenancePolicyUseCase,
     UpdateTableMaintenancePolicyUseCaseInput,
@@ -39,12 +59,18 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
 )
 
 __all__ = [
+    "AttachTableMaintenancePolicyUseCase",
+    "AttachTableMaintenancePolicyUseCaseInput",
+    "AttachTableMaintenancePolicyUseCaseOutput",
     "CreateTableMaintenancePolicyUseCase",
     "CreateTableMaintenancePolicyUseCaseInput",
     "CreateTableMaintenancePolicyUseCaseOutput",
     "DeleteTableMaintenancePolicyUseCase",
     "DeleteTableMaintenancePolicyUseCaseInput",
     "DeleteTableMaintenancePolicyUseCaseOutput",
+    "DetachTableMaintenancePolicyUseCase",
+    "DetachTableMaintenancePolicyUseCaseInput",
+    "DetachTableMaintenancePolicyUseCaseOutput",
     "EnsureDefaultTableMaintenancePolicyUseCase",
     "EnsureDefaultTableMaintenancePolicyUseCaseInput",
     "EnsureDefaultTableMaintenancePolicyUseCaseOutput",
@@ -57,6 +83,12 @@ __all__ = [
     "ListTableMaintenancePoliciesUseCase",
     "ListTableMaintenancePoliciesUseCaseInput",
     "ListTableMaintenancePoliciesUseCaseOutput",
+    "ListTableMaintenancePolicyAttachmentsUseCase",
+    "ListTableMaintenancePolicyAttachmentsUseCaseInput",
+    "ListTableMaintenancePolicyAttachmentsUseCaseOutput",
+    "ResolveApplicableTableMaintenancePolicyUseCase",
+    "ResolveApplicableTableMaintenancePolicyUseCaseInput",
+    "ResolveApplicableTableMaintenancePolicyUseCaseOutput",
     "UpdateTableMaintenancePolicyUseCase",
     "UpdateTableMaintenancePolicyUseCaseInput",
     "UpdateTableMaintenancePolicyUseCaseOutput",

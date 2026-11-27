@@ -44,12 +44,10 @@ from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCaseOutput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
-    CreateTableMaintenancePolicyUseCaseInput,
-    UpdateTableMaintenancePolicyUseCaseInput,
-)
-from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
     AttachTableMaintenancePolicyUseCaseInput,
+    CreateTableMaintenancePolicyUseCaseInput,
     DetachTableMaintenancePolicyUseCaseInput,
+    UpdateTableMaintenancePolicyUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_reconciliation import (
     RecordTableReconciliationUseCaseInput,
@@ -59,20 +57,17 @@ from context.table_maintenance.application.port.outbound.table import (
 )
 from context.table_maintenance.application.service.table import PlanTableMaintenanceService
 from context.table_maintenance.application.service.table_maintenance_policy import (
-    CreateTableMaintenancePolicyService,
-    UpdateTableMaintenancePolicyService,
-)
-from context.table_maintenance.application.service.table_maintenance_policy_attachment import (
     AttachTableMaintenancePolicyService,
+    CreateTableMaintenancePolicyService,
     DetachTableMaintenancePolicyService,
+    UpdateTableMaintenancePolicyService,
 )
 from context.table_maintenance.application.service.table_reconciliation import (
     RecordTableReconciliationService,
 )
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED, UNMANAGED
-from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policy_attachments_repo import (
-    InMemoryTableMaintenancePolicyAttachmentsRepo,
-)
+from tests.context.table_maintenance.fakes.in_memory_catalogs_repo import InMemoryCatalogsRepo
+from tests.context.table_maintenance.fakes.in_memory_namespaces_repo import InMemoryNamespacesRepo
 from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo import (
     InMemoryTableReconciliationsRepo,
 )
@@ -163,12 +158,6 @@ def policies(policies_repo):
 
 
 @pytest.fixture
-def attachments(attachments_repo):
-    """Provide the policy attachments repo."""
-    return attachments_repo
-
-
-@pytest.fixture
 def planner(tables_repo, catalog, resolve_applicable_policy, metrics_store):
     """Provide the plan table maintenance service on the fakes."""
     return plan_service_on_fakes(tables_repo, catalog, resolve_applicable_policy, metrics_store)
@@ -178,7 +167,8 @@ def _use_policy(policies, now, content):
     """Replace the default policy's content, so it applies to every table."""
     UpdateTableMaintenancePolicyService(
         policies,
-        InMemoryTableMaintenancePolicyAttachmentsRepo(),
+        InMemoryCatalogsRepo(),
+        InMemoryNamespacesRepo(),
         InMemoryTablesRepo(),
         RecordingSendTableChangeGateway(),
         clock=lambda: now,
@@ -691,7 +681,9 @@ def test_plan_reports_malformed_observation_as_validation_error(planner, tables_
 # --- applicable policy ---
 
 
-def test_plan_output_names_resolved_policy(planner, tables_repo, catalog, policies, attachments, now):
+def test_plan_output_names_resolved_policy(
+    planner, tables_repo, catalog, policies, catalogs_repo, namespaces_repo, now
+):
     """The plan names the policy it applied, its version and where it is attached."""
     _table(tables_repo, now)
     _observe(catalog, now)
@@ -700,7 +692,13 @@ def test_plan_output_names_resolved_policy(planner, tables_repo, catalog, polici
         CreateTableMaintenancePolicyUseCaseInput(name="gold", content=gold.to_primitives())
     )
     AttachTableMaintenancePolicyService(
-        policies, attachments, catalog, tables_repo, RecordingSendTableChangeGateway(), clock=lambda: now
+        policies,
+        catalogs_repo,
+        namespaces_repo,
+        tables_repo,
+        catalog,
+        RecordingSendTableChangeGateway(),
+        clock=lambda: now,
     ).execute(
         AttachTableMaintenancePolicyUseCaseInput(target_type="namespace", path=("iceberg", "sales"), policy_name="gold")
     )
@@ -710,7 +708,7 @@ def test_plan_output_names_resolved_policy(planner, tables_repo, catalog, polici
     assert (plan.schedule_interval_seconds, plan.dry_run) == (600, True)
 
 
-def test_plan_without_attachment_names_the_default_policy(planner, tables_repo, catalog, now):
+def test_plan_with_nothing_attached_names_the_default_policy(planner, tables_repo, catalog, now):
     """With nothing attached, the plan applies the default policy and has no target."""
     _table(tables_repo, now)
     _observe(catalog, now)
@@ -743,7 +741,8 @@ def test_the_plan_carries_the_schedule_and_the_debounce(planner, tables_repo, ca
     assert (plan.schedule_interval_seconds, plan.catalog_commit_debounce_seconds) == (600, 120)
     UpdateTableMaintenancePolicyService(
         policies,
-        InMemoryTableMaintenancePolicyAttachmentsRepo(),
+        InMemoryCatalogsRepo(),
+        InMemoryNamespacesRepo(),
         InMemoryTablesRepo(),
         RecordingSendTableChangeGateway(),
         clock=lambda: now,
@@ -1192,7 +1191,7 @@ def test_a_table_dropped_while_the_catalog_was_read_stays_dropped(planner, table
 
 
 def test_detaching_the_new_policy_does_not_bring_the_block_back(
-    planner, tables_repo, catalog, policies, attachments, now
+    planner, tables_repo, catalog, policies, catalogs_repo, namespaces_repo, now
 ):
     """A mark lifted because another policy applied stays lifted when the earlier policy applies again."""
     table = _table(tables_repo, now)
@@ -1201,14 +1200,22 @@ def test_detaching_the_new_policy_does_not_bring_the_block_back(
     CreateTableMaintenancePolicyService(policies, clock=lambda: now).execute(
         CreateTableMaintenancePolicyUseCaseInput(name="gold", content=DEFAULT.to_primitives())
     )
-    attached = AttachTableMaintenancePolicyService(
-        policies, attachments, catalog, tables_repo, RecordingSendTableChangeGateway(), clock=lambda: now
+    AttachTableMaintenancePolicyService(
+        policies,
+        catalogs_repo,
+        namespaces_repo,
+        tables_repo,
+        catalog,
+        RecordingSendTableChangeGateway(),
+        clock=lambda: now,
     ).execute(
         AttachTableMaintenancePolicyUseCaseInput(target_type="namespace", path=("iceberg", "sales"), policy_name="gold")
     )
     assert _checks(_plan(planner, now))["rewrite_data_files"].verdict == "due"
-    DetachTableMaintenancePolicyService(policies, attachments, tables_repo, RecordingSendTableChangeGateway()).execute(
-        DetachTableMaintenancePolicyUseCaseInput(policy_name="gold", attachment_id=attached.id)
+    DetachTableMaintenancePolicyService(
+        policies, catalogs_repo, namespaces_repo, tables_repo, RecordingSendTableChangeGateway(), clock=lambda: now
+    ).execute(
+        DetachTableMaintenancePolicyUseCaseInput(policy_name="gold", target_type="namespace", path=("iceberg", "sales"))
     )
     plan = _plan(planner, now)
     assert plan.policy_id == DEFAULT_POLICY_ID.value

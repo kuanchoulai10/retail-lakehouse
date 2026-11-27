@@ -30,7 +30,6 @@ EXPECTED_PREFIXES: dict[str, str] = {
     "TableDiscoveryPolicyId": "dp",
     "TableMaintenanceRunId": "mr",
     "TableReconciliationId": "rc",
-    "TableMaintenancePolicyAttachmentId": "pa",
     "TableMaintenancePolicyId": "mp",
 }
 UNPREFIXED: frozenset[str] = frozenset(

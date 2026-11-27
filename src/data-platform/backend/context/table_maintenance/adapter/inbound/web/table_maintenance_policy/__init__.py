@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.adapter.inbound.web.table_maintenance_policy.attachments_dto import (
+    AttachTableMaintenancePolicyApiRequest,
+    ListedTableMaintenancePolicyAttachmentApiResponse,
+    TableMaintenancePolicyAttachmentApiResponse,
+    TableMaintenancePolicyAttachmentsApiResponse,
+)
+from context.table_maintenance.adapter.inbound.web.table_maintenance_policy.attachments_router import (
+    attachments_router,
+)
 from context.table_maintenance.adapter.inbound.web.table_maintenance_policy.dto import (
     AtMostApiRequest,
     CatalogCommitTriggerApiRequest,
@@ -32,12 +41,14 @@ from context.table_maintenance.adapter.inbound.web.table_maintenance_policy.rout
 
 __all__ = [
     "AtMostApiRequest",
+    "AttachTableMaintenancePolicyApiRequest",
     "CatalogCommitTriggerApiRequest",
     "CreateTableMaintenancePolicyApiRequest",
     "ExpireSnapshotsOptionsApiRequest",
     "ExpireSnapshotsSpecApiRequest",
     "ExpireSnapshotsTargetApiRequest",
     "ListedTableMaintenancePolicyApiResponse",
+    "ListedTableMaintenancePolicyAttachmentApiResponse",
     "MaintenanceTriggersApiRequest",
     "RemoveOrphanFilesOptionsApiRequest",
     "RemoveOrphanFilesSpecApiRequest",
@@ -51,7 +62,10 @@ __all__ = [
     "ScheduleTriggerApiRequest",
     "TableMaintenancePoliciesApiResponse",
     "TableMaintenancePolicyApiResponse",
+    "TableMaintenancePolicyAttachmentApiResponse",
+    "TableMaintenancePolicyAttachmentsApiResponse",
     "TableMaintenancePolicyVersionApiResponse",
     "UpdateTableMaintenancePolicyApiRequest",
+    "attachments_router",
     "router",
 ]

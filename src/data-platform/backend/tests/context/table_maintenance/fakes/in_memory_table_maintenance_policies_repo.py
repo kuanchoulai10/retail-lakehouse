@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.application.domain.model.shared import TableMaintenancePolicyId
 from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
     TableMaintenancePoliciesRepo,
@@ -18,15 +19,23 @@ if TYPE_CHECKING:
         TableMaintenancePolicyName,
         TableMaintenancePolicyVersion,
     )
+    from context.table_maintenance.application.port.outbound.shared import PolicyPlacementsStore
 
 
 class InMemoryTableMaintenancePoliciesRepo(TableMaintenancePoliciesRepo):
-    """Keep policies by id and their versions in dicts, enforcing unique ids and names like the SQL repo."""
+    """Keep policies by id and their versions in dicts, refusing what the SQL repo refuses.
 
-    def __init__(self) -> None:
-        """Start empty."""
+    Ids and names are unique. Given ``placements``, a delete of a policy a catalog, namespace or table
+    holds is refused, as the SQL foreign keys refuse it. Link ``placements`` only in repo contract
+    tests: a service test builds the fake unlinked, so a service that forgets its own attached check
+    deletes the policy and the test fails.
+    """
+
+    def __init__(self, *, placements: PolicyPlacementsStore | None = None) -> None:
+        """Start empty, optionally reading the placements a delete must not orphan."""
         self.items: dict[str, TableMaintenancePolicy] = {}
         self.versions: dict[tuple[str, int], TableMaintenancePolicyVersion] = {}
+        self._placements = placements
 
     def create(self, entity: TableMaintenancePolicy) -> TableMaintenancePolicy:
         """Insert a policy and its first version; a taken id or name raises ConflictError."""
@@ -67,7 +76,11 @@ class InMemoryTableMaintenancePoliciesRepo(TableMaintenancePoliciesRepo):
         return self.versions.get((policy_id.value, version))
 
     def delete(self, entity_id: EntityId) -> None:
-        """Remove a policy and its versions if present."""
+        """Remove a policy and its versions if present; one still attached raises ConflictError and stays."""
+        if self._placements is not None and self._placements.maintenance_placements(
+            TableMaintenancePolicyId(entity_id.value)
+        ):
+            raise ConflictError(f"policy {entity_id.value} is still attached to a catalog, namespace or table")
         self.items.pop(entity_id.value, None)
         for key in [k for k in self.versions if k[0] == entity_id.value]:
             del self.versions[key]

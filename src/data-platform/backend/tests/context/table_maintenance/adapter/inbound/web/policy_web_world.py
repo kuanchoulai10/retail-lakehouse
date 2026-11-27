@@ -1,4 +1,4 @@
-"""Build a web client whose policy and attachment routes run the real services on in-memory fakes."""
+"""Build a web client whose maintenance policy and attach routes run the real services on in-memory fakes."""
 
 from __future__ import annotations
 
@@ -12,29 +12,27 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     EnsureDefaultTableMaintenancePolicyUseCaseInput,
 )
 from context.table_maintenance.application.service.table_maintenance_policy import (
+    AttachTableMaintenancePolicyService,
     CreateTableMaintenancePolicyService,
     DeleteTableMaintenancePolicyService,
+    DetachTableMaintenancePolicyService,
     EnsureDefaultTableMaintenancePolicyService,
     GetTableMaintenancePolicyService,
     GetTableMaintenancePolicyVersionService,
     ListTableMaintenancePoliciesService,
-    UpdateTableMaintenancePolicyService,
-)
-from context.table_maintenance.application.service.table_maintenance_policy_attachment import (
-    AttachTableMaintenancePolicyService,
-    DetachTableMaintenancePolicyService,
     ListTableMaintenancePolicyAttachmentsService,
+    UpdateTableMaintenancePolicyService,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import build_client
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import (
     FakeReadTableMetadataGateway,
 )
+from tests.context.table_maintenance.fakes.in_memory_catalogs_repo import InMemoryCatalogsRepo
+from tests.context.table_maintenance.fakes.in_memory_namespaces_repo import InMemoryNamespacesRepo
+from tests.context.table_maintenance.fakes.in_memory_policy_placements_store import InMemoryPolicyPlacementsStore
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
     InMemoryTableMaintenancePoliciesRepo,
-)
-from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policy_attachments_repo import (
-    InMemoryTableMaintenancePolicyAttachmentsRepo,
 )
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
@@ -58,8 +56,10 @@ class PolicyWebWorld:
     def __init__(self) -> None:
         """Seed the default policy and one managed table, then build the client."""
         self.policies = InMemoryTableMaintenancePoliciesRepo()
-        self.attachments = InMemoryTableMaintenancePolicyAttachmentsRepo()
+        self.catalogs = InMemoryCatalogsRepo()
+        self.namespaces = InMemoryNamespacesRepo()
         self.tables = InMemoryTablesRepo()
+        self.placements = InMemoryPolicyPlacementsStore(self.catalogs, self.namespaces, self.tables)
         self.catalog = FakeReadTableMetadataGateway()
         self.changes = RecordingSendTableChangeGateway()
         EnsureDefaultTableMaintenancePolicyService(self.policies, clock=lambda: NOW).execute(
@@ -74,28 +74,32 @@ class PolicyWebWorld:
                 NOW,
             )
         )
-        policies, attachments, tables, catalog, changes = (
+        policies, catalogs, namespaces, tables, catalog, changes = (
             self.policies,
-            self.attachments,
+            self.catalogs,
+            self.namespaces,
             self.tables,
             self.catalog,
             self.changes,
         )
+        placements = self.placements
         self.client: TestClient = build_client(
-            list_table_maintenance_policies=ListTableMaintenancePoliciesService(policies, attachments),
+            list_table_maintenance_policies=ListTableMaintenancePoliciesService(policies, placements),
             create_table_maintenance_policy=CreateTableMaintenancePolicyService(policies, clock=lambda: NOW),
             get_table_maintenance_policy=GetTableMaintenancePolicyService(policies),
             get_table_maintenance_policy_version=GetTableMaintenancePolicyVersionService(policies),
             update_table_maintenance_policy=UpdateTableMaintenancePolicyService(
-                policies, attachments, tables, changes, clock=lambda: NOW
+                policies, catalogs, namespaces, tables, changes, clock=lambda: NOW
             ),
-            delete_table_maintenance_policy=DeleteTableMaintenancePolicyService(policies, attachments),
+            delete_table_maintenance_policy=DeleteTableMaintenancePolicyService(policies, placements),
             attach_table_maintenance_policy=AttachTableMaintenancePolicyService(
-                policies, attachments, catalog, tables, changes, clock=lambda: NOW
+                policies, catalogs, namespaces, tables, catalog, changes, clock=lambda: NOW
             ),
-            detach_table_maintenance_policy=DetachTableMaintenancePolicyService(policies, attachments, tables, changes),
+            detach_table_maintenance_policy=DetachTableMaintenancePolicyService(
+                policies, catalogs, namespaces, tables, changes, clock=lambda: NOW
+            ),
             list_table_maintenance_policy_attachments=ListTableMaintenancePolicyAttachmentsService(
-                policies, attachments, catalog, tables
+                policies, placements, catalog, tables
             ),
         )
 
@@ -111,6 +115,8 @@ class PolicyWebWorld:
             f"/v1/maintenance-policies/{name}/attachments", json={"target": {"type": type_, "path": path}}
         )
 
-    def detach(self, name: str, attachment_id: str) -> Any:  # noqa: ANN401
-        """Detach one of a policy's attachments through the API and return the response."""
-        return self.client.delete(f"/v1/maintenance-policies/{name}/attachments/{attachment_id}")
+    def detach(self, name: str, type_: str, path: list[str]) -> Any:  # noqa: ANN401
+        """Detach a policy from the place ``type_`` and ``path`` name through the API and return the response."""
+        return self.client.delete(
+            f"/v1/maintenance-policies/{name}/attachments", params={"target_type": type_, "path": path}
+        )

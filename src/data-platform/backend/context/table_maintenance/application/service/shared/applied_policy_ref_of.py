@@ -9,7 +9,7 @@ from context.table_maintenance.application.domain.model.table import AppliedPoli
 from context.table_maintenance.application.service.shared.policy_target_of import policy_target_of
 
 if TYPE_CHECKING:
-    from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
+    from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
         ResolveApplicableTableMaintenancePolicyUseCaseOutput,
     )
 

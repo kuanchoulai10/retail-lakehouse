@@ -17,10 +17,10 @@ from context.table_maintenance.adapter.inbound.web.table_discovery_policy import
     router as table_discovery_policy_router,
 )
 from context.table_maintenance.adapter.inbound.web.table_maintenance_policy import (
-    router as table_maintenance_policy_router,
+    attachments_router as table_maintenance_policy_attachments_router,
 )
-from context.table_maintenance.adapter.inbound.web.table_maintenance_policy_attachment import (
-    router as table_maintenance_policy_attachment_router,
+from context.table_maintenance.adapter.inbound.web.table_maintenance_policy import (
+    router as table_maintenance_policy_router,
 )
 from context.table_maintenance.adapter.inbound.web.table_maintenance_run import (
     platform_settings_router,
@@ -49,7 +49,7 @@ def register_routes(app: FastAPI, use_cases: WebUseCases) -> None:
         table_discovery_policy_attachments_router,
         catalog_discovery_router,
         table_maintenance_policy_router,
-        table_maintenance_policy_attachment_router,
+        table_maintenance_policy_attachments_router,
         table_router,
         effective_policies_router,
         table_maintenance_run_router,

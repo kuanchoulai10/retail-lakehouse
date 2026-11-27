@@ -12,8 +12,8 @@ from context.table_maintenance.adapter.inbound.web.shared import PolicyTargetApi
 class MaintenanceEffectivePolicyApiResponse(BaseModel):
     """Describe the maintenance policy that applies, at its latest version, and the level it applies from.
 
-    ``target`` is the nearest attachment's target and ``attachment_id`` its ``pa-`` id; both are null when
-    the platform default applies.
+    ``target`` is the nearest catalog, namespace or table holding a maintenance policy; it is null when
+    none holds one and the platform default applies.
     """
 
     kind: Literal["maintenance"]
@@ -23,7 +23,6 @@ class MaintenanceEffectivePolicyApiResponse(BaseModel):
     description: str
     dry_run: bool
     target: PolicyTargetApiResponse | None
-    attachment_id: str | None
 
 
 class DiscoveryEffectivePolicyApiResponse(BaseModel):

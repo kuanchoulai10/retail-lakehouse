@@ -42,7 +42,6 @@ def test_by_uuid_answers_one_entry_per_kind_in_order(world: EffectivePoliciesWeb
         "description": "Platform default",
         "dry_run": True,
         "target": {"type": "table", "path": ORDERS, "table_uuid": "u-1"},
-        "attachment_id": maintenance["id"],
     }
     assert discovery_entry == {
         "kind": "discovery",
@@ -64,7 +63,7 @@ def test_by_uuid_with_nothing_attached_answers_the_default_and_no_discovery_poli
         ("maintenance", "mp-00000000000000000000000000", "default", None),
         ("discovery", None, None, None),
     ]
-    assert policies[0]["attachment_id"] is None
+    assert "attachment_id" not in policies[0]
     assert policies[0]["dry_run"] is False
     assert policies[1] == {
         "kind": "discovery",
@@ -92,8 +91,8 @@ def test_by_uuid_a_table_without_a_record_is_404(world: EffectivePoliciesWebWorl
 
 
 def test_by_location_answers_a_table_without_a_record(world: EffectivePoliciesWebWorld) -> None:
-    """GET /effective-policies places an unrecorded table by the catalog and finds its own attachments."""
-    maintenance = world.attach_maintenance("gold", "table", RETURNS)
+    """GET /effective-policies places an unrecorded table by the catalog and finds the policies it holds."""
+    world.attach_maintenance("gold", "table", RETURNS)
     world.attach_discovery("sales-tables", "table", RETURNS)
 
     response = world.client.get(
@@ -103,9 +102,9 @@ def test_by_location_answers_a_table_without_a_record(world: EffectivePoliciesWe
     assert response.status_code == 200, response.text
     policies = response.json()["policies"]
     assert [p["kind"] for p in policies] == ["maintenance", "discovery"]
-    assert policies[0]["attachment_id"] == maintenance["id"]
+    assert policies[0]["policy_name"] == "gold"
     assert policies[1]["policy_name"] == "sales-tables"
-    assert "attachment_id" not in policies[1]
+    assert all("attachment_id" not in p for p in policies)
     assert [p["target"] for p in policies] == [{"type": "table", "path": RETURNS, "table_uuid": "u-2"}] * 2
 
 

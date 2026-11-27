@@ -35,7 +35,7 @@ UTILITY_FILES = {
     "discovery_rule_fields.py",
     "request_discovery_scan.py",
     "policy_target_from_request.py",
-    "policy_candidates.py",
+    "policy_holders.py",
     "policy_target_fields.py",
     "notify_policy_change.py",
     "target_in_catalog.py",

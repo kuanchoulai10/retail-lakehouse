@@ -19,7 +19,7 @@ class AppliedPolicyRef(ValueObject):
     def names_the_same_application_as(self, other: AppliedPolicyRef) -> bool:
         """Return whether ``other`` is the same policy version attached at the same target.
 
-        Targets compare by their key, so a table target is its uuid: the same attachment read
+        Targets compare by their key, so a table target is its uuid: the table's own policy read
         under a renamed or moved table's new path is the same application.
         """
         return (

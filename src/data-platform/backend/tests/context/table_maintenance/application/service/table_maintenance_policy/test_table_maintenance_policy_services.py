@@ -35,11 +35,11 @@ from context.table_maintenance.application.service.table_maintenance_policy impo
     ListTableMaintenancePoliciesService,
     UpdateTableMaintenancePolicyService,
 )
+from tests.context.table_maintenance.fakes.in_memory_catalogs_repo import InMemoryCatalogsRepo
+from tests.context.table_maintenance.fakes.in_memory_namespaces_repo import InMemoryNamespacesRepo
+from tests.context.table_maintenance.fakes.in_memory_policy_placements_store import InMemoryPolicyPlacementsStore
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
     InMemoryTableMaintenancePoliciesRepo,
-)
-from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policy_attachments_repo import (
-    InMemoryTableMaintenancePolicyAttachmentsRepo,
 )
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
@@ -59,7 +59,11 @@ def _gold_id(repo: InMemoryTableMaintenancePoliciesRepo) -> TableMaintenancePoli
 
 
 def _no_tables():
-    return InMemoryTableMaintenancePolicyAttachmentsRepo(), InMemoryTablesRepo(), RecordingSendTableChangeGateway()
+    return InMemoryCatalogsRepo(), InMemoryNamespacesRepo(), InMemoryTablesRepo(), RecordingSendTableChangeGateway()
+
+
+def _no_placements() -> InMemoryPolicyPlacementsStore:
+    return InMemoryPolicyPlacementsStore(InMemoryCatalogsRepo(), InMemoryNamespacesRepo(), InMemoryTablesRepo())
 
 
 def _create(repo, name="gold", content=None):
@@ -76,7 +80,7 @@ def test_create_then_get_and_list():
     got = GetTableMaintenancePolicyService(repo).execute(GetTableMaintenancePolicyUseCaseInput(name="gold"))
     assert got.content == CONTENT
     assert got.id == out.id
-    listed = ListTableMaintenancePoliciesService(repo, InMemoryTableMaintenancePolicyAttachmentsRepo()).execute(
+    listed = ListTableMaintenancePoliciesService(repo, _no_placements()).execute(
         ListTableMaintenancePoliciesUseCaseInput()
     )
     assert [(i.id, i.name) for i in listed.items] == [(out.id, "gold")]
@@ -178,7 +182,7 @@ def test_delete_removes_policy():
     """Deleting a policy removes it."""
     repo = InMemoryTableMaintenancePoliciesRepo()
     gold = TableMaintenancePolicyId(_create(repo).id)
-    DeleteTableMaintenancePolicyService(repo, InMemoryTableMaintenancePolicyAttachmentsRepo()).execute(
+    DeleteTableMaintenancePolicyService(repo, _no_placements()).execute(
         DeleteTableMaintenancePolicyUseCaseInput(name="gold")
     )
     assert repo.get(gold) is None
@@ -188,9 +192,9 @@ def test_delete_removes_policy():
 def test_delete_missing_is_not_found():
     """Deleting an unknown policy is NotFoundError."""
     with pytest.raises(NotFoundError):
-        DeleteTableMaintenancePolicyService(
-            InMemoryTableMaintenancePoliciesRepo(), InMemoryTableMaintenancePolicyAttachmentsRepo()
-        ).execute(DeleteTableMaintenancePolicyUseCaseInput(name="nope"))
+        DeleteTableMaintenancePolicyService(InMemoryTableMaintenancePoliciesRepo(), _no_placements()).execute(
+            DeleteTableMaintenancePolicyUseCaseInput(name="nope")
+        )
 
 
 def test_delete_default_conflicts():
@@ -200,7 +204,7 @@ def test_delete_default_conflicts():
         EnsureDefaultTableMaintenancePolicyUseCaseInput()
     )
     with pytest.raises(ConflictError):
-        DeleteTableMaintenancePolicyService(repo, InMemoryTableMaintenancePolicyAttachmentsRepo()).execute(
+        DeleteTableMaintenancePolicyService(repo, _no_placements()).execute(
             DeleteTableMaintenancePolicyUseCaseInput(name="default")
         )
 
