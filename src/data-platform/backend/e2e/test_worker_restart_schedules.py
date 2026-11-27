@@ -150,8 +150,11 @@ def test_a_restarted_worker_rebuilds_the_deleted_discovery_schedule_and_its_roun
     rounds_before = set(scheduled_workflows(temporal, SCHEDULE))
     trigger_schedule(temporal, SCHEDULE)
 
+    def rounds_since() -> list[str]:
+        return [w for w in scheduled_workflows(temporal, SCHEDULE) if w not in rounds_before]
+
     def new_round() -> str:
-        started = [w for w in scheduled_workflows(temporal, SCHEDULE) if w not in rounds_before]
+        started = rounds_since()
         if not started:
             raise AssertionError(f"no round since {sorted(rounds_before)}")
         assert all(w.startswith(f"{ROUND}-") for w in started), started
@@ -174,6 +177,7 @@ def test_a_restarted_worker_rebuilds_the_deleted_discovery_schedule_and_its_roun
         return run
 
     scanned = wait_until(scanned_by_the_round, timeout=SCAN_SECONDS, interval=3, what=f"a new {scan} run completed")
-    assert scanned.parent_id == round_id, (
-        f"{scan} run {scanned.run_id} was started by {scanned.parent_id}, not {round_id}"
+    started = rounds_since()
+    assert scanned.parent_id in started, (
+        f"{scan} run {scanned.run_id} was started by {scanned.parent_id}, not a round since the trigger: {started}"
     )

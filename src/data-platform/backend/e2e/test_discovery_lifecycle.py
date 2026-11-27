@@ -1,8 +1,9 @@
 """Discovery manages what the nearest policy says, and stops what it no longer says.
 
-One lifecycle in a catalog of the module's own: attaching an including policy scans the catalog, an
-exclude-only policy attached to one table unmanages it, a save that excludes a managed table unmanages
-it, a save that matches nothing unmanages the rest, and detaching leaves the catalog unscanned. A
+One lifecycle in a catalog of the module's own: attaching an including policy manages the tables it
+matches and lists the catalog for scanning, an exclude-only policy attached to one table unmanages
+it, a save that excludes a managed table unmanages it, a save that matches nothing unmanages the
+rest, and detaching takes the catalog off the list. A
 second scenario puts an exclude-only policy on a namespace under a catalog-level include, and a third
 attaches to a table before discovery has seen it. Marked ``full``: each step waits for scans and
 reconciliations.
@@ -10,7 +11,6 @@ reconciliations.
 
 from __future__ import annotations
 
-import time
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
@@ -46,9 +46,6 @@ SETTLE_SECONDS = 180
 # starts a remove_orphan_files run, and the normal queue admits one job at a time, so the last of
 # the four tables' jobs can end several minutes after its stop.
 STOP_SECONDS = 600
-# The event consumer reads a catalog event within seconds; a table created while the platform cannot
-# read the catalog has had its create hint dropped once this has passed.
-HINT_SECONDS = 30
 
 
 def _rule(action: str, pattern: str) -> dict:
@@ -191,7 +188,10 @@ def test_discovery_manages_what_the_nearest_policy_says(
         assert tables[f"{attached}.{table}"]["decided_by"] == _decided_by(policy, 1, 1)
     assert tables[f"{other}.x"]["decided_by"] is None
     scanned = {found["catalog"]: found for found in platform.get("/v1/scanned-catalogs")["catalogs"]}
-    assert catalog in scanned and scanned[catalog]["failure"] is None, scanned.get(catalog)
+    assert catalog in scanned and scanned[catalog]["failure"] is None, (
+        "a catalog holding a discovery policy is listed for scanning, with no failure",
+        scanned.get(catalog),
+    )
 
     nearer_name = OwnedNames.discovery_policy(suffix, "lifecycle_nearer")
     nearer = _create(platform, api, cleanup, nearer_name, [_rule("exclude", "*")])
@@ -284,47 +284,52 @@ def test_a_table_attached_before_discovery_saw_it_becomes_managed(
     suffix: str,
     cleanup: CleanupStack,
 ):
-    """A table the platform never heard of is ``undecided`` once a policy is attached to it, then managed by rule 1.
+    """A discovery policy attached to a table the platform never heard of registers it, then manages it by rule 1.
 
     The table is created while the platform cannot read the catalog, so the event consumer drops its
     create hint; the e2e writes through a catalog role of its own, which the revoke leaves alone. A
-    dry-run maintenance policy attached to the table registers it ``undecided`` without asking for a
-    scan (no discovery policy is anywhere in the catalog). An ``include *`` discovery policy attached to
-    the table then manages it by its rule 1, and detaching it unmanages it.
+    table created next in a sentinel namespace proves the hint was handled: the topic has one
+    partition and the consumer handles it in order, and the sentinel's ``BEFORE_CREATE_TABLE`` starts
+    a namespace scan without reading the catalog. A dry-run maintenance policy on the namespace keeps
+    the table from running jobs and registers nothing. The ``include *`` discovery policy attached to
+    the table itself registers it at once (``undecided``, or ``managed`` when the scan it asks for has
+    already run), manages it by its rule 1, and detaching it unmanages it.
     """
     catalog, namespace = owned_catalog.name, OwnedNames.namespace(suffix, "before_seen")
+    sentinel = OwnedNames.namespace(suffix, "before_seen_sentinel")
     owned_catalog.keep_e2e_writes(polaris)
     owned_catalog.iceberg.create_namespace((namespace,))
     cleanup.push(f"drop {namespace}", lambda: owned_catalog.iceberg.drop_namespace((namespace,)))
-    _settle_namespace_scan(temporal, catalog, namespace)
 
     owned_catalog.revoke_reads(polaris)
     cleanup.push(f"grant reads back on {catalog}", lambda: owned_catalog.restore_reads(polaris))
     owned_catalog.iceberg.create_table((namespace, "early"), ROWS)
     cleanup.push(f"drop {namespace}.early", lambda: drop_table(owned_catalog.iceberg, s3, (namespace, "early")))
     table_uuid = str(owned_catalog.iceberg.load_table((namespace, "early")).metadata.table_uuid)
-    time.sleep(HINT_SECONDS)
+    _create_sentinel(owned_catalog, s3, cleanup, sentinel)
+    _wait_scans_closed(temporal, catalog, (namespace, sentinel))
     owned_catalog.restore_reads(polaris)
     assert platform.table(catalog, namespace, "early") is None, "the platform heard of the table before the attach"
 
-    dry = OwnedNames.maintenance_policy(suffix, "before_seen")
-    platform.create_maintenance_policy(dry, "e2e: dry run", lambda body: {**body, "dry_run": True})
-    cleanup.push(f"delete {dry}", lambda: _delete_if_present(api, f"/v1/maintenance-policies/{dry}"))
-    on_table = {"type": "table", "path": [catalog, namespace, "early"]}
-    attached = api.put(f"/v1/maintenance-policies/{dry}/attachments", json={"target": on_table})
-    assert attached.is_success, attached.text
-    cleanup.push(f"detach {dry}", lambda: platform.detach("maintenance", dry, on_table, missing_ok=True))
-    cleanup.push(
-        f"wait until {namespace}.early is unmanaged",
-        lambda: wait_until_unmanaged(platform, temporal, (catalog, namespace, "early")),
+    _dry_run(
+        platform,
+        api,
+        temporal,
+        cleanup,
+        OwnedNames.maintenance_policy(suffix, "before_seen"),
+        {(catalog, namespace): ("early",)},
     )
-    assert attached.json()["target"] == on_table | {"table_uuid": table_uuid}, attached.text
-    registered = platform.get(f"/v1/tables/{table_uuid}")
-    assert (registered["status"], registered["decided_by"]) == ("undecided", None), registered
+    assert platform.table(catalog, namespace, "early") is None, "a maintenance attach to a namespace registered it"
 
     name = OwnedNames.discovery_policy(suffix, "before_seen")
     policy = _create(platform, api, cleanup, name, [_rule("include", "*")])
-    _attach(platform, cleanup, name, on_table)
+    on_table = {"type": "table", "path": [catalog, namespace, "early"]}
+    attached = api.put(f"{POLICIES}/{name}/attachments", json={"target": on_table})
+    assert attached.is_success, attached.text
+    cleanup.push(f"detach {name}", lambda: platform.detach("discovery", name, on_table, missing_ok=True))
+    assert attached.json()["target"] == on_table | {"table_uuid": table_uuid}, attached.text
+    registered = platform.get(f"/v1/tables/{table_uuid}")
+    assert registered["status"] in ("undecided", "managed"), registered
 
     def status_is(status: str, decided_by: dict | None) -> Callable[[], dict]:
         def read() -> dict:
@@ -347,22 +352,33 @@ def test_a_table_attached_before_discovery_saw_it_becomes_managed(
     _wait_stopped(temporal, table_uuid)
 
 
-def _settle_namespace_scan(temporal: TemporalSession[Client], catalog: str, namespace: str) -> None:
-    """Let the scan a namespace's create event asks for close, so it never sees a table created later.
+def _create_sentinel(owned: OwnedCatalog, s3: fs.FileSystem, cleanup: CleanupStack, sentinel: str) -> None:
+    """Create a table in the sentinel namespace, whose create events follow every event before it.
 
-    The event consumer asks for ``table-discovery:catalog=<c>:namespace=<ns>:trigger=adhoc``; when no
-    such scan shows up within ``HINT_SECONDS`` (the event was not sent), there is nothing to wait for.
+    Once reads are back the consumer may still register the sentinel table from its own create hint,
+    unmanaged, which asks for no scan; dropping it at cleanup leaves nothing managed.
     """
-    scan = f"table-discovery:catalog={catalog}:namespace={namespace}:trigger=adhoc"
-    try:
+    owned.iceberg.create_namespace((sentinel,))
+    cleanup.push(f"drop {sentinel}", lambda: owned.iceberg.drop_namespace((sentinel,)))
+    owned.iceberg.create_table((sentinel, "sentinel"), ROWS)
+    cleanup.push(f"drop {sentinel}.sentinel", lambda: drop_table(owned.iceberg, s3, (sentinel, "sentinel")))
+
+
+def _wait_scans_closed(temporal: TemporalSession[Client], catalog: str, namespaces: tuple[str, ...]) -> None:
+    """Wait until each namespace's ad hoc scan, started by its ``BEFORE_CREATE_TABLE``, has closed.
+
+    The consumer starts ``table-discovery:catalog=<c>:namespace=<ns>:trigger=adhoc`` for a table
+    create's ``BEFORE_CREATE_TABLE`` without reading the catalog. The last namespace's scan showing up
+    means every earlier event was handled; waiting for each scan to close means none of them reads the
+    catalog once its reads are given back.
+    """
+    for namespace in namespaces:
+        scan = f"table-discovery:catalog={catalog}:namespace={namespace}:trigger=adhoc"
         wait_until(
-            lambda: (
+            lambda scan=scan: (
                 True if (run := latest_run(temporal, scan)) and run.status != WorkflowExecutionStatus.RUNNING else None
             ),
-            timeout=HINT_SECONDS,
+            timeout=SETTLE_SECONDS,
             interval=2,
             what=f"{scan} closed",
         )
-    except TimeoutError:
-        if latest_run(temporal, scan) is not None:
-            raise

@@ -238,8 +238,8 @@ def test_an_unreadable_catalog_does_not_stop_the_round(
         )
     start = {c: _readable(platform, c) for c in catalogs}
 
-    rounds_before = set(scheduled_workflows(temporal, SCHEDULE))
     _make_unreadable(unreadable, polaris, cleanup)
+    rounds_before = set(scheduled_workflows(temporal, SCHEDULE))
     trigger_schedule(temporal, SCHEDULE)
     by_round = {
         catalog: wait_until(

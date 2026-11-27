@@ -164,10 +164,10 @@ def test_a_policy_attaches_to_an_empty_namespace_and_never_to_a_missing_place(
     suffix: str,
     cleanup: CleanupStack,
 ):
-    """An empty namespace may hold a policy and its catalog is then scanned; a missing place is 404, a dot 422.
+    """An empty namespace may hold a policy and its catalog is then listed for scanning; a missing place is 404.
 
-    The attach answers the place and the policy, with no id of its own; the refusals store nothing and
-    start no scan.
+    A dot in a namespace answers 422. The attach answers the place and the policy, with no id of its
+    own; the refusals store nothing and start no scan.
     """
     name = OwnedNames.discovery_policy(suffix, "attach")
     policy = _create(platform, api, cleanup, name, [INCLUDE_ORDERS])
@@ -187,7 +187,9 @@ def test_a_policy_attaches_to_an_empty_namespace_and_never_to_a_missing_place(
         "policy_name": name,
     }
     assert _places(platform, name) == [("namespace", [owned_catalog.name, namespace])]
-    assert _listed_unfailed(platform, owned_catalog.name), "a catalog holding a discovery policy is scanned"
+    assert _listed_unfailed(platform, owned_catalog.name), (
+        "a catalog holding a discovery policy is listed for scanning, with no failure"
+    )
 
     missing_catalog = OwnedNames.catalog(suffix, "missing")
     for refused_target, status in (
