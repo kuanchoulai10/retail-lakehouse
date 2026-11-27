@@ -4,13 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.application.domain.service.catalog_discovery import catalogs_to_scan
 from context.table_maintenance.application.port.inbound.catalog_discovery import (
     ListScannedCatalogsUseCase,
     ListScannedCatalogsUseCaseInput,
     ListScannedCatalogsUseCaseOutput,
-)
-from context.table_maintenance.application.service.table_discovery_policy_attachment import (
-    read_scanned_catalogs,
 )
 
 if TYPE_CHECKING:
@@ -18,35 +16,35 @@ if TYPE_CHECKING:
         CatalogDiscoveriesRepo,
         CatalogDiscovery,
     )
-    from context.table_maintenance.application.port.outbound.table_discovery_policy import (
-        TableDiscoveryPoliciesRepo,
-    )
-    from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
-        TableDiscoveryPolicyAttachmentsRepo,
-    )
+    from context.table_maintenance.application.port.outbound.shared import PolicyPlacementsStore
+    from context.table_maintenance.application.port.outbound.table import TablesRepo
 
 
 class ListScannedCatalogsService(ListScannedCatalogsUseCase):
-    """List the catalogs a managing discovery policy is attached in, with each one's scan state."""
+    """List the catalogs discovery scans, with each one's scan state."""
 
     def __init__(
         self,
-        attachments_repo: TableDiscoveryPolicyAttachmentsRepo,
-        policies_repo: TableDiscoveryPoliciesRepo,
+        placements: PolicyPlacementsStore,
+        tables_repo: TablesRepo,
         discoveries_repo: CatalogDiscoveriesRepo,
     ) -> None:
-        """Bind the attachments, the policies and the catalog discoveries."""
-        self._attachments_repo = attachments_repo
-        self._policies_repo = policies_repo
+        """Bind the placements, the tables and the catalog discoveries."""
+        self._placements = placements
+        self._tables_repo = tables_repo
         self._discoveries_repo = discoveries_repo
 
     def execute(self, request: ListScannedCatalogsUseCaseInput) -> ListScannedCatalogsUseCaseOutput:  # noqa: ARG002
         """Return each scanned catalog by name, with its last completed scan and its current failure.
 
-        A catalog not yet scanned has neither. A catalog's record outlives its scanning: a catalog
-        no managing policy is attached in any more is not listed, whatever it recorded.
+        The scanned catalogs are ``catalogs_to_scan``'s: each where a discovery policy is attached (to
+        the catalog, a namespace or a table of it) and each still holding a managed table. A catalog
+        not yet scanned has neither scan state. A catalog's record outlives its scanning: a catalog
+        that is not scanned any more is not listed, whatever it recorded.
         """
-        scanned = read_scanned_catalogs(self._policies_repo, self._attachments_repo)
+        scanned = catalogs_to_scan(
+            self._placements.catalogs_with_discovery_policy(), self._tables_repo.list_catalogs_with_managed_tables()
+        )
         discoveries = {d.catalog: d for d in self._discoveries_repo.list_all()}
         return ListScannedCatalogsUseCaseOutput(
             catalogs=tuple(_scanned_catalog(catalog, discoveries.get(catalog)) for catalog in scanned)

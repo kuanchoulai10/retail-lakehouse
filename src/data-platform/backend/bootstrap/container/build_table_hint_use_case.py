@@ -49,7 +49,8 @@ def build_table_hint_use_case(
     return ProcessTableHintService(
         repositories.tables,
         repositories.table_discovery_policies,
-        repositories.table_discovery_policy_attachments,
+        repositories.catalogs,
+        repositories.namespaces,
         ReadTableMetadataPyIcebergGateway(build_catalog_factory(settings.catalog)),
         SendTableChangeTemporalGateway(client, bridge),
         SendDiscoveryRequestTemporalGateway(client, bridge),

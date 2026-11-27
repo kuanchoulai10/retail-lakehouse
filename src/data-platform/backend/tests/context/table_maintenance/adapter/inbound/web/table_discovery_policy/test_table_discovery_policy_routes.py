@@ -6,14 +6,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import (
-    PolicyTarget,
-    PolicyTargetType,
-    TableDiscoveryPolicyId,
-)
-from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
-    TableDiscoveryPolicyAttachment,
-)
+from context.table_maintenance.application.domain.model.catalog import Catalog
+from context.table_maintenance.application.domain.model.shared import CatalogId, TableDiscoveryPolicyId
 from tests.context.table_maintenance.adapter.inbound.web.discovery_policy_web_world import (
     DiscoveryPolicyWebWorld,
     discovery_policy_body,
@@ -32,8 +26,9 @@ def world() -> DiscoveryPolicyWebWorld:
 
 
 def _attach(world: DiscoveryPolicyWebWorld, policy_id: str, catalog: str) -> None:
-    target = PolicyTarget(type=PolicyTargetType.CATALOG, path=(catalog,))
-    world.attachments.create(TableDiscoveryPolicyAttachment.attach(target, TableDiscoveryPolicyId(policy_id), NOW))
+    place = Catalog.register(CatalogId(catalog), NOW)
+    place.attach_discovery_policy(TableDiscoveryPolicyId(policy_id), NOW)
+    world.catalogs.create(place)
 
 
 def test_post_then_get_round_trips_the_body(world: DiscoveryPolicyWebWorld) -> None:
@@ -205,9 +200,10 @@ def test_delete_answers_204_then_the_policy_is_gone(world: DiscoveryPolicyWebWor
 
 
 def test_delete_of_an_attached_policy_is_409(world: DiscoveryPolicyWebWorld) -> None:
-    """An attached policy is not deleted."""
+    """An attached policy is not deleted; the answer names each place it is attached to."""
     mine = world.create("mine")
     _attach(world, mine["id"], "prod")
     response = world.client.delete("/v1/discovery-policies/mine")
     assert response.status_code == 409
+    assert response.json()["detail"] == "discovery policy mine is still attached to catalog:prod"
     assert world.client.get("/v1/discovery-policies/mine").status_code == 200

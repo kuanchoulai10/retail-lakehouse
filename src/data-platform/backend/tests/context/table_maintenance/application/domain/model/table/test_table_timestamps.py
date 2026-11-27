@@ -106,3 +106,20 @@ def test_dropping_an_already_dropped_table_keeps_its_stamp():
     t.mark_dropped(T1, catalog_discovered_at=T0)
     t.mark_dropped(T2, catalog_discovered_at=T1)
     assert t.last_discovered_at == T0
+
+
+def test_an_undecided_table_was_never_discovered():
+    """A table attached to before discovery saw it has no last discovery, however late its catalog was scanned."""
+    t = Table.register_undecided(TableId("u1"), NAME, T1)
+
+    assert t.last_discovered(T0) is None
+    assert t.last_discovered(T2) is None
+
+
+def test_an_undecided_table_dropped_keeps_no_last_discovery():
+    """An undecided table dropped by a scan was never seen by one, so its drop stamps no last discovery."""
+    t = Table.register_undecided(TableId("u1"), NAME, T0)
+
+    t.mark_dropped(T2, catalog_discovered_at=T1)
+
+    assert t.last_discovered_at is None

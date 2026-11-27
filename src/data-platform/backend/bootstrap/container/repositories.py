@@ -11,12 +11,10 @@ if TYPE_CHECKING:
         CatalogDiscoveriesRepo,
     )
     from context.table_maintenance.application.port.outbound.namespace import NamespacesRepo
+    from context.table_maintenance.application.port.outbound.shared import PolicyPlacementsStore
     from context.table_maintenance.application.port.outbound.table import TableMetricsStore, TablesRepo
     from context.table_maintenance.application.port.outbound.table_discovery_policy import (
         TableDiscoveryPoliciesRepo,
-    )
-    from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
-        TableDiscoveryPolicyAttachmentsRepo,
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
         TableMaintenancePoliciesRepo,
@@ -34,10 +32,9 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class Repositories:
-    """Hold one repository per aggregate, and the table metrics store."""
+    """Hold one repository per aggregate, the table metrics store and the policy placements store."""
 
     table_discovery_policies: TableDiscoveryPoliciesRepo
-    table_discovery_policy_attachments: TableDiscoveryPolicyAttachmentsRepo
     table_maintenance_runs: TableMaintenanceRunsRepo
     tables: TablesRepo
     table_maintenance_policies: TableMaintenancePoliciesRepo
@@ -47,3 +44,4 @@ class Repositories:
     catalogs: CatalogsRepo
     namespaces: NamespacesRepo
     table_metrics: TableMetricsStore
+    policy_placements: PolicyPlacementsStore

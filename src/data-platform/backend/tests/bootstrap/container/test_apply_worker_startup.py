@@ -14,7 +14,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound import (
     MissingTableSearchAttributes,
     require_table_search_attributes,
 )
-from context.table_maintenance.application.port.inbound.table_discovery_policy_attachment import (
+from context.table_maintenance.application.port.inbound.table_discovery_policy import (
     SyncDiscoverySchedulesUseCase,
     SyncDiscoverySchedulesUseCaseInput,
     SyncDiscoverySchedulesUseCaseOutput,

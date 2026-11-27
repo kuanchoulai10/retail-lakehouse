@@ -6,6 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType
 from context.table_maintenance.application.domain.model.table_discovery_policy import TableDiscoveryPolicyName
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table_discovery_policy import (
@@ -19,45 +20,39 @@ from context.table_maintenance.application.service.shared import (
 from context.table_maintenance.application.service.table_discovery_policy.discovery_rules_of import (
     discovery_rules_of,
 )
+from context.table_maintenance.application.service.table_discovery_policy.request_discovery_scan import (
+    request_discovery_scan,
+)
 from context.table_maintenance.application.service.table_discovery_policy.table_discovery_policy_output_fields import (  # noqa: E501
     table_discovery_policy_output_fields,
-)
-from context.table_maintenance.application.service.table_discovery_policy_attachment import (
-    apply_discovery_change,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from context.table_maintenance.application.port.outbound.shared import PolicyPlacementsStore
     from context.table_maintenance.application.port.outbound.table import SendDiscoveryRequestGateway
     from context.table_maintenance.application.port.outbound.table_discovery_policy import (
         TableDiscoveryPoliciesRepo,
-        TableDiscoveryPolicy,
-    )
-    from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
-        SyncDiscoverySchedulesGateway,
-        TableDiscoveryPolicyAttachmentsRepo,
     )
 
 
 class UpdateTableDiscoveryPolicyService(UpdateTableDiscoveryPolicyUseCase):
     """Revise a discovery policy's description and rules as a new version."""
 
-    def __init__(  # noqa: PLR0913
+    def __init__(
         self,
         policies_repo: TableDiscoveryPoliciesRepo,
-        attachments_repo: TableDiscoveryPolicyAttachmentsRepo,
+        placements: PolicyPlacementsStore,
         discovery_requests: SendDiscoveryRequestGateway,
-        schedules: SyncDiscoverySchedulesGateway,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         new_change_id: Callable[[], str] = lambda: uuid.uuid4().hex,
     ) -> None:
-        """Bind the repos, the discovery requests, the schedules, the clock and the change id generator."""
+        """Bind the policies, the placements, the discovery requests, the clock and the change id generator."""
         self._policies_repo = policies_repo
-        self._attachments_repo = attachments_repo
+        self._placements = placements
         self._discovery_requests = discovery_requests
-        self._schedules = schedules
         self._clock = clock
         self._new_change_id = new_change_id
 
@@ -66,8 +61,9 @@ class UpdateTableDiscoveryPolicyService(UpdateTableDiscoveryPolicyUseCase):
 
         Bad rules (none, an unknown action, an empty pattern, a missing or unknown field) raise
         ValidationError; a stale version (also one a concurrent writer made stale) raises ConflictError.
-        Either way nothing is saved, synced or scanned. Once saved, every catalog the policy is attached
-        in is rescanned and the discovery schedules are synced, best effort (see ``apply_discovery_change``).
+        Either way nothing is saved or scanned. Once saved, every catalog the policy is attached in (to
+        the catalog, a namespace or a table of it) is scanned whole, once, under one new change id, best
+        effort: a request that cannot be sent is logged, and the revision stands.
         """
         with translate_domain_errors():
             name = TableDiscoveryPolicyName(value=request.name)
@@ -75,22 +71,12 @@ class UpdateTableDiscoveryPolicyService(UpdateTableDiscoveryPolicyUseCase):
         policy = self._policies_repo.get_by_name(name)
         if policy is None:
             raise NotFoundError(f"discovery policy {request.name} not found")
-
-        def revise() -> None:
-            with translate_domain_errors():
-                policy.revise(request.description, rules, request.version, self._clock())
-                self._policies_repo.update(policy)
-
-        apply_discovery_change(
-            self._policies_repo,
-            self._attachments_repo,
-            self._discovery_requests,
-            self._schedules,
-            revise,
-            affected_catalogs=lambda: self._attached_catalogs(policy),
-            change_id=self._new_change_id(),
-        )
+        with translate_domain_errors():
+            policy.revise(request.description, rules, request.version, self._clock())
+            self._policies_repo.update(policy)
+        catalogs = sorted({p.target.path[0] for p in self._placements.discovery_placements(policy.id)})
+        change_id = self._new_change_id()
+        for catalog in catalogs:
+            target = PolicyTarget(type=PolicyTargetType.CATALOG, path=(catalog,))
+            request_discovery_scan(self._discovery_requests, target, change_id=change_id)
         return UpdateTableDiscoveryPolicyUseCaseOutput(**table_discovery_policy_output_fields(policy))
-
-    def _attached_catalogs(self, policy: TableDiscoveryPolicy) -> set[str]:
-        return {a.catalog for a in self._attachments_repo.list_for_policy(policy.id)}

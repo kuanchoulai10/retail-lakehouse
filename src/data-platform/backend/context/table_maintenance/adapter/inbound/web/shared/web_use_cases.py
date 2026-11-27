@@ -20,17 +20,15 @@ if TYPE_CHECKING:
         TriggerTableReconciliationUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_discovery_policy import (
+        AttachTableDiscoveryPolicyUseCase,
         CreateTableDiscoveryPolicyUseCase,
         DeleteTableDiscoveryPolicyUseCase,
+        DetachTableDiscoveryPolicyUseCase,
         GetTableDiscoveryPolicyUseCase,
         GetTableDiscoveryPolicyVersionUseCase,
         ListTableDiscoveryPoliciesUseCase,
-        UpdateTableDiscoveryPolicyUseCase,
-    )
-    from context.table_maintenance.application.port.inbound.table_discovery_policy_attachment import (
-        AttachTableDiscoveryPolicyUseCase,
-        DetachTableDiscoveryPolicyUseCase,
         ListTableDiscoveryPolicyAttachmentsUseCase,
+        UpdateTableDiscoveryPolicyUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
         CreateTableMaintenancePolicyUseCase,

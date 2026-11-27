@@ -45,7 +45,6 @@ def test_by_uuid_answers_one_entry_per_kind_in_order(world: EffectivePoliciesWeb
         "version": 1,
         "description": "Sales tables",
         "target": {"type": "namespace", "path": ["prod", "sales"], "table_uuid": None},
-        "attachment_id": discovery["id"],
     }
 
 
@@ -55,10 +54,11 @@ def test_by_uuid_with_nothing_attached_answers_the_default_and_no_discovery_poli
     """Maintenance answers its platform default; discovery answers that no policy applies, every field null."""
     policies = world.client.get("/v1/tables/u-1/effective-policies").json()["policies"]
 
-    assert [(p["kind"], p["policy_id"], p["policy_name"], p["target"], p["attachment_id"]) for p in policies] == [
-        ("maintenance", "mp-00000000000000000000000000", "default", None, None),
-        ("discovery", None, None, None, None),
+    assert [(p["kind"], p["policy_id"], p["policy_name"], p["target"]) for p in policies] == [
+        ("maintenance", "mp-00000000000000000000000000", "default", None),
+        ("discovery", None, None, None),
     ]
+    assert policies[0]["attachment_id"] is None
     assert policies[0]["dry_run"] is False
     assert policies[1] == {
         "kind": "discovery",
@@ -67,7 +67,6 @@ def test_by_uuid_with_nothing_attached_answers_the_default_and_no_discovery_poli
         "version": None,
         "description": None,
         "target": None,
-        "attachment_id": None,
     }
 
 
@@ -89,7 +88,7 @@ def test_by_uuid_a_table_without_a_record_is_404(world: EffectivePoliciesWebWorl
 def test_by_location_answers_a_table_without_a_record(world: EffectivePoliciesWebWorld) -> None:
     """GET /effective-policies places an unrecorded table by the catalog and finds its own attachments."""
     maintenance = world.attach_maintenance("gold", "table", RETURNS)
-    discovery = world.attach_discovery("sales-tables", "table", RETURNS)
+    world.attach_discovery("sales-tables", "table", RETURNS)
 
     response = world.client.get(
         "/v1/effective-policies", params={"catalog": "prod", "namespace": "sales.eu", "table": "returns"}
@@ -98,7 +97,9 @@ def test_by_location_answers_a_table_without_a_record(world: EffectivePoliciesWe
     assert response.status_code == 200, response.text
     policies = response.json()["policies"]
     assert [p["kind"] for p in policies] == ["maintenance", "discovery"]
-    assert [p["attachment_id"] for p in policies] == [maintenance["id"], discovery["id"]]
+    assert policies[0]["attachment_id"] == maintenance["id"]
+    assert policies[1]["policy_name"] == "sales-tables"
+    assert "attachment_id" not in policies[1]
     assert [p["target"] for p in policies] == [{"type": "table", "path": RETURNS, "table_uuid": "u-2"}] * 2
 
 

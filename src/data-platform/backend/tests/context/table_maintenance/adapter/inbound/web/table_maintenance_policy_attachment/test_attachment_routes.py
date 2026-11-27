@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from context.table_maintenance.application.domain.model.shared import (
-    TableDiscoveryPolicyAttachmentId,
+    TableDiscoveryPolicyId,
     TableMaintenancePolicyAttachmentId,
 )
 from tests.context.table_maintenance.adapter.inbound.web.policy_web_world import NOW, PolicyWebWorld
@@ -181,7 +181,7 @@ def test_delete_attachment_in_a_refused_catalog_is_204(world: PolicyWebWorld) ->
     assert world.attachments.list_all() == []
 
 
-@pytest.mark.parametrize("attachment_id", ["x", TableDiscoveryPolicyAttachmentId.new().value])
+@pytest.mark.parametrize("attachment_id", ["x", TableDiscoveryPolicyId.new().value])
 def test_delete_with_a_malformed_id_is_422(world: PolicyWebWorld, attachment_id: str) -> None:
     """An id that is not a ``pa-`` id, a discovery ``da-`` id among them, answers 422."""
     response = world.detach("gold", attachment_id)

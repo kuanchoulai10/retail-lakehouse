@@ -18,11 +18,9 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
 )
 from context.table_maintenance.application.service.table import GetEffectivePoliciesService, GetTableService
 from context.table_maintenance.application.service.table_discovery_policy import (
+    AttachTableDiscoveryPolicyService,
     CreateTableDiscoveryPolicyService,
     UpdateTableDiscoveryPolicyService,
-)
-from context.table_maintenance.application.service.table_discovery_policy_attachment import (
-    AttachTableDiscoveryPolicyService,
 )
 from context.table_maintenance.application.service.table_maintenance_policy import (
     CreateTableMaintenancePolicyService,
@@ -35,11 +33,11 @@ from tests.context.table_maintenance.adapter.inbound.web.web_test_support import
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import FakeReadTableMetadataGateway
 from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import InMemoryCatalogDiscoveriesRepo
+from tests.context.table_maintenance.fakes.in_memory_catalogs_repo import InMemoryCatalogsRepo
+from tests.context.table_maintenance.fakes.in_memory_namespaces_repo import InMemoryNamespacesRepo
+from tests.context.table_maintenance.fakes.in_memory_policy_placements_store import InMemoryPolicyPlacementsStore
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_repo import (
     InMemoryTableDiscoveryPoliciesRepo,
-)
-from tests.context.table_maintenance.fakes.in_memory_table_discovery_policy_attachments_repo import (
-    InMemoryTableDiscoveryPolicyAttachmentsRepo,
 )
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
     InMemoryTableMaintenancePoliciesRepo,
@@ -53,9 +51,6 @@ from tests.context.table_maintenance.fakes.recording_send_discovery_request_gate
 )
 from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
     RecordingSendTableChangeGateway,
-)
-from tests.context.table_maintenance.fakes.recording_sync_discovery_schedules_gateway import (
-    RecordingSyncDiscoverySchedulesGateway,
 )
 
 if TYPE_CHECKING:
@@ -77,10 +72,12 @@ class EffectivePoliciesWebWorld:
         """Seed the maintenance default, one policy of each kind and the catalog, then build the client."""
         self.maintenance_policies = InMemoryTableMaintenancePoliciesRepo()
         self.maintenance_attachments = InMemoryTableMaintenancePolicyAttachmentsRepo()
-        self.discovery_attachments = InMemoryTableDiscoveryPolicyAttachmentsRepo()
-        self.discovery_policies = InMemoryTableDiscoveryPoliciesRepo(attachments=self.discovery_attachments)
+        self.discovery_policies = InMemoryTableDiscoveryPoliciesRepo()
         self.catalog = FakeReadTableMetadataGateway()
+        self.catalogs = InMemoryCatalogsRepo()
+        self.namespaces = InMemoryNamespacesRepo()
         self.tables = InMemoryTablesRepo()
+        self.placements = InMemoryPolicyPlacementsStore(self.catalogs, self.namespaces, self.tables)
         EnsureDefaultTableMaintenancePolicyService(self.maintenance_policies, clock=lambda: NOW).execute(
             EnsureDefaultTableMaintenancePolicyUseCaseInput()
         )
@@ -112,10 +109,11 @@ class EffectivePoliciesWebWorld:
             ),
             attach_table_discovery_policy=AttachTableDiscoveryPolicyService(
                 self.discovery_policies,
-                self.discovery_attachments,
+                self.catalogs,
+                self.namespaces,
+                self.tables,
                 self.catalog,
                 RecordingSendDiscoveryRequestGateway(),
-                RecordingSyncDiscoverySchedulesGateway(),
                 clock=lambda: NOW,
             ),
             get_table=GetTableService(self.tables, InMemoryCatalogDiscoveriesRepo(), self.maintenance_policies),
@@ -123,7 +121,8 @@ class EffectivePoliciesWebWorld:
                 self.maintenance_policies,
                 self.maintenance_attachments,
                 self.discovery_policies,
-                self.discovery_attachments,
+                self.catalogs,
+                self.namespaces,
                 self.catalog,
                 self.tables,
             ),
@@ -149,9 +148,8 @@ class EffectivePoliciesWebWorld:
         """Revise a discovery policy as its next version with a new description and the same rules."""
         UpdateTableDiscoveryPolicyService(
             self.discovery_policies,
-            self.discovery_attachments,
+            self.placements,
             RecordingSendDiscoveryRequestGateway(),
-            RecordingSyncDiscoverySchedulesGateway(),
             clock=lambda: NOW,
         ).execute(
             UpdateTableDiscoveryPolicyUseCaseInput(

@@ -15,7 +15,7 @@ from context.table_maintenance.adapter.hybrid.temporal.outbound.table import (
     SendDiscoveryRequestTemporalGateway,
     SendTableChangeTemporalGateway,
 )
-from context.table_maintenance.adapter.hybrid.temporal.outbound.table_discovery_policy_attachment import (
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table_discovery_policy import (
     SyncDiscoverySchedulesTemporalGateway,
 )
 from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (

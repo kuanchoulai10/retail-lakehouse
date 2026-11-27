@@ -22,26 +22,24 @@ if TYPE_CHECKING:
         TableDiscoveryPolicyName,
         TableDiscoveryPolicyVersion,
     )
-    from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
-        TableDiscoveryPolicyAttachmentsRepo,
-    )
+    from context.table_maintenance.application.port.outbound.shared import PolicyPlacementsStore
 
 
 class InMemoryTableDiscoveryPoliciesRepo(TableDiscoveryPoliciesRepo):
     """Keep policies by id and their versions in dicts, refusing what the SQL repo refuses.
 
     Each read returns a copy, so two readers hold independent copies and the second ``update``
-    from the same version is stale, as in the database. Given ``attachments``, a delete of a policy
-    attached there is refused, as the SQL foreign key refuses it. Link ``attachments`` only in repo
-    contract tests: a service test builds the fake unlinked, so a service that forgets its own
-    attached check deletes the policy and the test fails.
+    from the same version is stale, as in the database. Given ``placements``, a delete of a policy
+    a catalog, namespace or table holds is refused, as the SQL foreign keys refuse it. Link
+    ``placements`` only in repo contract tests: a service test builds the fake unlinked, so a service
+    that forgets its own attached check deletes the policy and the test fails.
     """
 
-    def __init__(self, *, attachments: TableDiscoveryPolicyAttachmentsRepo | None = None) -> None:
-        """Start empty, optionally sharing the attachments a delete must not orphan."""
+    def __init__(self, *, placements: PolicyPlacementsStore | None = None) -> None:
+        """Start empty, optionally reading the placements a delete must not orphan."""
         self.items: dict[str, TableDiscoveryPolicy] = {}
         self.versions: dict[tuple[str, int], TableDiscoveryPolicyVersion] = {}
-        self._attachments = attachments
+        self._placements = placements
 
     def create(self, entity: TableDiscoveryPolicy) -> TableDiscoveryPolicy:
         """Insert a policy and its first version; a taken id or name raises ConflictError."""
@@ -85,7 +83,7 @@ class InMemoryTableDiscoveryPoliciesRepo(TableDiscoveryPoliciesRepo):
 
     def delete(self, entity_id: EntityId) -> None:
         """Remove a policy and its versions if present; one still attached raises ConflictError and stays."""
-        if self._attachments is not None and self._attachments.has_attachments_for_policy(
+        if self._placements is not None and self._placements.discovery_placements(
             TableDiscoveryPolicyId(entity_id.value)
         ):
             raise ConflictError(f"discovery policy {entity_id.value} is still attached")

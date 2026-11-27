@@ -28,7 +28,6 @@ if TYPE_CHECKING:
 
 EXPECTED_PREFIXES: dict[str, str] = {
     "TableDiscoveryPolicyId": "dp",
-    "TableDiscoveryPolicyAttachmentId": "da",
     "TableMaintenanceRunId": "mr",
     "TableReconciliationId": "rc",
     "TableMaintenancePolicyAttachmentId": "pa",

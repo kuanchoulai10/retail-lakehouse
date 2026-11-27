@@ -21,7 +21,11 @@ UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
 
 @router.get("/scanned-catalogs")
 def list_scanned_catalogs(use_cases: UseCases) -> ScannedCatalogsApiResponse:
-    """List the catalogs a managing discovery policy is attached in, with each one's last scan and current failure."""
+    """List the catalogs discovery scans, with each one's last scan and current failure.
+
+    A catalog is scanned while a discovery policy is attached in it (to it, a namespace or a table) or it
+    still holds managed tables.
+    """
     output = use_cases.list_scanned_catalogs.execute(ListScannedCatalogsUseCaseInput())
     return ScannedCatalogsApiResponse(
         catalogs=[

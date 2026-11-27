@@ -8,14 +8,19 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from context.table_maintenance.application.domain.model.catalog import Catalog
 from context.table_maintenance.application.domain.model.catalog_discovery import (
     CatalogScanFailure,
     CatalogScanFailureReason,
 )
+from context.table_maintenance.application.domain.model.namespace import Namespace
 from context.table_maintenance.application.domain.model.shared import (
     CatalogDiscoveryId,
+    CatalogId,
     ComputeSize,
     MaintenanceOperation,
+    NamespaceId,
+    PolicyTargetType,
     TableId,
 )
 from context.table_maintenance.application.domain.model.table import Table, TableName, TableStatus
@@ -25,10 +30,7 @@ from context.table_maintenance.application.domain.model.table_discovery_policy i
     TableDiscoveryPolicy,
     TableDiscoveryPolicyName,
 )
-from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
-    TableDiscoveryPolicyAttachment,
-)
-from context.table_maintenance.application.domain.service.table_discovery_policy_attachment import scanned_catalogs
+from context.table_maintenance.application.domain.service.catalog_discovery import catalogs_to_scan
 from context.table_maintenance.application.exceptions import ConcurrentUpdateError, ConflictError
 from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCaseInput,
@@ -40,7 +42,7 @@ from context.table_maintenance.application.service.table import (
     ProcessTableHintService,
     SyncDiscoveredTablesService,
 )
-from tests.context.table_maintenance.application.domain.service.table_discovery_policy_attachment.discovery_policy_samples import (  # noqa: E501
+from tests.context.table_maintenance.application.domain.service.table_discovery_policy.discovery_policy_samples import (  # noqa: E501
     MANAGE_ALL,
     NOW,
     UNMANAGE_ALL,
@@ -55,11 +57,11 @@ from tests.context.table_maintenance.fakes.track_calls import track_calls
 if TYPE_CHECKING:
     from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import FakeReadTableMetadataGateway
     from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import InMemoryCatalogDiscoveriesRepo
+    from tests.context.table_maintenance.fakes.in_memory_catalogs_repo import InMemoryCatalogsRepo
+    from tests.context.table_maintenance.fakes.in_memory_namespaces_repo import InMemoryNamespacesRepo
+    from tests.context.table_maintenance.fakes.in_memory_policy_placements_store import InMemoryPolicyPlacementsStore
     from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_repo import (
         InMemoryTableDiscoveryPoliciesRepo,
-    )
-    from tests.context.table_maintenance.fakes.in_memory_table_discovery_policy_attachments_repo import (
-        InMemoryTableDiscoveryPolicyAttachmentsRepo,
     )
     from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 
@@ -88,20 +90,40 @@ class _World:
 
     tables: InMemoryTablesRepo
     policies: InMemoryTableDiscoveryPoliciesRepo
-    attachments: InMemoryTableDiscoveryPolicyAttachmentsRepo
+    catalogs: InMemoryCatalogsRepo
+    namespaces: InMemoryNamespacesRepo
+    placements: InMemoryPolicyPlacementsStore
     catalog: FakeReadTableMetadataGateway
     discoveries: InMemoryCatalogDiscoveriesRepo
 
     def attach(self, target, policy):
-        """Store the policy if it is new, and attach it to the target, replacing what the target held."""
+        """Store the policy if it is new, and put it on the place, registering a place seen for the first time.
+
+        A table with no row is registered undecided, as the attach service registers one.
+        """
         if self.policies.get(policy.id) is None:
             self.policies.create(policy)
-        existing = self.attachments.get_by_target(target)
-        if existing is None:
-            self.attachments.create(TableDiscoveryPolicyAttachment.attach(target, policy.id, NOW))
+        if target.type == PolicyTargetType.CATALOG:
+            catalog_id = CatalogId(target.path[0])
+            self._hold(self.catalogs, catalog_id, lambda: Catalog.register(catalog_id, NOW), policy)
+        elif target.type == PolicyTargetType.NAMESPACE:
+            namespace_id = NamespaceId.of(target.path[0], target.path[1:])
+            self._hold(self.namespaces, namespace_id, lambda: Namespace.register(namespace_id, NOW), policy)
         else:
-            existing.replace_policy(policy.id, NOW)
-            self.attachments.update(existing)
+            name = TableName(catalog=target.path[0], namespace=".".join(target.path[1:-1]), table=target.path[-1])
+            table_id = TableId(target.table_uuid)
+            self._hold(self.tables, table_id, lambda: Table.register_undecided(table_id, name, NOW), policy)
+
+    @staticmethod
+    def _hold(repo, place_id, register, policy):
+        place = repo.get(place_id)
+        if place is None:
+            place = register()
+            place.attach_discovery_policy(policy.id, NOW)
+            repo.create(place)
+            return
+        place.attach_discovery_policy(policy.id, NOW)
+        repo.update(place)
 
     def attach_to_catalog(self, policy):
         """Attach the policy to the catalog ``iceberg``."""
@@ -116,9 +138,11 @@ class _World:
 
 
 @pytest.fixture
-def world(tables_repo, discovery_policies, discovery_attachments, catalog, discoveries_repo):
+def world(tables_repo, discovery_policies, catalogs_repo, namespaces_repo, placements, catalog, discoveries_repo):
     """Provide the fakes a scan reads, with nothing attached and no catalog discovered yet."""
-    return _World(tables_repo, discovery_policies, discovery_attachments, catalog, discoveries_repo)
+    return _World(
+        tables_repo, discovery_policies, catalogs_repo, namespaces_repo, placements, catalog, discoveries_repo
+    )
 
 
 def _row(repo, now, uuid, name, *, by: TableDiscoveryPolicy | None = MANAGE_ALL):
@@ -134,14 +158,16 @@ def _name(table, namespace="sales"):
 
 
 @pytest.fixture
-def sync(tables_repo, discovery_policies, discovery_attachments, discoveries_repo, catalog, signals, clock):
+def sync(world, signals, clock):
     """Provide the sync discovered tables service on the fakes."""
     return SyncDiscoveredTablesService(
-        tables_repo,
-        discovery_policies,
-        discovery_attachments,
-        discoveries_repo,
-        catalog,
+        world.tables,
+        world.policies,
+        world.catalogs,
+        world.namespaces,
+        world.placements,
+        world.discoveries,
+        world.catalog,
         signals,
         clock=clock,
     )
@@ -269,17 +295,22 @@ def test_a_new_policy_version_moves_the_decision_and_sends_nothing(sync, world, 
     assert signals.calls == []
 
 
-def test_the_scan_reads_attachments_once_per_catalog(sync, world, log):
-    """A scan reads its catalog's attachments in one call, and their policies in one more, however many tables."""
+def test_the_scan_reads_the_policy_holders_once_per_catalog(sync, world, log):
+    """A scan reads its catalog's record and namespaces once each, and their policies once, however many tables."""
     world.attach(namespace_target("iceberg", "sales"), MANAGE_ALL)
     world.attach(namespace_target("iceberg", "hr"), UNMANAGE_ALL)
     for uuid, namespace, table in (("u-1", "sales", "a"), ("u-2", "sales", "b"), ("u-3", "hr", "c")):
         world.catalog.add_table("iceberg", namespace, table, uuid)
-    track_calls(world.attachments, "list_in_catalog", "attachments.list_in_catalog", log, str)
-    track_calls(world.attachments, "get_many_by_targets", "attachments.get_many_by_targets", log, str)
+    track_calls(world.catalogs, "get", "catalogs.get", log, str)
+    track_calls(world.namespaces, "list_in_catalog", "namespaces.list_in_catalog", log, str)
+    track_calls(world.namespaces, "get_many", "namespaces.get_many", log, str)
     track_calls(world.policies, "get_many", "policies.get_many", log, lambda ids: str(len(ids)))
     sync.execute(_catalog_wide())
-    assert log == [("attachments.list_in_catalog", "iceberg"), ("policies.get_many", "2")]
+    assert log == [
+        ("catalogs.get", "iceberg"),
+        ("namespaces.list_in_catalog", "iceberg"),
+        ("policies.get_many", "2"),
+    ]
 
 
 # --- sync: a catalog or a table the scan cannot read ---
@@ -313,15 +344,15 @@ def test_a_refused_namespace_scan_is_recorded_on_its_catalog(sync, world, now):
     assert failure.reason is CatalogScanFailureReason.CANNOT_ACCESS
 
 
-def test_a_later_good_scan_makes_the_failure_not_current(
-    world, discovery_policies, discovery_attachments, signals, now
-):
+def test_a_later_good_scan_makes_the_failure_not_current(world, signals, now):
     """Once the catalog is readable again, the next completed scan clears the current failure and keeps it."""
     times = iter((now, now + timedelta(minutes=5)))
     sync = SyncDiscoveredTablesService(
         world.tables,
-        discovery_policies,
-        discovery_attachments,
+        world.policies,
+        world.catalogs,
+        world.namespaces,
+        world.placements,
         world.discoveries,
         world.catalog,
         signals,
@@ -417,8 +448,10 @@ def test_an_exclude_only_policy_keeps_its_unread_catalog_scanned_and_retires_its
 
     out = sync.execute(_catalog_wide())
 
-    policies = {p.id: p for p in world.policies.list_all()}
-    assert scanned_catalogs(world.attachments.list_all(), policies) == ("iceberg",)
+    scanned = catalogs_to_scan(
+        world.placements.catalogs_with_discovery_policy(), world.tables.list_catalogs_with_managed_tables()
+    )
+    assert scanned == ("iceberg",)
     assert (out.failure, out.unmanaged) == ("cannot_access", 1)
     table = world.tables.get(TableId("u-1"))
     assert table.status == TableStatus.UNMANAGED
@@ -439,6 +472,64 @@ def test_a_catalog_with_nothing_attached_unmanages_a_managed_table_it_cannot_loa
     assert out.unmanaged == 2
     assert world.tables.get(TableId("u-refused")).status == TableStatus.UNMANAGED
     assert sorted(_calls(signals)) == [("u-listed", "stopped", False), ("u-refused", "stopped", False)]
+
+
+def test_a_scan_decides_an_undecided_table_managed_saves_it_and_sends_managed(sync, world, signals):
+    """A table attached before discovery saw it is undecided; the scan decides it by its policy, sending ``managed``."""
+    world.attach(table_target(_name("orders"), "u-1"), MANAGE_ALL)
+    world.catalog.add_table("iceberg", "sales", "orders", "u-1")
+
+    out = sync.execute(_catalog_wide())
+
+    table = world.tables.get(TableId("u-1"))
+    assert (table.status, out.managed, out.registered) == (TableStatus.MANAGED, 1, 0)
+    assert table.decided_by == DecidedBy(policy_id=MANAGE_ALL.id, policy_version=1, rule_position=MANAGE_RULE)
+    assert _calls(signals) == [("u-1", "managed", True)]
+
+
+def test_a_scan_decides_an_undecided_table_unmanaged_saves_it_and_sends_nothing(sync, world, signals):
+    """An undecided table its policy excludes is saved unmanaged, decided by that rule, and sent nothing."""
+    world.attach(namespace_target("iceberg", "sales"), MANAGE_ALL)
+    world.attach(table_target(_name("orders"), "u-1"), UNMANAGE_ALL)
+    world.catalog.add_table("iceberg", "sales", "orders", "u-1")
+
+    sync.execute(_catalog_wide())
+
+    table = world.tables.get(TableId("u-1"))
+    assert table.status == TableStatus.UNMANAGED
+    assert table.decided_by == DecidedBy(policy_id=UNMANAGE_ALL.id, policy_version=1, rule_position=1)
+    assert table.version == 2
+    assert signals.calls == []
+
+
+def test_a_catalog_with_no_policy_decides_its_unread_undecided_tables_unmanaged(sync, world, signals, now):
+    """An undecided table that lost its policy, in a catalog holding none, is saved unmanaged though unread."""
+    world.tables.create(Table.register_undecided(TableId("u-1"), _name("orders"), now))
+    world.catalog.deny("iceberg")
+
+    out = sync.execute(_catalog_wide())
+
+    table = world.tables.get(TableId("u-1"))
+    assert (out.failure, table.status, table.decided_by) == ("cannot_access", TableStatus.UNMANAGED, None)
+    assert signals.calls == []
+
+
+def _status_names(statuses):
+    return ",".join(status.value for status in statuses)
+
+
+def test_a_catalog_with_no_policy_anywhere_reads_its_tables_only_to_retire_them(sync, world, log, now):
+    """With no policy in the catalog (the placements say so), no table is read to look for one."""
+    world.attach(catalog_target("other"), MANAGE_ALL)
+    _row(world.tables, now, "u-1", _name("orders"))
+    world.catalog.deny("iceberg")
+    track_calls(
+        world.tables, "list_by_statuses", "tables.list_by_statuses", log, lambda s: ",".join(x.value for x in s)
+    )
+
+    sync.execute(_catalog_wide())
+
+    assert log == [("tables.list_by_statuses", "managed,undecided")]
 
 
 def test_a_fully_read_catalog_with_nothing_attached_drops_a_missing_managed_table_without_unmanaging_it(
@@ -497,15 +588,15 @@ def test_a_scan_after_the_refused_table_is_readable_drops_again(sync, world, now
     assert world.tables.get(TableId("u-gone")).status == TableStatus.DROPPED
 
 
-def test_a_scan_with_an_unreadable_table_still_counts_as_a_scan(
-    world, discovery_policies, discovery_attachments, signals, now
-):
+def test_a_scan_with_an_unreadable_table_still_counts_as_a_scan(world, signals, now):
     """A catalog readable again but for one table: the scan records its time, clears the failure and drops nothing."""
     times = iter((now - timedelta(minutes=5), now))
     sync = SyncDiscoveredTablesService(
         world.tables,
-        discovery_policies,
-        discovery_attachments,
+        world.policies,
+        world.catalogs,
+        world.namespaces,
+        world.placements,
         world.discoveries,
         world.catalog,
         signals,
@@ -977,13 +1068,14 @@ def test_sync_namespace_scope_does_not_reensure(sync, tables_repo, world, catalo
 
 
 @pytest.fixture
-def hint(tables_repo, discovery_policies, discovery_attachments, catalog, signals, discovery_requests, clock):
+def hint(world, signals, discovery_requests, clock):
     """Provide the process table hint service on the fakes."""
     return ProcessTableHintService(
-        tables_repo,
-        discovery_policies,
-        discovery_attachments,
-        catalog,
+        world.tables,
+        world.policies,
+        world.catalogs,
+        world.namespaces,
+        world.catalog,
         signals,
         discovery_requests,
         clock=clock,
@@ -1019,7 +1111,7 @@ def test_a_hint_decides_a_table_moved_out_of_a_managing_namespace_by_its_new_nam
 
 
 def test_a_hint_reads_the_walk_of_a_table_moved_into_a_managing_namespace(hint, world, tables_repo, signals, now):
-    """A catalog event reads the attachments on the walk of the new name: a move into a managed namespace manages it."""
+    """A catalog event reads the policies on the walk of the new name: a move into a managed namespace manages it."""
     world.attach(namespace_target("iceberg", "other"), MANAGE_ALL)
     _row(tables_repo, now, "u-1", _name("orders"), by=None)
     world.catalog.add_table("iceberg", "other", "orders", "u-1")
@@ -1029,12 +1121,17 @@ def test_a_hint_reads_the_walk_of_a_table_moved_into_a_managing_namespace(hint, 
     assert _calls(signals) == [("u-1", "managed", True)]
 
 
-def test_a_hint_decides_a_new_table_by_its_uuid(hint, world, signals):
-    """A catalog event finds the table's own attachment by its uuid: an exclude on it opts it out of its namespace."""
+def test_a_hint_decides_an_undecided_table_by_the_policy_it_holds(hint, world, signals):
+    """A table attached before discovery saw it is undecided; a catalog event decides it by its own policy.
+
+    An exclude on the table opts it out of its namespace; it is saved unmanaged and sent nothing, as a
+    change of only what decided it is.
+    """
     world.attach(namespace_target("iceberg", "sales"), MANAGE_ALL)
     world.attach(table_target(_name("orders"), "u-1"), UNMANAGE_ALL)
     world.catalog.add_table("iceberg", "sales", "orders", "u-1")
-    assert hint.execute(_hint()).action == "registered"
+    assert world.tables.get(TableId("u-1")).status == TableStatus.UNDECIDED
+    assert hint.execute(_hint()).action == "ignored"
     table = world.tables.get(TableId("u-1"))
     assert (table.status, table.decided_by) == (
         TableStatus.UNMANAGED,
@@ -1043,15 +1140,16 @@ def test_a_hint_decides_a_new_table_by_its_uuid(hint, world, signals):
     assert signals.calls == []
 
 
-def test_a_hint_reads_only_the_attachments_on_the_tables_walk(hint, world, log):
-    """A hint decides its one table from the attachments on its walk, read in one call, and their policies in one."""
-    world.attach(namespace_target("iceberg", "sales"), MANAGE_ALL)
-    world.catalog.add_table("iceberg", "sales", "orders", "u-1")
-    track_calls(world.attachments, "list_in_catalog", "attachments.list_in_catalog", log, str)
-    track_calls(world.attachments, "get_many_by_targets", "attachments.get_many_by_targets", log, lambda t: str(len(t)))
+def test_a_hint_reads_only_the_places_on_the_tables_walk(hint, world, log):
+    """A hint decides its one table from its catalog and enclosing namespaces, read once each, and their policies."""
+    world.attach(namespace_target("iceberg", "sales.eu"), MANAGE_ALL)
+    world.catalog.add_table("iceberg", "sales.eu", "orders", "u-1")
+    track_calls(world.catalogs, "get", "catalogs.get", log, str)
+    track_calls(world.namespaces, "list_in_catalog", "namespaces.list_in_catalog", log, str)
+    track_calls(world.namespaces, "get_many", "namespaces.get_many", log, lambda ids: str(len(ids)))
     track_calls(world.policies, "get_many", "policies.get_many", log, lambda ids: str(len(ids)))
-    hint.execute(_hint())
-    assert log == [("attachments.get_many_by_targets", "3"), ("policies.get_many", "1")]
+    hint.execute(_hint(namespace="sales.eu"))
+    assert log == [("catalogs.get", "iceberg"), ("namespaces.get_many", "2"), ("policies.get_many", "1")]
     assert world.tables.get(TableId("u-1")).is_managed
 
 

@@ -6,15 +6,16 @@ from datetime import UTC, datetime
 
 import pytest
 
+from context.table_maintenance.application.domain.model.catalog import Catalog
+from context.table_maintenance.application.domain.model.namespace import Namespace
 from context.table_maintenance.application.domain.model.shared import (
-    PolicyTarget,
-    PolicyTargetType,
+    CatalogId,
+    NamespaceId,
     TableDiscoveryPolicyId,
+    TableId,
 )
+from context.table_maintenance.application.domain.model.table import Table, TableName
 from context.table_maintenance.application.domain.model.table_discovery_policy import TableDiscoveryPolicyName
-from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
-    TableDiscoveryPolicyAttachment,
-)
 from context.table_maintenance.application.exceptions import (
     ConflictError,
     NotFoundError,
@@ -41,17 +42,15 @@ from context.table_maintenance.application.service.table_discovery_policy import
     ListTableDiscoveryPoliciesService,
     UpdateTableDiscoveryPolicyService,
 )
+from tests.context.table_maintenance.fakes.in_memory_catalogs_repo import InMemoryCatalogsRepo
+from tests.context.table_maintenance.fakes.in_memory_namespaces_repo import InMemoryNamespacesRepo
+from tests.context.table_maintenance.fakes.in_memory_policy_placements_store import InMemoryPolicyPlacementsStore
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_repo import (
     InMemoryTableDiscoveryPoliciesRepo,
 )
-from tests.context.table_maintenance.fakes.in_memory_table_discovery_policy_attachments_repo import (
-    InMemoryTableDiscoveryPolicyAttachmentsRepo,
-)
+from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.context.table_maintenance.fakes.recording_send_discovery_request_gateway import (
     RecordingSendDiscoveryRequestGateway,
-)
-from tests.context.table_maintenance.fakes.recording_sync_discovery_schedules_gateway import (
-    RecordingSyncDiscoverySchedulesGateway,
 )
 from tests.context.table_maintenance.id_shape import IdShape
 
@@ -74,13 +73,17 @@ class ServiceWorld:
     def __init__(self) -> None:
         """Start with no policy.
 
-        The policies fake is not linked to the attachments, so it deletes an attached policy freely and
-        only the delete service's own check refuses it.
+        The policies fake is not linked to the placements, so it deletes an attached policy freely and
+        only the delete service's own check refuses it. The placements are read from the catalogs,
+        namespaces and tables fakes, as the SQL store reads their rows.
         """
-        self.attachments = InMemoryTableDiscoveryPolicyAttachmentsRepo()
+        self.catalogs = InMemoryCatalogsRepo()
+        self.namespaces = InMemoryNamespacesRepo()
+        self.tables = InMemoryTablesRepo()
+        self.placements = InMemoryPolicyPlacementsStore(self.catalogs, self.namespaces, self.tables)
         self.policies = InMemoryTableDiscoveryPoliciesRepo()
         self.requests = RecordingSendDiscoveryRequestGateway()
-        self.schedules = RecordingSyncDiscoverySchedulesGateway()
+        self.change_ids = iter(f"c{n}" for n in range(1, 100))
         self.now = NOW
 
     def _clock(self) -> datetime:
@@ -99,7 +102,11 @@ class ServiceWorld:
     ) -> UpdateTableDiscoveryPolicyUseCaseOutput:
         """Revise a policy from ``version``."""
         return UpdateTableDiscoveryPolicyService(
-            self.policies, self.attachments, self.requests, self.schedules, clock=self._clock
+            self.policies,
+            self.placements,
+            self.requests,
+            clock=self._clock,
+            new_change_id=lambda: next(self.change_ids),
         ).execute(
             UpdateTableDiscoveryPolicyUseCaseInput(name=name, description=description, rules=rules, version=version)
         )
@@ -116,22 +123,46 @@ class ServiceWorld:
 
     def delete(self, name: str) -> None:
         """Delete a policy."""
-        DeleteTableDiscoveryPolicyService(self.policies, self.attachments).execute(
+        DeleteTableDiscoveryPolicyService(self.policies, self.placements).execute(
             DeleteTableDiscoveryPolicyUseCaseInput(name=name)
         )
 
     def list(self) -> ListTableDiscoveryPoliciesUseCaseOutput:
         """List the policies."""
-        return ListTableDiscoveryPoliciesService(self.policies, self.attachments).execute(
+        return ListTableDiscoveryPoliciesService(self.policies, self.placements).execute(
             ListTableDiscoveryPoliciesUseCaseInput()
         )
 
-    def attach(self, name: str, catalog: str) -> TableDiscoveryPolicyAttachment:
-        """Attach a policy to a catalog straight through the repos (the attach use case comes later)."""
+    def policy_id(self, name: str) -> TableDiscoveryPolicyId:
+        """Return the id of the stored policy ``name``."""
         policy = self.policies.get_by_name(TableDiscoveryPolicyName(value=name))
         assert policy is not None
-        target = PolicyTarget(type=PolicyTargetType.CATALOG, path=(catalog,))
-        return self.attachments.create(TableDiscoveryPolicyAttachment.attach(target, policy.id, NOW))
+        return policy.id
+
+    def attach(self, name: str, catalog: str) -> None:
+        """Put a policy on a catalog straight through its repo."""
+        place = Catalog.register(CatalogId(catalog), NOW)
+        place.attach_discovery_policy(self.policy_id(name), NOW)
+        self.catalogs.create(place)
+
+    def attach_namespace(self, name: str, catalog: str, *levels: str) -> None:
+        """Put a policy on a namespace straight through its repo."""
+        place = Namespace.register(NamespaceId.of(catalog, levels), NOW)
+        place.attach_discovery_policy(self.policy_id(name), NOW)
+        self.namespaces.create(place)
+
+    def attach_table(self, name: str, table: TableName, uuid: str) -> None:
+        """Put a policy on a table straight through its repo."""
+        place = Table.register_undecided(TableId(uuid), table, NOW)
+        place.attach_discovery_policy(self.policy_id(name), NOW)
+        self.tables.create(place)
+
+    def detach(self, name: str, catalog: str) -> None:
+        """Take a policy off a catalog straight through its repo."""
+        place = self.catalogs.get(CatalogId(catalog))
+        assert place is not None
+        place.detach_discovery_policy(self.policy_id(name), NOW)
+        self.catalogs.update(place)
 
 
 @pytest.fixture
@@ -224,14 +255,38 @@ def test_update_from_a_stale_version_conflicts(world: ServiceWorld) -> None:
 
 
 def test_update_rescans_the_catalogs_it_is_attached_in(world: ServiceWorld) -> None:
-    """Once saved, each catalog the policy is attached in is scanned again and the schedules are synced."""
+    """Once saved, each catalog the policy is attached in is scanned whole, once, under one change id."""
     world.create("mine")
     world.attach("mine", "prod")
+    world.attach_namespace("mine", "dev", "sales")
+    world.attach_table("mine", TableName(catalog="dev", namespace="sales.eu", table="orders"), "u-1")
 
     world.update("mine", version=1, rules=INCLUDE_ALL_BUT_TMP)
 
-    assert [request.catalog for request in world.requests.calls] == ["prod"]
-    assert world.schedules.synced[-1].catalogs == ("prod",)
+    assert [(r.catalog, r.namespace, r.change_id) for r in world.requests.calls] == [
+        ("dev", None, "c1"),
+        ("prod", None, "c1"),
+    ]
+
+
+def test_an_update_whose_scan_request_fails_still_stands(world: ServiceWorld) -> None:
+    """A scan request that cannot be sent is logged; the revision is saved all the same."""
+    world.create("mine")
+    world.attach("mine", "prod")
+    world.requests.failing.add("prod")
+
+    world.update("mine", version=1, rules=INCLUDE_ALL_BUT_TMP)
+
+    assert world.get("mine").version == 2
+
+
+def test_an_update_of_a_policy_attached_nowhere_requests_no_scan(world: ServiceWorld) -> None:
+    """A policy no place holds changes no table, so nothing is scanned."""
+    world.create("mine")
+
+    world.update("mine", version=1, rules=INCLUDE_ALL_BUT_TMP)
+
+    assert world.requests.calls == []
 
 
 def test_update_of_an_unknown_policy_is_not_found(world: ServiceWorld) -> None:
@@ -240,16 +295,32 @@ def test_update_of_an_unknown_policy_is_not_found(world: ServiceWorld) -> None:
         world.update("missing", version=1, rules=INCLUDE_ORDERS)
 
 
+def test_deleting_a_policy_still_attached_is_refused_with_the_places(world: ServiceWorld) -> None:
+    """A policy is not deleted while a place holds it; the refusal names each place, by type and then path."""
+    world.create("mine")
+    world.attach_table("mine", TableName(catalog="prod", namespace="sales.eu", table="orders"), "u-1")
+    world.attach_namespace("mine", "prod", "sales")
+    world.attach("mine", "prod")
+
+    with pytest.raises(ConflictError) as refused:
+        world.delete("mine")
+
+    assert str(refused.value) == (
+        "discovery policy mine is still attached to catalog:prod, namespace:prod.sales, table:prod.sales.eu.orders"
+    )
+    assert world.get("mine").version == 1
+
+
 def test_delete_of_an_attached_policy_conflicts(world: ServiceWorld) -> None:
     """A policy is not deleted while it is attached; detached, it is."""
     world.create("mine")
-    attachment = world.attach("mine", "prod")
+    world.attach("mine", "prod")
 
-    with pytest.raises(ConflictError, match="policy mine is still attached to a catalog, namespace or table"):
+    with pytest.raises(ConflictError, match="policy mine is still attached to catalog:prod"):
         world.delete("mine")
     assert world.get("mine").version == 1
 
-    world.attachments.delete(attachment.id)
+    world.detach("mine", "prod")
     world.delete("mine")
     with pytest.raises(NotFoundError):
         world.get("mine")

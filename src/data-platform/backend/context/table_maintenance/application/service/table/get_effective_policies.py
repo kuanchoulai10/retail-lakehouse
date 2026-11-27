@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.application.domain.model.shared import (
+    CatalogId,
+    NamespaceId,
+    PolicyTargetType,
+    TableId,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy import DEFAULT_POLICY_ID
 from context.table_maintenance.application.domain.service.shared import nearest_attached
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
@@ -18,13 +24,12 @@ from context.table_maintenance.application.service.shared import policy_candidat
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from context.table_maintenance.application.domain.model.shared import PolicyTarget
+    from context.table_maintenance.application.domain.model.shared import PolicyTarget, TableDiscoveryPolicyId
+    from context.table_maintenance.application.port.outbound.catalog import CatalogsRepo
+    from context.table_maintenance.application.port.outbound.namespace import NamespacesRepo
     from context.table_maintenance.application.port.outbound.table import ReadTableMetadataGateway, TablesRepo
     from context.table_maintenance.application.port.outbound.table_discovery_policy import (
         TableDiscoveryPoliciesRepo,
-    )
-    from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
-        TableDiscoveryPolicyAttachmentsRepo,
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
         TableMaintenancePoliciesRepo,
@@ -38,7 +43,8 @@ class GetEffectivePoliciesService(GetEffectivePoliciesUseCase):
     """Answer, for each kind of policy, which one applies to a place, from which level and through which attachment.
 
     Every kind walks the same candidates (``policy_candidates``) and takes its own nearest attachment, so a
-    table attachment of one kind leaves the other kind at its own level. With nothing attached the
+    table attachment of one kind leaves the other kind at its own level: a maintenance policy through its
+    attachments, a discovery policy from the first table, namespace or catalog holding one. With nothing attached the
     maintenance platform default applies, read from its repo, and no discovery policy applies (every
     discovery field is None). By location a catalog, namespace or table the catalog does
     not hold is NotFoundError, and a catalog the platform cannot read raises CatalogAccessDeniedError, as
@@ -51,15 +57,17 @@ class GetEffectivePoliciesService(GetEffectivePoliciesUseCase):
         maintenance_policies_repo: TableMaintenancePoliciesRepo,
         maintenance_attachments_repo: TableMaintenancePolicyAttachmentsRepo,
         discovery_policies_repo: TableDiscoveryPoliciesRepo,
-        discovery_attachments_repo: TableDiscoveryPolicyAttachmentsRepo,
+        catalogs_repo: CatalogsRepo,
+        namespaces_repo: NamespacesRepo,
         gateway: ReadTableMetadataGateway,
         tables_repo: TablesRepo,
     ) -> None:
-        """Bind both kinds' policy and attachment repos, the catalog gateway and the tables repo."""
+        """Bind both kinds' policies, the maintenance attachments, the places, the catalog gateway and the tables."""
         self._maintenance_policies_repo = maintenance_policies_repo
         self._maintenance_attachments_repo = maintenance_attachments_repo
         self._discovery_policies_repo = discovery_policies_repo
-        self._discovery_attachments_repo = discovery_attachments_repo
+        self._catalogs_repo = catalogs_repo
+        self._namespaces_repo = namespaces_repo
         self._gateway = gateway
         self._tables_repo = tables_repo
 
@@ -119,21 +127,32 @@ class GetEffectivePoliciesService(GetEffectivePoliciesUseCase):
         )
 
     def _discovery_entry(self, candidates: Sequence[PolicyTarget]) -> GetEffectivePoliciesUseCaseOutput.DiscoveryEntry:
-        attached = {a.target.key(): a for a in self._discovery_attachments_repo.get_many_by_targets(candidates)}
-        nearest = nearest_attached(candidates, attached)
+        nearest = next(
+            ((target, policy_id) for target in candidates if (policy_id := self._held_discovery_policy(target))),
+            None,
+        )
         if nearest is None:
             return GetEffectivePoliciesUseCaseOutput.DiscoveryEntry(
-                policy_id=None, policy_name=None, version=None, description=None, target=None, attachment_id=None
+                policy_id=None, policy_name=None, version=None, description=None, target=None
             )
-        target, attachment = nearest
-        policy = self._discovery_policies_repo.get(attachment.policy_id)
+        target, policy_id = nearest
+        policy = self._discovery_policies_repo.get(policy_id)
         if policy is None:
-            raise NotFoundError(f"table discovery policy {attachment.policy_id.value} not found")
+            raise NotFoundError(f"table discovery policy {policy_id.value} not found")
         return GetEffectivePoliciesUseCaseOutput.DiscoveryEntry(
             policy_id=policy.id.value,
             policy_name=policy.name.value,
             version=policy.version,
             description=policy.description,
             target=policy_target_fields(target),
-            attachment_id=attachment.id.value,
         )
+
+    def _held_discovery_policy(self, target: PolicyTarget) -> TableDiscoveryPolicyId | None:
+        """Return the discovery policy the place holds, None when it holds none or has no record."""
+        if target.type == PolicyTargetType.TABLE:
+            holder = self._tables_repo.get(TableId(target.table_uuid or ""))
+        elif target.type == PolicyTargetType.NAMESPACE:
+            holder = self._namespaces_repo.get(NamespaceId.of(target.path[0], target.path[1:]))
+        else:
+            holder = self._catalogs_repo.get(CatalogId(target.path[0]))
+        return None if holder is None else holder.discovery_policy_id

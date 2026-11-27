@@ -105,3 +105,29 @@ def test_an_unmanaged_table_losing_its_policy_is_a_decision_change():
         decide_table_management(t, ManagementDecision.nothing_attached(), T1) == TableManagementChange.DECISION_CHANGED
     )
     assert (t.status, t.decided_by) == (TableStatus.UNMANAGED, None)
+
+
+def test_an_undecided_table_no_policy_decides_becomes_unmanaged_and_reports_the_decision():
+    """Nothing deciding an undecided table unmanages it; the status moved, so the change is saved."""
+    t = Table.register_undecided(TableId("u"), NAME, T0)
+
+    change = decide_table_management(t, ManagementDecision.nothing_attached(), T1)
+
+    assert change == TableManagementChange.DECISION_CHANGED
+    assert (t.status, t.decided_by, t.updated_at) == (TableStatus.UNMANAGED, None, T1)
+
+
+def test_an_undecided_table_an_unmanaging_decision_decides_reports_the_decision():
+    """An undecided table an exclude decides is unmanaged and saved; there is no workflow to stop."""
+    t = Table.register_undecided(TableId("u"), NAME, T0)
+
+    assert decide_table_management(t, UNMANAGED, T1) == TableManagementChange.DECISION_CHANGED
+    assert (t.status, t.decided_by) == (TableStatus.UNMANAGED, UNMANAGED.decided_by)
+
+
+def test_an_undecided_table_a_managing_decision_decides_is_managed():
+    """An undecided table an include decides becomes managed, so its workflow is started."""
+    t = Table.register_undecided(TableId("u"), NAME, T0)
+
+    assert decide_table_management(t, MANAGED, T1) == TableManagementChange.MANAGED
+    assert t.status == TableStatus.MANAGED

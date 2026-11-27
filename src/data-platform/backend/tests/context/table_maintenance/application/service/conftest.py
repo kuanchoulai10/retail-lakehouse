@@ -25,11 +25,11 @@ from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway impo
 from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import (
     InMemoryCatalogDiscoveriesRepo,
 )
+from tests.context.table_maintenance.fakes.in_memory_catalogs_repo import InMemoryCatalogsRepo
+from tests.context.table_maintenance.fakes.in_memory_namespaces_repo import InMemoryNamespacesRepo
+from tests.context.table_maintenance.fakes.in_memory_policy_placements_store import InMemoryPolicyPlacementsStore
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_repo import (
     InMemoryTableDiscoveryPoliciesRepo,
-)
-from tests.context.table_maintenance.fakes.in_memory_table_discovery_policy_attachments_repo import (
-    InMemoryTableDiscoveryPolicyAttachmentsRepo,
 )
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
     InMemoryTableMaintenancePoliciesRepo,
@@ -94,9 +94,23 @@ def discovery_policies() -> InMemoryTableDiscoveryPoliciesRepo:
 
 
 @pytest.fixture
-def discovery_attachments() -> InMemoryTableDiscoveryPolicyAttachmentsRepo:
-    """Provide an in-memory discovery policy attachments repository holding no attachment."""
-    return InMemoryTableDiscoveryPolicyAttachmentsRepo()
+def catalogs_repo() -> InMemoryCatalogsRepo:
+    """Provide an in-memory catalogs repository holding no catalog."""
+    return InMemoryCatalogsRepo()
+
+
+@pytest.fixture
+def namespaces_repo() -> InMemoryNamespacesRepo:
+    """Provide an in-memory namespaces repository holding no namespace."""
+    return InMemoryNamespacesRepo()
+
+
+@pytest.fixture
+def placements(
+    catalogs_repo: InMemoryCatalogsRepo, namespaces_repo: InMemoryNamespacesRepo, tables_repo: InMemoryTablesRepo
+) -> InMemoryPolicyPlacementsStore:
+    """Provide the policy placements, read from the catalogs, namespaces and tables repositories."""
+    return InMemoryPolicyPlacementsStore(catalogs_repo, namespaces_repo, tables_repo)
 
 
 @pytest.fixture

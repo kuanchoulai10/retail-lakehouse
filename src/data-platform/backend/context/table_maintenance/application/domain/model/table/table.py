@@ -230,11 +230,13 @@ class Table(AggregateRoot[TableId]):
         A dropped table answers the time stamped when it was dropped. A live one was
         seen by its catalog's last discovery, or when it was registered if that came
         later (a catalog event registers a table between discoveries); with no
-        discovery of its catalog the time is unknown.
+        discovery of its catalog the time is unknown. An undecided table was registered
+        by an attach, not by a discovery, and no discovery has decided it since, so no
+        discovery has seen it: its time is unknown too.
         """
         if self.status == TableStatus.DROPPED:
             return self.last_discovered_at
-        if catalog_discovered_at is None:
+        if catalog_discovered_at is None or self.status == TableStatus.UNDECIDED:
             return None
         return max(catalog_discovered_at, self.registered_at)
 

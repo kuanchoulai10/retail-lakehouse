@@ -27,18 +27,16 @@ from context.table_maintenance.application.service.table import (
     TriggerTableReconciliationService,
 )
 from context.table_maintenance.application.service.table_discovery_policy import (
+    AttachTableDiscoveryPolicyService,
     CreateTableDiscoveryPolicyService,
     DeleteTableDiscoveryPolicyService,
+    DetachTableDiscoveryPolicyService,
     GetTableDiscoveryPolicyService,
     GetTableDiscoveryPolicyVersionService,
     ListTableDiscoveryPoliciesService,
-    UpdateTableDiscoveryPolicyService,
-)
-from context.table_maintenance.application.service.table_discovery_policy_attachment import (
-    AttachTableDiscoveryPolicyService,
-    DetachTableDiscoveryPolicyService,
     ListTableDiscoveryPolicyAttachmentsService,
     SyncDiscoverySchedulesService,
+    UpdateTableDiscoveryPolicyService,
 )
 from context.table_maintenance.application.service.table_maintenance_policy import (
     CreateTableMaintenancePolicyService,
@@ -114,7 +112,8 @@ def build_use_cases(
     """
     tables = repos.tables
     discovery_policies = repos.table_discovery_policies
-    discovery_attachments = repos.table_discovery_policy_attachments
+    placements = repos.policy_placements
+    catalogs, namespaces = repos.catalogs, repos.namespaces
     policies = repos.table_maintenance_policies
     attachments = repos.table_maintenance_policy_attachments
     runs = repos.table_maintenance_runs
@@ -129,36 +128,45 @@ def build_use_cases(
         process_table_hint=ProcessTableHintService(
             tables,
             discovery_policies,
-            discovery_attachments,
+            catalogs,
+            namespaces,
             catalog,
             table_changes,
             gateways.send_discovery_request,
             clock=clock,
         ),
         sync_discovered_tables=SyncDiscoveredTablesService(
-            tables, discovery_policies, discovery_attachments, discoveries, catalog, table_changes, clock=clock
+            tables,
+            discovery_policies,
+            catalogs,
+            namespaces,
+            placements,
+            discoveries,
+            catalog,
+            table_changes,
+            clock=clock,
         ),
-        list_table_discovery_policies=ListTableDiscoveryPoliciesService(discovery_policies, discovery_attachments),
+        list_table_discovery_policies=ListTableDiscoveryPoliciesService(discovery_policies, placements),
         create_table_discovery_policy=CreateTableDiscoveryPolicyService(discovery_policies, clock=clock),
         get_table_discovery_policy=GetTableDiscoveryPolicyService(discovery_policies),
         get_table_discovery_policy_version=GetTableDiscoveryPolicyVersionService(discovery_policies),
         update_table_discovery_policy=UpdateTableDiscoveryPolicyService(
-            discovery_policies, discovery_attachments, discovery_requests, discovery_schedules, clock=clock
+            discovery_policies, placements, discovery_requests, clock=clock
         ),
-        delete_table_discovery_policy=DeleteTableDiscoveryPolicyService(discovery_policies, discovery_attachments),
+        delete_table_discovery_policy=DeleteTableDiscoveryPolicyService(discovery_policies, placements),
         attach_table_discovery_policy=AttachTableDiscoveryPolicyService(
-            discovery_policies, discovery_attachments, catalog, discovery_requests, discovery_schedules, clock=clock
+            discovery_policies, catalogs, namespaces, tables, catalog, discovery_requests, clock=clock
         ),
         detach_table_discovery_policy=DetachTableDiscoveryPolicyService(
-            discovery_policies, discovery_attachments, discovery_requests, discovery_schedules
+            discovery_policies, catalogs, namespaces, tables, discovery_requests, clock=clock
         ),
         list_table_discovery_policy_attachments=ListTableDiscoveryPolicyAttachmentsService(
-            discovery_policies, discovery_attachments, catalog, tables
+            discovery_policies, placements, catalog, tables
         ),
         sync_discovery_schedules=SyncDiscoverySchedulesService(
-            discovery_policies, discovery_attachments, tables, discovery_requests, discovery_schedules
+            placements, tables, discovery_requests, discovery_schedules
         ),
-        list_scanned_catalogs=ListScannedCatalogsService(discovery_attachments, discovery_policies, discoveries),
+        list_scanned_catalogs=ListScannedCatalogsService(placements, tables, discoveries),
         attach_table_maintenance_policy=AttachTableMaintenancePolicyService(
             policies, attachments, catalog, tables, table_changes, clock=clock
         ),
@@ -170,7 +178,7 @@ def build_use_cases(
         ),
         resolve_applicable_table_maintenance_policy=resolve_applicable_policy,
         get_effective_policies=GetEffectivePoliciesService(
-            policies, attachments, discovery_policies, discovery_attachments, catalog, tables
+            policies, attachments, discovery_policies, catalogs, namespaces, catalog, tables
         ),
         create_table_maintenance_policy=CreateTableMaintenancePolicyService(policies, clock=clock),
         delete_table_maintenance_policy=DeleteTableMaintenancePolicyService(policies, attachments),

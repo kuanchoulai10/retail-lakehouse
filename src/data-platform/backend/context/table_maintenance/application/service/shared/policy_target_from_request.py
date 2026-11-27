@@ -23,12 +23,16 @@ def policy_target_from_request(
 
     A table target takes its uuid from the catalog, and a missing table, namespace or catalog is
     NotFoundError; a catalog or namespace may hold no table. A catalog the platform's credential
-    cannot read raises CatalogAccessDeniedError, untouched.
+    cannot read raises CatalogAccessDeniedError, untouched. A namespace level holding a dot is
+    ValidationError: a table names its namespace dot-joined, so its namespaces are found by splitting
+    on the dots, and a policy attached to such a level would never apply to any table.
     """
     with translate_domain_errors():
         kind = PolicyTargetType(target_type)
         if kind == PolicyTargetType.TABLE and len(path) < 3:  # noqa: PLR2004
             raise ValueError("a table target path is catalog, namespace levels and table name")
+        if kind == PolicyTargetType.NAMESPACE:
+            _refuse_dotted_levels(path[1:])
         if kind != PolicyTargetType.TABLE:
             target = PolicyTarget(type=kind, path=path)
     if kind == PolicyTargetType.TABLE:
@@ -54,3 +58,13 @@ def _exists(gateway: ReadTableMetadataGateway, kind: PolicyTargetType, path: tup
     if kind == PolicyTargetType.CATALOG:
         return gateway.catalog_exists(path[0])
     return gateway.namespace_exists(path[0], ".".join(path[1:]))
+
+
+def _refuse_dotted_levels(levels: tuple[str, ...]) -> None:
+    for level in levels:
+        if "." in level:
+            msg = (
+                f"namespace level {level!r} holds a '.': a table names its namespace dot-joined, "
+                "so a policy attached there would never apply"
+            )
+            raise ValueError(msg)

@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 import pytest
 
 from context.table_maintenance.application.domain.model.shared import (
-    TableDiscoveryPolicyAttachmentId,
     TableId,
     TableMaintenancePolicyAttachmentId,
 )
@@ -19,11 +18,9 @@ from context.table_maintenance.application.port.inbound.table import (
     GetEffectivePoliciesUseCaseOutput,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_policy import (
+    AttachTableDiscoveryPolicyUseCaseInput,
     CreateTableDiscoveryPolicyUseCaseInput,
     UpdateTableDiscoveryPolicyUseCaseInput,
-)
-from context.table_maintenance.application.port.inbound.table_discovery_policy_attachment import (
-    AttachTableDiscoveryPolicyUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     CreateTableMaintenancePolicyUseCaseInput,
@@ -36,11 +33,9 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
 from context.table_maintenance.application.port.outbound.table import CatalogAccessDeniedError
 from context.table_maintenance.application.service.table import GetEffectivePoliciesService
 from context.table_maintenance.application.service.table_discovery_policy import (
+    AttachTableDiscoveryPolicyService,
     CreateTableDiscoveryPolicyService,
     UpdateTableDiscoveryPolicyService,
-)
-from context.table_maintenance.application.service.table_discovery_policy_attachment import (
-    AttachTableDiscoveryPolicyService,
 )
 from context.table_maintenance.application.service.table_maintenance_policy import (
     CreateTableMaintenancePolicyService,
@@ -52,11 +47,11 @@ from context.table_maintenance.application.service.table_maintenance_policy_atta
 )
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import FakeReadTableMetadataGateway
+from tests.context.table_maintenance.fakes.in_memory_catalogs_repo import InMemoryCatalogsRepo
+from tests.context.table_maintenance.fakes.in_memory_namespaces_repo import InMemoryNamespacesRepo
+from tests.context.table_maintenance.fakes.in_memory_policy_placements_store import InMemoryPolicyPlacementsStore
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_repo import (
     InMemoryTableDiscoveryPoliciesRepo,
-)
-from tests.context.table_maintenance.fakes.in_memory_table_discovery_policy_attachments_repo import (
-    InMemoryTableDiscoveryPolicyAttachmentsRepo,
 )
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
     InMemoryTableMaintenancePoliciesRepo,
@@ -71,14 +66,10 @@ from tests.context.table_maintenance.fakes.recording_send_discovery_request_gate
 from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
     RecordingSendTableChangeGateway,
 )
-from tests.context.table_maintenance.fakes.recording_sync_discovery_schedules_gateway import (
-    RecordingSyncDiscoverySchedulesGateway,
-)
 from tests.context.table_maintenance.id_shape import IdShape
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
 PA_ID = IdShape(TableMaintenancePolicyAttachmentId)
-DA_ID = IdShape(TableDiscoveryPolicyAttachmentId)
 MAINTENANCE_CONTENT = MaintenancePolicyContent.platform_default().to_primitives()
 DISCOVERY_RULES = ({"action": "include", "table_name_pattern": "orders_*"},)
 ORDERS = ("prod", "sales", "eu", "orders")
@@ -96,9 +87,11 @@ class _World:
         self.maintenance_policies = InMemoryTableMaintenancePoliciesRepo()
         self.maintenance_attachments = InMemoryTableMaintenancePolicyAttachmentsRepo()
         self.discovery_policies = InMemoryTableDiscoveryPoliciesRepo()
-        self.discovery_attachments = InMemoryTableDiscoveryPolicyAttachmentsRepo()
         self.gateway = FakeReadTableMetadataGateway()
+        self.catalogs = InMemoryCatalogsRepo()
+        self.namespaces = InMemoryNamespacesRepo()
         self.tables = InMemoryTablesRepo()
+        self.placements = InMemoryPolicyPlacementsStore(self.catalogs, self.namespaces, self.tables)
         self.changes = RecordingSendTableChangeGateway()
         self.gateway.add_table("prod", "sales.eu", "orders", "u-1")
         EnsureDefaultTableMaintenancePolicyService(self.maintenance_policies, clock=lambda: NOW).execute(
@@ -116,7 +109,8 @@ class _World:
             self.maintenance_policies,
             self.maintenance_attachments,
             self.discovery_policies,
-            self.discovery_attachments,
+            self.catalogs,
+            self.namespaces,
             self.gateway,
             self.tables,
         )
@@ -144,19 +138,16 @@ class _World:
     def attach_discovery(self, policy: str, type_: str, path: tuple[str, ...]) -> None:
         AttachTableDiscoveryPolicyService(
             self.discovery_policies,
-            self.discovery_attachments,
+            self.catalogs,
+            self.namespaces,
+            self.tables,
             self.gateway,
             RecordingSendDiscoveryRequestGateway(),
-            RecordingSyncDiscoverySchedulesGateway(),
             clock=lambda: NOW,
         ).execute(AttachTableDiscoveryPolicyUseCaseInput(policy_name=policy, target_type=type_, path=path))
 
     def maintenance_attachment_id(self) -> str:
         (attachment,) = self.maintenance_attachments.list_all()
-        return attachment.id.value
-
-    def discovery_attachment_id(self) -> str:
-        (attachment,) = self.discovery_attachments.list_all()
         return attachment.id.value
 
     def by_uuid(self, table_uuid: str) -> GetEffectivePoliciesUseCaseOutput:
@@ -189,7 +180,7 @@ def test_a_table_with_nothing_attached_gets_the_maintenance_default_and_no_disco
     assert (maintenance.description, maintenance.dry_run) == ("Platform default", False)
     assert (maintenance.target, maintenance.attachment_id) == (None, None)
     assert discovery == GetEffectivePoliciesUseCaseOutput.DiscoveryEntry(
-        policy_id=None, policy_name=None, version=None, description=None, target=None, attachment_id=None
+        policy_id=None, policy_name=None, version=None, description=None, target=None
     )
 
 
@@ -211,8 +202,6 @@ def test_each_kind_takes_its_own_nearest_attachment(world: _World) -> None:
     assert out.discovery.policy_name == "sales-tables"
     assert (out.discovery.version, out.discovery.description) == (1, "Sales tables")
     assert out.discovery.target == {"type": "namespace", "path": ["prod", "sales"]}
-    assert out.discovery.attachment_id == world.discovery_attachment_id()
-    assert DA_ID.fullmatch(out.discovery.attachment_id or "")
 
 
 def test_the_version_is_the_policys_latest(world: _World) -> None:
@@ -230,9 +219,8 @@ def test_the_version_is_the_policys_latest(world: _World) -> None:
 
     UpdateTableDiscoveryPolicyService(
         world.discovery_policies,
-        world.discovery_attachments,
+        world.placements,
         RecordingSendDiscoveryRequestGateway(),
-        RecordingSyncDiscoverySchedulesGateway(),
         clock=lambda: NOW,
     ).execute(
         UpdateTableDiscoveryPolicyUseCaseInput(
@@ -250,18 +238,18 @@ def test_the_version_is_the_policys_latest(world: _World) -> None:
 
 
 def test_a_table_unknown_to_maintenance_is_answered_by_location(world: _World) -> None:
-    """A table not recorded is placed by the catalog; a table attachment made by uuid is found."""
+    """A table not recorded is placed by the catalog; a table attachment made by uuid is found.
+
+    Attaching a discovery policy to a table discovery has not seen records it undecided, holding the policy.
+    """
     world.attach_maintenance("gold", "table", ORDERS)
-    world.attach_discovery("sales-tables", "table", ORDERS)
     assert world.tables.list_all() == []
+    world.attach_discovery("sales-tables", "table", ORDERS)
 
     out = world.by_location("prod", "sales.eu", "orders")
 
     assert (out.maintenance.policy_name, out.maintenance.attachment_id) == ("gold", world.maintenance_attachment_id())
-    assert (out.discovery.policy_name, out.discovery.attachment_id) == (
-        "sales-tables",
-        world.discovery_attachment_id(),
-    )
+    assert out.discovery.policy_name == "sales-tables"
     assert (
         out.maintenance.target == out.discovery.target == {"type": "table", "path": list(ORDERS), "table_uuid": "u-1"}
     )

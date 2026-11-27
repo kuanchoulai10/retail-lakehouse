@@ -14,35 +14,31 @@ from context.table_maintenance.application.service.table_discovery_policy.table_
 )
 
 if TYPE_CHECKING:
+    from context.table_maintenance.application.port.outbound.shared import PolicyPlacementsStore
     from context.table_maintenance.application.port.outbound.table_discovery_policy import (
         TableDiscoveryPoliciesRepo,
-    )
-    from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
-        TableDiscoveryPolicyAttachmentsRepo,
     )
 
 
 class ListTableDiscoveryPoliciesService(ListTableDiscoveryPoliciesUseCase):
-    """List all discovery policies, each with how many targets it is attached to."""
+    """List all discovery policies, each with how many places it is attached to."""
 
-    def __init__(
-        self, policies_repo: TableDiscoveryPoliciesRepo, attachments_repo: TableDiscoveryPolicyAttachmentsRepo
-    ) -> None:
-        """Bind the repos."""
+    def __init__(self, policies_repo: TableDiscoveryPoliciesRepo, placements: PolicyPlacementsStore) -> None:
+        """Bind the policies and the placements."""
         self._policies_repo = policies_repo
-        self._attachments_repo = attachments_repo
+        self._placements = placements
 
     def execute(
         self,
         request: ListTableDiscoveryPoliciesUseCaseInput,  # noqa: ARG002
     ) -> ListTableDiscoveryPoliciesUseCaseOutput:
-        """Return every policy at its current version with its attachment count, by name."""
+        """Return every policy at its current version with the number of places it is attached to, by name."""
         policies = sorted(self._policies_repo.list_all(), key=lambda p: p.name.value)
         return ListTableDiscoveryPoliciesUseCaseOutput(
             items=tuple(
                 ListTableDiscoveryPoliciesUseCaseOutput.TableDiscoveryPolicy(
                     **table_discovery_policy_output_fields(p),
-                    attachment_count=len(self._attachments_repo.list_for_policy(p.id)),
+                    attachment_count=len(self._placements.discovery_placements(p.id)),
                 )
                 for p in policies
             )

@@ -72,6 +72,7 @@ from context.table_maintenance.application.domain.model.shared.platform_settings
     PlatformSettings,
 )
 from context.table_maintenance.application.domain.model.shared.policy_not_attached import PolicyNotAttached
+from context.table_maintenance.application.domain.model.shared.policy_placement import PolicyPlacement
 from context.table_maintenance.application.domain.model.shared.policy_target import (
     PolicyTarget,
 )
@@ -95,9 +96,6 @@ from context.table_maintenance.application.domain.model.shared.snapshot_retentio
 )
 from context.table_maintenance.application.domain.model.shared.spec_partitions import (
     SpecPartitions,
-)
-from context.table_maintenance.application.domain.model.shared.table_discovery_policy_attachment_id import (
-    TableDiscoveryPolicyAttachmentId,
 )
 from context.table_maintenance.application.domain.model.shared.table_discovery_policy_id import TableDiscoveryPolicyId
 from context.table_maintenance.application.domain.model.shared.table_id import TableId
@@ -145,6 +143,7 @@ __all__ = [
     "PlatformComputeSize",
     "PlatformSettings",
     "PolicyNotAttached",
+    "PolicyPlacement",
     "PolicyTarget",
     "PolicyTargetType",
     "PositiveDuration",
@@ -153,7 +152,6 @@ __all__ = [
     "SnapshotInfo",
     "SnapshotRetention",
     "SpecPartitions",
-    "TableDiscoveryPolicyAttachmentId",
     "TableDiscoveryPolicyId",
     "TableId",
     "TableMaintenancePolicyAttachmentId",

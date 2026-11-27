@@ -14,6 +14,18 @@ from context.table_maintenance.application.domain.service.shared.enclosing_polic
 from context.table_maintenance.application.domain.service.shared.nearest_attached import (
     nearest_attached,
 )
+from context.table_maintenance.application.domain.service.shared.nearest_discovery_policy import (
+    nearest_discovery_policy,
+)
+from context.table_maintenance.application.domain.service.shared.nearest_maintenance_policy import (
+    nearest_maintenance_policy,
+)
+from context.table_maintenance.application.domain.service.shared.nearest_policy import (
+    NearestPolicy,
+)
+from context.table_maintenance.application.domain.service.shared.policy_holders_nearest_first import (
+    policy_holders_nearest_first,
+)
 from context.table_maintenance.application.domain.service.shared.positive_int_property import (
     positive_int_property,
 )
@@ -28,9 +40,13 @@ from context.table_maintenance.application.domain.service.shared.resolve_target_
 __all__ = [
     "DEFAULT_ORPHAN_OLDER_THAN",
     "TARGET_FILE_SIZE_PROPERTY",
+    "NearestPolicy",
     "candidate_policy_targets",
     "enclosing_policy_targets",
     "nearest_attached",
+    "nearest_discovery_policy",
+    "nearest_maintenance_policy",
+    "policy_holders_nearest_first",
     "positive_int_property",
     "resolve_snapshot_retention",
     "resolve_target_file_size",

@@ -51,9 +51,12 @@ from context.table_maintenance.application.service.table.registration_outcome im
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from context.table_maintenance.application.port.outbound.catalog import CatalogsRepo
     from context.table_maintenance.application.port.outbound.catalog_discovery import (
         CatalogDiscoveriesRepo,
     )
+    from context.table_maintenance.application.port.outbound.namespace import NamespacesRepo
+    from context.table_maintenance.application.port.outbound.shared import PolicyPlacementsStore
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
         SendTableChangeGateway,
@@ -63,9 +66,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_discovery_policy import (
         TableDiscoveryPoliciesRepo,
     )
-    from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
-        TableDiscoveryPolicyAttachmentsRepo,
-    )
     from context.table_maintenance.application.service.table.known_table_outcome import (
         KnownTableOutcome,
     )
@@ -73,6 +73,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _DROP_SCAN_STATUSES = (TableStatus.MANAGED, TableStatus.UNMANAGED, TableStatus.UNDECIDED)
+_RETIRED_STATUSES = (TableStatus.MANAGED, TableStatus.UNDECIDED)
 
 
 class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
@@ -82,17 +83,21 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         self,
         tables_repo: TablesRepo,
         discovery_policies_repo: TableDiscoveryPoliciesRepo,
-        discovery_attachments_repo: TableDiscoveryPolicyAttachmentsRepo,
+        catalogs_repo: CatalogsRepo,
+        namespaces_repo: NamespacesRepo,
+        placements: PolicyPlacementsStore,
         discoveries_repo: CatalogDiscoveriesRepo,
         catalog_gateway: ReadTableMetadataGateway,
         table_change_gateway: SendTableChangeGateway,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
-        """Bind the repos, the gateways and the clock."""
+        """Bind the repos, the placements, the gateways and the clock."""
         self._tables_repo = tables_repo
         self._discovery_policies_repo = discovery_policies_repo
-        self._discovery_attachments_repo = discovery_attachments_repo
+        self._catalogs_repo = catalogs_repo
+        self._namespaces_repo = namespaces_repo
+        self._placements = placements
         self._discoveries_repo = discoveries_repo
         self._catalog_gateway = catalog_gateway
         self._table_change_gateway = table_change_gateway
@@ -101,12 +106,13 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
     def execute(self, request: SyncDiscoveredTablesUseCaseInput) -> SyncDiscoveredTablesUseCaseOutput:
         """Register, rename, decide and drop tables within the catalog or namespace scope.
 
-        Every table listed is decided by its nearest discovery policy (docs/adr/0012), from
-        the catalog's attachments read once for the whole scan: an unknown one is registered,
-        as managed or unmanaged as the decision says, a known one is managed or unmanaged as
-        it now says (counted in ``managed`` / ``unmanaged``), and each records the policy,
-        version and rule position that decided it; with nothing attached it is not managed and
-        nothing decided it. Only a
+        Every table listed is decided by its nearest discovery policy (docs/adr/0012): the one
+        it holds itself, else its namespaces' and its catalog's, read once for the whole scan. An
+        unknown one is registered, as managed or unmanaged as the decision says, a known one
+        (an undecided one included) is managed or unmanaged as it now says (counted in
+        ``managed`` / ``unmanaged``; an undecided table that ends up unmanaged is saved and counted
+        in neither), and each records the policy, version and rule position that decided it;
+        with no policy on its walk it is not managed and nothing decided it. Only a
         catalog-wide sync (no namespace) marks missing tables dropped, since a namespace scan
         cannot tell a drop from a move, and a table it does not list is never decided. A table that fails is counted in
         ``skipped``, a table another writer saved while the scan decided or dropped it included (logged and left as
@@ -132,17 +138,22 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         and that scan drops no table, since a table that cannot be read must never read
         as dropped.
 
-        A catalog-wide scan of a catalog where no table can end up managed (nothing is attached in it,
-        or every attached policy only excludes) also unmanages, from its stored row, each managed table
-        it could not read: all of them when the catalog cannot be read, the ones it could not load
-        otherwise (the drop pass handles the rest).
+        A catalog-wide scan of a catalog where no table can end up managed (no policy is attached in it,
+        or every attached policy only excludes) also decides, from its stored row, each managed or
+        undecided table it could not read: all of them when the catalog cannot be read, the ones it
+        could not load otherwise (the drop pass handles the rest). A managed one is unmanaged.
         Each is sent ``stopped`` and records what decided it (the excluding policy, or nothing). Every
         table there is not managed, so no catalog read is needed, and no table is left managed under no
         policy that could include it.
         """
         now = self._clock()
         decider = DiscoveryDecider.for_catalog(
-            request.catalog, self._discovery_attachments_repo, self._discovery_policies_repo
+            request.catalog,
+            self._catalogs_repo,
+            self._namespaces_repo,
+            self._discovery_policies_repo,
+            self._placements,
+            self._tables_repo,
         )
         seen_change = TableChange.SEEN if request.namespace is None else None
         retires = request.namespace is None and not decider.can_include_any()
@@ -223,7 +234,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         if existing is not None and existing.status == TableStatus.DROPPED:
             return None
         name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
-        decision = decider.decide(name, found.table_uuid)
+        decision = decider.decide(name, existing)
         if existing is None:
             return register_discovered_table(found, decision, self._tables_repo, self._table_change_gateway, now)
         return apply_discovery_to_known_table(
@@ -240,14 +251,15 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
     def _unmanage_stored(
         self, catalog: str, decider: DiscoveryDecider, now: datetime, *, seen: set[str]
     ) -> tuple[int, int]:
-        """Unmanage the catalog's stored managed tables not in ``seen``, by stored name; return (unmanaged, skipped).
+        """Decide the catalog's stored managed and undecided tables not in ``seen``; return (unmanaged, skipped).
 
         Only for a catalog where no attached policy can include, so every table is not managed: no
-        catalog read is needed, so even a catalog the credential cannot read, or that is gone, has its managed
-        tables unmanaged and each sent ``stopped``. A table the scan read was decided already.
+        catalog read is needed, so even a catalog the credential cannot read, or that is gone, has its
+        managed tables unmanaged and each sent ``stopped``, and its undecided tables unmanaged and saved.
+        Each is decided by its stored name. A table the scan read was decided already.
         """
         unmanaged = skipped = 0
-        for table in self._tables_repo.list_by_statuses((TableStatus.MANAGED,)):
+        for table in self._tables_repo.list_by_statuses(_RETIRED_STATUSES):
             if table.name.catalog != catalog or table.id.value in seen:
                 continue
             try:
@@ -255,7 +267,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
                     outcome = apply_discovery_to_known_table(
                         table,
                         table.name,
-                        decider.decide(table.name, table.id.value),
+                        decider.decide(table.name, table),
                         self._tables_repo,
                         self._table_change_gateway,
                         None,

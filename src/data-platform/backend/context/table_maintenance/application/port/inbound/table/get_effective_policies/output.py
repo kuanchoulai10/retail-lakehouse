@@ -8,12 +8,13 @@ from base import UseCaseOutput
 
 
 class GetEffectivePoliciesUseCaseOutput(UseCaseOutput):
-    """Carry the policy of each kind that applies, the level it applies from and the attachment it comes through.
+    """Carry the policy of each kind that applies and the level it applies from.
 
     ``version`` is the policy's latest version, since an attachment always means it. ``target`` is
-    ``{"type", "path", ["table_uuid"]}`` of the nearest attachment, and ``attachment_id`` its ``pa-`` or
-    ``da-`` id; both are None when nothing is attached. Then maintenance falls back to its platform
-    default, while discovery has none: no discovery policy applies and every discovery field is None.
+    ``{"type", "path", ["table_uuid"]}`` of the nearest place holding a policy of the kind, and the
+    maintenance ``attachment_id`` is its ``pa-`` id; they are None when nothing is attached. Then
+    maintenance falls back to its platform default, while discovery has none: no discovery policy
+    applies and every discovery field is None.
     """
 
     class MaintenanceEntry(UseCaseOutput):
@@ -35,7 +36,6 @@ class GetEffectivePoliciesUseCaseOutput(UseCaseOutput):
         version: int | None
         description: str | None
         target: dict[str, Any] | None
-        attachment_id: str | None
 
     maintenance: MaintenanceEntry
     discovery: DiscoveryEntry

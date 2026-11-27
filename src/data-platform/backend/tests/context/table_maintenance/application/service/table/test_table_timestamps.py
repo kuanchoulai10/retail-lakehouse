@@ -6,16 +6,14 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from context.table_maintenance.application.domain.model.catalog import Catalog
 from context.table_maintenance.application.domain.model.catalog_discovery import (
     CatalogDiscovery,
     CatalogScanFailure,
     CatalogScanFailureReason,
 )
-from context.table_maintenance.application.domain.model.shared import CatalogDiscoveryId, TableId
+from context.table_maintenance.application.domain.model.shared import CatalogDiscoveryId, CatalogId, TableId
 from context.table_maintenance.application.domain.model.table import Table, TableName
-from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
-    TableDiscoveryPolicyAttachment,
-)
 from context.table_maintenance.application.port.inbound.table import (
     GetTableUseCaseInput,
     ListTablesUseCaseInput,
@@ -30,10 +28,9 @@ from context.table_maintenance.application.service.table import (
     ProcessTableHintService,
     SyncDiscoveredTablesService,
 )
-from tests.context.table_maintenance.application.domain.service.table_discovery_policy_attachment.discovery_policy_samples import (  # noqa: E501
+from tests.context.table_maintenance.application.domain.service.table_discovery_policy.discovery_policy_samples import (  # noqa: E501
     MANAGE_ALL,
     NOW,
-    catalog_target,
 )
 from tests.context.table_maintenance.fakes.plan_service_on_fakes import plan_service_on_fakes
 from tests.context.table_maintenance.fakes.track_calls import track_calls
@@ -44,9 +41,11 @@ NEWER_COMMIT = COMMIT + timedelta(minutes=5)
 NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 
 
-def _manage_all_in_catalog(discovery_policies, discovery_attachments):
+def _manage_all_in_catalog(discovery_policies, catalogs_repo):
     discovery_policies.create(MANAGE_ALL)
-    discovery_attachments.create(TableDiscoveryPolicyAttachment.attach(catalog_target("iceberg"), MANAGE_ALL.id, NOW))
+    catalog = Catalog.register(CatalogId("iceberg"), NOW)
+    catalog.attach_discovery_policy(MANAGE_ALL.id, NOW)
+    catalogs_repo.create(catalog)
 
 
 def _row(repo, at, uuid="u-1", name=NAME):
@@ -56,18 +55,45 @@ def _row(repo, at, uuid="u-1", name=NAME):
 
 
 @pytest.fixture
-def sync(tables_repo, discovery_policies, discovery_attachments, discoveries_repo, catalog, signals, clock):
+def sync(  # noqa: PLR0913
+    tables_repo,
+    discovery_policies,
+    catalogs_repo,
+    namespaces_repo,
+    placements,
+    discoveries_repo,
+    catalog,
+    signals,
+    clock,
+):
     """Provide the sync discovered tables service on the fakes."""
     return SyncDiscoveredTablesService(
-        tables_repo, discovery_policies, discovery_attachments, discoveries_repo, catalog, signals, clock=clock
+        tables_repo,
+        discovery_policies,
+        catalogs_repo,
+        namespaces_repo,
+        placements,
+        discoveries_repo,
+        catalog,
+        signals,
+        clock=clock,
     )
 
 
 @pytest.fixture
-def hint(tables_repo, discovery_policies, discovery_attachments, catalog, signals, discovery_requests, clock):
+def hint(  # noqa: PLR0913
+    tables_repo, discovery_policies, catalogs_repo, namespaces_repo, catalog, signals, discovery_requests, clock
+):
     """Provide the process table hint service on the fakes."""
     return ProcessTableHintService(
-        tables_repo, discovery_policies, discovery_attachments, catalog, signals, discovery_requests, clock=clock
+        tables_repo,
+        discovery_policies,
+        catalogs_repo,
+        namespaces_repo,
+        catalog,
+        signals,
+        discovery_requests,
+        clock=clock,
     )
 
 
@@ -107,10 +133,10 @@ def test_a_failed_sync_records_its_failure_and_no_scan_time(sync, discoveries_re
 
 
 def test_a_sync_does_not_save_tables_only_because_it_saw_them(
-    sync, tables_repo, discovery_policies, discovery_attachments, catalog, log, now
+    sync, tables_repo, discovery_policies, catalogs_repo, catalog, log, now
 ):
     """Seeing an unchanged table writes nothing for it: its catalog's discovery stands for it."""
-    _manage_all_in_catalog(discovery_policies, discovery_attachments)
+    _manage_all_in_catalog(discovery_policies, catalogs_repo)
     _row(tables_repo, EARLIER)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
@@ -145,10 +171,10 @@ def test_a_sync_registers_a_table_never_committed_to_without_a_last_commit(sync,
 
 
 def test_a_sync_saves_a_newer_commit_of_a_known_table(
-    sync, tables_repo, discovery_policies, discovery_attachments, catalog, log, now
+    sync, tables_repo, discovery_policies, catalogs_repo, catalog, log, now
 ):
     """A known table whose only change is a newer commit writes just its last commit, once."""
-    _manage_all_in_catalog(discovery_policies, discovery_attachments)
+    _manage_all_in_catalog(discovery_policies, catalogs_repo)
     _row(tables_repo, EARLIER).record_last_commit(COMMIT)
     catalog.add_table("iceberg", "sales", "orders", "u-1", last_committed_at=NEWER_COMMIT.isoformat())
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
@@ -159,10 +185,10 @@ def test_a_sync_saves_a_newer_commit_of_a_known_table(
 
 
 def test_a_rename_with_a_newer_commit_is_one_full_update(
-    sync, tables_repo, discovery_policies, discovery_attachments, catalog, log, now
+    sync, tables_repo, discovery_policies, catalogs_repo, catalog, log, now
 ):
     """When the table changed too, the newer commit rides along in the one full update."""
-    _manage_all_in_catalog(discovery_policies, discovery_attachments)
+    _manage_all_in_catalog(discovery_policies, catalogs_repo)
     _row(tables_repo, EARLIER).record_last_commit(COMMIT)
     catalog.add_table("iceberg", "sales", "renamed", "u-1", last_committed_at=NEWER_COMMIT.isoformat())
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
@@ -172,11 +198,9 @@ def test_a_rename_with_a_newer_commit_is_one_full_update(
     assert tables_repo.get(TableId("u-1")).last_committed_at == NEWER_COMMIT
 
 
-def test_a_sync_never_moves_a_last_commit_back(
-    sync, tables_repo, discovery_policies, discovery_attachments, catalog, log, now
-):
+def test_a_sync_never_moves_a_last_commit_back(sync, tables_repo, discovery_policies, catalogs_repo, catalog, log, now):
     """An older commit time read from the catalog changes and saves nothing."""
-    _manage_all_in_catalog(discovery_policies, discovery_attachments)
+    _manage_all_in_catalog(discovery_policies, catalogs_repo)
     _row(tables_repo, EARLIER).record_last_commit(NEWER_COMMIT)
     catalog.add_table("iceberg", "sales", "orders", "u-1", last_committed_at=COMMIT.isoformat())
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
@@ -187,10 +211,10 @@ def test_a_sync_never_moves_a_last_commit_back(
 
 
 def test_a_catalog_event_saves_the_newer_commit_of_a_known_table(
-    hint, tables_repo, discovery_policies, discovery_attachments, catalog, now
+    hint, tables_repo, discovery_policies, catalogs_repo, catalog, now
 ):
     """A table update event reads the table from the catalog and saves its newest commit."""
-    _manage_all_in_catalog(discovery_policies, discovery_attachments)
+    _manage_all_in_catalog(discovery_policies, catalogs_repo)
     _row(tables_repo, EARLIER).record_last_commit(COMMIT)
     catalog.add_table("iceberg", "sales", "orders", "u-1", last_committed_at=NEWER_COMMIT.isoformat())
     hint.execute(

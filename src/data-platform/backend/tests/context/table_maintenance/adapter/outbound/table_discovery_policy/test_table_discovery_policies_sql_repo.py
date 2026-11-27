@@ -9,19 +9,14 @@ import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.pool import StaticPool
 
+from context.table_maintenance.adapter.outbound.catalog.sql import CatalogsSqlRepo
 from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from context.table_maintenance.adapter.outbound.table_discovery_policy.sql import (
     TableDiscoveryPoliciesSqlRepo,
     table_discovery_policy_versions_table,
 )
-from context.table_maintenance.adapter.outbound.table_discovery_policy_attachment.sql import (
-    TableDiscoveryPolicyAttachmentsSqlRepo,
-)
-from context.table_maintenance.application.domain.model.shared import (
-    PolicyTarget,
-    PolicyTargetType,
-    TableDiscoveryPolicyId,
-)
+from context.table_maintenance.application.domain.model.catalog import Catalog
+from context.table_maintenance.application.domain.model.shared import CatalogId, TableDiscoveryPolicyId
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
     DiscoveryRule,
     DiscoveryRules,
@@ -31,25 +26,21 @@ from context.table_maintenance.application.domain.model.table_discovery_policy i
     TableDiscoveryPolicyName,
     TableNamePattern,
 )
-from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
-    TableDiscoveryPolicyAttachment,
-)
 from context.table_maintenance.application.exceptions import ConflictError
+from tests.context.table_maintenance.fakes.in_memory_catalogs_repo import InMemoryCatalogsRepo
+from tests.context.table_maintenance.fakes.in_memory_namespaces_repo import InMemoryNamespacesRepo
+from tests.context.table_maintenance.fakes.in_memory_policy_placements_store import InMemoryPolicyPlacementsStore
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_repo import (
     InMemoryTableDiscoveryPoliciesRepo,
 )
-from tests.context.table_maintenance.fakes.in_memory_table_discovery_policy_attachments_repo import (
-    InMemoryTableDiscoveryPolicyAttachmentsRepo,
-)
+from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
+    from context.table_maintenance.application.port.outbound.catalog import CatalogsRepo
     from context.table_maintenance.application.port.outbound.table_discovery_policy import (
         TableDiscoveryPoliciesRepo,
-    )
-    from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
-        TableDiscoveryPolicyAttachmentsRepo,
     )
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
@@ -84,13 +75,14 @@ def repo(request: pytest.FixtureRequest, engine: Engine) -> TableDiscoveryPolici
 
 
 @pytest.fixture(params=["sql", "memory"])
-def repos(request: pytest.FixtureRequest) -> tuple[TableDiscoveryPoliciesRepo, TableDiscoveryPolicyAttachmentsRepo]:
-    """Provide a policies and an attachments repository that share storage, so an attachment pins its policy."""
+def repos(request: pytest.FixtureRequest) -> tuple[TableDiscoveryPoliciesRepo, CatalogsRepo]:
+    """Provide a policies and a catalogs repository that share storage, so a catalog holding a policy pins it."""
     if request.param == "sql":
         engine = _engine_enforcing_foreign_keys()
-        return TableDiscoveryPoliciesSqlRepo(engine), TableDiscoveryPolicyAttachmentsSqlRepo(engine)
-    attachments = InMemoryTableDiscoveryPolicyAttachmentsRepo()
-    return InMemoryTableDiscoveryPoliciesRepo(attachments=attachments), attachments
+        return TableDiscoveryPoliciesSqlRepo(engine), CatalogsSqlRepo(engine)
+    catalogs = InMemoryCatalogsRepo()
+    placements = InMemoryPolicyPlacementsStore(catalogs, InMemoryNamespacesRepo(), InMemoryTablesRepo())
+    return InMemoryTableDiscoveryPoliciesRepo(placements=placements), catalogs
 
 
 def _policy(name: str = "sales", rules: DiscoveryRules = SALES_ORDERS) -> TableDiscoveryPolicy:
@@ -220,14 +212,15 @@ def test_delete_removes_the_versions_too(repo: TableDiscoveryPoliciesRepo):
 
 
 def test_delete_while_attached_conflicts(
-    repos: tuple[TableDiscoveryPoliciesRepo, TableDiscoveryPolicyAttachmentsRepo],
+    repos: tuple[TableDiscoveryPoliciesRepo, CatalogsRepo],
 ):
-    """A policy attached anywhere is not deleted: ConflictError, and the policy and its version stay."""
-    policies, attachments = repos
+    """A policy a catalog holds is not deleted: ConflictError, and the policy and its version stay."""
+    policies, catalogs = repos
     policy = _policy()
     policies.create(policy)
-    target = PolicyTarget(type=PolicyTargetType.CATALOG, path=("prod",))
-    attachments.create(TableDiscoveryPolicyAttachment.attach(target, policy.id, NOW))
+    catalog = Catalog.register(CatalogId("prod"), NOW)
+    catalog.attach_discovery_policy(policy.id, NOW)
+    catalogs.create(catalog)
 
     with pytest.raises(ConflictError):
         policies.delete(policy.id)

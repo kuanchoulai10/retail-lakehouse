@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
+from context.table_maintenance.application.port.outbound.table_discovery_policy import (
     SyncDiscoverySchedulesGateway,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
+    from context.table_maintenance.application.port.outbound.table_discovery_policy import (
         SyncDiscoverySchedulesGatewayInput,
     )
 

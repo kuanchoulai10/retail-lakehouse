@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.port.inbound.table_discovery_policy.attach_table_discovery_policy import (  # noqa: E501
+    AttachTableDiscoveryPolicyUseCase,
+    AttachTableDiscoveryPolicyUseCaseInput,
+    AttachTableDiscoveryPolicyUseCaseOutput,
+)
 from context.table_maintenance.application.port.inbound.table_discovery_policy.create_table_discovery_policy import (  # noqa: E501
     CreateTableDiscoveryPolicyUseCase,
     CreateTableDiscoveryPolicyUseCaseInput,
@@ -11,6 +16,11 @@ from context.table_maintenance.application.port.inbound.table_discovery_policy.d
     DeleteTableDiscoveryPolicyUseCase,
     DeleteTableDiscoveryPolicyUseCaseInput,
     DeleteTableDiscoveryPolicyUseCaseOutput,
+)
+from context.table_maintenance.application.port.inbound.table_discovery_policy.detach_table_discovery_policy import (  # noqa: E501
+    DetachTableDiscoveryPolicyUseCase,
+    DetachTableDiscoveryPolicyUseCaseInput,
+    DetachTableDiscoveryPolicyUseCaseOutput,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_policy.get_table_discovery_policy import (  # noqa: E501
     GetTableDiscoveryPolicyUseCase,
@@ -27,6 +37,16 @@ from context.table_maintenance.application.port.inbound.table_discovery_policy.l
     ListTableDiscoveryPoliciesUseCaseInput,
     ListTableDiscoveryPoliciesUseCaseOutput,
 )
+from context.table_maintenance.application.port.inbound.table_discovery_policy.list_table_discovery_policy_attachments import (  # noqa: E501
+    ListTableDiscoveryPolicyAttachmentsUseCase,
+    ListTableDiscoveryPolicyAttachmentsUseCaseInput,
+    ListTableDiscoveryPolicyAttachmentsUseCaseOutput,
+)
+from context.table_maintenance.application.port.inbound.table_discovery_policy.sync_discovery_schedules import (  # noqa: E501
+    SyncDiscoverySchedulesUseCase,
+    SyncDiscoverySchedulesUseCaseInput,
+    SyncDiscoverySchedulesUseCaseOutput,
+)
 from context.table_maintenance.application.port.inbound.table_discovery_policy.update_table_discovery_policy import (  # noqa: E501
     UpdateTableDiscoveryPolicyUseCase,
     UpdateTableDiscoveryPolicyUseCaseInput,
@@ -34,12 +54,18 @@ from context.table_maintenance.application.port.inbound.table_discovery_policy.u
 )
 
 __all__ = [
+    "AttachTableDiscoveryPolicyUseCase",
+    "AttachTableDiscoveryPolicyUseCaseInput",
+    "AttachTableDiscoveryPolicyUseCaseOutput",
     "CreateTableDiscoveryPolicyUseCase",
     "CreateTableDiscoveryPolicyUseCaseInput",
     "CreateTableDiscoveryPolicyUseCaseOutput",
     "DeleteTableDiscoveryPolicyUseCase",
     "DeleteTableDiscoveryPolicyUseCaseInput",
     "DeleteTableDiscoveryPolicyUseCaseOutput",
+    "DetachTableDiscoveryPolicyUseCase",
+    "DetachTableDiscoveryPolicyUseCaseInput",
+    "DetachTableDiscoveryPolicyUseCaseOutput",
     "GetTableDiscoveryPolicyUseCase",
     "GetTableDiscoveryPolicyUseCaseInput",
     "GetTableDiscoveryPolicyUseCaseOutput",
@@ -49,6 +75,12 @@ __all__ = [
     "ListTableDiscoveryPoliciesUseCase",
     "ListTableDiscoveryPoliciesUseCaseInput",
     "ListTableDiscoveryPoliciesUseCaseOutput",
+    "ListTableDiscoveryPolicyAttachmentsUseCase",
+    "ListTableDiscoveryPolicyAttachmentsUseCaseInput",
+    "ListTableDiscoveryPolicyAttachmentsUseCaseOutput",
+    "SyncDiscoverySchedulesUseCase",
+    "SyncDiscoverySchedulesUseCaseInput",
+    "SyncDiscoverySchedulesUseCaseOutput",
     "UpdateTableDiscoveryPolicyUseCase",
     "UpdateTableDiscoveryPolicyUseCaseInput",
     "UpdateTableDiscoveryPolicyUseCaseOutput",

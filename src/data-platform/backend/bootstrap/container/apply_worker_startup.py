@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.adapter.hybrid.temporal.inbound import (
     require_table_search_attributes,
 )
-from context.table_maintenance.application.port.inbound.table_discovery_policy_attachment import (
+from context.table_maintenance.application.port.inbound.table_discovery_policy import (
     SyncDiscoverySchedulesUseCaseInput,
 )
 

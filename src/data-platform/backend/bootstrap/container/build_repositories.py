@@ -10,12 +10,10 @@ from context.table_maintenance.adapter.outbound.catalog_discovery.sql import (
     CatalogDiscoveriesSqlRepo,
 )
 from context.table_maintenance.adapter.outbound.namespace.sql import NamespacesSqlRepo
+from context.table_maintenance.adapter.outbound.shared.sql import PolicyPlacementsSqlStore
 from context.table_maintenance.adapter.outbound.table.sql import TableMetricsSqlStore, TablesSqlRepo
 from context.table_maintenance.adapter.outbound.table_discovery_policy.sql import (
     TableDiscoveryPoliciesSqlRepo,
-)
-from context.table_maintenance.adapter.outbound.table_discovery_policy_attachment.sql import (
-    TableDiscoveryPolicyAttachmentsSqlRepo,
 )
 from context.table_maintenance.adapter.outbound.table_maintenance_policy.sql import (
     TableMaintenancePoliciesSqlRepo,
@@ -38,7 +36,6 @@ def build_repositories(engine: Engine) -> Repositories:
     """Build the SQL repositories on one engine."""
     return Repositories(
         table_discovery_policies=TableDiscoveryPoliciesSqlRepo(engine),
-        table_discovery_policy_attachments=TableDiscoveryPolicyAttachmentsSqlRepo(engine),
         table_maintenance_runs=TableMaintenanceRunsSqlRepo(engine),
         tables=TablesSqlRepo(engine),
         table_maintenance_policies=TableMaintenancePoliciesSqlRepo(engine),
@@ -48,4 +45,5 @@ def build_repositories(engine: Engine) -> Repositories:
         catalogs=CatalogsSqlRepo(engine),
         namespaces=NamespacesSqlRepo(engine),
         table_metrics=TableMetricsSqlStore(engine),
+        policy_placements=PolicyPlacementsSqlStore(engine),
     )

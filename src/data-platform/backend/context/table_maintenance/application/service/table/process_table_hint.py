@@ -40,6 +40,8 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table_discovery_policy import (
         ManagementDecision,
     )
+    from context.table_maintenance.application.port.outbound.catalog import CatalogsRepo
+    from context.table_maintenance.application.port.outbound.namespace import NamespacesRepo
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
         SendDiscoveryRequestGateway,
@@ -50,9 +52,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_discovery_policy import (
         TableDiscoveryPoliciesRepo,
     )
-    from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
-        TableDiscoveryPolicyAttachmentsRepo,
-    )
 
 
 class ProcessTableHintService(ProcessTableHintUseCase):
@@ -62,7 +61,8 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         self,
         tables_repo: TablesRepo,
         discovery_policies_repo: TableDiscoveryPoliciesRepo,
-        discovery_attachments_repo: TableDiscoveryPolicyAttachmentsRepo,
+        catalogs_repo: CatalogsRepo,
+        namespaces_repo: NamespacesRepo,
         catalog_gateway: ReadTableMetadataGateway,
         table_change_gateway: SendTableChangeGateway,
         discovery_request_gateway: SendDiscoveryRequestGateway,
@@ -72,7 +72,8 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         """Bind the repos, the gateways and the clock."""
         self._tables_repo = tables_repo
         self._discovery_policies_repo = discovery_policies_repo
-        self._discovery_attachments_repo = discovery_attachments_repo
+        self._catalogs_repo = catalogs_repo
+        self._namespaces_repo = namespaces_repo
         self._catalog_gateway = catalog_gateway
         self._table_change_gateway = table_change_gateway
         self._discovery_request_gateway = discovery_request_gateway
@@ -83,8 +84,8 @@ class ProcessTableHintService(ProcessTableHintUseCase):
 
         A hint naming one table applies the same steps as a discovery pass to that
         table: an unknown one is registered (managed or unmanaged), a known one is
-        renamed and decided again, by its nearest discovery policy, read from the attachments
-        on that one table's walk. A table nothing on its walk is attached to is registered
+        renamed and decided again, by its nearest discovery policy: the one it holds, else the
+        one its namespaces or its catalog hold. A table with no policy on its walk is registered
         unmanaged, with nothing deciding it, and sent nothing. A table that ends up newly managed is
         notified ``managed``, and one already managed ``updated``; one whose only change is what
         decided it (``DECISION_CHANGED``) is saved and sent nothing new.
@@ -118,8 +119,8 @@ class ProcessTableHintService(ProcessTableHintUseCase):
             return TableHintAction.IGNORED
         name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
         decision = DiscoveryDecider.for_table(
-            name, found.table_uuid, self._discovery_attachments_repo, self._discovery_policies_repo
-        ).decide(name, found.table_uuid)
+            name, self._catalogs_repo, self._namespaces_repo, self._discovery_policies_repo
+        ).decide(name, table)
         if table is None:
             return self._register(found, name, decision, now)
         outcome = apply_discovery_to_known_table(

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
         SendDiscoveryRequestGateway,
         SendTableChangeGateway,
     )
-    from context.table_maintenance.application.port.outbound.table_discovery_policy_attachment import (
+    from context.table_maintenance.application.port.outbound.table_discovery_policy import (
         SyncDiscoverySchedulesGateway,
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
