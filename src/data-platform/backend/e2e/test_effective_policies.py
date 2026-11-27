@@ -1,7 +1,7 @@
-"""What applies at a place in the catalog: the nearest attachment of each kind, or the platform default.
+"""What applies at a place in the catalog: the nearest attachment of each kind, or the defaults that exist.
 
 The tables live in a catalog of the module's own and are never managed: the discovery policy has only
-an ``unmanage`` rule, so nothing scans them and the answers come from attachments alone.
+an ``exclude`` rule, so nothing is managed and the answers come from attachments alone.
 """
 
 from __future__ import annotations
@@ -85,13 +85,7 @@ def test_the_nearest_attachment_of_each_kind_applies_and_detaching_falls_back(
         {
             "name": discovery,
             "description": "e2e: never manages",
-            "no_match_outcome": "unmanage",
-            "rules": [
-                {
-                    "outcome": "unmanage",
-                    "conditions": [{"attribute": "table_name", "operator": "glob", "values": ["*"]}],
-                }
-            ],
+            "rules": [{"action": "exclude", "table_name_pattern": "*"}],
         },
     )
     cleanup.push(f"delete {discovery}", lambda: _delete_if_present(api, f"{DISCOVERY}/{discovery}"))
@@ -112,11 +106,12 @@ def test_the_nearest_attachment_of_each_kind_applies_and_detaching_falls_back(
         namespace_attachment,
     )
     for answer in (found, sibling_found):
-        assert (answer["policy_name"], answer["no_match_outcome"], answer["attachment_id"]) == (
+        assert (answer["policy_name"], answer["version"], answer["attachment_id"]) == (
             discovery,
-            "unmanage",
+            1,
             discovery_attachment,
         )
+        assert_prefixed_ids({"dp": [answer["policy_id"]]})
         assert answer["target"] == {"type": "namespace", "path": [catalog, namespace], "table_uuid": None}
 
     wrong_policy = api.delete(f"{MAINTENANCE}/{on_table}/attachments/{namespace_attachment}")
@@ -130,16 +125,29 @@ def test_the_nearest_attachment_of_each_kind_applies_and_detaching_falls_back(
     assert again == namespace_attachment
 
 
-def test_a_place_with_nothing_attached_gets_both_platform_defaults(
+def test_a_place_with_nothing_attached_gets_the_maintenance_default_and_no_discovery_policy(
     platform: PlatformApi, owned_catalog: OwnedCatalog, suffix: str, cleanup: CleanupStack
 ):
-    """The catalog and a nested namespace (dot-joined) fall back to the defaults, with no target and no attachment."""
+    """The catalog and a nested namespace (dot-joined) get the maintenance default and no discovery policy at all."""
     parent = OwnedNames.namespace(suffix, "defaults")
     _namespace(owned_catalog, cleanup, (parent,))
     _namespace(owned_catalog, cleanup, (parent, "child"))
     for place in ({}, {"namespace": f"{parent}.child"}):
-        for answer in _effective(platform, owned_catalog.name, **place):
-            assert (answer["policy_name"], answer["target"], answer["attachment_id"]) == ("default", None, None), place
+        maintenance, discovery = _effective(platform, owned_catalog.name, **place)
+        assert (maintenance["policy_name"], maintenance["target"], maintenance["attachment_id"]) == (
+            "default",
+            None,
+            None,
+        ), place
+        assert discovery == {
+            "kind": "discovery",
+            "policy_id": None,
+            "policy_name": None,
+            "version": None,
+            "description": None,
+            "target": None,
+            "attachment_id": None,
+        }, place
 
 
 def test_a_place_the_catalog_does_not_hold_is_not_found(

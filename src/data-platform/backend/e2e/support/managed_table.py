@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from e2e.support.temporal_session import TemporalSession
 
 DISCOVERY_TIMEOUT_SECONDS = 900
-MANAGE_E2E_TABLES = {"attribute": "table_name", "operator": "glob", "values": ["tm_e2e_*"]}
+INCLUDE_E2E_TABLES = {"action": "include", "table_name_pattern": "tm_e2e_*"}
 
 
 @dataclass(frozen=True)
@@ -101,20 +101,13 @@ class ManagedTable:
             {
                 "name": discovery_policy,
                 "description": f"e2e: manage the tm_e2e_* tables of {namespace}",
-                "no_match_outcome": "unmanage",
-                "rules": [
-                    {
-                        "outcome": "manage",
-                        "conditions": [MANAGE_E2E_TABLES],
-                    }
-                ],
+                "rules": [INCLUDE_E2E_TABLES],
             },
         )
         cleanup.push(
             f"delete {discovery_policy}", lambda: platform.call("DELETE", f"/v1/discovery-policies/{discovery_policy}")
         )
-        rules = [(rule["outcome"], rule["conditions"]) for rule in discovery["rules"]]
-        assert rules == [("manage", [MANAGE_E2E_TABLES])], f"{discovery_policy} holds {rules}"
+        assert discovery["rules"] == [INCLUDE_E2E_TABLES], f"{discovery_policy} holds {discovery['rules']}"
         discovery_attachment_id = platform.attach(
             "discovery-policies", discovery_policy, {"type": "namespace", "path": [catalog, namespace]}
         )

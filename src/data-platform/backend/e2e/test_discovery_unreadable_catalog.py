@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.full
 
 POLICIES = "/v1/discovery-policies"
-NEVER = {"outcome": "manage", "conditions": [{"attribute": "table_name", "operator": "glob", "values": ["never_*"]}]}
+NEVER = {"action": "include", "table_name_pattern": "never_*"}
 SCAN_SECONDS = 90
 
 
@@ -43,9 +43,7 @@ def _make_unreadable(owned: OwnedCatalog, polaris: PolarisClient, cleanup: Clean
 
 
 def _policy(platform: PlatformApi, api: httpx.Client, cleanup: CleanupStack, name: str) -> dict:
-    created = platform.call(
-        "POST", POLICIES, {"name": name, "description": "e2e", "no_match_outcome": "unmanage", "rules": [NEVER]}
-    )
+    created = platform.call("POST", POLICIES, {"name": name, "description": "e2e", "rules": [NEVER]})
     cleanup.push(f"delete {name}", lambda: _delete_if_present(api, f"{POLICIES}/{name}"))
     return created
 
@@ -59,7 +57,7 @@ def _scanned(platform: PlatformApi, catalog: str) -> dict | None:
 def _rescan(platform: PlatformApi, name: str, description: str) -> None:
     """Save the attached policy again: a save rescans every catalog it is attached in."""
     version = platform.get(f"{POLICIES}/{name}")["version"]
-    body = {"version": version, "description": description, "no_match_outcome": "unmanage", "rules": [NEVER]}
+    body = {"version": version, "description": description, "rules": [NEVER]}
     platform.call("PUT", f"{POLICIES}/{name}", body)
 
 

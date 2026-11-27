@@ -24,7 +24,7 @@ pytestmark = pytest.mark.full
 POLICIES = "/v1/discovery-policies"
 NAMESPACE = "lakehouse-control-plane"
 WORKER = "table-maintenance-worker"
-NEVER = {"outcome": "manage", "conditions": [{"attribute": "table_name", "operator": "glob", "values": ["never_*"]}]}
+NEVER = {"action": "include", "table_name_pattern": "never_*"}
 RESTART_SECONDS = 240
 
 
@@ -59,9 +59,7 @@ def test_a_restarted_worker_rebuilds_a_deleted_discovery_schedule(
 ):
     """The schedule deleted in Temporal is there again, not paused, once the restarted worker is available."""
     name = OwnedNames.discovery_policy(suffix, "restart")
-    platform.call(
-        "POST", POLICIES, {"name": name, "description": "e2e", "no_match_outcome": "unmanage", "rules": [NEVER]}
-    )
+    platform.call("POST", POLICIES, {"name": name, "description": "e2e", "rules": [NEVER]})
     cleanup.push(f"delete {name}", lambda: _delete_if_present(api, f"{POLICIES}/{name}"))
     attachment = platform.attach("discovery-policies", name, {"type": "catalog", "path": [owned_catalog.name]})
     cleanup.push(f"detach {name}", lambda: _delete_if_present(api, f"{POLICIES}/{name}/attachments/{attachment}"))

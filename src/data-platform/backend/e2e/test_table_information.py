@@ -191,14 +191,17 @@ def test_the_metrics_match_the_table_and_the_exporter_shows_them(
 def test_the_table_record_and_the_catalog_answer_for_the_table(
     platform: PlatformApi, owned_catalog: OwnedCatalog, evolved: _Evolved
 ):
-    """The record holds the deciding discovery match and priority P3; a dry-run table attempted no operation.
+    """The record holds what decided it is managed and priority P3; a dry-run table attempted no operation.
 
     ``operation_states`` lists only the operations ever attempted, so it is empty here.
     """
     record = platform.get(f"/v1/tables/{evolved.uuid}")
     assert record["operation_states"] == {}
-    assert record["matched_policy_id"] == evolved.table.discovery_policy["id"]
-    assert record["matched_rule_id"] == evolved.table.discovery_policy["rules"][0]["id"]
+    assert record["decided_by"] == {
+        "policy_id": evolved.table.discovery_policy["id"],
+        "policy_version": 1,
+        "rule_position": 1,
+    }
     assert record["priority"] == "P3"
 
     table = owned_catalog.iceberg.load_table(evolved.table.identifier)

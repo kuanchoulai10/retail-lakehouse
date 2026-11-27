@@ -290,7 +290,6 @@ def test_a_manual_request_runs_the_four_operations_of_one_plan(
         {
             "mr": [run["run_id"] for run in manual],
             "rc": [record["reconciliation_id"] for record in reconciliations],
-            "dr": [rule["id"] for rule in orders.discovery_policy["rules"]],
             "mp": [platform.get(f"/v1/maintenance-policies/{orders.maintenance_policy}")["id"]],
             "dp": [orders.discovery_policy["id"]],
             "da": [orders.discovery_attachment_id],

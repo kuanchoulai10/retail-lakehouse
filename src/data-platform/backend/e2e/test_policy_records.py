@@ -31,7 +31,7 @@ DISCOVERY = "/v1/discovery-policies"
 ROWS = pa.schema([pa.field("id", pa.int64())])
 RECORD_SECONDS = 180
 QUIET_SECONDS = 15
-MANAGE = {"outcome": "manage", "conditions": [{"attribute": "table_name", "operator": "glob", "values": ["t*"]}]}
+INCLUDE = {"action": "include", "table_name_pattern": "t*"}
 
 
 def _delete_if_present(api: httpx.Client, path: str) -> None:
@@ -90,9 +90,7 @@ def test_a_reconciliation_records_why_it_ran_and_under_which_policy(
         lambda: wait_until_unmanaged(platform, temporal, (catalog, namespace, "t")),
     )
     discovery = OwnedNames.discovery_policy(suffix, "records")
-    platform.call(
-        "POST", DISCOVERY, {"name": discovery, "description": "e2e", "no_match_outcome": "unmanage", "rules": [MANAGE]}
-    )
+    platform.call("POST", DISCOVERY, {"name": discovery, "description": "e2e", "rules": [INCLUDE]})
     cleanup.push(f"delete {discovery}", lambda: _delete_if_present(api, f"{DISCOVERY}/{discovery}"))
     discovery_attachment = platform.attach(
         "discovery-policies", discovery, {"type": "namespace", "path": [catalog, namespace]}
@@ -123,7 +121,7 @@ def test_a_reconciliation_records_why_it_ran_and_under_which_policy(
     before = wait_until(last_scan, timeout=RECORD_SECONDS, interval=3, what=f"{catalog} scanned")
     count = len(_records(platform, table_uuid))
     version = platform.get(f"{DISCOVERY}/{discovery}")["version"]
-    rescan = {"version": version, "description": "e2e, rescanned", "no_match_outcome": "unmanage", "rules": [MANAGE]}
+    rescan = {"version": version, "description": "e2e, rescanned", "rules": [INCLUDE]}
     platform.call("PUT", f"{DISCOVERY}/{discovery}", rescan)
     wait_until(
         lambda: last_scan() if last_scan() != before else None,

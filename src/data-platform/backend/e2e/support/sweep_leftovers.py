@@ -39,11 +39,11 @@ def sweep_leftovers(
     """Remove everything named by ``OwnedNames``, in the order a scenario's own cleanup uses, and say what went.
 
     Queue holders go first, since one blocks every maintenance run of its queue. Discovery policies
-    go next, with the default's attachments in e2e catalogs, and each leftover table (of an e2e
+    go next (there is no default discovery policy to detach), and each leftover table (of an e2e
     namespace or an e2e catalog) is waited on until it is unmanaged, so the platform
-    plans nothing on a table being removed; then the maintenance policies and the default's
-    attachments in e2e catalogs, the tables, the namespaces with their storage, the e2e catalogs and
-    any catalog storage left without one. Only one e2e run uses a cluster at a time (``run.sh``
+    plans nothing on a table being removed; then the maintenance policies and the default
+    maintenance policy's attachments in e2e catalogs, the tables, the namespaces with their storage,
+    the e2e catalogs and any catalog storage left without one. Only one e2e run uses a cluster at a time (``run.sh``
     refuses a second), so nothing swept is in use.
     """
     removed: list[str] = []
@@ -55,7 +55,6 @@ def sweep_leftovers(
     for policy in _owned_policies(platform, "discovery-policies", OwnedNames.DISCOVERY_POLICY):
         _detach_and_delete(platform, "discovery-policies", policy)
         removed.append(f"discovery policy {policy}")
-    removed += _detach_from_default(platform, "discovery")
     namespaces = [
         found[0] for found in iceberg.list_namespaces() if len(found) == 1 and OwnedNames.NAMESPACE.match(found[0])
     ]
@@ -96,7 +95,7 @@ def _owned_policies(platform: PlatformApi, kind: str, pattern: re.Pattern[str]) 
 
 
 def _detach_from_default(platform: PlatformApi, kind: str) -> list[str]:
-    """Detach the default policy of ``kind`` from every target in an e2e catalog; the default itself stays."""
+    """Detach the default policy of ``kind`` (only maintenance has one) from every target in an e2e catalog."""
     gone: list[str] = []
     for attachment in platform.get(f"/v1/{kind}-policies/default/attachments")["attachments"]:
         path = attachment["target"]["path"]
