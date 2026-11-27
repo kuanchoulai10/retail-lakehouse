@@ -51,6 +51,7 @@ from context.table_maintenance.application.service.table.registration_outcome im
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from context.table_maintenance.application.domain.model.table import Table
     from context.table_maintenance.application.port.outbound.catalog import CatalogsRepo
     from context.table_maintenance.application.port.outbound.catalog_discovery import (
         CatalogDiscoveriesRepo,
@@ -114,7 +115,9 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         in neither), and each records the policy, version and rule position that decided it;
         with no policy on its walk it is not managed and nothing decided it. Only a
         catalog-wide sync (no namespace) marks missing tables dropped, since a namespace scan
-        cannot tell a drop from a move, and a table it does not list is never decided. A table that fails is counted in
+        cannot tell a drop from a move, and a table it does not list is never decided. A row registered at or after
+        the scan started (an attach to a table discovery never saw, or a catalog event) may be newer than the
+        listing, so neither the drop pass nor the retire pass below touches it. A table that fails is counted in
         ``skipped``, a table another writer saved while the scan decided or dropped it included (logged and left as
         that writer stored it; the next scan decides it). A catalog-wide sync also signal-with-starts the
         reconciliation workflow of every known managed table (counted in
@@ -256,11 +259,13 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         Only for a catalog where no attached policy can include, so every table is not managed: no
         catalog read is needed, so even a catalog the credential cannot read, or that is gone, has its
         managed tables unmanaged and each sent ``stopped``, and its undecided tables unmanaged and saved.
-        Each is decided by its stored name. A table the scan read was decided already.
+        Each is decided by its stored name. A table the scan read was decided already, and one registered
+        since the scan started (an attach to a table discovery never saw) was not read by it: the scan the
+        attach asked for decides it.
         """
         unmanaged = skipped = 0
         for table in self._tables_repo.list_by_statuses(_RETIRED_STATUSES):
-            if table.name.catalog != catalog or table.id.value in seen:
+            if table.name.catalog != catalog or table.id.value in seen or _registered_since(table, now):
                 continue
             try:
                 with translate_domain_errors():
@@ -317,12 +322,14 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         """Mark dropped each stored live table of the scope the scan did not see; return (dropped, skipped).
 
         A table another writer saved since it was listed is skipped and left as stored: the next scan drops it.
+        A table registered since the scan started (by an attach or a catalog event) is not missing, only
+        newer than the listing, so it is left as stored.
         """
         dropped = skipped = 0
         previous = self._discoveries_repo.get(CatalogDiscoveryId(request.catalog))
         last_seen = None if previous is None else previous.last_discovered_at
         for table in self._tables_repo.list_by_statuses(_DROP_SCAN_STATUSES):
-            if table.id.value in seen or not _in_scope(table.name, request):
+            if table.id.value in seen or not _in_scope(table.name, request) or _registered_since(table, now):
                 continue
             was_managed = table.is_managed
             table.mark_dropped(now, catalog_discovered_at=last_seen)
@@ -347,6 +354,11 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
 
 def _log_changed_meanwhile(error: ConcurrentUpdateError) -> None:
     logger.warning("skipping a table the scan could not save: %s; the next scan decides it", error)
+
+
+def _registered_since(table: Table, started_at: datetime) -> bool:
+    """Return whether the row was registered at or after the scan started, so the scan's listing may predate it."""
+    return table.registered_at >= started_at
 
 
 def _in_scope(name: TableName, request: SyncDiscoveredTablesUseCaseInput) -> bool:

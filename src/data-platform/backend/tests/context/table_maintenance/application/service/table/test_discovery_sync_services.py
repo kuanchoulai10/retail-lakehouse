@@ -68,6 +68,7 @@ if TYPE_CHECKING:
 MANAGE_RULE = 1
 REST_RULE = 1
 TMP_RULE = 2
+BEFORE_THE_SCAN = timedelta(minutes=1)
 
 
 def _policy(name: str, *specs: tuple[str, str]) -> TableDiscoveryPolicy:
@@ -112,7 +113,9 @@ class _World:
         else:
             name = TableName(catalog=target.path[0], namespace=".".join(target.path[1:-1]), table=target.path[-1])
             table_id = TableId(target.table_uuid)
-            self._hold(self.tables, table_id, lambda: Table.register_undecided(table_id, name, NOW), policy)
+            self._hold(
+                self.tables, table_id, lambda: Table.register_undecided(table_id, name, NOW - BEFORE_THE_SCAN), policy
+            )
 
     @staticmethod
     def _hold(repo, place_id, register, policy):
@@ -145,10 +148,13 @@ def world(tables_repo, discovery_policies, catalogs_repo, namespaces_repo, place
     )
 
 
-def _row(repo, now, uuid, name, *, by: TableDiscoveryPolicy | None = MANAGE_ALL):
-    """Store a table as the policy ``by`` at version 1 decides it, or as nothing attached decides it for None."""
+def _row(repo, scan_at, uuid, name, *, by: TableDiscoveryPolicy | None = MANAGE_ALL):
+    """Store a table registered before a scan at ``scan_at``, as the policy ``by`` at version 1 decides it.
+
+    For ``by`` None, nothing attached decides it. A scan leaves alone a row registered since it started.
+    """
     decision = ManagementDecision.nothing_attached() if by is None else by.should_manage(name)
-    table = Table.register(TableId(uuid), name, decision, now)
+    table = Table.register(TableId(uuid), name, decision, scan_at - BEFORE_THE_SCAN)
     repo.create(table)
     return table
 
@@ -504,7 +510,7 @@ def test_a_scan_decides_an_undecided_table_unmanaged_saves_it_and_sends_nothing(
 
 def test_a_catalog_with_no_policy_decides_its_unread_undecided_tables_unmanaged(sync, world, signals, now):
     """An undecided table that lost its policy, in a catalog holding none, is saved unmanaged though unread."""
-    world.tables.create(Table.register_undecided(TableId("u-1"), _name("orders"), now))
+    world.tables.create(Table.register_undecided(TableId("u-1"), _name("orders"), now - BEFORE_THE_SCAN))
     world.catalog.deny("iceberg")
 
     out = sync.execute(_catalog_wide())
@@ -981,7 +987,7 @@ def test_sync_drops_unmanaged_without_stop_signal_and_ignores_dropped(sync, tabl
 
 def test_sync_drops_an_undecided_table_missing_from_the_catalog_without_a_stop_signal(sync, tables_repo, signals, now):
     """An undecided table the catalog no longer has is dropped, letting go of its policies; no workflow is stopped."""
-    undecided = Table.register_undecided(TableId("u-1"), _name("x"), now)
+    undecided = Table.register_undecided(TableId("u-1"), _name("x"), now - BEFORE_THE_SCAN)
     undecided.attach_discovery_policy(MANAGE_ALL.id, now)
     tables_repo.create(undecided)
     out = sync.execute(_catalog_wide())
@@ -989,6 +995,86 @@ def test_sync_drops_an_undecided_table_missing_from_the_catalog_without_a_stop_s
     stored = tables_repo.get(TableId("u-1"))
     assert stored.status == TableStatus.DROPPED
     assert stored.discovery_policy_id is None
+    assert signals.calls == []
+
+
+def _attach_after_the_listing(world, monkeypatch, at, *, policy=None):
+    """Make the scan's catalog listing be followed by an attach that registers the unseen table ``u-new``.
+
+    The attach registers the row undecided at ``at``, holding ``policy`` (a maintenance attach holds
+    no discovery policy), after the listing has run, whether the listing answers or raises.
+    """
+    original = world.catalog.list_tables
+
+    def list_then_attach(request):
+        try:
+            return original(request)
+        finally:
+            table = Table.register_undecided(TableId("u-new"), _name("fresh"), at)
+            if policy is not None:
+                table.attach_discovery_policy(policy.id, at)
+            world.tables.create(table)
+
+    monkeypatch.setattr(world.catalog, "list_tables", list_then_attach)
+
+
+@pytest.mark.parametrize("after", [timedelta(0), timedelta(seconds=1)], ids=["at-scan-start", "after-scan-start"])
+def test_a_table_attached_to_while_the_scan_runs_is_not_dropped(sync, world, monkeypatch, signals, now, after):
+    """An undecided row registered at or after the scan started was not missed by the listing: it is kept."""
+    world.attach_to_catalog(MANAGE_ALL)
+    world.catalog.add_table("iceberg", "sales", "orders", "u-1")
+    _attach_after_the_listing(world, monkeypatch, now + after, policy=ONLY_BACK)
+    world.policies.create(ONLY_BACK)
+
+    out = sync.execute(_catalog_wide())
+
+    assert out.dropped == 0
+    stored = world.tables.get(TableId("u-new"))
+    assert stored.status == TableStatus.UNDECIDED
+    assert stored.discovery_policy_id == ONLY_BACK.id
+    assert [c for c in _calls(signals) if c[0] == "u-new"] == []
+
+
+def test_a_table_registered_before_the_scan_and_missing_from_it_is_still_dropped(sync, world, now):
+    """Only rows registered since the scan started are spared; an older missing row is dropped as before."""
+    world.attach_to_catalog(MANAGE_ALL)
+    old = Table.register(
+        TableId("u-old"), _name("old"), MANAGE_ALL.should_manage(_name("old")), now - timedelta(microseconds=1)
+    )
+    world.tables.create(old)
+
+    out = sync.execute(_catalog_wide())
+
+    assert out.dropped == 1
+    assert world.tables.get(TableId("u-old")).status == TableStatus.DROPPED
+
+
+def test_a_table_attached_to_while_an_unread_catalog_is_retired_stays_undecided(sync, world, monkeypatch, signals, now):
+    """A catalog nothing can manage and the scan cannot read leaves undecided a row registered since it started."""
+    world.attach(catalog_target("other"), MANAGE_ALL)
+    world.catalog.deny("iceberg")
+    _attach_after_the_listing(world, monkeypatch, now)
+
+    out = sync.execute(_catalog_wide())
+
+    assert (out.failure, out.unmanaged, out.skipped) == ("cannot_access", 0, 0)
+    assert world.tables.get(TableId("u-new")).status == TableStatus.UNDECIDED
+    assert signals.calls == []
+
+
+def test_a_table_attached_to_while_a_partly_read_catalog_is_retired_stays_undecided(
+    sync, world, monkeypatch, signals, now
+):
+    """A catalog nothing can manage with one refused table leaves undecided a row registered since the scan started."""
+    world.attach(catalog_target("other"), MANAGE_ALL)
+    world.catalog.add_table("iceberg", "sales", "refused", "u-refused")
+    world.catalog.deny_table("iceberg", "sales", "refused")
+    _attach_after_the_listing(world, monkeypatch, now)
+
+    out = sync.execute(_catalog_wide())
+
+    assert (out.unmanaged, out.dropped) == (0, 0)
+    assert world.tables.get(TableId("u-new")).status == TableStatus.UNDECIDED
     assert signals.calls == []
 
 
