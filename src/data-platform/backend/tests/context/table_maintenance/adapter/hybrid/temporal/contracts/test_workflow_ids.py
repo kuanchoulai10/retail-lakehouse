@@ -6,9 +6,12 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
-    TABLE_DISCOVERY_SCHEDULE_ID_PREFIX,
+    TABLE_DISCOVERY_SCHEDULE_ID,
     table_discovery_adhoc_workflow_id,
-    table_discovery_schedule_id,
+    table_discovery_catalog_workflow_id,
+)
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery_round import (
+    TABLE_DISCOVERY_ROUND_WORKFLOW_ID,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     table_maintenance_workflow_id,
@@ -30,40 +33,37 @@ def test_workflow_id_names_the_table_uuid():
     assert table_maintenance_workflow_id(uuid) == f"table-maintenance:table-uuid={uuid}"
 
 
+def test_discovery_catalog_workflow_id():
+    """A catalog has one scan id, shared by the round's scans and the scans a change requests."""
+    assert table_discovery_catalog_workflow_id("iceberg") == "table-discovery:catalog=iceberg"
+
+
 def test_discovery_adhoc_workflow_id():
-    """The ad hoc discovery id names the catalog, the optional namespace and the ad hoc trigger."""
+    """The ad hoc discovery id of a namespace names the catalog, the namespace and the ad hoc trigger."""
     assert table_discovery_adhoc_workflow_id("c", "ns") == "table-discovery:catalog=c:namespace=ns:trigger=adhoc"
-    assert table_discovery_adhoc_workflow_id("c", None) == "table-discovery:catalog=c:trigger=adhoc"
 
 
-def test_discovery_adhoc_workflow_id_differs_from_the_schedule_id():
-    """An ad hoc discovery run never shares the id of the catalog schedule."""
-    assert table_discovery_adhoc_workflow_id("c", None) != table_discovery_schedule_id("c")
+def test_a_namespace_scan_never_shares_the_catalog_scan_id():
+    """A namespace scan runs beside the catalog's scan, never under its id."""
+    assert table_discovery_adhoc_workflow_id("c", "ns") != table_discovery_catalog_workflow_id("c")
+    assert table_discovery_adhoc_workflow_id("c", "ns", change_id="ab12") != table_discovery_catalog_workflow_id("c")
 
 
-def test_discovery_schedule_id_is_per_catalog():
-    """The discovery schedule id is the shared prefix followed by the catalog name."""
-    assert table_discovery_schedule_id("iceberg") == "table-discovery:catalog=iceberg"
-    assert table_discovery_schedule_id("iceberg").startswith(TABLE_DISCOVERY_SCHEDULE_ID_PREFIX)
+def test_discovery_ids_differ_from_the_schedule_and_round_ids():
+    """The one discovery schedule and the round it starts have ids no catalog scan has."""
+    assert table_discovery_catalog_workflow_id("round") != TABLE_DISCOVERY_ROUND_WORKFLOW_ID
+    assert table_discovery_catalog_workflow_id("c") != TABLE_DISCOVERY_SCHEDULE_ID
 
 
 def test_change_id_names_the_adhoc_workflow():
-    """A scan started by a discovery policy change has its own id per change, apart from any other ad hoc run."""
+    """A namespace scan started by a discovery policy change has its own id per change."""
     assert (
-        table_discovery_adhoc_workflow_id("iceberg", None, change_id="ab12")
-        == "table-discovery:catalog=iceberg:trigger=policy-changed:change=ab12"
+        table_discovery_adhoc_workflow_id("iceberg", "sales", change_id="ab12")
+        == "table-discovery:catalog=iceberg:namespace=sales:trigger=policy-changed:change=ab12"
     )
-    assert table_discovery_adhoc_workflow_id("c", None, change_id="ab12") != table_discovery_adhoc_workflow_id(
-        "c", None
+    assert table_discovery_adhoc_workflow_id("c", "ns", change_id="ab12") != table_discovery_adhoc_workflow_id(
+        "c", "ns"
     )
-    assert table_discovery_adhoc_workflow_id("c", None, change_id="ab12") != table_discovery_adhoc_workflow_id(
-        "c", None, change_id="cd34"
-    )
-
-
-def test_a_retired_schedules_final_scan_has_its_own_trigger():
-    """The final scan the worker start gives a catalog it retires is named apart from a policy change's scan."""
-    assert (
-        table_discovery_adhoc_workflow_id("iceberg", None, change_id="ab12", retires_schedule=True)
-        == "table-discovery:catalog=iceberg:trigger=schedule-retired:change=ab12"
+    assert table_discovery_adhoc_workflow_id("c", "ns", change_id="ab12") != table_discovery_adhoc_workflow_id(
+        "c", "ns", change_id="cd34"
     )

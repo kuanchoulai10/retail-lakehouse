@@ -35,9 +35,6 @@ from context.table_maintenance.application.service.table_discovery_policy.list_t
 from context.table_maintenance.application.service.table_discovery_policy.request_discovery_scan import (
     request_discovery_scan,
 )
-from context.table_maintenance.application.service.table_discovery_policy.sync_discovery_schedules import (  # noqa: E501
-    SyncDiscoverySchedulesService,
-)
 from context.table_maintenance.application.service.table_discovery_policy.table_discovery_policy_output_fields import (  # noqa: E501
     table_discovery_policy_output_fields,
 )
@@ -49,7 +46,6 @@ __all__ = [
     "AttachTableDiscoveryPolicyService",
     "DetachTableDiscoveryPolicyService",
     "ListTableDiscoveryPolicyAttachmentsService",
-    "SyncDiscoverySchedulesService",
     "CreateTableDiscoveryPolicyService",
     "DeleteTableDiscoveryPolicyService",
     "GetTableDiscoveryPolicyService",

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_discovery_round_workflow import (
+    TableDiscoveryRoundWorkflow,
+)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_discovery_workflow import (
     TableDiscoveryWorkflow,
 )
@@ -25,6 +28,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_s
 )
 
 __all__ = [
+    "TableDiscoveryRoundWorkflow",
     "TableDiscoveryWorkflow",
     "TableMaintenanceActivityPolicy",
     "TableMaintenanceAttemptPolicy",

@@ -6,6 +6,7 @@ import asyncio
 import logging
 import signal
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from bootstrap.container import (
@@ -80,7 +81,7 @@ async def run_worker(  # noqa: PLR0913
             k8s_core_api_factory=lambda: k8s_core_api,
         )
         client = await connect(settings.temporal)
-        await startup(client, use_cases)
+        await startup(client, use_cases, interval=timedelta(seconds=settings.discovery.interval_seconds))
         activities = build_activities(use_cases, client, settings)
         with ThreadPoolExecutor(max_workers=ACTIVITY_THREADS, thread_name_prefix="activity") as executor:
             worker = worker_builder(

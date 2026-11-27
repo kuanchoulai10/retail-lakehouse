@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from bootstrap.container.activities import Activities
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
     TableDiscoveryActivities,
+    TableDiscoveryRoundActivities,
     TableMaintenanceActivities,
     TableReconciliationActivities,
 )
@@ -47,4 +48,5 @@ def build_activities(use_cases: UseCases, client: Client, settings: WorkerSettin
             callback_base_url=settings.callback_base_url,
         ),
         discovery=TableDiscoveryActivities(sync=use_cases.sync_discovered_tables),
+        discovery_round=TableDiscoveryRoundActivities(list_scanned=use_cases.list_scanned_catalogs),
     )

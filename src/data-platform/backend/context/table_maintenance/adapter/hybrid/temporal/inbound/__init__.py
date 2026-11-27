@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.adapter.hybrid.temporal.inbound.ensure_table_discovery_schedule import (
+    ensure_table_discovery_schedule,
+)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.missing_table_search_attributes import (
     MissingTableSearchAttributes,
 )
@@ -11,5 +14,6 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.require_table_sea
 
 __all__ = [
     "MissingTableSearchAttributes",
+    "ensure_table_discovery_schedule",
     "require_table_search_attributes",
 ]

@@ -14,9 +14,14 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TableSearchAttribute,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
-    TABLE_DISCOVERY_SCHEDULE_ID_PREFIX,
+    TABLE_DISCOVERY_SCHEDULE_ID,
     TABLE_DISCOVERY_WORKFLOW,
     TableDiscoveryActivity,
+)
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery_round import (
+    TABLE_DISCOVERY_ROUND_WORKFLOW,
+    TABLE_DISCOVERY_ROUND_WORKFLOW_ID,
+    TableDiscoveryRoundActivity,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     TABLE_MAINTENANCE_WORKFLOW,
@@ -48,6 +53,7 @@ def _values(enum: type[StrEnum]) -> dict[str, str]:
 def test_workflow_type_names():
     """The workflow type names are the stable wire names."""
     assert TABLE_DISCOVERY_WORKFLOW == "TableDiscoveryWorkflow"
+    assert TABLE_DISCOVERY_ROUND_WORKFLOW == "TableDiscoveryRoundWorkflow"
     assert TABLE_RECONCILIATION_WORKFLOW == "TableReconciliationWorkflow"
     assert TABLE_MAINTENANCE_WORKFLOW == "TableMaintenanceWorkflow"
 
@@ -55,7 +61,8 @@ def test_workflow_type_names():
 def test_task_queue_and_fixed_ids():
     """The task queue name and the fixed workflow and schedule ids are the stable wire values."""
     assert TASK_QUEUE == "table-maintenance"
-    assert TABLE_DISCOVERY_SCHEDULE_ID_PREFIX == "table-discovery:catalog="
+    assert TABLE_DISCOVERY_SCHEDULE_ID == "table-discovery"
+    assert TABLE_DISCOVERY_ROUND_WORKFLOW_ID == "table-discovery:round"
 
 
 def test_table_reconciliation_signals():
@@ -113,6 +120,13 @@ def test_table_discovery_activities():
     """The table discovery activity names are the stable wire names."""
     assert _values(TableDiscoveryActivity) == {
         "SYNC_DISCOVERED_TABLES": "sync_discovered_tables",
+    }
+
+
+def test_table_discovery_round_activities():
+    """The table discovery round activity names are the stable wire names."""
+    assert _values(TableDiscoveryRoundActivity) == {
+        "LIST_SCANNED_CATALOGS": "list_scanned_catalogs",
     }
 
 

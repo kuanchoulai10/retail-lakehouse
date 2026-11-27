@@ -20,6 +20,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
     TableDiscoveryActivity,
 )
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery_round import (
+    TableDiscoveryRoundActivity,
+)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     TableMaintenanceActivity,
 )
@@ -28,10 +31,12 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
     TableDiscoveryActivities,
+    TableDiscoveryRoundActivities,
     TableMaintenanceActivities,
     TableReconciliationActivities,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
+    TableDiscoveryRoundWorkflow,
     TableDiscoveryWorkflow,
     TableMaintenanceWorkflow,
     TableReconciliationWorkflow,
@@ -52,6 +57,7 @@ ALL_ACTIVITY_NAMES = {
     str(member)
     for enum in (
         TableDiscoveryActivity,
+        TableDiscoveryRoundActivity,
         TableMaintenanceActivity,
         TableReconciliationActivity,
     )
@@ -90,6 +96,7 @@ def test_activities_carry_the_callback_url_and_the_attempt_settings():
     assert isinstance(activities.reconciliation, TableReconciliationActivities)
     assert isinstance(activities.maintenance, TableMaintenanceActivities)
     assert isinstance(activities.discovery, TableDiscoveryActivities)
+    assert isinstance(activities.discovery_round, TableDiscoveryRoundActivities)
     assert activities.maintenance._callback_base_url == "http://api:8000"  # noqa: SLF001
     assert activities.reconciliation._attempt_deadline_seconds == 120  # noqa: SLF001
     assert activities.reconciliation._max_attempts == 4  # noqa: SLF001
@@ -129,6 +136,7 @@ def test_worker_registers_all_workflows_and_activities():
     assert set(factory.kwargs["workflows"]) == {
         TableReconciliationWorkflow,
         TableDiscoveryWorkflow,
+        TableDiscoveryRoundWorkflow,
         TableMaintenanceWorkflow,
     }
     names = {_activity_name(fn) for fn in factory.kwargs["activities"]}

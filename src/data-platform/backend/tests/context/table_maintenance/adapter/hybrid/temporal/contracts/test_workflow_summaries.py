@@ -5,6 +5,9 @@ from __future__ import annotations
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
     table_discovery_summary,
 )
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery_round import (
+    TABLE_DISCOVERY_ROUND_SUMMARY,
+)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     table_maintenance_summary,
 )
@@ -27,3 +30,8 @@ def test_table_discovery_summary_names_the_namespace_and_an_adhoc_trigger():
     """The discovery summary adds the namespace and an ad hoc marker when present."""
     assert table_discovery_summary("iceberg", "sales", adhoc=True) == "iceberg.sales · ad hoc"
     assert table_discovery_summary("iceberg", None, adhoc=True) == "iceberg · ad hoc"
+
+
+def test_table_discovery_round_summary_says_it_scans_every_scanned_catalog():
+    """The round's summary says it starts a scan of every scanned catalog."""
+    assert TABLE_DISCOVERY_ROUND_SUMMARY == "every scanned catalog"

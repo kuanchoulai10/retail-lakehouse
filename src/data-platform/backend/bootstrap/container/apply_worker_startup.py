@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.adapter.hybrid.temporal.inbound import (
+    ensure_table_discovery_schedule,
     require_table_search_attributes,
-)
-from context.table_maintenance.application.port.inbound.table_discovery_policy import (
-    SyncDiscoverySchedulesUseCaseInput,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
+    from datetime import timedelta
 
     from temporalio.client import Client
 
@@ -25,18 +23,19 @@ logger = logging.getLogger(__name__)
 
 async def apply_worker_startup(
     client: Client,
-    use_cases: UseCases,
+    use_cases: UseCases,  # noqa: ARG001
     *,
+    interval: timedelta,
     require_attributes: Callable[..., Awaitable[None]] = require_table_search_attributes,
 ) -> None:
-    """Check the search attributes, then bring the discovery schedules in line with the scanned catalogs.
+    """Check the search attributes, then ensure the one discovery schedule at ``interval``.
 
     The check fails the start when the namespace lacks a search attribute the workflows set
     (``MissingTableSearchAttributes`` names them and says to run ``platform/21-temporal/bootstrap.sh``):
-    without them every workflow that tags itself would fail its workflow task. The schedule sync is a
-    full reconcile, and any failure of it fails the start, loudly. It runs in a thread, so its gateways,
-    which block until the bridge loop answers, do not stall this event loop.
+    without them every workflow that tags itself would fail its workflow task. The schedule starts a
+    discovery round every ``interval``, and the round reads the catalogs to scan each time, so nothing
+    here depends on which catalogs are scanned. Any failure of either step fails the start, loudly.
     """
     await require_attributes(client)
-    out = await asyncio.to_thread(use_cases.sync_discovery_schedules.execute, SyncDiscoverySchedulesUseCaseInput())
-    logger.info("discovery schedules synced for the scanned catalogs %s", list(out.catalogs))
+    await ensure_table_discovery_schedule(client, interval=interval)
+    logger.info("discovery schedule ensured, every %s", interval)

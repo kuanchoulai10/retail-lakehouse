@@ -5,9 +5,11 @@ from __future__ import annotations
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery.activity import (
     TableDiscoveryActivity,
 )
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery.catalog_workflow_id import (
+    table_discovery_catalog_workflow_id,
+)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery.schedule_id import (
-    TABLE_DISCOVERY_SCHEDULE_ID_PREFIX,
-    table_discovery_schedule_id,
+    TABLE_DISCOVERY_SCHEDULE_ID,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery.summary import (
     table_discovery_summary,
@@ -23,11 +25,11 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery
 )
 
 __all__ = [
-    "TABLE_DISCOVERY_SCHEDULE_ID_PREFIX",
+    "TABLE_DISCOVERY_SCHEDULE_ID",
     "TABLE_DISCOVERY_WORKFLOW",
     "TableDiscoveryActivity",
     "TableDiscoveryWorkflowInput",
     "table_discovery_adhoc_workflow_id",
-    "table_discovery_schedule_id",
+    "table_discovery_catalog_workflow_id",
     "table_discovery_summary",
 ]

@@ -8,6 +8,9 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.activi
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.table_discovery_activities import (
     TableDiscoveryActivities,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.table_discovery_round_activities import (
+    TableDiscoveryRoundActivities,
+)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.table_maintenance_activities import (
     TableMaintenanceActivities,
 )
@@ -20,6 +23,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.transl
 
 __all__ = [
     "TableDiscoveryActivities",
+    "TableDiscoveryRoundActivities",
     "TableMaintenanceActivities",
     "TableReconciliationActivities",
     "activity_payload",

@@ -21,9 +21,10 @@ def request_discovery_scan(
     """Request a scan of the smallest scope covering a place whose discovery policy changed; return whether sent.
 
     The scope is the whole catalog for a catalog, the namespace for a namespace, and the table's
-    namespace for a table. The request runs under
-    ``change_id``, so it never joins a scan that read the policies before the change. It is best
-    effort: a request that cannot be sent is logged and the change it follows stands.
+    namespace for a table. A namespace request runs under ``change_id``, so it never joins a scan
+    that read the policies before the change; a catalog request joins the catalog's scan already
+    going, if any, so the change then shows from the catalog's next scan. It is best effort: a
+    request that cannot be sent is logged and the change it follows stands.
     """
     scope_catalog = target.path[0]
     if target.type == PolicyTargetType.CATALOG:

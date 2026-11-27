@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
     from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
         TableDiscoveryActivities,
+        TableDiscoveryRoundActivities,
         TableMaintenanceActivities,
         TableReconciliationActivities,
     )
@@ -22,6 +23,7 @@ class Activities:
     reconciliation: TableReconciliationActivities
     maintenance: TableMaintenanceActivities
     discovery: TableDiscoveryActivities
+    discovery_round: TableDiscoveryRoundActivities
 
     def callables(self) -> list[Callable[..., object]]:
         """Return every activity method, bound to its instance."""
@@ -45,4 +47,5 @@ class Activities:
             maintenance.cancel_table_maintenance_run,
             maintenance.signal_parent,
             self.discovery.sync_discovered_tables,
+            self.discovery_round.list_scanned_catalogs,
         ]

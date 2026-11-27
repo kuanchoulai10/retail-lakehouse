@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 import signal
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Self
 from unittest.mock import MagicMock
 
@@ -105,17 +106,17 @@ class Harness:
         """Return a mock Temporal client without connecting."""
         return MagicMock(name="worker-client")
 
-    async def startup(self, *args: Any) -> None:  # noqa: ANN401
+    async def startup(self, *args: Any, **kwargs: Any) -> None:  # noqa: ANN401
         """Record a startup call."""
-        self.startups.append(args)
+        self.startups.append((args, kwargs))
 
     def worker_builder(self, *args: Any, **kwargs: Any) -> FakeWorker:  # noqa: ANN401
         """Return the fake worker instead of building a real one."""
         self.worker_kwargs = kwargs
         return self.worker
 
-    def run(self, **overrides: Any) -> None:  # noqa: ANN401
-        """Run the worker process with the harness collaborators and optional overrides."""
+    def run(self, settings: Any = None, **overrides: Any) -> None:  # noqa: ANN401
+        """Run the worker process with the harness collaborators, optional overrides and optional settings."""
         options: dict[str, Any] = {
             "bridge_factory": lambda: self.bridge,
             "use_cases_builder": self.use_cases_builder,
@@ -128,7 +129,7 @@ class Harness:
             **overrides,
         }
         options = {k: v for k, v in options.items() if v is not None}
-        asyncio.run(run_worker(sqlite_settings(), **options))
+        asyncio.run(run_worker(settings or sqlite_settings(), **options))
 
 
 def test_stop_request_shuts_the_worker_down_and_closes_the_bridge():
@@ -139,13 +140,23 @@ def test_stop_request_shuts_the_worker_down_and_closes_the_bridge():
 
     assert harness.k8s_built == 1
     assert harness.k8s_core_built == 1
-    ((client, use_cases),) = harness.startups
+    (((client, use_cases), _),) = harness.startups
     assert client is not None
     assert use_cases is harness.use_cases
     assert harness.worker.entered is True
     assert harness.worker.shut_down is True
     assert harness.bridge.closed is True
     assert harness.worker_kwargs["max_concurrent_activities"] == 16
+
+
+def test_startup_takes_the_discovery_interval_from_the_settings():
+    """The worker start ensures the discovery schedule at the settings' discovery interval."""
+    harness = Harness()
+
+    harness.run(sqlite_settings(discovery={"interval_seconds": 42}))
+
+    ((_, kwargs),) = harness.startups
+    assert kwargs == {"interval": timedelta(seconds=42)}
 
 
 def test_sigterm_shuts_the_worker_down_and_closes_the_bridge():
@@ -161,7 +172,7 @@ def test_bridge_is_closed_when_startup_fails():
     """A startup failure propagates, the worker is never entered and the bridge is closed."""
     harness = Harness()
 
-    async def failing_startup(*_: Any) -> None:  # noqa: ANN401
+    async def failing_startup(*_: Any, **__: Any) -> None:  # noqa: ANN401
         raise RuntimeError("temporal down")
 
     with pytest.raises(RuntimeError, match="temporal down"):

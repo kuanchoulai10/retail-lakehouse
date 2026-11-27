@@ -31,7 +31,6 @@ if TYPE_CHECKING:
         GetTableDiscoveryPolicyVersionUseCase,
         ListTableDiscoveryPoliciesUseCase,
         ListTableDiscoveryPolicyAttachmentsUseCase,
-        SyncDiscoverySchedulesUseCase,
         UpdateTableDiscoveryPolicyUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
@@ -95,7 +94,6 @@ class UseCases:
     attach_table_discovery_policy: AttachTableDiscoveryPolicyUseCase
     detach_table_discovery_policy: DetachTableDiscoveryPolicyUseCase
     list_table_discovery_policy_attachments: ListTableDiscoveryPolicyAttachmentsUseCase
-    sync_discovery_schedules: SyncDiscoverySchedulesUseCase
     list_scanned_catalogs: ListScannedCatalogsUseCase
     list_table_maintenance_policies: ListTableMaintenancePoliciesUseCase
     update_table_maintenance_policy: UpdateTableMaintenancePolicyUseCase

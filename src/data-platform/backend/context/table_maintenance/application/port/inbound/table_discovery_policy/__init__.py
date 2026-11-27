@@ -42,11 +42,6 @@ from context.table_maintenance.application.port.inbound.table_discovery_policy.l
     ListTableDiscoveryPolicyAttachmentsUseCaseInput,
     ListTableDiscoveryPolicyAttachmentsUseCaseOutput,
 )
-from context.table_maintenance.application.port.inbound.table_discovery_policy.sync_discovery_schedules import (  # noqa: E501
-    SyncDiscoverySchedulesUseCase,
-    SyncDiscoverySchedulesUseCaseInput,
-    SyncDiscoverySchedulesUseCaseOutput,
-)
 from context.table_maintenance.application.port.inbound.table_discovery_policy.update_table_discovery_policy import (  # noqa: E501
     UpdateTableDiscoveryPolicyUseCase,
     UpdateTableDiscoveryPolicyUseCaseInput,
@@ -78,9 +73,6 @@ __all__ = [
     "ListTableDiscoveryPolicyAttachmentsUseCase",
     "ListTableDiscoveryPolicyAttachmentsUseCaseInput",
     "ListTableDiscoveryPolicyAttachmentsUseCaseOutput",
-    "SyncDiscoverySchedulesUseCase",
-    "SyncDiscoverySchedulesUseCaseInput",
-    "SyncDiscoverySchedulesUseCaseOutput",
     "UpdateTableDiscoveryPolicyUseCase",
     "UpdateTableDiscoveryPolicyUseCaseInput",
     "UpdateTableDiscoveryPolicyUseCaseOutput",

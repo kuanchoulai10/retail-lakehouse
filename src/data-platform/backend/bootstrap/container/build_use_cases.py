@@ -35,7 +35,6 @@ from context.table_maintenance.application.service.table_discovery_policy import
     GetTableDiscoveryPolicyVersionService,
     ListTableDiscoveryPoliciesService,
     ListTableDiscoveryPolicyAttachmentsService,
-    SyncDiscoverySchedulesService,
     UpdateTableDiscoveryPolicyService,
 )
 from context.table_maintenance.application.service.table_maintenance_policy import (
@@ -119,7 +118,6 @@ def build_use_cases(
     catalog = gateways.read_table_metadata
     table_changes = gateways.send_table_change
     discovery_requests = gateways.send_discovery_request
-    discovery_schedules = gateways.sync_discovery_schedules
     resolve_applicable_policy = ResolveApplicableTableMaintenancePolicyService(
         policies, catalogs, namespaces, catalog, tables
     )
@@ -161,9 +159,6 @@ def build_use_cases(
         ),
         list_table_discovery_policy_attachments=ListTableDiscoveryPolicyAttachmentsService(
             discovery_policies, placements, catalog, tables
-        ),
-        sync_discovery_schedules=SyncDiscoverySchedulesService(
-            placements, tables, discovery_requests, discovery_schedules
         ),
         list_scanned_catalogs=ListScannedCatalogsService(placements, tables, discoveries),
         attach_table_maintenance_policy=AttachTableMaintenancePolicyService(

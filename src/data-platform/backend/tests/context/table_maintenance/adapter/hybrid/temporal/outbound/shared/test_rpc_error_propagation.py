@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import pytest
 from temporalio.client import RPCError
 from temporalio.service import RPCStatusCode
 
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
-    table_discovery_schedule_id,
-)
 from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
     AsyncLoopBridge,
 )
@@ -30,7 +26,7 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Iterator
+    from collections.abc import Iterator
 
 
 class _FailingHandle:
@@ -40,12 +36,6 @@ class _FailingHandle:
     async def signal(self, *args: object, **kwargs: object) -> None:
         raise RPCError("rpc failed", self._status, b"")
 
-    async def pause(self, **kwargs: object) -> None:
-        raise RPCError("rpc failed", self._status, b"")
-
-    async def unpause(self, **kwargs: object) -> None:
-        raise RPCError("rpc failed", self._status, b"")
-
 
 class _FailingClient:
     def __init__(self, status: RPCStatusCode) -> None:
@@ -53,15 +43,6 @@ class _FailingClient:
 
     def get_workflow_handle(self, *args: object, **kwargs: object) -> _FailingHandle:
         return self._handle
-
-    def get_schedule_handle(self, *args: object, **kwargs: object) -> _FailingHandle:
-        return self._handle
-
-    async def list_schedules(self, *args: object, **kwargs: object) -> AsyncIterator:
-        async def listing() -> AsyncIterator[SimpleNamespace]:
-            yield SimpleNamespace(id=table_discovery_schedule_id("iceberg"))
-
-        return listing()
 
 
 @pytest.fixture
