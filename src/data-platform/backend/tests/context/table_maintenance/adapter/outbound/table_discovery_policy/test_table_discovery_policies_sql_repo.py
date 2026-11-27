@@ -222,7 +222,8 @@ def test_delete_while_attached_conflicts(
     catalog.attach_discovery_policy(policy.id, NOW)
     catalogs.create(catalog)
 
-    with pytest.raises(ConflictError):
+    attached = f"^discovery policy {policy.id.value} is still attached to a catalog, namespace or table$"
+    with pytest.raises(ConflictError, match=attached):
         policies.delete(policy.id)
 
     assert policies.get(policy.id) is not None

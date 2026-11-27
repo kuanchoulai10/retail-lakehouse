@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import case, insert, literal, or_, select, update
 from sqlalchemy.exc import IntegrityError
 
-from context.table_maintenance.adapter.outbound.shared.sql import UtcDateTime
+from context.table_maintenance.adapter.outbound.shared.sql import UtcDateTime, raise_place_write_refused
 from context.table_maintenance.adapter.outbound.table.sql.table_row_mapper import (
     TableRowMapper,
     encode_over_target_partitions,
@@ -15,7 +15,7 @@ from context.table_maintenance.adapter.outbound.table.sql.table_row_mapper impor
 from context.table_maintenance.adapter.outbound.table.sql.tables_table import (
     tables_table as t,
 )
-from context.table_maintenance.application.exceptions import ConcurrentUpdateError, ConflictError
+from context.table_maintenance.application.exceptions import ConcurrentUpdateError
 from context.table_maintenance.application.port.outbound.table import (
     TablesRepo,
     TableStatus,
@@ -46,12 +46,21 @@ class TablesSqlRepo(TablesRepo):
         self._engine = engine
 
     def create(self, entity: Table) -> Table:
-        """Insert a new table, always with an empty over-target record, whatever the entity holds."""
+        """Insert a new table, always with an empty over-target record, whatever the entity holds.
+
+        A stored uuid raises ConcurrentUpdateError (another writer registered it first), and a policy
+        the table holds that does not exist raises ConflictError.
+        """
         try:
             with self._engine.begin() as conn:
                 conn.execute(insert(t).values(**TableRowMapper.to_values(entity), over_target_partitions_json=[]))
         except IntegrityError as exc:
-            raise ConflictError(str(exc.orig)) from exc
+            raise_place_write_refused(
+                exc,
+                f"table {entity.id.value}",
+                discovery_policy_id=entity.discovery_policy_id,
+                maintenance_policy_id=entity.maintenance_policy_id,
+            )
         return entity
 
     def get(self, entity_id: EntityId) -> Table | None:
@@ -94,7 +103,12 @@ class TablesSqlRepo(TablesRepo):
                         raise LookupError(f"table {table.id.value} does not exist")
                     raise ConcurrentUpdateError(f"table {table.id.value} was changed by someone else")
         except IntegrityError as exc:
-            raise ConflictError(str(exc.orig)) from exc
+            raise_place_write_refused(
+                exc,
+                f"table {table.id.value}",
+                discovery_policy_id=table.discovery_policy_id,
+                maintenance_policy_id=table.maintenance_policy_id,
+            )
         return TableRowMapper.to_aggregate(row._mapping)
 
     def record_last_commit(self, table_id: TableId, at: datetime) -> bool:

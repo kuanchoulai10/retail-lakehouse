@@ -77,7 +77,7 @@ For a scan request that arrives while that catalog is already being scanned:
 ### Every place is saved with optimistic locking
 
 - **`Table`, `Catalog` and `Namespace` carry a `version`** (ruling 2). A repository `update` writes only when the stored row is still at the version read. It moves the version on by one and returns the aggregate read back. A table version was needed first, because the worker writes table rows while a person attaches a policy to them. A catalog version keeps one person's discovery attach from overwriting another person's maintenance attach on the same catalog.
-- **A stale save raises `ConcurrentUpdateError`, an application exception of its own, not a `ConflictError`** (ruling 3). A lost race is worth retrying, because the retry reads the row again. Temporal activities therefore retry it (they treat `ConflictError` as final), and the event consumer retries it too. The web answers 409. Inside a catalog scan, the raced table is logged and counted `skipped`, and the next scan decides it.
+- **A stale save raises `ConcurrentUpdateError`, an application exception of its own, not a `ConflictError`** (ruling 3). A lost race is worth retrying, because the retry reads the row again. Temporal activities therefore retry it (they treat `ConflictError` as final), and the event consumer retries it too. The web answers 409. Inside a catalog scan, the raced table is logged and counted `skipped`, and the next scan decides it. A create that finds the row already stored by another writer is the same lost race and raises `ConcurrentUpdateError` too, while a policy deleted since the place was read is a `ConflictError` that names the policy; neither carries database text (2026-11-28).
 
 ### One discovery schedule, one scan per catalog
 

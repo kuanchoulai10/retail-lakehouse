@@ -265,7 +265,8 @@ def test_delete_of_a_policy_a_place_holds_conflicts(repos: _Repos, holder: str):
     policies.create(policy)
     _hold(repos, holder, policy.id)
 
-    with pytest.raises(ConflictError):
+    attached = f"^maintenance policy {policy.id.value} is still attached to a catalog, namespace or table$"
+    with pytest.raises(ConflictError, match=attached):
         policies.delete(policy.id)
 
     assert policies.get(policy.id) is not None

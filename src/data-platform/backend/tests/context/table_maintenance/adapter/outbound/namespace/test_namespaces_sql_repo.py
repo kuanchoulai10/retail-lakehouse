@@ -64,10 +64,10 @@ def test_get_of_an_unknown_namespace_is_none(repo: NamespacesRepo):
     assert repo.get(SALES_EU) is None
 
 
-def test_create_of_a_stored_namespace_is_a_conflict(repo: NamespacesRepo):
-    """One record per namespace: a second create of the same one raises ConflictError."""
+def test_create_of_a_stored_namespace_is_a_concurrent_update(repo: NamespacesRepo):
+    """One record per namespace: a second create of the same one lost a race, so the caller retries it."""
     repo.create(_namespace())
-    with pytest.raises(ConflictError):
+    with pytest.raises(ConcurrentUpdateError, match="^namespace sales.eu.west of iceberg was changed by someone else$"):
         repo.create(_namespace())
 
 
@@ -167,13 +167,14 @@ def test_a_namespace_cannot_hold_a_policy_that_does_not_exist():
     repo = NamespacesSqlRepo(engine)
     namespace = _namespace()
     namespace.attach_discovery_policy(SALES, LATER)
-    with pytest.raises(ConflictError):
+    gone = f"^discovery policy {SALES.value} held by namespace sales.eu.west of iceberg no longer exists$"
+    with pytest.raises(ConflictError, match=gone):
         repo.create(namespace)
     repo.create(_namespace())
     stored = repo.get(SALES_EU)
     assert stored is not None
     stored.attach_discovery_policy(SALES, LATER)
-    with pytest.raises(ConflictError):
+    with pytest.raises(ConflictError, match=gone):
         repo.update(stored)
     loaded = repo.get(SALES_EU)
     assert loaded is not None

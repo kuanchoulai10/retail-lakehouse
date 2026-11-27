@@ -80,7 +80,9 @@ class InMemoryTableMaintenancePoliciesRepo(TableMaintenancePoliciesRepo):
         if self._placements is not None and self._placements.maintenance_placements(
             TableMaintenancePolicyId(entity_id.value)
         ):
-            raise ConflictError(f"policy {entity_id.value} is still attached to a catalog, namespace or table")
+            raise ConflictError(
+                f"maintenance policy {entity_id.value} is still attached to a catalog, namespace or table"
+            )
         self.items.pop(entity_id.value, None)
         for key in [k for k in self.versions if k[0] == entity_id.value]:
             del self.versions[key]

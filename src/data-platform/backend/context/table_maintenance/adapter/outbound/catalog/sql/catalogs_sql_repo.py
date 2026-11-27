@@ -9,7 +9,8 @@ from sqlalchemy.exc import IntegrityError
 
 from context.table_maintenance.adapter.outbound.catalog.sql.catalog_row_mapper import CatalogRowMapper
 from context.table_maintenance.adapter.outbound.catalog.sql.catalogs_table import catalogs_table as t
-from context.table_maintenance.application.exceptions import ConcurrentUpdateError, ConflictError
+from context.table_maintenance.adapter.outbound.shared.sql import raise_place_write_refused
+from context.table_maintenance.application.exceptions import ConcurrentUpdateError
 from context.table_maintenance.application.port.outbound.catalog import CatalogsRepo
 
 if TYPE_CHECKING:
@@ -29,12 +30,17 @@ class CatalogsSqlRepo(CatalogsRepo):
         self._engine = engine
 
     def create(self, entity: Catalog) -> Catalog:
-        """Insert the catalog; a stored name, or a policy that does not exist, raises ConflictError."""
+        """Insert the catalog; a stored name raises ConcurrentUpdateError, an unknown policy ConflictError."""
         try:
             with self._engine.begin() as conn:
                 conn.execute(insert(t).values(**CatalogRowMapper.to_values(entity)))
         except IntegrityError as exc:
-            raise ConflictError(str(exc.orig)) from exc
+            raise_place_write_refused(
+                exc,
+                f"catalog {entity.id.value}",
+                discovery_policy_id=entity.discovery_policy_id,
+                maintenance_policy_id=entity.maintenance_policy_id,
+            )
         return entity
 
     def get(self, entity_id: EntityId) -> Catalog | None:
@@ -82,5 +88,10 @@ class CatalogsSqlRepo(CatalogsRepo):
                         raise LookupError(f"catalog {catalog.id.value} does not exist")
                     raise ConcurrentUpdateError(f"catalog {catalog.id.value} was changed by someone else")
         except IntegrityError as exc:
-            raise ConflictError(str(exc.orig)) from exc
+            raise_place_write_refused(
+                exc,
+                f"catalog {catalog.id.value}",
+                discovery_policy_id=catalog.discovery_policy_id,
+                maintenance_policy_id=catalog.maintenance_policy_id,
+            )
         return CatalogRowMapper.to_aggregate(row._mapping)

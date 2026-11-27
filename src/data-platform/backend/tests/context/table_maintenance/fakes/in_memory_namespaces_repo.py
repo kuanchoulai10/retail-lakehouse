@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.exceptions import ConcurrentUpdateError, ConflictError
+from context.table_maintenance.application.exceptions import ConcurrentUpdateError
 from context.table_maintenance.application.port.outbound.namespace import NamespacesRepo
 
 if TYPE_CHECKING:
@@ -26,9 +26,10 @@ class InMemoryNamespacesRepo(NamespacesRepo):
         self.items: dict[str, Namespace] = {}
 
     def create(self, entity: Namespace) -> Namespace:
-        """Insert a namespace; a stored id raises ConflictError."""
+        """Insert a namespace; a stored id raises ConcurrentUpdateError, as the SQL repository's lost race does."""
         if entity.id.value in self.items:
-            raise ConflictError(f"namespace {entity.id.value!r} exists")
+            described = f"namespace {'.'.join(entity.levels)} of {entity.catalog}"
+            raise ConcurrentUpdateError(f"{described} was changed by someone else")
         self.items[entity.id.value] = entity.model_copy(deep=True)
         return entity
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.exceptions import ConcurrentUpdateError, ConflictError
+from context.table_maintenance.application.exceptions import ConcurrentUpdateError
 from context.table_maintenance.application.port.outbound.catalog import CatalogsRepo
 
 if TYPE_CHECKING:
@@ -22,9 +22,9 @@ class InMemoryCatalogsRepo(CatalogsRepo):
         self.items: dict[str, Catalog] = {}
 
     def create(self, entity: Catalog) -> Catalog:
-        """Insert a catalog; a stored name raises ConflictError."""
+        """Insert a catalog; a stored name raises ConcurrentUpdateError, as the SQL repository's lost race does."""
         if entity.id.value in self.items:
-            raise ConflictError(f"catalog {entity.id.value} exists")
+            raise ConcurrentUpdateError(f"catalog {entity.id.value} was changed by someone else")
         self.items[entity.id.value] = entity.model_copy(deep=True)
         return entity
 

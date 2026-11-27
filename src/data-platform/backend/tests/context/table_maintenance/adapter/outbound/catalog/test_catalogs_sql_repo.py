@@ -84,10 +84,10 @@ def test_get_of_an_unknown_catalog_is_none(repo: CatalogsRepo):
     assert repo.get(CatalogId("ghost")) is None
 
 
-def test_create_of_a_stored_catalog_is_a_conflict(repo: CatalogsRepo):
-    """One record per catalog: a second create of the same name raises ConflictError."""
+def test_create_of_a_stored_catalog_is_a_concurrent_update(repo: CatalogsRepo):
+    """One record per catalog: a second create of the same name lost a race, so the caller retries it."""
     repo.create(_catalog())
-    with pytest.raises(ConflictError):
+    with pytest.raises(ConcurrentUpdateError, match="^catalog iceberg was changed by someone else$"):
         repo.create(_catalog())
 
 
@@ -191,13 +191,14 @@ def test_a_catalog_cannot_hold_a_policy_that_does_not_exist():
     repo = CatalogsSqlRepo(engine)
     catalog = _catalog()
     catalog.attach_maintenance_policy(NIGHTLY, LATER)
-    with pytest.raises(ConflictError):
+    gone = f"^maintenance policy {NIGHTLY.value} held by catalog iceberg no longer exists$"
+    with pytest.raises(ConflictError, match=gone):
         repo.create(catalog)
     repo.create(_catalog())
     stored = repo.get(CatalogId("iceberg"))
     assert stored is not None
     stored.attach_maintenance_policy(NIGHTLY, LATER)
-    with pytest.raises(ConflictError):
+    with pytest.raises(ConflictError, match=gone):
         repo.update(stored)
     loaded = repo.get(CatalogId("iceberg"))
     assert loaded is not None

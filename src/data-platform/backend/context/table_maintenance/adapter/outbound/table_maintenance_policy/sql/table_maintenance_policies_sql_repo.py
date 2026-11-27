@@ -106,7 +106,9 @@ class TableMaintenancePoliciesSqlRepo(TableMaintenancePoliciesRepo):
                 conn.execute(delete(versions).where(versions.c.policy_id == entity_id.value))
                 conn.execute(delete(policies).where(policies.c.id == entity_id.value))
         except IntegrityError as exc:
-            raise ConflictError(f"policy {entity_id.value} is still attached to a catalog, namespace or table") from exc
+            raise ConflictError(
+                f"maintenance policy {entity_id.value} is still attached to a catalog, namespace or table"
+            ) from exc
 
     def _current(self, where: ColumnElement[bool] | None) -> list[TableMaintenancePolicy]:
         """Return the policies matching ``where`` (all when None) at their current version, ordered by name."""

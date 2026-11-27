@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.table import TableStatus
-from context.table_maintenance.application.exceptions import ConcurrentUpdateError, ConflictError
+from context.table_maintenance.application.exceptions import ConcurrentUpdateError
 from context.table_maintenance.application.port.outbound.table import TablesRepo
 
 if TYPE_CHECKING:
@@ -26,9 +26,9 @@ class InMemoryTablesRepo(TablesRepo):
         self.commit_writes: list[tuple[str, datetime]] = []
 
     def create(self, entity: Table) -> Table:
-        """Insert a table; a duplicate uuid raises ConflictError."""
+        """Insert a table; a duplicate uuid raises ConcurrentUpdateError, as the SQL repository's lost race does."""
         if entity.id.value in self.items:
-            raise ConflictError(f"table {entity.id.value} exists")
+            raise ConcurrentUpdateError(f"table {entity.id.value} was changed by someone else")
         self.items[entity.id.value] = entity
         return entity
 

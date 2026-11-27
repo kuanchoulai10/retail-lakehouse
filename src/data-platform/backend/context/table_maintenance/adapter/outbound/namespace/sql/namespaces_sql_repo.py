@@ -9,7 +9,8 @@ from sqlalchemy.exc import IntegrityError
 
 from context.table_maintenance.adapter.outbound.namespace.sql.namespace_row_mapper import NamespaceRowMapper
 from context.table_maintenance.adapter.outbound.namespace.sql.namespaces_table import namespaces_table as t
-from context.table_maintenance.application.exceptions import ConcurrentUpdateError, ConflictError
+from context.table_maintenance.adapter.outbound.shared.sql import raise_place_write_refused
+from context.table_maintenance.application.exceptions import ConcurrentUpdateError
 from context.table_maintenance.application.port.outbound.namespace import NamespacesRepo
 
 if TYPE_CHECKING:
@@ -31,12 +32,17 @@ class NamespacesSqlRepo(NamespacesRepo):
         self._engine = engine
 
     def create(self, entity: Namespace) -> Namespace:
-        """Insert the namespace; a stored id, or a policy that does not exist, raises ConflictError."""
+        """Insert the namespace; a stored id raises ConcurrentUpdateError, an unknown policy ConflictError."""
         try:
             with self._engine.begin() as conn:
                 conn.execute(insert(t).values(**NamespaceRowMapper.to_values(entity)))
         except IntegrityError as exc:
-            raise ConflictError(str(exc.orig)) from exc
+            raise_place_write_refused(
+                exc,
+                f"namespace {'.'.join(entity.levels)} of {entity.catalog}",
+                discovery_policy_id=entity.discovery_policy_id,
+                maintenance_policy_id=entity.maintenance_policy_id,
+            )
         return entity
 
     def get(self, entity_id: EntityId) -> Namespace | None:
@@ -83,7 +89,12 @@ class NamespacesSqlRepo(NamespacesRepo):
                         raise LookupError(f"{described} does not exist")
                     raise ConcurrentUpdateError(f"{described} was changed by someone else")
         except IntegrityError as exc:
-            raise ConflictError(str(exc.orig)) from exc
+            raise_place_write_refused(
+                exc,
+                described,
+                discovery_policy_id=namespace.discovery_policy_id,
+                maintenance_policy_id=namespace.maintenance_policy_id,
+            )
         return NamespaceRowMapper.to_aggregate(row._mapping)
 
     def _read(self, stmt: Select) -> list[Namespace]:

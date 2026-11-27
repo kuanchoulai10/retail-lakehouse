@@ -388,11 +388,11 @@ def test_list_all_ordered_by_name(repo: TablesSqlRepo):
     assert [t.id.value for t in repo.list_all()] == ["4", "3", "2", "1"]
 
 
-def test_create_duplicate_primary_key_raises_conflict(repo: TablesSqlRepo):
-    """Creating a table with an existing id raises ConflictError."""
-    repo.create(_table("dup"))
-    with pytest.raises(ConflictError):
-        repo.create(_table("dup", TableName(catalog="c", namespace="n", table="other")))
+def test_create_duplicate_primary_key_is_a_concurrent_update(either_repo: TablesRepo):
+    """Creating a table with an existing uuid lost a race to another writer, so the caller retries it."""
+    either_repo.create(_table("dup"))
+    with pytest.raises(ConcurrentUpdateError, match="^table dup was changed by someone else$"):
+        either_repo.create(_table("dup", TableName(catalog="c", namespace="n", table="other")))
 
 
 def test_tables_sql_table_name_is_tables():
@@ -866,9 +866,24 @@ def test_a_save_naming_a_policy_that_does_not_exist_is_a_conflict():
     stored = repo.get(TableId("u1"))
     assert stored is not None
     stored.attach_maintenance_policy(NIGHTLY, NOW)
-    with pytest.raises(ConflictError):
+    with pytest.raises(ConflictError, match=f"^maintenance policy {NIGHTLY.value} held by table u1 no longer exists$"):
         repo.update(stored)
     loaded = repo.get(TableId("u1"))
     assert loaded is not None
     assert loaded.maintenance_policy_id is None
     assert loaded.version == 1
+
+
+def test_a_create_naming_a_policy_that_does_not_exist_is_a_conflict_in_plain_words():
+    """With foreign keys enforced, registering a table that holds an unknown policy is refused, naming the policy."""
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    event.listen(engine, "connect", lambda dbapi_connection, _: dbapi_connection.execute("PRAGMA foreign_keys=ON"))
+    create_schema(engine)
+    repo = TablesSqlRepo(engine)
+    table = Table.register_undecided(TableId("u1"), TableName(catalog="iceberg", namespace="s", table="t"), NOW)
+    table.attach_discovery_policy(SALES_POLICY, NOW)
+    with pytest.raises(
+        ConflictError, match=f"^discovery policy {SALES_POLICY.value} held by table u1 no longer exists$"
+    ):
+        repo.create(table)
+    assert repo.get(TableId("u1")) is None
