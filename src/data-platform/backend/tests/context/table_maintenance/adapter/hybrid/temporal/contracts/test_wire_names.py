@@ -17,6 +17,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery
     TABLE_DISCOVERY_SCHEDULE_ID,
     TABLE_DISCOVERY_WORKFLOW,
     TableDiscoveryActivity,
+    TableDiscoverySignal,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery_round import (
     TABLE_DISCOVERY_ROUND_WORKFLOW,
@@ -185,3 +186,10 @@ def test_domain_and_contract_values_agree():
     assert {e.value for e in AttemptEnding} == {e.value for e in MaintenanceAttemptEnding}
     assert {e.value for e in NextStep} == {e.value for e in MaintenanceNextStep}
     assert {e.value for e in FailureClass} == {e.value for e in MaintenanceFailureClass}
+
+
+def test_table_discovery_signals():
+    """The table discovery signal names are the stable wire names."""
+    assert _values(TableDiscoverySignal) == {
+        "REQUEST_RESCAN": "request_rescan",
+    }

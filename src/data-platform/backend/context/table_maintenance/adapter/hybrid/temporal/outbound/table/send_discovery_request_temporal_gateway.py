@@ -11,6 +11,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
     TABLE_DISCOVERY_WORKFLOW,
+    TableDiscoverySignal,
     TableDiscoveryWorkflowInput,
     table_discovery_adhoc_workflow_id,
     table_discovery_catalog_workflow_id,
@@ -40,24 +41,33 @@ class SendDiscoveryRequestTemporalGateway(SendDiscoveryRequestGateway):
         self._bridge = bridge
 
     def send(self, input: SendDiscoveryRequestGatewayInput) -> None:  # noqa: A002
-        """Start the table discovery workflow, reusing a running one with the same id.
+        """Start the table discovery workflow, or reach the one running under the same id.
 
-        A catalog-wide request runs under the catalog's one scan id, the one the discovery round
-        starts its scans under, so it joins the catalog's scan already going, whoever started it,
-        and its change id is not part of the id. A namespace request after a discovery policy change
-        carries the change id in its id, so it joins only a run of that same change.
+        A catalog-wide request signal-with-starts the catalog's one scan id, the one the discovery
+        round starts its scans under, with ``request_rescan``: it starts the scan when none is going,
+        and otherwise asks the running scan, whoever started it, to scan once more when it finishes,
+        so a request after a change is never served by a scan that read older policies. Its change
+        id is not part of the id. A namespace request after a discovery policy change carries the
+        change id in its id, so it joins only a run of that same change.
         """
         self._bridge.run(lambda: self._send(input))
 
     async def _send(self, input: SendDiscoveryRequestGatewayInput) -> None:  # noqa: A002
         if input.namespace is None:
-            workflow_id = table_discovery_catalog_workflow_id(input.catalog)
-        else:
-            workflow_id = table_discovery_adhoc_workflow_id(input.catalog, input.namespace, change_id=input.change_id)
+            await self._client.start_workflow(
+                TABLE_DISCOVERY_WORKFLOW,
+                TableDiscoveryWorkflowInput(catalog=input.catalog),
+                id=table_discovery_catalog_workflow_id(input.catalog),
+                task_queue=TASK_QUEUE,
+                start_signal=TableDiscoverySignal.REQUEST_RESCAN,
+                id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
+                static_summary=table_discovery_summary(input.catalog, None, adhoc=True),
+            )
+            return
         await self._client.start_workflow(
             TABLE_DISCOVERY_WORKFLOW,
             TableDiscoveryWorkflowInput(catalog=input.catalog, namespace=input.namespace),
-            id=workflow_id,
+            id=table_discovery_adhoc_workflow_id(input.catalog, input.namespace, change_id=input.change_id),
             task_queue=TASK_QUEUE,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
             static_summary=table_discovery_summary(input.catalog, input.namespace, adhoc=True),

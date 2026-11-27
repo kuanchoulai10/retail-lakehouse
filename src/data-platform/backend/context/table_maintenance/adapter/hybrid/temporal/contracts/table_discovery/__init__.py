@@ -11,6 +11,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery.schedule_id import (
     TABLE_DISCOVERY_SCHEDULE_ID,
 )
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery.signal import (
+    TableDiscoverySignal,
+)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery.summary import (
     table_discovery_summary,
 )
@@ -28,6 +31,7 @@ __all__ = [
     "TABLE_DISCOVERY_SCHEDULE_ID",
     "TABLE_DISCOVERY_WORKFLOW",
     "TableDiscoveryActivity",
+    "TableDiscoverySignal",
     "TableDiscoveryWorkflowInput",
     "table_discovery_adhoc_workflow_id",
     "table_discovery_catalog_workflow_id",

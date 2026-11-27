@@ -116,12 +116,26 @@ class StubTableMaintenanceWorkflow:
 
 @workflow.defn(name=TABLE_DISCOVERY_WORKFLOW)
 class StubTableDiscoveryWorkflow:
-    """Discovery workflow stub that waits forever."""
+    """Discovery workflow stub that waits forever and counts the rescans requested of it."""
+
+    def __init__(self) -> None:
+        """Start with no rescan requested."""
+        self.rescans = 0
 
     @workflow.run
     async def run(self, payload: dict) -> None:
         """Wait forever."""
         await workflow.wait_condition(lambda: False)
+
+    @workflow.signal(name="request_rescan")
+    def request_rescan(self) -> None:
+        """Count a requested rescan."""
+        self.rescans += 1
+
+    @workflow.query
+    def rescans_requested(self) -> int:
+        """Query returning how many rescans were requested."""
+        return self.rescans
 
 
 @dataclass

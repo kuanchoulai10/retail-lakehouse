@@ -54,8 +54,8 @@ def test_discovery_request_starts_one_workflow_per_scope(harness):
     }
 
 
-def test_catalog_requests_join_the_catalog_scan_already_running(harness):
-    """Every catalog request, after a policy change or not, joins the catalog's scan that is still going."""
+def test_catalog_requests_join_the_catalog_scan_already_running_and_ask_it_to_rescan(harness):
+    """Each catalog request signal-with-starts the catalog's one scan: it starts it or asks the running one again."""
     gateway = SendDiscoveryRequestTemporalGateway(harness.client, harness.bridge)
     gateway.send(SendDiscoveryRequestGatewayInput("lake", None))
 
@@ -67,6 +67,11 @@ def test_catalog_requests_join_the_catalog_scan_already_running(harness):
     gateway.send(SendDiscoveryRequestGatewayInput("lake", None, change_id="c2"))
 
     assert harness.bridge.run(run_id) == first
+
+    async def rescans() -> int:
+        return await harness.client.get_workflow_handle("table-discovery:catalog=lake").query("rescans_requested")
+
+    assert harness.bridge.run(rescans) == 3
     only = ["table-discovery:catalog=lake"]
     assert _wait_for(harness, "WorkflowId STARTS_WITH 'table-discovery:catalog=lake'", only) == only
 
@@ -83,3 +88,8 @@ def test_namespace_change_requests_start_one_workflow_per_change(harness):
         "table-discovery:catalog=pond:namespace=eu:trigger=policy-changed:change=c2",
     ]
     assert _wait_for(harness, "WorkflowId STARTS_WITH 'table-discovery:catalog=pond'", expected) == expected
+
+    async def rescans() -> list[int]:
+        return [await harness.client.get_workflow_handle(i).query("rescans_requested") for i in expected]
+
+    assert harness.bridge.run(rescans) == [0, 0, 0]
