@@ -12,6 +12,7 @@ from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
     AsyncLoopBridge,
 )
 from context.table_maintenance.adapter.hybrid.temporal.outbound.table import (
+    SendDiscoveryRequestTemporalGateway,
     SendTableChangeTemporalGateway,
 )
 from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
@@ -19,6 +20,7 @@ from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenanc
 )
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.outbound.table import (
+    SendDiscoveryRequestGatewayInput,
     SendTableChangeGatewayInput,
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
@@ -40,8 +42,14 @@ class _FailingHandle:
 class _FailingClient:
     def __init__(self, status: RPCStatusCode) -> None:
         self._handle = _FailingHandle(status)
+        self.started: list[str] = []
+        self.signalled: list[str] = []
 
-    def get_workflow_handle(self, *args: object, **kwargs: object) -> _FailingHandle:
+    async def start_workflow(self, *args: object, id: str, **kwargs: object) -> None:  # noqa: A002
+        self.started.append(id)
+
+    def get_workflow_handle(self, workflow_id: str, *args: object, **kwargs: object) -> _FailingHandle:
+        self.signalled.append(workflow_id)
         return self._handle
 
 
@@ -79,3 +87,24 @@ def test_maintenance_result_not_found_maps_to_not_found_error(bridge):
     gateway = SendMaintenanceResultTemporalGateway(client, bridge)  # ty: ignore[invalid-argument-type]
     with pytest.raises(NotFoundError):
         gateway.send(_result_input())
+
+
+def test_namespace_request_ignores_a_catalog_scan_that_is_not_running(bridge):
+    """The rescan asked of the catalog scan is dropped when no such scan runs; the namespace scan still starts."""
+    client = _FailingClient(RPCStatusCode.NOT_FOUND)
+    gateway = SendDiscoveryRequestTemporalGateway(client, bridge)  # ty: ignore[invalid-argument-type]
+
+    gateway.send(SendDiscoveryRequestGatewayInput("lake", "sales", change_id="c1"))
+
+    assert client.started == ["table-discovery:catalog=lake:namespace=sales:trigger=policy-changed:change=c1"]
+    assert client.signalled == ["table-discovery:catalog=lake"]
+
+
+def test_namespace_request_propagates_other_rpc_errors_of_the_catalog_rescan(bridge):
+    """Any other error asking the catalog scan to rescan is raised, after the namespace scan started."""
+    client = _FailingClient(RPCStatusCode.INVALID_ARGUMENT)
+    gateway = SendDiscoveryRequestTemporalGateway(client, bridge)  # ty: ignore[invalid-argument-type]
+
+    with pytest.raises(RPCError):
+        gateway.send(SendDiscoveryRequestGatewayInput("lake", "sales", change_id="c1"))
+    assert client.started == ["table-discovery:catalog=lake:namespace=sales:trigger=policy-changed:change=c1"]
