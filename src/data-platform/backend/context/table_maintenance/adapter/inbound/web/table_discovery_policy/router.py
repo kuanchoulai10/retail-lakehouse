@@ -48,18 +48,18 @@ def _policy_response(
         {
             "id": output.id,
             "name": output.name,
-            "is_default": output.is_default,
             "version": output.version,
             "created_at": output.created_at,
             "updated_at": output.updated_at,
-            **output.content,
+            "description": output.description,
+            "rules": list(output.rules),
         }
     )
 
 
 @router.get("")
 def list_table_discovery_policies(use_cases: UseCases) -> TableDiscoveryPoliciesApiResponse:
-    """List every discovery policy at its current version with its attachment count, the default first."""
+    """List every discovery policy at its current version with its attachment count, by name."""
     output = use_cases.list_table_discovery_policies.execute(ListTableDiscoveryPoliciesUseCaseInput())
     return TableDiscoveryPoliciesApiResponse(
         policies=[
@@ -67,12 +67,12 @@ def list_table_discovery_policies(use_cases: UseCases) -> TableDiscoveryPolicies
                 {
                     "id": item.id,
                     "name": item.name,
-                    "is_default": item.is_default,
                     "version": item.version,
                     "created_at": item.created_at,
                     "updated_at": item.updated_at,
+                    "description": item.description,
+                    "rules": list(item.rules),
                     "attachment_count": item.attachment_count,
-                    **item.content,
                 }
             )
             for item in output.items
@@ -84,9 +84,11 @@ def list_table_discovery_policies(use_cases: UseCases) -> TableDiscoveryPolicies
 def create_table_discovery_policy(
     body: CreateTableDiscoveryPolicyApiRequest, use_cases: UseCases
 ) -> TableDiscoveryPolicyApiResponse:
-    """Create a discovery policy at version 1; each rule gets a new ``dr-`` id."""
+    """Create a discovery policy at version 1 with the rules in the order sent."""
     output = use_cases.create_table_discovery_policy.execute(
-        CreateTableDiscoveryPolicyUseCaseInput(name=body.name, content=body.model_dump(exclude={"name"}))
+        CreateTableDiscoveryPolicyUseCaseInput(
+            name=body.name, description=body.description, rules=tuple(r.model_dump() for r in body.rules)
+        )
     )
     return _policy_response(output)
 
@@ -102,10 +104,13 @@ def get_table_discovery_policy(name: str, use_cases: UseCases) -> TableDiscovery
 def update_table_discovery_policy(
     name: str, body: UpdateTableDiscoveryPolicyApiRequest, use_cases: UseCases
 ) -> TableDiscoveryPolicyApiResponse:
-    """Replace a discovery policy's content from the version read (409 if stale); the version increments."""
+    """Revise a discovery policy from the version read (409 if stale); the version increments."""
     output = use_cases.update_table_discovery_policy.execute(
         UpdateTableDiscoveryPolicyUseCaseInput(
-            name=name, content=body.model_dump(exclude={"version"}), version=body.version
+            name=name,
+            description=body.description,
+            rules=tuple(r.model_dump() for r in body.rules),
+            version=body.version,
         )
     )
     return _policy_response(output)
@@ -113,7 +118,7 @@ def update_table_discovery_policy(
 
 @router.delete("/{name}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_table_discovery_policy(name: str, use_cases: UseCases) -> Response:
-    """Delete a discovery policy and its versions; 409 while it is attached or when it is the default."""
+    """Delete a discovery policy and its versions; 409 while it is attached."""
     use_cases.delete_table_discovery_policy.execute(DeleteTableDiscoveryPolicyUseCaseInput(name=name))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -130,9 +135,9 @@ def get_table_discovery_policy_version(
         {
             "id": output.id,
             "name": output.name,
-            "is_default": output.is_default,
             "version": output.version,
             "created_at": output.created_at,
-            **output.content,
+            "description": output.description,
+            "rules": list(output.rules),
         }
     )

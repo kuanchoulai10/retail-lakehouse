@@ -20,9 +20,7 @@ class ListTablesUseCaseOutput(UseCaseOutput):
         table: str
         status: str
         priority: str
-        matched_rule_id: str | None
-        matched_policy_id: str
-        matched_policy_version: int
+        decided_by: dict[str, Any] | None
         operation_states: dict[str, dict[str, Any]]
         registered_at: datetime
         updated_at: datetime

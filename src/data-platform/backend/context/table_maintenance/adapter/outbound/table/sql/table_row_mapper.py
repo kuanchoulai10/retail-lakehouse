@@ -11,7 +11,7 @@ from context.table_maintenance.application.port.outbound.table import (
     AppliedPolicyRef,
     AttentionMark,
     ComputeSize,
-    DiscoveryMatch,
+    DecidedBy,
     MaintenanceOperation,
     OperationState,
     OverTargetPartition,
@@ -19,7 +19,6 @@ from context.table_maintenance.application.port.outbound.table import (
     RecordedAttempt,
     Table,
     TableDiscoveryPolicyId,
-    TableDiscoveryRuleId,
     TableId,
     TableMaintenancePolicyId,
     TableMaintenancePolicyName,
@@ -103,13 +102,26 @@ def _decode_state(data: dict[str, Any]) -> OperationState:
     )
 
 
-def _decode_discovered_by(row: RowMapping) -> DiscoveryMatch:
-    """Return the match a row stored: the deciding policy's id and version, and its rule (none for no match)."""
-    rule_id = row["matched_rule_id"]
-    return DiscoveryMatch(
-        policy_id=TableDiscoveryPolicyId(row["matched_policy_id"]),
-        policy_version=row["matched_policy_version"],
-        rule_id=None if rule_id is None else TableDiscoveryRuleId(rule_id),
+def _encode_decided_by(decided_by: DecidedBy | None) -> dict[str, Any]:
+    """Return the three decided-by columns, all None when no discovery policy decided the table."""
+    if decided_by is None:
+        return {"decided_by_policy_id": None, "decided_by_policy_version": None, "decided_by_rule_position": None}
+    return {
+        "decided_by_policy_id": decided_by.policy_id.value,
+        "decided_by_policy_version": decided_by.policy_version,
+        "decided_by_rule_position": decided_by.rule_position,
+    }
+
+
+def _decode_decided_by(row: RowMapping) -> DecidedBy | None:
+    """Return what a row says decided the table: a policy, its version and its rule position, or None."""
+    policy_id = row["decided_by_policy_id"]
+    if policy_id is None:
+        return None
+    return DecidedBy(
+        policy_id=TableDiscoveryPolicyId(policy_id),
+        policy_version=row["decided_by_policy_version"],
+        rule_position=row["decided_by_rule_position"],
     )
 
 
@@ -143,9 +155,7 @@ class TableRowMapper:
             "namespace": table.name.namespace,
             "table_name": table.name.table,
             "status": table.status.value,
-            "matched_rule_id": (None if table.matched_rule_id is None else table.matched_rule_id.value),
-            "matched_policy_id": table.discovered_by.policy_id.value,
-            "matched_policy_version": table.discovered_by.policy_version,
+            **_encode_decided_by(table.decided_by),
             "registered_at": table.registered_at,
             "updated_at": table.updated_at,
             "operation_states_json": {op.value: _encode_state(state) for op, state in table.operation_states.items()},
@@ -166,7 +176,7 @@ class TableRowMapper:
                 table=row["table_name"],
             ),
             status=TableStatus(row["status"]),
-            discovered_by=_decode_discovered_by(row),
+            decided_by=_decode_decided_by(row),
             registered_at=row["registered_at"],
             updated_at=row["updated_at"],
             operation_states={

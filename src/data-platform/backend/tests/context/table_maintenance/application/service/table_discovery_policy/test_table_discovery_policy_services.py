@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 
 import pytest
 
@@ -11,7 +10,6 @@ from context.table_maintenance.application.domain.model.shared import (
     PolicyTarget,
     PolicyTargetType,
     TableDiscoveryPolicyId,
-    TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy import TableDiscoveryPolicyName
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
@@ -26,7 +24,6 @@ from context.table_maintenance.application.port.inbound.table_discovery_policy i
     CreateTableDiscoveryPolicyUseCaseInput,
     CreateTableDiscoveryPolicyUseCaseOutput,
     DeleteTableDiscoveryPolicyUseCaseInput,
-    EnsureDefaultTableDiscoveryPolicyUseCaseInput,
     GetTableDiscoveryPolicyUseCaseInput,
     GetTableDiscoveryPolicyUseCaseOutput,
     GetTableDiscoveryPolicyVersionUseCaseInput,
@@ -39,7 +36,6 @@ from context.table_maintenance.application.port.inbound.table_discovery_policy i
 from context.table_maintenance.application.service.table_discovery_policy import (
     CreateTableDiscoveryPolicyService,
     DeleteTableDiscoveryPolicyService,
-    EnsureDefaultTableDiscoveryPolicyService,
     GetTableDiscoveryPolicyService,
     GetTableDiscoveryPolicyVersionService,
     ListTableDiscoveryPoliciesService,
@@ -61,37 +57,22 @@ from tests.context.table_maintenance.id_shape import IdShape
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
 LATER = datetime(2026, 11, 2, tzinfo=UTC)
-DR_ID = IdShape(TableDiscoveryRuleId)
 DP_ID = IdShape(TableDiscoveryPolicyId)
 
 
-def _rule(glob: str = "orders_*", *, outcome: str = "manage", **extra: Any) -> dict[str, Any]:  # noqa: ANN401
-    return {
-        "outcome": outcome,
-        "conditions": [{"attribute": "table_name", "operator": "glob", "values": [glob]}],
-        **extra,
-    }
+def _rule(action: str, pattern: str) -> dict[str, str]:
+    return {"action": action, "table_name_pattern": pattern}
 
 
-def _content(*rules: dict[str, Any], no_match_outcome: str = "unmanage", description: str = "") -> dict[str, Any]:
-    return {"description": description, "no_match_outcome": no_match_outcome, "rules": list(rules)}
-
-
-def one_rule() -> dict[str, Any]:
-    """Return content with one managing rule sent without an id."""
-    return _content(_rule())
-
-
-def content_with_rule_id(rule_id: str) -> dict[str, Any]:
-    """Return content whose one rule names ``rule_id``."""
-    return _content(_rule(id=rule_id))
+INCLUDE_ORDERS = (_rule("include", "orders_*"),)
+INCLUDE_ALL_BUT_TMP = (_rule("include", "*"), _rule("exclude", "*_tmp"))
 
 
 class ServiceWorld:
-    """Run the discovery policy services on in-memory fakes seeded with the default policy."""
+    """Run the discovery policy services on in-memory fakes that start empty."""
 
     def __init__(self) -> None:
-        """Seed the default.
+        """Start with no policy.
 
         The policies fake is not linked to the attachments, so it deletes an attached policy freely and
         only the delete service's own check refuses it.
@@ -101,24 +82,27 @@ class ServiceWorld:
         self.requests = RecordingSendDiscoveryRequestGateway()
         self.schedules = RecordingSyncDiscoverySchedulesGateway()
         self.now = NOW
-        EnsureDefaultTableDiscoveryPolicyService(self.policies, clock=lambda: NOW).execute(
-            EnsureDefaultTableDiscoveryPolicyUseCaseInput()
-        )
 
     def _clock(self) -> datetime:
         return self.now
 
-    def create(self, name: str, content: dict[str, Any]) -> CreateTableDiscoveryPolicyUseCaseOutput:
+    def create(
+        self, name: str, rules: tuple[dict[str, str], ...] = INCLUDE_ORDERS, *, description: str = ""
+    ) -> CreateTableDiscoveryPolicyUseCaseOutput:
         """Create a policy."""
         return CreateTableDiscoveryPolicyService(self.policies, clock=self._clock).execute(
-            CreateTableDiscoveryPolicyUseCaseInput(name=name, content=content)
+            CreateTableDiscoveryPolicyUseCaseInput(name=name, description=description, rules=rules)
         )
 
-    def update(self, name: str, *, version: int, content: dict[str, Any]) -> UpdateTableDiscoveryPolicyUseCaseOutput:
-        """Replace a policy's content from ``version``."""
+    def update(
+        self, name: str, *, version: int, rules: tuple[dict[str, str], ...], description: str = ""
+    ) -> UpdateTableDiscoveryPolicyUseCaseOutput:
+        """Revise a policy from ``version``."""
         return UpdateTableDiscoveryPolicyService(
             self.policies, self.attachments, self.requests, self.schedules, clock=self._clock
-        ).execute(UpdateTableDiscoveryPolicyUseCaseInput(name=name, content=content, version=version))
+        ).execute(
+            UpdateTableDiscoveryPolicyUseCaseInput(name=name, description=description, rules=rules, version=version)
+        )
 
     def get(self, name: str) -> GetTableDiscoveryPolicyUseCaseOutput:
         """Get a policy at its current version."""
@@ -152,114 +136,113 @@ class ServiceWorld:
 
 @pytest.fixture
 def world() -> ServiceWorld:
-    """Provide the services over fakes holding only the default policy."""
+    """Provide the services over empty fakes."""
     return ServiceWorld()
 
 
-def _rule_ids(content: dict[str, Any]) -> list[str]:
-    return [rule["id"] for rule in content["rules"]]
-
-
-def test_create_issues_rule_ids_and_starts_at_version_1(world: ServiceWorld) -> None:
-    """Every rule sent without an id (absent or null) gets a fresh ``dr-`` id; the policy starts at version 1."""
-    created = world.create("mine", _content(_rule("a_*"), _rule("b_*", id=None)))
+def test_create_builds_the_rules_in_order_and_starts_at_version_1(world: ServiceWorld) -> None:
+    """The rules sent are the policy's rules, in the order sent; the policy starts at version 1."""
+    created = world.create("mine", INCLUDE_ALL_BUT_TMP, description="no temporary tables")
 
     assert created.version == 1
     assert DP_ID.fullmatch(created.id)
-    assert created.is_default is False
     assert (created.created_at, created.updated_at) == (NOW, NOW)
-    ids = _rule_ids(created.content)
-    assert all(DR_ID.fullmatch(rule_id) for rule_id in ids)
-    assert len(set(ids)) == 2
-    assert _rule_ids(world.get("mine").content) == ids
+    assert (created.description, created.rules) == ("no temporary tables", INCLUDE_ALL_BUT_TMP)
+    assert world.get("mine").rules == INCLUDE_ALL_BUT_TMP
 
 
-def test_create_refuses_any_rule_id_it_did_not_issue(world: ServiceWorld) -> None:
-    """A create may name no rule id, however well-formed, and stores nothing."""
-    with pytest.raises(ValidationError, match="unknown discovery rule id dr-00000000000000000000000001"):
-        world.create("mine", content_with_rule_id("dr-00000000000000000000000001"))
-    with pytest.raises(NotFoundError):
-        world.get("mine")
+def test_create_accepts_exclude_rules_only(world: ServiceWorld) -> None:
+    """A policy may hold exclude rules only."""
+    created = world.create("mine", (_rule("exclude", "*"),))
+
+    assert created.rules == ({"action": "exclude", "table_name_pattern": "*"},)
 
 
 def test_create_with_a_taken_name_conflicts(world: ServiceWorld) -> None:
-    """A second policy may not take a name, the default's included."""
-    world.create("mine", one_rule())
+    """A second policy may not take a name."""
+    world.create("mine")
     with pytest.raises(ConflictError, match="'mine' already exists"):
-        world.create("mine", one_rule())
-    with pytest.raises(ConflictError, match="'default' already exists"):
-        world.create("default", one_rule())
+        world.create("mine")
 
 
-def test_create_refuses_a_bad_name_or_bad_content(world: ServiceWorld) -> None:
-    """A name shaped like an id, a rule without conditions or an empty rule id is a validation error."""
+@pytest.mark.parametrize(
+    ("rules", "message"),
+    [
+        ((), "at least one rule"),
+        ((_rule("manage", "*"),), "manage"),
+        ((_rule("include", ""),), "must not be empty"),
+        (({"action": "include"},), "table_name_pattern"),
+        (({"table_name_pattern": "*"},), "action"),
+        (({"action": "include", "table_name_pattern": "*", "outcome": "manage"},), "outcome"),
+    ],
+)
+def test_create_refuses_bad_rules(world: ServiceWorld, rules: tuple[dict[str, str], ...], message: str) -> None:
+    """No rule, an unknown action, an empty pattern, a missing or an unknown field is a validation error."""
+    with pytest.raises(ValidationError, match=message):
+        world.create("mine", rules)
+    assert world.list().items == ()
+
+
+def test_create_refuses_a_bad_name(world: ServiceWorld) -> None:
+    """A name shaped like an id is a validation error."""
     with pytest.raises(ValidationError):
-        world.create("dp-00000000000000000000000001", one_rule())
-    with pytest.raises(ValidationError, match="at least one condition"):
-        world.create("mine", _content({"outcome": "manage", "conditions": []}))
-    with pytest.raises(ValidationError, match="a rule id is a dr- id or absent"):
-        world.create("mine", content_with_rule_id(""))
-    assert [p.name for p in world.list().items] == ["default"]
+        world.create("dp-00000000000000000000000001")
 
 
-def test_update_keeps_the_ids_it_was_sent_and_bumps_the_version(world: ServiceWorld) -> None:
-    """A rule sent with its id keeps it; a rule sent without one gets a new id; the version increments."""
-    created = world.create("mine", one_rule())
-    kept = _rule_ids(created.content)[0]
+def test_update_replaces_the_rules_and_bumps_the_version(world: ServiceWorld) -> None:
+    """A revision holds the rules and description sent; the version increments."""
+    world.create("mine")
     world.now = LATER
 
-    updated = world.update("mine", version=1, content=_content(_rule("x_*"), _rule("orders_*", id=kept)))
+    updated = world.update("mine", version=1, rules=INCLUDE_ALL_BUT_TMP, description="second")
 
     assert updated.version == 2
     assert (updated.created_at, updated.updated_at) == (NOW, LATER)
-    issued, second = _rule_ids(updated.content)
-    assert second == kept
-    assert DR_ID.fullmatch(issued)
-    assert issued != kept
-    assert world.get("mine").content == updated.content
+    assert (updated.description, updated.rules) == ("second", INCLUDE_ALL_BUT_TMP)
+    assert world.get("mine").rules == INCLUDE_ALL_BUT_TMP
 
 
-def test_update_with_another_policys_rule_id_is_refused(world: ServiceWorld) -> None:
-    """A rule id the policy's current version does not hold is refused, and nothing is saved."""
-    world.create("mine", one_rule())
-    other = world.create("other", one_rule())
-    with pytest.raises(ValidationError, match="unknown discovery rule id"):
-        world.update("mine", version=1, content=content_with_rule_id(other.content["rules"][0]["id"]))
+def test_update_with_bad_rules_is_refused(world: ServiceWorld) -> None:
+    """A revision with no rule is a validation error, and nothing is saved."""
+    world.create("mine")
+    with pytest.raises(ValidationError, match="at least one rule"):
+        world.update("mine", version=1, rules=())
     assert world.get("mine").version == 1
 
 
 def test_update_from_a_stale_version_conflicts(world: ServiceWorld) -> None:
     """An update from a version below or above the current one is a conflict, and nothing is saved."""
-    world.create("mine", one_rule())
-    world.update("mine", version=1, content=one_rule())
+    world.create("mine")
+    world.update("mine", version=1, rules=INCLUDE_ORDERS)
 
     with pytest.raises(ConflictError, match="is at version 2, not 1"):
-        world.update("mine", version=1, content=_content(_rule("stale_*")))
+        world.update("mine", version=1, rules=INCLUDE_ALL_BUT_TMP)
     with pytest.raises(ConflictError, match="is at version 2, not 3"):
-        world.update("mine", version=3, content=_content(_rule("stale_*")))
+        world.update("mine", version=3, rules=INCLUDE_ALL_BUT_TMP)
     current = world.get("mine")
-    assert current.version == 2
-    assert current.content["rules"][0]["conditions"][0]["values"] == ["orders_*"]
+    assert (current.version, current.rules) == (2, INCLUDE_ORDERS)
 
 
-def test_update_of_the_default_conflicts(world: ServiceWorld) -> None:
-    """The default is fixed: an update is a conflict and it stays at version 1."""
-    with pytest.raises(ConflictError, match="the default discovery policy cannot be changed"):
-        world.update("default", version=1, content=one_rule())
-    assert world.get("default").version == 1
+def test_update_rescans_the_catalogs_it_is_attached_in(world: ServiceWorld) -> None:
+    """Once saved, each catalog the policy is attached in is scanned again and the schedules are synced."""
+    world.create("mine")
+    world.attach("mine", "prod")
+
+    world.update("mine", version=1, rules=INCLUDE_ALL_BUT_TMP)
+
+    assert [request.catalog for request in world.requests.calls] == ["prod"]
+    assert world.schedules.synced[-1].catalogs == ("prod",)
 
 
 def test_update_of_an_unknown_policy_is_not_found(world: ServiceWorld) -> None:
     """An update of a name no policy has is not found."""
     with pytest.raises(NotFoundError, match="discovery policy missing not found"):
-        world.update("missing", version=1, content=one_rule())
+        world.update("missing", version=1, rules=INCLUDE_ORDERS)
 
 
-def test_delete_of_the_default_or_an_attached_policy_conflicts(world: ServiceWorld) -> None:
-    """The default is never deleted, and a policy is not deleted while it is attached; detached, it is."""
-    with pytest.raises(ConflictError, match="the default discovery policy cannot be deleted"):
-        world.delete("default")
-    world.create("mine", one_rule())
+def test_delete_of_an_attached_policy_conflicts(world: ServiceWorld) -> None:
+    """A policy is not deleted while it is attached; detached, it is."""
+    world.create("mine")
     attachment = world.attach("mine", "prod")
 
     with pytest.raises(ConflictError, match="policy mine is still attached to a catalog, namespace or table"):
@@ -281,43 +264,35 @@ def test_delete_of_an_unknown_policy_is_not_found(world: ServiceWorld) -> None:
 
 
 def test_a_version_stays_readable_after_an_update(world: ServiceWorld) -> None:
-    """Each version keeps the content it was written with and when; a version never written is not found."""
-    created = world.create("mine", _content(_rule(), description="first"))
+    """Each version keeps the description, rules and time it was written with; one never written is not found."""
+    created = world.create("mine", INCLUDE_ORDERS, description="first")
     world.now = LATER
-    updated = world.update("mine", version=1, content=_content(_rule("x_*"), description="second"))
+    world.update("mine", version=1, rules=INCLUDE_ALL_BUT_TMP, description="second")
 
     first = world.get_version("mine", 1)
-    assert (first.id, first.name, first.is_default, first.version) == (created.id, "mine", False, 1)
-    assert first.content == created.content
-    assert first.created_at == NOW
+    assert (first.id, first.name, first.version) == (created.id, "mine", 1)
+    assert (first.description, first.rules, first.created_at) == ("first", INCLUDE_ORDERS, NOW)
     second = world.get_version("mine", 2)
-    assert (second.content, second.created_at) == (updated.content, LATER)
+    assert (second.description, second.rules, second.created_at) == ("second", INCLUDE_ALL_BUT_TMP, LATER)
     for version in (0, 3):
         with pytest.raises(NotFoundError, match=f"has no version {version}"):
             world.get_version("mine", version)
 
 
-def test_get_answers_the_default_and_refuses_an_unknown_name(world: ServiceWorld) -> None:
-    """The default reads as the default; a name no policy has is not found."""
-    default = world.get("default")
-    assert (default.is_default, default.version, default.content["rules"]) == (True, 1, [])
+def test_get_refuses_an_unknown_name(world: ServiceWorld) -> None:
+    """A name no policy has is not found."""
     with pytest.raises(NotFoundError, match="discovery policy missing not found"):
         world.get("missing")
 
 
-def test_list_counts_attachments(world: ServiceWorld) -> None:
-    """The default comes first, then the others by name, each with how many targets it is attached to."""
-    world.create("zeta", one_rule())
-    world.create("alpha", one_rule())
+def test_list_counts_attachments_by_name(world: ServiceWorld) -> None:
+    """The policies come by name, each with how many targets it is attached to."""
+    world.create("zeta", INCLUDE_ALL_BUT_TMP)
+    world.create("alpha")
     world.attach("zeta", "prod")
     world.attach("zeta", "dev")
-    world.attach("default", "lab")
 
     listed = world.list().items
 
-    assert [(p.name, p.is_default, p.attachment_count) for p in listed] == [
-        ("default", True, 1),
-        ("alpha", False, 0),
-        ("zeta", False, 2),
-    ]
-    assert listed[2].content == world.get("zeta").content
+    assert [(p.name, p.attachment_count) for p in listed] == [("alpha", 0), ("zeta", 2)]
+    assert listed[1].rules == world.get("zeta").rules

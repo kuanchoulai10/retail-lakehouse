@@ -29,16 +29,16 @@ class MaintenanceEffectivePolicyApiResponse(BaseModel):
 class DiscoveryEffectivePolicyApiResponse(BaseModel):
     """Describe the discovery policy that applies, at its latest version, and the level it applies from.
 
-    ``target`` is the nearest attachment's target and ``attachment_id`` its ``da-`` id; both are null when
-    the platform default applies.
+    ``target`` is the nearest attachment's target and ``attachment_id`` its ``da-`` id. When nothing is
+    attached no discovery policy applies, the place's tables are not managed, and every field but ``kind``
+    is null: there is no discovery default.
     """
 
     kind: Literal["discovery"]
-    policy_id: str
-    policy_name: str
-    version: int
-    description: str
-    no_match_outcome: Literal["manage", "unmanage"]
+    policy_id: str | None
+    policy_name: str | None
+    version: int | None
+    description: str | None
     target: PolicyTargetApiResponse | None
     attachment_id: str | None
 

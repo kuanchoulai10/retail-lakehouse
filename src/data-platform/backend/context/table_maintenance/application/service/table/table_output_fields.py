@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from context.table_maintenance.application.domain.model.table import OperationState, Table
+    from context.table_maintenance.application.domain.model.table_discovery_policy import DecidedBy
 
 
 def _attention_fields(state: OperationState, policy_names: Mapping[str, str]) -> dict[str, Any] | None:
@@ -26,6 +27,16 @@ def _attention_fields(state: OperationState, policy_names: Mapping[str, str]) ->
     }
 
 
+def _decided_by_fields(decided_by: DecidedBy | None) -> dict[str, Any] | None:
+    if decided_by is None:
+        return None
+    return {
+        "policy_id": decided_by.policy_id.value,
+        "policy_version": decided_by.policy_version,
+        "rule_position": decided_by.rule_position,
+    }
+
+
 def table_output_fields(
     table: Table, catalog_discovered_at: datetime | None, policy_names: Mapping[str, str]
 ) -> dict[str, Any]:
@@ -35,7 +46,9 @@ def table_output_fields(
     when it was never discovered; the table's last discovery is derived from it.
     ``policy_names`` maps a policy id to its current name; a needs-attention mark
     shows its policy's id and that name, or, when the policy was deleted since
-    (``policy_deleted``), the name the mark kept when it was set.
+    (``policy_deleted``), the name the mark kept when it was set. ``decided_by`` is the discovery
+    policy, version and rule position that decided whether the table is managed (the position None
+    when no rule matched), or None when nothing on the table's walk was attached.
     """
     return {
         "uuid": table.id.value,
@@ -44,9 +57,7 @@ def table_output_fields(
         "table": table.name.table,
         "status": table.status.value,
         "priority": table.priority.value,
-        "matched_rule_id": (None if table.matched_rule_id is None else table.matched_rule_id.value),
-        "matched_policy_id": table.discovered_by.policy_id.value,
-        "matched_policy_version": table.discovered_by.policy_version,
+        "decided_by": _decided_by_fields(table.decided_by),
         "operation_states": {
             op.value: {
                 "last_attempt_at": state.last_attempt_at,

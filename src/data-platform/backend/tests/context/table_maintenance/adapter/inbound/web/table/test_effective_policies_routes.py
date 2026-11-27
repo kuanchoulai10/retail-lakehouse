@@ -7,6 +7,7 @@ import pytest
 from tests.context.table_maintenance.adapter.inbound.web.effective_policies_web_world import (
     EffectivePoliciesWebWorld,
 )
+from tests.context.table_maintenance.discovery_decision_samples import SAMPLE_POLICY_ID
 
 ORDERS = ["prod", "sales", "eu", "orders"]
 RETURNS = ["prod", "sales", "eu", "returns"]
@@ -43,37 +44,41 @@ def test_by_uuid_answers_one_entry_per_kind_in_order(world: EffectivePoliciesWeb
         "policy_name": "sales-tables",
         "version": 1,
         "description": "Sales tables",
-        "no_match_outcome": "manage",
         "target": {"type": "namespace", "path": ["prod", "sales"], "table_uuid": None},
         "attachment_id": discovery["id"],
     }
 
 
-def test_by_uuid_with_nothing_attached_answers_both_defaults(world: EffectivePoliciesWebWorld) -> None:
-    """The platform defaults have no target and no attachment."""
+def test_by_uuid_with_nothing_attached_answers_the_default_and_no_discovery_policy(
+    world: EffectivePoliciesWebWorld,
+) -> None:
+    """Maintenance answers its platform default; discovery answers that no policy applies, every field null."""
     policies = world.client.get("/v1/tables/u-1/effective-policies").json()["policies"]
 
     assert [(p["kind"], p["policy_id"], p["policy_name"], p["target"], p["attachment_id"]) for p in policies] == [
         ("maintenance", "mp-00000000000000000000000000", "default", None, None),
-        ("discovery", "dp-00000000000000000000000000", "default", None, None),
+        ("discovery", None, None, None, None),
     ]
-    assert (policies[0]["dry_run"], policies[1]["no_match_outcome"]) == (False, "unmanage")
-    assert "no_match_outcome" not in policies[0]
-    assert "dry_run" not in policies[1]
+    assert policies[0]["dry_run"] is False
+    assert policies[1] == {
+        "kind": "discovery",
+        "policy_id": None,
+        "policy_name": None,
+        "version": None,
+        "description": None,
+        "target": None,
+        "attachment_id": None,
+    }
 
 
 def test_the_discovery_entry_answers_the_policys_latest_version(world: EffectivePoliciesWebWorld) -> None:
-    """Replacing the attached discovery policy's content moves the entry to the new version."""
+    """Revising the attached discovery policy moves the entry to the new version."""
     world.attach_discovery("sales-tables", "catalog", ["prod"])
-    world.update_discovery("sales-tables", 1, description="Sales v2", no_match_outcome="unmanage")
+    world.update_discovery("sales-tables", 1, description="Sales v2")
 
     _, discovery = world.client.get("/v1/tables/u-1/effective-policies").json()["policies"]
 
-    assert (discovery["version"], discovery["description"], discovery["no_match_outcome"]) == (
-        2,
-        "Sales v2",
-        "unmanage",
-    )
+    assert (discovery["version"], discovery["description"]) == (2, "Sales v2")
 
 
 def test_by_uuid_a_table_without_a_record_is_404(world: EffectivePoliciesWebWorld) -> None:
@@ -108,7 +113,7 @@ def test_by_location_answers_a_namespace_and_a_catalog(world: EffectivePoliciesW
     assert [p["target"]["path"] for p in namespace.json()["policies"]] == [["prod"], ["prod", "sales"]]
     assert [(p["policy_name"], p["target"]) for p in catalog.json()["policies"]] == [
         ("gold", {"type": "catalog", "path": ["prod"], "table_uuid": None}),
-        ("default", None),
+        (None, None),
     ]
 
 
@@ -146,3 +151,10 @@ def test_by_location_without_a_catalog_or_a_namespace_for_a_table_is_422(
 ) -> None:
     """A request naming no catalog, or a table without its namespace, answers 422."""
     assert world.client.get("/v1/effective-policies", params=params).status_code == 422
+
+
+def test_a_table_shows_what_decided_it(world: EffectivePoliciesWebWorld) -> None:
+    """GET /tables/{uuid} answers the policy, version and rule position that decided the table."""
+    body = world.client.get("/v1/tables/u-1").json()
+
+    assert body["decided_by"] == {"policy_id": SAMPLE_POLICY_ID.value, "policy_version": 1, "rule_position": 1}

@@ -12,7 +12,6 @@ from context.table_maintenance.application.domain.model.shared import (
     TableMaintenancePolicyAttachmentId,
 )
 from context.table_maintenance.application.domain.model.table import Table, TableName
-from context.table_maintenance.application.domain.model.table_discovery_policy import DEFAULT_DISCOVERY_POLICY_ID
 from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePolicyContent
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table import (
@@ -21,7 +20,6 @@ from context.table_maintenance.application.port.inbound.table import (
 )
 from context.table_maintenance.application.port.inbound.table_discovery_policy import (
     CreateTableDiscoveryPolicyUseCaseInput,
-    EnsureDefaultTableDiscoveryPolicyUseCaseInput,
     UpdateTableDiscoveryPolicyUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_policy_attachment import (
@@ -39,7 +37,6 @@ from context.table_maintenance.application.port.outbound.table import CatalogAcc
 from context.table_maintenance.application.service.table import GetEffectivePoliciesService
 from context.table_maintenance.application.service.table_discovery_policy import (
     CreateTableDiscoveryPolicyService,
-    EnsureDefaultTableDiscoveryPolicyService,
     UpdateTableDiscoveryPolicyService,
 )
 from context.table_maintenance.application.service.table_discovery_policy_attachment import (
@@ -83,13 +80,7 @@ NOW = datetime(2026, 11, 1, tzinfo=UTC)
 PA_ID = IdShape(TableMaintenancePolicyAttachmentId)
 DA_ID = IdShape(TableDiscoveryPolicyAttachmentId)
 MAINTENANCE_CONTENT = MaintenancePolicyContent.platform_default().to_primitives()
-DISCOVERY_CONTENT = {
-    "description": "Sales tables",
-    "no_match_outcome": "manage",
-    "rules": [
-        {"outcome": "manage", "conditions": [{"attribute": "table_name", "operator": "glob", "values": ["orders_*"]}]}
-    ],
-}
+DISCOVERY_RULES = ({"action": "include", "table_name_pattern": "orders_*"},)
 ORDERS = ("prod", "sales", "eu", "orders")
 
 
@@ -98,7 +89,7 @@ class _World:
 
     Catalog ``prod`` holds ``sales.eu.orders`` (uuid ``u-1``); table maintenance records it only when a test
     calls ``record_orders``. Maintenance policy ``gold`` and discovery policy ``sales-tables`` exist beside the
-    two platform defaults.
+    maintenance default; there is no discovery default.
     """
 
     def __init__(self) -> None:
@@ -113,14 +104,13 @@ class _World:
         EnsureDefaultTableMaintenancePolicyService(self.maintenance_policies, clock=lambda: NOW).execute(
             EnsureDefaultTableMaintenancePolicyUseCaseInput()
         )
-        EnsureDefaultTableDiscoveryPolicyService(self.discovery_policies, clock=lambda: NOW).execute(
-            EnsureDefaultTableDiscoveryPolicyUseCaseInput()
-        )
         CreateTableMaintenancePolicyService(self.maintenance_policies, clock=lambda: NOW).execute(
             CreateTableMaintenancePolicyUseCaseInput(name="gold", content=MAINTENANCE_CONTENT)
         )
         CreateTableDiscoveryPolicyService(self.discovery_policies, clock=lambda: NOW).execute(
-            CreateTableDiscoveryPolicyUseCaseInput(name="sales-tables", content=DISCOVERY_CONTENT)
+            CreateTableDiscoveryPolicyUseCaseInput(
+                name="sales-tables", description="Sales tables", rules=DISCOVERY_RULES
+            )
         )
         self.service = GetEffectivePoliciesService(
             self.maintenance_policies,
@@ -184,8 +174,8 @@ def world() -> _World:
     return _World()
 
 
-def test_a_table_with_nothing_attached_gets_both_platform_defaults(world: _World) -> None:
-    """With nothing attached each kind falls back to its platform default, read from its repo."""
+def test_a_table_with_nothing_attached_gets_the_maintenance_default_and_no_discovery_policy(world: _World) -> None:
+    """With nothing attached maintenance falls back to its platform default; discovery answers no policy."""
     world.record_orders()
 
     out = world.by_uuid("u-1")
@@ -198,22 +188,9 @@ def test_a_table_with_nothing_attached_gets_both_platform_defaults(world: _World
     )
     assert (maintenance.description, maintenance.dry_run) == ("Platform default", False)
     assert (maintenance.target, maintenance.attachment_id) == (None, None)
-    assert (discovery.policy_id, discovery.policy_name, discovery.version) == (
-        "dp-00000000000000000000000000",
-        "default",
-        1,
+    assert discovery == GetEffectivePoliciesUseCaseOutput.DiscoveryEntry(
+        policy_id=None, policy_name=None, version=None, description=None, target=None, attachment_id=None
     )
-    assert discovery.no_match_outcome == "unmanage"
-    assert (discovery.target, discovery.attachment_id) == (None, None)
-
-
-def test_the_default_discovery_policy_is_read_from_its_repo(world: _World) -> None:
-    """The default discovery entry carries the stored policy, not one made up in memory."""
-    world.discovery_policies.delete(DEFAULT_DISCOVERY_POLICY_ID)
-    world.record_orders()
-
-    with pytest.raises(NotFoundError):
-        world.by_uuid("u-1")
 
 
 def test_each_kind_takes_its_own_nearest_attachment(world: _World) -> None:
@@ -232,7 +209,7 @@ def test_each_kind_takes_its_own_nearest_attachment(world: _World) -> None:
     assert out.maintenance.attachment_id == gold_attachment.id.value
     assert PA_ID.fullmatch(out.maintenance.attachment_id or "")
     assert out.discovery.policy_name == "sales-tables"
-    assert (out.discovery.description, out.discovery.no_match_outcome) == ("Sales tables", "manage")
+    assert (out.discovery.version, out.discovery.description) == (1, "Sales tables")
     assert out.discovery.target == {"type": "namespace", "path": ["prod", "sales"]}
     assert out.discovery.attachment_id == world.discovery_attachment_id()
     assert DA_ID.fullmatch(out.discovery.attachment_id or "")
@@ -260,7 +237,8 @@ def test_the_version_is_the_policys_latest(world: _World) -> None:
     ).execute(
         UpdateTableDiscoveryPolicyUseCaseInput(
             name="sales-tables",
-            content={"description": "Sales v2", "no_match_outcome": "unmanage", "rules": []},
+            description="Sales v2",
+            rules=({"action": "exclude", "table_name_pattern": "*"},),
             version=1,
         )
     )
@@ -268,11 +246,7 @@ def test_the_version_is_the_policys_latest(world: _World) -> None:
     out = world.by_uuid("u-1")
 
     assert (out.maintenance.version, out.maintenance.description, out.maintenance.dry_run) == (2, "Gold v2", True)
-    assert (out.discovery.version, out.discovery.description, out.discovery.no_match_outcome) == (
-        2,
-        "Sales v2",
-        "unmanage",
-    )
+    assert (out.discovery.version, out.discovery.description) == (2, "Sales v2")
 
 
 def test_a_table_unknown_to_maintenance_is_answered_by_location(world: _World) -> None:
@@ -323,7 +297,7 @@ def test_by_uuid_the_table_is_placed_by_its_record_not_where_it_was_attached(wor
 
     assert out.maintenance.policy_name == "gold"
     assert out.maintenance.target == {"type": "table", "path": ["prod", "archive", "orders_old"], "table_uuid": "u-1"}
-    assert (out.discovery.policy_name, out.discovery.target) == ("default", None)
+    assert (out.discovery.policy_name, out.discovery.target) == (None, None)
 
 
 def test_a_table_by_location_reads_its_place_only_by_loading_the_table(world: _World) -> None:
@@ -389,7 +363,7 @@ def test_an_empty_catalog_and_namespace_are_answered(world: _World) -> None:
     world.gateway.add_namespace("empty", "nothing.here")
 
     assert world.by_location("empty").maintenance.policy_name == "default"
-    assert world.by_location("empty", "nothing.here").discovery.policy_name == "default"
+    assert world.by_location("empty", "nothing.here").discovery.policy_name is None
 
 
 @pytest.mark.parametrize(("namespace", "table"), [(None, None), ("sales.eu", None), ("sales.eu", "orders")])

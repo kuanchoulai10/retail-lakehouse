@@ -6,15 +6,16 @@ from enum import StrEnum
 
 
 class TableManagementChange(StrEnum):
-    """Enumerate what a discovery decision changed about a known table.
+    """Enumerate what a management decision changed about a known table.
 
     ``MANAGED`` and ``UNMANAGED`` mean the table changed management.
-    ``MATCH_CHANGED`` means its management stays the same, managed or not, but
-    another policy, version or rule decides it now, so only the recorded match
-    changed. ``UNCHANGED`` means nothing changed.
+    ``DECISION_CHANGED`` means its management stays the same, managed or not, but
+    another policy, version or rule decides it now (or no policy any more), so only
+    what decided it changed: it is saved and nothing is sent. ``UNCHANGED`` means
+    nothing changed.
     """
 
     UNCHANGED = "unchanged"
     MANAGED = "managed"
     UNMANAGED = "unmanaged"
-    MATCH_CHANGED = "match_changed"
+    DECISION_CHANGED = "decision_changed"

@@ -10,25 +10,25 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from context.table_maintenance.application.domain.model.table import Table
-    from context.table_maintenance.application.domain.model.table_discovery_policy import DiscoveryDecision
+    from context.table_maintenance.application.domain.model.table_discovery_policy import ManagementDecision
 
 
-def decide_table_management(table: Table, decision: DiscoveryDecision, now: datetime) -> TableManagementChange:
-    """Apply a discovery decision to a known table and say what changed.
+def decide_table_management(table: Table, decision: ManagementDecision, now: datetime) -> TableManagementChange:
+    """Apply a management decision to a known table and say what changed.
 
-    A managing decision manages the table under its match, an unmanaging one unmanages it under
-    its match. A table whose management stays the same while the match moved (another policy,
-    version or rule, managed or not) reports ``MATCH_CHANGED``. A dropped table raises
-    ``InvalidTableTransition``.
+    A decision to manage manages the table under what decided it; any other unmanages it under what
+    decided it, or under nothing when no policy applies. A table whose management stays the same while
+    what decided it moved (another policy, version or rule, managed or not) reports ``DECISION_CHANGED``.
+    A dropped table raises ``InvalidTableTransition``.
     """
     was_managed = table.is_managed
-    previous = table.discovered_by
-    if decision.manages:
-        table.manage(decision.match, now)
+    previous = table.decided_by
+    if decision.manage and decision.decided_by is not None:
+        table.manage(decision.decided_by, now)
     else:
-        table.unmanage(decision.match, now)
+        table.unmanage(decision.decided_by, now)
     if was_managed == table.is_managed:
         return (
-            TableManagementChange.UNCHANGED if table.discovered_by == previous else TableManagementChange.MATCH_CHANGED
+            TableManagementChange.UNCHANGED if table.decided_by == previous else TableManagementChange.DECISION_CHANGED
         )
     return TableManagementChange.MANAGED if table.is_managed else TableManagementChange.UNMANAGED

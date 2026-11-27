@@ -8,7 +8,6 @@ from context.table_maintenance.application.domain.model.shared import (
     OverTargetPartition,
     PolicyTarget,
     TableDiscoveryPolicyId,
-    TableDiscoveryRuleId,
     TableId,
     TableMaintenancePolicyId,
     TableMaintenanceRunId,
@@ -25,7 +24,7 @@ from context.table_maintenance.application.domain.model.table import (
     TableName,
     TableStatus,
 )
-from context.table_maintenance.application.domain.model.table_discovery_policy import DiscoveryMatch
+from context.table_maintenance.application.domain.model.table_discovery_policy import DecidedBy
 from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyName
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.catalog_access_denied_error import (  # noqa: E501
     CatalogAccessDeniedError,
@@ -98,9 +97,8 @@ __all__ = [
     "OverTargetPartition",
     "PolicyTarget",
     "RecordedAttempt",
-    "DiscoveryMatch",
+    "DecidedBy",
     "TableDiscoveryPolicyId",
-    "TableDiscoveryRuleId",
     "TableId",
     "TableMaintenancePolicyId",
     "TableMaintenanceRunId",

@@ -16,13 +16,12 @@ from context.table_maintenance.application.domain.model.shared import (
     CatalogDiscoveryId,
     ComputeSize,
     MaintenanceOperation,
-    TableDiscoveryRuleId,
     TableId,
 )
 from context.table_maintenance.application.domain.model.table import Table, TableName, TableStatus
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
-    DiscoveryMatch,
-    DiscoveryPolicyContent,
+    DecidedBy,
+    ManagementDecision,
     TableDiscoveryPolicy,
     TableDiscoveryPolicyName,
 )
@@ -41,14 +40,12 @@ from context.table_maintenance.application.service.table import (
     SyncDiscoveredTablesService,
 )
 from tests.context.table_maintenance.application.domain.service.table_discovery_policy_attachment.discovery_policy_samples import (  # noqa: E501
-    DEFAULT,
     MANAGE_ALL,
-    MANAGE_BY_DEFAULT,
-    MANAGE_RULE,
     NOW,
     UNMANAGE_ALL,
     catalog_target,
     namespace_target,
+    rules,
     table_target,
 )
 from tests.context.table_maintenance.fakes.plan_service_on_fakes import plan_service_on_fakes
@@ -65,33 +62,23 @@ if TYPE_CHECKING:
     )
     from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 
-TMP_RULE = TableDiscoveryRuleId("dr-00000000000000000000000002")
-REST_RULE = TableDiscoveryRuleId("dr-00000000000000000000000003")
-BACK_RULE = TableDiscoveryRuleId("dr-00000000000000000000000004")
+MANAGE_RULE = 1
+REST_RULE = 1
+TMP_RULE = 2
 
 
-def _policy(name: str, *rules: tuple[TableDiscoveryRuleId, str, str]) -> TableDiscoveryPolicy:
-    """Return a policy whose rules each give an outcome to the tables matching one table-name glob."""
-    content = DiscoveryPolicyContent.from_primitives(
-        {
-            "no_match_outcome": "unmanage",
-            "rules": [
-                {
-                    "id": rule_id.value,
-                    "outcome": outcome,
-                    "conditions": [{"attribute": "table_name", "operator": "glob", "values": [glob]}],
-                }
-                for rule_id, outcome, glob in rules
-            ],
-        }
-    )
-    return TableDiscoveryPolicy.create(
-        TableDiscoveryPolicyName(value=name), content, NOW, new_rule_ids=[rule_id for rule_id, _, _ in rules]
-    )
+def _policy(name: str, *specs: tuple[str, str]) -> TableDiscoveryPolicy:
+    """Return a policy of ``(action, table name pattern)`` rules, in order."""
+    return TableDiscoveryPolicy.create(TableDiscoveryPolicyName(value=name), "", rules(*specs), NOW)
 
 
-ALL_BUT_TMP = _policy("all-but-tmp", (TMP_RULE, "unmanage", "tmp_*"), (REST_RULE, "manage", "*"))
-ONLY_BACK = _policy("only-back", (BACK_RULE, "manage", "back"))
+ALL_BUT_TMP = _policy("all-but-tmp", ("include", "*"), ("exclude", "tmp_*"))
+ONLY_BACK = _policy("only-back", ("include", "back"))
+
+
+def _position(table: Table) -> int | None:
+    """Return the position of the rule that decided the table, None when no rule or no policy did."""
+    return None if table.decided_by is None else table.decided_by.rule_position
 
 
 @dataclass
@@ -120,10 +107,10 @@ class _World:
         self.attach(catalog_target("iceberg"), policy)
 
     def next_version(self, policy):
-        """Store the next version of the policy with the same content."""
+        """Store the next version of the policy with the same description and rules."""
         stored = self.policies.get(policy.id)
         assert stored is not None
-        stored.replace(stored.content, stored.version, NOW)
+        stored.revise(stored.description, stored.rules, stored.version, NOW)
         self.policies.update(stored)
 
 
@@ -133,9 +120,10 @@ def world(tables_repo, discovery_policies, discovery_attachments, catalog, disco
     return _World(tables_repo, discovery_policies, discovery_attachments, catalog, discoveries_repo)
 
 
-def _row(repo, now, uuid, name, *, by=MANAGE_ALL):
-    """Store a table as the policy ``by`` at version 1 decides it."""
-    table = Table.register(TableId(uuid), name, by.decide(name), now)
+def _row(repo, now, uuid, name, *, by: TableDiscoveryPolicy | None = MANAGE_ALL):
+    """Store a table as the policy ``by`` at version 1 decides it, or as nothing attached decides it for None."""
+    decision = ManagementDecision.nothing_attached() if by is None else by.should_manage(name)
+    table = Table.register(TableId(uuid), name, decision, now)
     repo.create(table)
     return table
 
@@ -181,49 +169,57 @@ def test_a_namespace_policy_manages_its_tables_under_the_deciding_rule(sync, wor
     sync.execute(_catalog_wide())
     managed = world.tables.get(TableId("u-1"))
     assert managed.is_managed
-    assert managed.matched_rule_id == MANAGE_RULE
-    assert managed.discovered_by == DiscoveryMatch(policy_id=MANAGE_ALL.id, policy_version=1, rule_id=MANAGE_RULE)
+    assert managed.decided_by == DecidedBy(policy_id=MANAGE_ALL.id, policy_version=1, rule_position=MANAGE_RULE)
     assert not world.tables.get(TableId("u-2")).is_managed
     assert _calls(signals) == [("u-1", "managed", True)]
 
 
 def test_a_table_policy_overrides_its_namespace(sync, world, signals):
-    """The default attached to a table opts it out of the managing policy of its namespace."""
+    """An excluding policy attached to a table opts it out of the managing policy of its namespace."""
     world.attach(namespace_target("iceberg", "sales"), MANAGE_ALL)
-    world.attach(table_target(_name("orders"), "u-1"), DEFAULT)
+    world.attach(table_target(_name("orders"), "u-1"), UNMANAGE_ALL)
     world.catalog.add_table("iceberg", "sales", "orders", "u-1")
     world.catalog.add_table("iceberg", "sales", "items", "u-2")
     sync.execute(_catalog_wide())
     opted_out = world.tables.get(TableId("u-1"))
     assert not opted_out.is_managed
-    assert opted_out.discovered_by == DiscoveryMatch.platform_default()
+    assert opted_out.decided_by == DecidedBy(policy_id=UNMANAGE_ALL.id, policy_version=1, rule_position=1)
     assert world.tables.get(TableId("u-2")).is_managed
     assert _calls(signals) == [("u-2", "managed", True)]
 
 
 def test_nothing_attached_registers_unmanaged_and_sends_nothing(sync, world, signals):
-    """With nothing attached the default decides: the table is unmanaged, decided by ``dp-0…0`` v1 and no rule."""
+    """With nothing attached nothing decides: the table is unmanaged and names no policy."""
     world.catalog.add_table("iceberg", "sales", "orders", "u-1")
     out = sync.execute(_catalog_wide())
     table = world.tables.get(TableId("u-1"))
     assert (out.registered, table.status) == (1, TableStatus.UNMANAGED)
-    assert (
-        table.discovered_by
-        == DiscoveryMatch(policy_id=DEFAULT.id, policy_version=1, rule_id=None)
-        == DiscoveryMatch.platform_default()
-    )
+    assert table.decided_by is None
     assert signals.calls == []
 
 
-def test_managed_by_the_no_match_outcome_has_no_rule(sync, world):
-    """A table a policy manages by its no-match outcome records the policy and no rule."""
-    world.attach_to_catalog(MANAGE_BY_DEFAULT)
+def test_a_table_no_rule_matches_is_unmanaged_by_its_policy_with_no_rule(sync, world, signals):
+    """A table none of its policy's rules match is unmanaged, decided by that policy with no rule position."""
+    world.attach_to_catalog(ONLY_BACK)
     world.catalog.add_table("iceberg", "sales", "orders", "u-1")
     sync.execute(_catalog_wide())
     table = world.tables.get(TableId("u-1"))
-    assert table.is_managed
-    assert table.matched_rule_id is None
-    assert table.discovered_by == DiscoveryMatch(policy_id=MANAGE_BY_DEFAULT.id, policy_version=1, rule_id=None)
+    assert not table.is_managed
+    assert table.decided_by == DecidedBy(policy_id=ONLY_BACK.id, policy_version=1, rule_position=None)
+    assert signals.calls == []
+
+
+def test_a_managed_table_now_excluded_is_stopped(sync, tables_repo, world, signals, now):
+    """A managed table whose policy now excludes it is saved unmanaged under the excluding rule and sent ``stopped``."""
+    world.attach_to_catalog(ALL_BUT_TMP)
+    _row(tables_repo, now, "u-1", _name("tmp_orders"))
+    world.catalog.add_table("iceberg", "sales", "tmp_orders", "u-1")
+    out = sync.execute(_catalog_wide())
+    table = world.tables.get(TableId("u-1"))
+    assert table.status == TableStatus.UNMANAGED
+    assert table.decided_by == DecidedBy(policy_id=ALL_BUT_TMP.id, policy_version=1, rule_position=TMP_RULE)
+    assert out.unmanaged == 1
+    assert _calls(signals) == [("u-1", "stopped", False)]
 
 
 def test_a_table_moved_out_of_a_managing_namespace_is_decided_by_its_new_name(sync, world, tables_repo, signals, now):
@@ -234,7 +230,7 @@ def test_a_table_moved_out_of_a_managing_namespace_is_decided_by_its_new_name(sy
     out = sync.execute(_catalog_wide())
     table = world.tables.get(TableId("u-1"))
     assert (table.name.namespace, table.status) == ("other", TableStatus.UNMANAGED)
-    assert table.discovered_by == DiscoveryMatch.platform_default()
+    assert table.decided_by is None
     assert (out.renamed, out.unmanaged) == (1, 1)
     assert _calls(signals) == [("u-1", "stopped", False)]
 
@@ -252,8 +248,8 @@ def test_a_renamed_table_keeps_its_table_attachment(sync, world, tables_repo, no
     assert world.tables.get(TableId("u1")).name.namespace == "other"
 
 
-def test_a_new_policy_version_moves_the_match_and_sends_nothing(sync, world, tables_repo, signals, log, now):
-    """On a namespace scan, a new version of the deciding policy is a match change: the row is saved, nothing is sent.
+def test_a_new_policy_version_moves_the_decision_and_sends_nothing(sync, world, tables_repo, signals, log, now):
+    """On a namespace scan a new version of the deciding policy is a decision change: the row is saved, nothing sent.
 
     A catalog-wide scan still sends ``seen`` to the managed table, as
     ``test_managed_table_now_decided_by_another_managing_policy_records_it`` pins.
@@ -266,7 +262,7 @@ def test_a_new_policy_version_moves_the_match_and_sends_nothing(sync, world, tab
     out = sync.execute(_namespace())
     table = world.tables.get(TableId("u-1"))
     assert table.is_managed
-    assert table.discovered_by == DiscoveryMatch(policy_id=MANAGE_ALL.id, policy_version=2, rule_id=MANAGE_RULE)
+    assert table.decided_by == DecidedBy(policy_id=MANAGE_ALL.id, policy_version=2, rule_position=MANAGE_RULE)
     assert (out.managed, out.unmanaged) == (0, 0)
     assert log == [("tables.update", "u-1")]
     assert signals.calls == []
@@ -358,9 +354,9 @@ def test_a_missing_catalog_is_recorded_not_found(sync, world, signals, now):
     assert signals.calls == []
 
 
-def test_a_refused_catalog_no_policy_can_manage_unmanages_its_managed_tables(sync, world, signals, now):
-    """Unread, a catalog whose attachments all unmanage still unmanages its stored managed tables, each sent stopped."""
-    world.attach_to_catalog(UNMANAGE_ALL)
+def test_a_refused_catalog_with_nothing_attached_unmanages_its_managed_tables(sync, world, signals, now):
+    """Unread, a catalog with no policy attached in it still unmanages its stored managed tables, each sent stopped."""
+    world.attach(catalog_target("lake"), MANAGE_ALL)
     _row(world.tables, now, "u-1", _name("orders"))
     _row(world.tables, now, "u-2", _name("items", namespace="hr"))
     elsewhere = TableName(catalog="lake", namespace="sales", table="orders")
@@ -374,7 +370,7 @@ def test_a_refused_catalog_no_policy_can_manage_unmanages_its_managed_tables(syn
     for uuid in ("u-1", "u-2"):
         table = world.tables.get(TableId(uuid))
         assert table.status == TableStatus.UNMANAGED
-        assert table.discovered_by == DiscoveryMatch(policy_id=UNMANAGE_ALL.id, policy_version=1, rule_id=None)
+        assert table.decided_by is None
     assert world.tables.get(TableId("u-lake")).status == TableStatus.MANAGED
     assert sorted(_calls(signals)) == [("u-1", "stopped", False), ("u-2", "stopped", False)]
 
@@ -389,13 +385,12 @@ def test_a_missing_catalog_with_nothing_attached_unmanages_its_managed_tables(sy
     assert (out.failure, out.unmanaged, out.dropped) == ("not_found", 1, 0)
     table = world.tables.get(TableId("u-1"))
     assert table.status == TableStatus.UNMANAGED
-    assert table.discovered_by == DiscoveryMatch.platform_default()
+    assert table.decided_by is None
     assert _calls(signals) == [("u-1", "stopped", False)]
 
 
-def test_a_managing_namespace_keeps_its_unread_catalog_scanned(sync, world, signals, now):
-    """A managing policy attached under the catalog keeps it scanned, so an unread scan changes no table."""
-    world.attach_to_catalog(UNMANAGE_ALL)
+def test_a_namespace_policy_keeps_its_unread_catalog_scanned(sync, world, signals, now):
+    """A policy attached under the catalog keeps it scanned, so an unread scan changes no table."""
     world.attach(namespace_target("iceberg", "hr"), MANAGE_ALL)
     _row(world.tables, now, "u-1", _name("orders"))
     world.catalog.deny("iceberg")
@@ -407,9 +402,21 @@ def test_a_managing_namespace_keeps_its_unread_catalog_scanned(sync, world, sign
     assert signals.calls == []
 
 
-def test_a_catalog_no_policy_can_manage_unmanages_a_managed_table_it_cannot_load(sync, world, signals, now):
-    """A managed table the scan cannot load is unmanaged from its stored row, as the tables it lists are."""
+def test_an_exclude_only_policy_keeps_its_unread_catalog_scanned(sync, world, signals, now):
+    """A catalog whose only policy excludes every table is still scanned, so an unread scan changes no table."""
     world.attach_to_catalog(UNMANAGE_ALL)
+    _row(world.tables, now, "u-1", _name("orders"))
+    world.catalog.deny("iceberg")
+
+    out = sync.execute(_catalog_wide())
+
+    assert (out.failure, out.unmanaged) == ("cannot_access", 0)
+    assert world.tables.get(TableId("u-1")).status == TableStatus.MANAGED
+    assert signals.calls == []
+
+
+def test_a_catalog_with_nothing_attached_unmanages_a_managed_table_it_cannot_load(sync, world, signals, now):
+    """A managed table the scan cannot load is unmanaged from its stored row, as the tables it lists are."""
     _row(world.tables, now, "u-listed", _name("orders"))
     world.catalog.add_table("iceberg", "sales", "orders", "u-listed")
     world.catalog.add_table("iceberg", "sales", "secret", "u-refused")
@@ -423,26 +430,24 @@ def test_a_catalog_no_policy_can_manage_unmanages_a_managed_table_it_cannot_load
     assert sorted(_calls(signals)) == [("u-listed", "stopped", False), ("u-refused", "stopped", False)]
 
 
-def test_a_fully_read_catalog_no_policy_can_manage_drops_a_missing_managed_table_without_unmanaging_it(
+def test_a_fully_read_catalog_with_nothing_attached_drops_a_missing_managed_table_without_unmanaging_it(
     sync, world, signals, now
 ):
     """A managed table missing from a fully read catalog that is no longer scanned is dropped, not unmanaged first."""
-    world.attach_to_catalog(UNMANAGE_ALL)
     gone = _row(world.tables, now, "u-gone", _name("gone"))
-    decided_by = gone.discovered_by
+    decided_by = gone.decided_by
 
     out = sync.execute(_catalog_wide())
 
     assert (out.dropped, out.unmanaged) == (1, 0)
     table = world.tables.get(TableId("u-gone"))
     assert table.status == TableStatus.DROPPED
-    assert table.discovered_by == decided_by
+    assert table.decided_by == decided_by
     assert _calls(signals) == [("u-gone", "stopped", False)]
 
 
-def test_a_namespace_scan_of_a_catalog_no_policy_can_manage_decides_only_what_it_lists(sync, world, signals, now):
+def test_a_namespace_scan_of_a_catalog_with_nothing_attached_decides_only_what_it_lists(sync, world, signals, now):
     """Only a catalog-wide scan unmanages from the stored rows; a namespace scan still decides only what it lists."""
-    world.attach_to_catalog(UNMANAGE_ALL)
     _row(world.tables, now, "u-1", _name("orders"))
     world.catalog.deny("iceberg")
 
@@ -531,22 +536,24 @@ def test_sync_registers_a_managed_table_and_sends_managed(sync, tables_repo, wor
     assert (out.registered, out.renamed, out.dropped, out.skipped) == (1, 0, 0, 0)
     table = tables_repo.get(TableId("u-1"))
     assert table.status == TableStatus.MANAGED
-    assert table.matched_rule_id == MANAGE_RULE
+    assert _position(table) == MANAGE_RULE
     assert _calls(signals) == [("u-1", "managed", True)]
     assert [c.table_name for c in signals.calls] == ["iceberg.sales.orders"]
 
 
-def test_sync_registers_an_unmanage_rule_match_and_no_match_as_unmanaged(sync, tables_repo, world, catalog, signals):
-    """Sync records the tables an unmanage rule or the no-match outcome decides as unmanaged, and starts nothing."""
-    world.attach_to_catalog(_policy("tmp-out", (TMP_RULE, "unmanage", "tmp_*")))
+def test_sync_registers_an_excluded_table_and_one_no_rule_matches_as_unmanaged(
+    sync, tables_repo, world, catalog, signals
+):
+    """Sync records the tables an exclude rule decides, or that no rule matches, as unmanaged, and starts nothing."""
+    world.attach_to_catalog(_policy("tmp-out", ("exclude", "tmp_*")))
     catalog.add_table("iceberg", "sales", "tmp_x", "u-1")
     catalog.add_table("iceberg", "sales", "orders", "u-2")
     out = sync.execute(_catalog_wide())
     assert out.registered == 2
     assert tables_repo.get(TableId("u-1")).status == TableStatus.UNMANAGED
-    assert tables_repo.get(TableId("u-1")).matched_rule_id == TMP_RULE
+    assert _position(tables_repo.get(TableId("u-1"))) == 1
     assert tables_repo.get(TableId("u-2")).status == TableStatus.UNMANAGED
-    assert tables_repo.get(TableId("u-2")).matched_rule_id is None
+    assert _position(tables_repo.get(TableId("u-2"))) is None
     assert signals.calls == []
 
 
@@ -672,14 +679,14 @@ def test_known_managed_table_becomes_unmanaged_when_its_policy_unmanages_it(
     out = sync.execute(_catalog_wide())
     table = tables_repo.get(TableId("u-1"))
     assert table.status == TableStatus.UNMANAGED
-    assert table.discovered_by == DiscoveryMatch(policy_id=UNMANAGE_ALL.id, policy_version=1, rule_id=None)
+    assert table.decided_by == DecidedBy(policy_id=UNMANAGE_ALL.id, policy_version=1, rule_position=1)
     assert (out.unmanaged, out.managed, out.ensured) == (1, 0, 0)
     assert _calls(signals) == [("u-1", "stopped", False)]
     assert log == [("tables.update", "u-1")]
 
 
 def test_known_managed_table_with_nothing_attached_becomes_unmanaged(sync, tables_repo, catalog, signals, now):
-    """A managed table with no attachment on its walk any more is unmanaged by the default."""
+    """A managed table with no attachment on its walk any more is unmanaged, decided by nothing."""
     _row(tables_repo, now, "u-1", _name("orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     sync.execute(_catalog_wide())
@@ -690,17 +697,17 @@ def test_known_managed_table_with_nothing_attached_becomes_unmanaged(sync, table
 def test_unmanaged_table_is_managed_again_when_a_policy_manages_it(sync, tables_repo, world, catalog, signals, now):
     """An unmanaged table a policy now manages is managed again under its rule and its workflow started."""
     world.attach_to_catalog(ALL_BUT_TMP)
-    _row(tables_repo, now, "u-1", _name("orders"), by=DEFAULT)
+    _row(tables_repo, now, "u-1", _name("orders"), by=None)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     out = sync.execute(_catalog_wide())
     table = tables_repo.get(TableId("u-1"))
     assert table.status == TableStatus.MANAGED
-    assert table.matched_rule_id == REST_RULE
+    assert _position(table) == REST_RULE
     assert (out.managed, out.unmanaged, out.ensured) == (1, 0, 0)
     assert _calls(signals) == [("u-1", "managed", True)]
 
 
-def test_unmanaged_table_still_unmanaged_by_the_same_match_is_left_alone(
+def test_unmanaged_table_still_unmanaged_by_the_same_rule_is_left_alone(
     sync, tables_repo, world, catalog, signals, log, now
 ):
     """An unmanaged table the same policy, version and rule still unmanage is neither updated nor notified."""
@@ -717,27 +724,29 @@ def test_unmanaged_table_still_unmanaged_by_the_same_match_is_left_alone(
 def test_managed_table_now_decided_by_another_managing_policy_records_it(
     sync, tables_repo, world, catalog, signals, log, now
 ):
-    """A managed table another managing policy now decides stores that match and stays managed."""
+    """A managed table another managing policy now decides stores what decided it and stays managed."""
     world.attach_to_catalog(ALL_BUT_TMP)
     _row(tables_repo, now, "u-1", _name("orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     out = sync.execute(_catalog_wide())
     table = tables_repo.get(TableId("u-1"))
-    assert (table.status, table.matched_rule_id) == (TableStatus.MANAGED, REST_RULE)
+    assert (table.status, _position(table)) == (TableStatus.MANAGED, REST_RULE)
     assert (out.managed, out.unmanaged, out.ensured) == (0, 0, 1)
     assert log == [("tables.update", "u-1")]
     assert _calls(signals) == [("u-1", "seen", True)]
 
 
-def test_namespace_pass_stores_a_match_change_without_signalling(sync, tables_repo, world, catalog, signals, log, now):
-    """A match-only change is stored; a namespace pass does not signal the still-managed table."""
+def test_namespace_pass_stores_a_decision_change_without_signalling(
+    sync, tables_repo, world, catalog, signals, log, now
+):
+    """A change of only what decided the table is stored; a namespace pass does not signal the still-managed table."""
     world.attach_to_catalog(ALL_BUT_TMP)
     _row(tables_repo, now, "u-1", _name("orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     sync.execute(_namespace())
-    assert tables_repo.get(TableId("u-1")).matched_rule_id == REST_RULE
+    assert _position(tables_repo.get(TableId("u-1"))) == REST_RULE
     assert log == [("tables.update", "u-1")]
     assert signals.calls == []
 
@@ -833,7 +842,7 @@ def test_sync_namespace_scope_still_registers_renames_and_decides(sync, tables_r
 def test_sync_namespace_scope_signals_management_changes(sync, tables_repo, world, catalog, signals, now):
     """A namespace pass starts the workflow of a table managed again and stops one unmanaged."""
     world.attach_to_catalog(ONLY_BACK)
-    _row(tables_repo, now, "u-back", _name("back"), by=DEFAULT)
+    _row(tables_repo, now, "u-back", _name("back"), by=None)
     _row(tables_repo, now, "u-out", _name("out"))
     catalog.add_table("iceberg", "sales", "back", "u-back")
     catalog.add_table("iceberg", "sales", "out", "u-out")
@@ -859,7 +868,7 @@ def test_sync_catalog_wide_drops_only_rows_of_that_catalog(sync, tables_repo, si
 
 def test_sync_drops_unmanaged_without_stop_signal_and_ignores_dropped(sync, tables_repo, signals, now):
     """Sync drops an unmanaged table without a stop signal and ignores tables already dropped."""
-    _row(tables_repo, now, "u-1", _name("x"), by=DEFAULT)
+    _row(tables_repo, now, "u-1", _name("x"), by=None)
     already = _row(tables_repo, now, "u-2", _name("y"))
     already.mark_dropped(now)
     out = sync.execute(_catalog_wide())
@@ -962,12 +971,12 @@ def _hint(table="orders", namespace="sales", event_type="updateTable"):
 
 
 def test_a_hint_in_an_unscanned_catalog_registers_unmanaged(hint, world, signals):
-    """A catalog event in a catalog no policy manages registers the table, decided by the default, and sends nothing."""
+    """A catalog event in a catalog with no policy registers the table, decided by nothing, and sends nothing."""
     world.attach(catalog_target("other"), MANAGE_ALL)
     world.catalog.add_table("iceberg", "sales", "orders", "u-1")
     assert hint.execute(_hint()).action == "registered"
     table = world.tables.get(TableId("u-1"))
-    assert (table.status, table.discovered_by) == (TableStatus.UNMANAGED, DiscoveryMatch.platform_default())
+    assert (table.status, table.decided_by) == (TableStatus.UNMANAGED, None)
     assert signals.calls == []
 
 
@@ -981,28 +990,32 @@ def test_a_hint_decides_a_table_moved_out_of_a_managing_namespace_by_its_new_nam
     assert hint.execute(_hint(namespace="other")).action == "unmanaged"
     table = world.tables.get(TableId("u-1"))
     assert (table.name.namespace, table.status) == ("other", TableStatus.UNMANAGED)
-    assert table.discovered_by == DiscoveryMatch.platform_default()
+    assert table.decided_by is None
     assert _calls(signals) == [("u-1", "stopped", False)]
 
 
 def test_a_hint_reads_the_walk_of_a_table_moved_into_a_managing_namespace(hint, world, tables_repo, signals, now):
     """A catalog event reads the attachments on the walk of the new name: a move into a managed namespace manages it."""
     world.attach(namespace_target("iceberg", "other"), MANAGE_ALL)
-    _row(tables_repo, now, "u-1", _name("orders"), by=DEFAULT)
+    _row(tables_repo, now, "u-1", _name("orders"), by=None)
     world.catalog.add_table("iceberg", "other", "orders", "u-1")
     assert hint.execute(_hint(namespace="other")).action == "managed"
-    assert world.tables.get(TableId("u-1")).discovered_by == MANAGE_ALL.decide(_name("orders", namespace="other")).match
+    expected = MANAGE_ALL.should_manage(_name("orders", namespace="other")).decided_by
+    assert world.tables.get(TableId("u-1")).decided_by == expected
     assert _calls(signals) == [("u-1", "managed", True)]
 
 
 def test_a_hint_decides_a_new_table_by_its_uuid(hint, world, signals):
-    """A catalog event finds the table's own attachment by its uuid: the default on it opts it out of its namespace."""
+    """A catalog event finds the table's own attachment by its uuid: an exclude on it opts it out of its namespace."""
     world.attach(namespace_target("iceberg", "sales"), MANAGE_ALL)
-    world.attach(table_target(_name("orders"), "u-1"), DEFAULT)
+    world.attach(table_target(_name("orders"), "u-1"), UNMANAGE_ALL)
     world.catalog.add_table("iceberg", "sales", "orders", "u-1")
     assert hint.execute(_hint()).action == "registered"
     table = world.tables.get(TableId("u-1"))
-    assert (table.status, table.discovered_by) == (TableStatus.UNMANAGED, DiscoveryMatch.platform_default())
+    assert (table.status, table.decided_by) == (
+        TableStatus.UNMANAGED,
+        DecidedBy(policy_id=UNMANAGE_ALL.id, policy_version=1, rule_position=1),
+    )
     assert signals.calls == []
 
 
@@ -1038,11 +1051,29 @@ def test_table_hint_for_managed_table_signals_table_updated(hint, tables_repo, w
 
 
 def test_table_hint_for_unmanaged_table_still_unmanaged_is_ignored(hint, tables_repo, world, catalog, signals, now):
-    """A hint for an unmanaged table the same match still unmanages is ignored."""
+    """A hint for an unmanaged table the same policy and rule still leave unmanaged is ignored."""
     world.attach_to_catalog(UNMANAGE_ALL)
     _row(tables_repo, now, "u-1", _name("orders"), by=UNMANAGE_ALL)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     assert hint.execute(_hint()).action == "ignored"
+    assert signals.calls == []
+
+
+def test_table_hint_saves_a_decision_change_of_an_unmanaged_table_and_sends_nothing(
+    hint, tables_repo, world, catalog, signals, log, now
+):
+    """A hint for an unmanaged table another policy now leaves unmanaged saves what decides it, and sends nothing."""
+    world.attach_to_catalog(ONLY_BACK)
+    _row(tables_repo, now, "u-1", _name("orders"), by=UNMANAGE_ALL)
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
+    assert hint.execute(_hint()).action == "ignored"
+    stored = tables_repo.get(TableId("u-1"))
+    assert (stored.status, stored.decided_by) == (
+        TableStatus.UNMANAGED,
+        DecidedBy(policy_id=ONLY_BACK.id, policy_version=1, rule_position=None),
+    )
+    assert log == [("tables.update", "u-1")]
     assert signals.calls == []
 
 
@@ -1059,7 +1090,7 @@ def test_table_hint_unmanages_a_managed_table_its_policy_unmanages(hint, tables_
 def test_table_hint_manages_an_unmanaged_table_its_policy_manages(hint, tables_repo, world, catalog, signals, now):
     """A hint for an unmanaged table a policy now manages manages it again and starts its workflow."""
     world.attach_to_catalog(MANAGE_ALL)
-    _row(tables_repo, now, "u-1", _name("orders"), by=DEFAULT)
+    _row(tables_repo, now, "u-1", _name("orders"), by=None)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     assert hint.execute(_hint()).action == "managed"
     assert tables_repo.get(TableId("u-1")).status == TableStatus.MANAGED
@@ -1220,7 +1251,7 @@ def test_a_hint_that_registers_a_managed_table_sends_managed(hint, world, catalo
 def test_a_table_managed_again_sends_managed(sync, tables_repo, world, catalog, signals, now):
     """An unmanaged table a policy now manages is sent ``managed``."""
     world.attach_to_catalog(MANAGE_ALL)
-    _row(tables_repo, now, "u-1", _name("orders"), by=DEFAULT)
+    _row(tables_repo, now, "u-1", _name("orders"), by=None)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     sync.execute(_catalog_wide())
     assert _calls(signals) == [("u-1", "managed", True)]

@@ -14,7 +14,6 @@ from context.table_maintenance.application.domain.model.table_discovery_policy i
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table_discovery_policy import (
     CreateTableDiscoveryPolicyUseCaseInput,
-    EnsureDefaultTableDiscoveryPolicyUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_policy_attachment import (
     AttachTableDiscoveryPolicyUseCaseInput,
@@ -27,7 +26,6 @@ from context.table_maintenance.application.port.inbound.table_discovery_policy_a
 from context.table_maintenance.application.port.outbound.table import CatalogAccessDeniedError
 from context.table_maintenance.application.service.table_discovery_policy import (
     CreateTableDiscoveryPolicyService,
-    EnsureDefaultTableDiscoveryPolicyService,
 )
 from context.table_maintenance.application.service.table_discovery_policy_attachment import (
     AttachTableDiscoveryPolicyService,
@@ -53,13 +51,7 @@ from tests.context.table_maintenance.id_shape import IdShape
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
 LATER = datetime(2026, 11, 2, tzinfo=UTC)
 DA_ID = IdShape(TableDiscoveryPolicyAttachmentId)
-CONTENT = {
-    "description": "",
-    "no_match_outcome": "unmanage",
-    "rules": [
-        {"outcome": "manage", "conditions": [{"attribute": "table_name", "operator": "glob", "values": ["orders_*"]}]}
-    ],
-}
+RULES = ({"action": "include", "table_name_pattern": "orders_*"},)
 ORDERS = ("iceberg", "sales", "eu", "orders")
 
 
@@ -78,12 +70,9 @@ class _World:
         self.schedules = RecordingSyncDiscoverySchedulesGateway()
         self.now = NOW
         self.catalog.add_table("iceberg", "sales.eu", "orders", "u-1")
-        EnsureDefaultTableDiscoveryPolicyService(self.policies, clock=lambda: NOW).execute(
-            EnsureDefaultTableDiscoveryPolicyUseCaseInput()
-        )
         for name in ("mine", "other"):
             CreateTableDiscoveryPolicyService(self.policies, clock=lambda: NOW).execute(
-                CreateTableDiscoveryPolicyUseCaseInput(name=name, content=CONTENT)
+                CreateTableDiscoveryPolicyUseCaseInput(name=name, description="", rules=RULES)
             )
 
     def attach(self, policy: str, type_: str, path: tuple[str, ...]) -> AttachTableDiscoveryPolicyUseCaseOutput:
@@ -206,11 +195,10 @@ def test_attach_with_a_bad_target_type_is_a_validation_error(world: _World) -> N
         world.attach("mine", "warehouse", ("iceberg",))
 
 
-def test_attach_the_default_opts_a_target_out(world: _World) -> None:
-    """The default policy may be attached like any other."""
-    out = world.attach("default", "namespace", ("iceberg", "sales"))
-
-    assert (out.policy_id, out.policy_name) == ("dp-00000000000000000000000000", "default")
+def test_attach_of_a_policy_named_default_that_does_not_exist_is_not_found(world: _World) -> None:
+    """There is no discovery default to attach: the name ``default`` is unknown until someone creates it."""
+    with pytest.raises(NotFoundError):
+        world.attach("default", "namespace", ("iceberg", "sales"))
 
 
 def test_detach_by_id(world: _World) -> None:

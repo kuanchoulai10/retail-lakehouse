@@ -76,7 +76,7 @@ class _World:
             TableId(uuid), TableName(catalog="prod", namespace=namespace, table=table), MANAGED, NOW
         )
         if not managed:
-            registered.unmanage(UNMANAGED.match, NOW)
+            registered.unmanage(UNMANAGED.decided_by, NOW)
         self.tables.create(registered)
 
     def attach(self, type_: str, path: tuple[str, ...], policy: str) -> str:

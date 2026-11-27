@@ -35,7 +35,7 @@ def _metrics(uuid, now, **changes):
 def test_only_managed_tables_are_listed(tables_repo, metrics_store, now):
     """Rows of an unmanaged table, a dropped one and one the repo does not know are left out."""
     _register(tables_repo, now, "u-managed")
-    _register(tables_repo, now, "u-unmanaged", "items").unmanage(UNMANAGED.match, now)
+    _register(tables_repo, now, "u-unmanaged", "items").unmanage(UNMANAGED.decided_by, now)
     _register(tables_repo, now, "u-dropped", "events").mark_dropped(now)
     for uuid in ("u-managed", "u-unmanaged", "u-dropped", "u-unknown"):
         metrics_store.save(_metrics(uuid, now))

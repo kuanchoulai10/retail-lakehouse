@@ -16,6 +16,9 @@ from context.table_maintenance.application.port.inbound.table_discovery_policy i
 from context.table_maintenance.application.service.shared import (
     translate_domain_errors,
 )
+from context.table_maintenance.application.service.table_discovery_policy.discovery_rule_fields import (
+    discovery_rule_fields,
+)
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_discovery_policy import (
@@ -43,8 +46,8 @@ class GetTableDiscoveryPolicyVersionService(GetTableDiscoveryPolicyVersionUseCas
         return GetTableDiscoveryPolicyVersionUseCaseOutput(
             id=policy.id.value,
             name=policy.name.value,
-            is_default=policy.is_default,
             version=version.version,
-            content=version.content.to_primitives(),
+            description=version.description,
+            rules=discovery_rule_fields(version.rules),
             created_at=version.created_at,
         )

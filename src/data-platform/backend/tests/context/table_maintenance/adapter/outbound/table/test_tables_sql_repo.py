@@ -16,7 +16,6 @@ from context.table_maintenance.application.domain.model.shared import (
     PolicyTarget,
     PolicyTargetType,
     TableDiscoveryPolicyId,
-    TableDiscoveryRuleId,
     TableId,
     TableMaintenancePolicyId,
     TableMaintenanceRunId,
@@ -32,9 +31,8 @@ from context.table_maintenance.application.domain.model.table import (
     TableStatus,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
-    DiscoveryDecision,
-    DiscoveryMatch,
-    DiscoveryOutcome,
+    DecidedBy,
+    ManagementDecision,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyName
 from context.table_maintenance.application.exceptions import ConcurrentUpdateError, ConflictError
@@ -50,12 +48,11 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table import TablesRepo
 RUN_7 = "mr-00000000000000000000000007"
 
-RULE_1 = "dr-00000000000000000000000001"
 NIGHTLY = TableMaintenancePolicyId("mp-00000000000000000000000003")
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
 SALES_POLICY = TableDiscoveryPolicyId("dp-00000000000000000000000004")
-MATCH = DiscoveryMatch(policy_id=SALES_POLICY, policy_version=3, rule_id=TableDiscoveryRuleId(RULE_1))
-NO_RULE_MATCH = DiscoveryMatch(policy_id=SALES_POLICY, policy_version=3, rule_id=None)
+DECIDED_BY = DecidedBy(policy_id=SALES_POLICY, policy_version=3, rule_position=2)
+NO_RULE = DecidedBy(policy_id=SALES_POLICY, policy_version=3, rule_position=None)
 
 
 def _table(
@@ -68,7 +65,7 @@ def _table(
         id=TableId(uuid),
         name=name or TableName(catalog="iceberg", namespace="inventory", table="orders"),
         status=status,
-        discovered_by=MATCH,
+        decided_by=DECIDED_BY,
         registered_at=NOW,
         updated_at=updated_at,
         operation_states={
@@ -93,7 +90,7 @@ def test_roundtrip_field_by_field(repo: TablesSqlRepo):
     assert loaded.id == original.id
     assert loaded.name == original.name
     assert loaded.status is TableStatus.MANAGED
-    assert loaded.discovered_by == MATCH
+    assert loaded.decided_by == DECIDED_BY
     assert loaded.registered_at == NOW
     assert loaded.registered_at.tzinfo is not None
     assert loaded.updated_at == NOW
@@ -118,27 +115,44 @@ def test_roundtrip_reads_an_equal_aggregate(repo: TablesSqlRepo):
 
 
 def test_roundtrip_of_an_unmanaged_table_without_a_rule(repo: TablesSqlRepo):
-    """An unmanaged table its policy's no-match outcome decided round trips with its status, policy and no rule."""
+    """An unmanaged table its policy decided with no rule matching round trips with its policy and no position."""
     table = _table(status=TableStatus.UNMANAGED)
-    table.discovered_by = NO_RULE_MATCH
+    table.decided_by = NO_RULE
     table.operation_states = {}
     repo.create(table)
     loaded = repo.get(table.id)
     assert loaded is not None
     assert loaded.status is TableStatus.UNMANAGED
-    assert loaded.discovered_by == NO_RULE_MATCH
+    assert loaded.decided_by == NO_RULE
     assert loaded.operation_states == {}
 
 
-def test_the_deciding_policy_and_version_are_stored_in_their_columns(repo: TablesSqlRepo, engine: Engine):
-    """The policy id and version that decided a table are columns of its row, beside its rule."""
+def test_roundtrip_of_a_table_no_policy_decided(repo: TablesSqlRepo, engine: Engine):
+    """A table no discovery policy decided round trips with ``decided_by`` None, its three columns null."""
+    table = _table(status=TableStatus.UNMANAGED)
+    table.decided_by = None
+    repo.create(table)
+    loaded = repo.get(table.id)
+    assert loaded is not None
+    assert loaded.decided_by is None
+    with engine.connect() as connection:
+        row = connection.execute(tables_table.select()).mappings().one()
+    assert (row["decided_by_policy_id"], row["decided_by_policy_version"], row["decided_by_rule_position"]) == (
+        None,
+        None,
+        None,
+    )
+
+
+def test_what_decided_a_table_is_stored_in_its_columns(repo: TablesSqlRepo, engine: Engine):
+    """The policy id, version and rule position that decided a table are columns of its row."""
     repo.create(_table())
     with engine.connect() as connection:
         row = connection.execute(tables_table.select()).mappings().one()
-    assert (row["matched_policy_id"], row["matched_policy_version"], row["matched_rule_id"]) == (
+    assert (row["decided_by_policy_id"], row["decided_by_policy_version"], row["decided_by_rule_position"]) == (
         SALES_POLICY.value,
         3,
-        RULE_1,
+        2,
     )
 
 
@@ -262,7 +276,7 @@ def test_record_over_target_partitions_leaves_the_version(repo: TablesSqlRepo):
 def test_a_registered_table_starts_at_version_1() -> None:
     """A table registered from a discovery is at version 1."""
     name = TableName(catalog="iceberg", namespace="inventory", table="orders")
-    decision = DiscoveryDecision(outcome=DiscoveryOutcome.MANAGE, match=MATCH)
+    decision = ManagementDecision(manage=True, decided_by=DECIDED_BY)
     assert Table.register(TableId("u1"), name, decision, NOW).version == 1
 
 
@@ -614,7 +628,7 @@ def test_recording_a_commit_writes_nothing_else(repo: TablesSqlRepo):
 def test_a_commit_only_discovery_from_an_older_read_keeps_the_operation_result(repo: TablesSqlRepo):
     """Discovery seeing only a newer commit, on a copy read before a result was recorded, keeps that result."""
     unmanaged = _table(status=TableStatus.UNMANAGED)
-    unmanaged.discovered_by = NO_RULE_MATCH
+    unmanaged.decided_by = NO_RULE
     repo.create(unmanaged)
     stale = repo.get(TableId("u1"))
     fresh = repo.get(TableId("u1"))
@@ -622,7 +636,7 @@ def test_a_commit_only_discovery_from_an_older_read_keeps_the_operation_result(r
     assert fresh is not None
     fresh.record_operation_result(MaintenanceOperation.REWRITE_DATA_FILES, False, NOW)
     repo.update(fresh)
-    decision = DiscoveryDecision(outcome=DiscoveryOutcome.UNMANAGE, match=NO_RULE_MATCH)
+    decision = ManagementDecision(manage=False, decided_by=NO_RULE)
 
     apply_discovery_to_known_table(
         stale,

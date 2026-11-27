@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
 
 class DeleteTableDiscoveryPolicyService(DeleteTableDiscoveryPolicyUseCase):
-    """Delete a discovery policy other than the default and not attached anywhere."""
+    """Delete a discovery policy that is not attached anywhere."""
 
     def __init__(
         self,
@@ -42,14 +42,12 @@ class DeleteTableDiscoveryPolicyService(DeleteTableDiscoveryPolicyUseCase):
         self._attachments_repo = attachments_repo
 
     def execute(self, request: DeleteTableDiscoveryPolicyUseCaseInput) -> DeleteTableDiscoveryPolicyUseCaseOutput:
-        """Delete the policy and its versions, refusing the default one and one that has attachments."""
+        """Delete the policy and its versions, refusing one that has attachments."""
         with translate_domain_errors():
             name = TableDiscoveryPolicyName(value=request.name)
         policy = self._policies_repo.get_by_name(name)
         if policy is None:
             raise NotFoundError(f"discovery policy {request.name} not found")
-        if policy.is_default:
-            raise ConflictError("the default discovery policy cannot be deleted")
         if self._attachments_repo.has_attachments_for_policy(policy.id):
             raise ConflictError(f"discovery policy {name.value} is still attached to a catalog, namespace or table")
         self._policies_repo.delete(policy.id)

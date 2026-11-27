@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
 
 from base import UseCaseOutput
 
@@ -13,8 +12,8 @@ class UpdateTableDiscoveryPolicyUseCaseOutput(UseCaseOutput):
 
     id: str
     name: str
-    is_default: bool
-    content: dict[str, Any]
+    description: str
+    rules: tuple[dict[str, str], ...]
     version: int
     created_at: datetime
     updated_at: datetime

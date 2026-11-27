@@ -4,18 +4,14 @@ from __future__ import annotations
 
 from context.table_maintenance.application.domain.model.table import TableName
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
-    DEFAULT_DISCOVERY_POLICY_ID,
-    DiscoveryDecision,
-    DiscoveryMatch,
-    DiscoveryOutcome,
+    DecidedBy,
+    ManagementDecision,
 )
 from context.table_maintenance.application.domain.service.table_discovery_policy_attachment import (
     decide_table_discovery,
 )
 from tests.context.table_maintenance.application.domain.service.table_discovery_policy_attachment.discovery_policy_samples import (  # noqa: E501
-    DEFAULT,
     MANAGE_ALL,
-    MANAGE_RULE,
     POLICIES,
     UNMANAGE_ALL,
     attached,
@@ -27,16 +23,21 @@ from tests.context.table_maintenance.application.domain.service.table_discovery_
 ORDERS = TableName(catalog="iceberg", namespace="sales.eu", table="orders")
 
 
+def _decided_by(decision: ManagementDecision):
+    assert decision.decided_by is not None
+    return decision.decided_by
+
+
 def test_the_table_attachment_beats_a_managing_catalog():
-    """The default attached to a table opts it out of the catalog's managing policy."""
+    """An excluding policy attached to a table opts it out of the catalog's managing policy."""
     decision = decide_table_discovery(
         ORDERS,
         "u1",
-        [attached(catalog_target("iceberg"), MANAGE_ALL), attached(table_target(ORDERS, "u1"), DEFAULT)],
-        {MANAGE_ALL.id: MANAGE_ALL, DEFAULT.id: DEFAULT},
+        [attached(catalog_target("iceberg"), MANAGE_ALL), attached(table_target(ORDERS, "u1"), UNMANAGE_ALL)],
+        POLICIES,
     )
 
-    assert (decision.outcome, decision.match.policy_id) == (DiscoveryOutcome.UNMANAGE, DEFAULT_DISCOVERY_POLICY_ID)
+    assert (decision.manage, _decided_by(decision).policy_id) == (False, UNMANAGE_ALL.id)
 
 
 def test_the_deepest_namespace_wins():
@@ -51,32 +52,21 @@ def test_the_deepest_namespace_wins():
         POLICIES,
     )
 
-    assert (decision.outcome, decision.match.policy_id) == (DiscoveryOutcome.UNMANAGE, UNMANAGE_ALL.id)
+    assert (decision.manage, _decided_by(decision).policy_id) == (False, UNMANAGE_ALL.id)
 
 
 def test_the_catalog_decides_when_nothing_nearer_is_attached():
-    """With only the catalog attached, its policy decides, naming the rule that matched."""
+    """With only the catalog attached, its policy decides, naming the position of the rule that matched."""
     decision = decide_table_discovery(ORDERS, "u1", [attached(catalog_target("iceberg"), MANAGE_ALL)], POLICIES)
 
-    assert decision == DiscoveryDecision(
-        outcome=DiscoveryOutcome.MANAGE,
-        match=DiscoveryMatch(policy_id=MANAGE_ALL.id, policy_version=1, rule_id=MANAGE_RULE),
+    assert decision == ManagementDecision(
+        manage=True, decided_by=DecidedBy(policy_id=MANAGE_ALL.id, policy_version=1, rule_position=1)
     )
 
 
-def test_nothing_attached_is_the_default_v1():
-    """With no attachment on the walk, the platform default decides at version 1 with no rule."""
-    decision = decide_table_discovery(ORDERS, "u1", [], {})
-
-    assert decision == DiscoveryDecision(
-        outcome=DiscoveryOutcome.UNMANAGE,
-        match=DiscoveryMatch(policy_id=DEFAULT_DISCOVERY_POLICY_ID, policy_version=1, rule_id=None),
-    )
-
-
-def test_the_platform_default_match_is_what_nothing_attached_decides():
-    """The platform default match, which a row stored with no match reads as, is what nothing attached decides."""
-    assert decide_table_discovery(ORDERS, "u1", [], {}).match == DiscoveryMatch.platform_default()
+def test_nothing_attached_decides_nothing():
+    """With no attachment on the walk, nothing decides: the table is not managed and no policy is named."""
+    assert decide_table_discovery(ORDERS, "u1", [], {}) == ManagementDecision.nothing_attached()
 
 
 def test_attachments_off_the_walk_are_ignored():
@@ -88,7 +78,7 @@ def test_attachments_off_the_walk_are_ignored():
         POLICIES,
     )
 
-    assert decision.match.policy_id == DEFAULT_DISCOVERY_POLICY_ID
+    assert decision == ManagementDecision.nothing_attached()
 
 
 def test_a_table_is_found_by_uuid_not_by_path():
@@ -101,14 +91,14 @@ def test_a_table_is_found_by_uuid_not_by_path():
         POLICIES,
     )
 
-    assert (decision.outcome, decision.match.policy_id) == (DiscoveryOutcome.MANAGE, MANAGE_ALL.id)
+    assert (decision.manage, _decided_by(decision).policy_id) == (True, MANAGE_ALL.id)
 
 
 def test_another_tables_attachment_never_decides():
     """A table attachment with the same path but another uuid is another table's."""
     decision = decide_table_discovery(ORDERS, "u1", [attached(table_target(ORDERS, "u2"), MANAGE_ALL)], POLICIES)
 
-    assert decision.match.policy_id == DEFAULT_DISCOVERY_POLICY_ID
+    assert decision == ManagementDecision.nothing_attached()
 
 
 def test_an_attachment_without_its_policy_is_skipped():
@@ -123,4 +113,4 @@ def test_an_attachment_without_its_policy_is_skipped():
         {MANAGE_ALL.id: MANAGE_ALL},
     )
 
-    assert (decision.outcome, decision.match.policy_id) == (DiscoveryOutcome.MANAGE, MANAGE_ALL.id)
+    assert (decision.manage, _decided_by(decision).policy_id) == (True, MANAGE_ALL.id)

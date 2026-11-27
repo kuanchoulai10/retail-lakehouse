@@ -102,7 +102,8 @@ def _copy(policy: TableDiscoveryPolicy) -> TableDiscoveryPolicy:
     return TableDiscoveryPolicy(
         id=policy.id,
         name=policy.name,
-        content=policy.content,
+        description=policy.description,
+        rules=policy.rules,
         version=policy.version,
         created_at=policy.created_at,
         updated_at=policy.updated_at,

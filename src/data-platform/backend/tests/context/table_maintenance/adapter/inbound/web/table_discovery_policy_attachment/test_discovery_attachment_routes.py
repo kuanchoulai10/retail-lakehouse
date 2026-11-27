@@ -22,9 +22,10 @@ DA_ID = IdShape(TableDiscoveryPolicyAttachmentId)
 
 @pytest.fixture
 def client() -> DiscoveryPolicyWebWorld:
-    """Provide a client over the default and a ``sales`` policy, and a catalog ``iceberg`` holding ``sales.orders``."""
+    """Provide a client over policies ``sales`` and ``others``, and a catalog ``iceberg`` holding ``sales.orders``."""
     world = DiscoveryPolicyWebWorld()
     world.create("sales", discovery_rule())
+    world.create("others", discovery_rule("*", action="exclude"))
     world.catalog.add_table("iceberg", "sales", "orders", "u-1")
     return world
 
@@ -52,10 +53,10 @@ def test_put_attachment_twice_keeps_the_id(client: DiscoveryPolicyWebWorld) -> N
     """Attaching another policy to the same target replaces it and answers the same id."""
     first = client.attach("sales", "catalog", ["iceberg"]).json()
 
-    second = client.attach("default", "catalog", ["iceberg"]).json()
+    second = client.attach("others", "catalog", ["iceberg"]).json()
 
     assert second["id"] == first["id"]
-    assert second["policy_name"] == "default"
+    assert second["policy_name"] == "others"
     assert client.client.get("/v1/discovery-policies/sales/attachments").json() == {"attachments": []}
 
 
@@ -177,7 +178,7 @@ def test_delete_with_a_malformed_id_is_422(client: DiscoveryPolicyWebWorld, atta
 
 def test_delete_of_another_policys_attachment_is_404(client: DiscoveryPolicyWebWorld) -> None:
     """An attachment of another policy answers 404 and stays."""
-    attached = client.attach("default", "catalog", ["iceberg"]).json()
+    attached = client.attach("others", "catalog", ["iceberg"]).json()
 
     response = client.detach("sales", attached["id"])
 

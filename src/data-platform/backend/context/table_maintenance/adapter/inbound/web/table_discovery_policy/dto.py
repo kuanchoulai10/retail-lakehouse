@@ -1,8 +1,8 @@
 """Define the discovery policy API DTOs.
 
-A policy's content is its ``description``, its ordered ``rules`` and its ``no_match_outcome``; every
-policy response carries it flat beside the server's fields. A rule's conditions are shaped like
-Kubernetes ``matchExpressions`` (``attribute``, ``operator``, ``values``).
+A policy is a ``description`` and its ordered ``rules``; every policy response carries them flat beside
+the server's fields. Each rule includes or excludes the tables whose name matches its pattern, and the
+last rule that matches a table decides it; a table no rule matches is not managed.
 """
 
 from __future__ import annotations
@@ -13,78 +13,52 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 _FORBID_EXTRA = ConfigDict(extra="forbid")
-_IS_DEFAULT = "Whether this is the platform default discovery policy, which decides where nothing is attached."
-_NO_MATCH_OUTCOME = "What happens to a table that no rule matches: managed or not."
-_RULES = "The rules, read top to bottom; the first whose conditions all hold decides."
+_RULES = (
+    "The rules, at least one, read top to bottom; the last whose pattern matches a table decides it, "
+    "and a table no rule matches is not managed."
+)
+_ACTION = "`include` brings the matching tables under management; `exclude` leaves them out."
+_TABLE_NAME_PATTERN = (
+    "A case-sensitive glob on the table name alone (`*`, `?`, `[...]`), never on its namespace or catalog."
+)
 
-_Outcome = Literal["manage", "unmanage"]
-_Attribute = Literal["namespace", "table_name"]
-_Operator = Literal["glob"]
-
-
-class DiscoveryConditionApiRequest(BaseModel):
-    """Carry one condition: the attribute it reads, how it matches and the values it matches.
-
-    The condition holds when any value matches. A ``glob`` is case-sensitive, and on the dot-joined
-    namespace ``*`` crosses dots.
-    """
-
-    model_config = _FORBID_EXTRA
-
-    attribute: _Attribute
-    operator: _Operator
-    values: list[str]
+_Action = Literal["include", "exclude"]
 
 
 class DiscoveryRuleApiRequest(BaseModel):
-    """Carry one rule: its outcome for a table that all of its conditions match.
-
-    Leave ``id`` out (or null) for a new rule; send a rule's ``dr-`` id to keep it across versions.
-    """
+    """Carry one rule: include or exclude the tables whose name matches the pattern."""
 
     model_config = _FORBID_EXTRA
 
-    id: str | None = None
-    outcome: _Outcome
-    conditions: list[DiscoveryConditionApiRequest]
+    action: _Action = Field(description=_ACTION)
+    table_name_pattern: str = Field(description=_TABLE_NAME_PATTERN)
 
 
 class CreateTableDiscoveryPolicyApiRequest(BaseModel):
-    """Carry a new discovery policy's name and its whole content; its rules may not name an id."""
+    """Carry a new discovery policy's name, description and rules."""
 
     model_config = _FORBID_EXTRA
 
     name: str
     description: str = ""
-    no_match_outcome: _Outcome = Field(description=_NO_MATCH_OUTCOME)
-    rules: list[DiscoveryRuleApiRequest] = Field(description=_RULES)
+    rules: list[DiscoveryRuleApiRequest] = Field(min_length=1, description=_RULES)
 
 
 class UpdateTableDiscoveryPolicyApiRequest(BaseModel):
-    """Carry a discovery policy's whole new content and the version it was edited from."""
+    """Carry a discovery policy's new description and rules and the version it was edited from."""
 
     model_config = _FORBID_EXTRA
 
     version: int
     description: str
-    no_match_outcome: _Outcome = Field(description=_NO_MATCH_OUTCOME)
-    rules: list[DiscoveryRuleApiRequest] = Field(description=_RULES)
-
-
-class DiscoveryConditionApiResponse(BaseModel):
-    """Describe one condition of a rule."""
-
-    attribute: _Attribute
-    operator: _Operator
-    values: list[str]
+    rules: list[DiscoveryRuleApiRequest] = Field(min_length=1, description=_RULES)
 
 
 class DiscoveryRuleApiResponse(BaseModel):
-    """Describe one rule, with the ``dr-`` id that links it across versions."""
+    """Describe one rule of a policy; its place in the list is its position, counted from 1."""
 
-    id: str
-    outcome: _Outcome
-    conditions: list[DiscoveryConditionApiResponse]
+    action: _Action = Field(description=_ACTION)
+    table_name_pattern: str = Field(description=_TABLE_NAME_PATTERN)
 
 
 class TableDiscoveryPolicyApiResponse(BaseModel):
@@ -92,12 +66,10 @@ class TableDiscoveryPolicyApiResponse(BaseModel):
 
     id: str
     name: str
-    is_default: bool = Field(description=_IS_DEFAULT)
     version: int
     created_at: datetime
     updated_at: datetime
     description: str
-    no_match_outcome: _Outcome = Field(description=_NO_MATCH_OUTCOME)
     rules: list[DiscoveryRuleApiResponse] = Field(description=_RULES)
 
 
@@ -106,18 +78,16 @@ class ListedTableDiscoveryPolicyApiResponse(BaseModel):
 
     id: str
     name: str
-    is_default: bool = Field(description=_IS_DEFAULT)
     version: int
     created_at: datetime
     updated_at: datetime
     description: str
-    no_match_outcome: _Outcome = Field(description=_NO_MATCH_OUTCOME)
     rules: list[DiscoveryRuleApiResponse] = Field(description=_RULES)
     attachment_count: int
 
 
 class TableDiscoveryPoliciesApiResponse(BaseModel):
-    """List every discovery policy, the default first, then by name."""
+    """List every discovery policy by name."""
 
     policies: list[ListedTableDiscoveryPolicyApiResponse]
 
@@ -127,9 +97,7 @@ class TableDiscoveryPolicyVersionApiResponse(BaseModel):
 
     id: str
     name: str
-    is_default: bool = Field(description=_IS_DEFAULT)
     version: int
     created_at: datetime
     description: str
-    no_match_outcome: _Outcome = Field(description=_NO_MATCH_OUTCOME)
     rules: list[DiscoveryRuleApiResponse] = Field(description=_RULES)

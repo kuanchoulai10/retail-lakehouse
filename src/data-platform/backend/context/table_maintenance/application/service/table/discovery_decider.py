@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.shared import TableDiscoveryPolicyId
     from context.table_maintenance.application.domain.model.table import TableName
     from context.table_maintenance.application.domain.model.table_discovery_policy import (
-        DiscoveryDecision,
+        ManagementDecision,
         TableDiscoveryPolicy,
     )
     from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
@@ -35,8 +35,8 @@ class DiscoveryDecider:
 
     A scan reads its catalog's attachments and their policies once (``for_catalog``) and decides
     every table it lists from them; a catalog event reads only the attachments on its one table's
-    walk (``for_table``). Either way the decision is ``decide_table_discovery``'s, so the default
-    decides a table nothing on its walk is attached to.
+    walk (``for_table``). Either way the decision is ``decide_table_discovery``'s, so a table
+    nothing on its walk is attached to is not managed, and nothing decided it.
     """
 
     def __init__(
@@ -80,14 +80,15 @@ class DiscoveryDecider:
         policies = policies_repo.get_many(policy_ids)
         return cls(attachments, {policy.id: policy for policy in policies})
 
-    def decide(self, name: TableName, table_uuid: str) -> DiscoveryDecision:
+    def decide(self, name: TableName, table_uuid: str) -> ManagementDecision:
         """Decide the table by its current name and its uuid."""
         return decide_table_discovery(name, table_uuid, self._attachments, self._policies)
 
-    def can_manage_any(self) -> bool:
-        """Return whether an attachment read points at a policy that could manage some table.
+    def has_any_policy(self) -> bool:
+        """Return whether an attachment read points at a stored policy.
 
-        Read ``for_catalog``, this says whether the catalog is scanned. When it is not, every table in
-        the catalog decides ``unmanage``, so a scan needs no catalog read to decide them.
+        Read ``for_catalog``, this says whether the catalog is scanned. When it is not, nothing is
+        attached in the catalog and every table there is not managed, so a scan needs no catalog read
+        to decide them.
         """
         return bool(scanned_catalogs(self._attachments, self._policies))

@@ -21,9 +21,12 @@ from context.table_maintenance.application.domain.model.shared import (
     TableDiscoveryPolicyId,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
-    DiscoveryPolicyContent,
+    DiscoveryRule,
+    DiscoveryRules,
+    RuleAction,
     TableDiscoveryPolicy,
     TableDiscoveryPolicyName,
+    TableNamePattern,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,
@@ -62,7 +65,10 @@ def _store_policies(engine: Engine) -> None:
             TableDiscoveryPolicy(
                 id=policy_id,
                 name=TableDiscoveryPolicyName(value=name),
-                content=DiscoveryPolicyContent.from_primitives({"no_match_outcome": "manage", "rules": []}),
+                description="",
+                rules=DiscoveryRules(
+                    rules=(DiscoveryRule(action=RuleAction.INCLUDE, table_name_pattern=TableNamePattern(value="*")),)
+                ),
                 version=1,
                 created_at=NOW,
                 updated_at=NOW,

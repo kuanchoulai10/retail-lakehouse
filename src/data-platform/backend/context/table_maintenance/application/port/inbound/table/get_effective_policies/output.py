@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 from base import UseCaseOutput
 
@@ -12,7 +12,8 @@ class GetEffectivePoliciesUseCaseOutput(UseCaseOutput):
 
     ``version`` is the policy's latest version, since an attachment always means it. ``target`` is
     ``{"type", "path", ["table_uuid"]}`` of the nearest attachment, and ``attachment_id`` its ``pa-`` or
-    ``da-`` id; both are None when nothing is attached and the platform default applies.
+    ``da-`` id; both are None when nothing is attached. Then maintenance falls back to its platform
+    default, while discovery has none: no discovery policy applies and every discovery field is None.
     """
 
     class MaintenanceEntry(UseCaseOutput):
@@ -27,13 +28,12 @@ class GetEffectivePoliciesUseCaseOutput(UseCaseOutput):
         attachment_id: str | None
 
     class DiscoveryEntry(UseCaseOutput):
-        """The discovery policy that applies; ``no_match_outcome`` decides a table no rule matches."""
+        """The discovery policy that applies, every field None when none does."""
 
-        policy_id: str
-        policy_name: str
-        version: int
-        description: str
-        no_match_outcome: Literal["manage", "unmanage"]
+        policy_id: str | None
+        policy_name: str | None
+        version: int | None
+        description: str | None
         target: dict[str, Any] | None
         attachment_id: str | None
 

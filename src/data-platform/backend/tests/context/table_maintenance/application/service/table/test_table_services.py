@@ -14,6 +14,7 @@ from context.table_maintenance.application.domain.model.shared import (
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import AppliedPolicyRef, AttentionMark, Table, TableName
+from context.table_maintenance.application.domain.model.table_discovery_policy import ManagementDecision
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     MaintenancePolicyContent,
     TableMaintenancePolicy,
@@ -38,7 +39,7 @@ from context.table_maintenance.application.service.table import (
     TriggerTableMaintenanceService,
     TriggerTableReconciliationService,
 )
-from tests.context.table_maintenance.discovery_decision_samples import MANAGED, UNMANAGED
+from tests.context.table_maintenance.discovery_decision_samples import MANAGED, SAMPLE_POLICY_ID, UNMANAGED
 from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import (
     InMemoryCatalogDiscoveriesRepo,
 )
@@ -46,7 +47,6 @@ from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_
     InMemoryTableMaintenancePoliciesRepo,
 )
 
-RULE_1 = "dr-00000000000000000000000001"
 NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 
 
@@ -58,7 +58,7 @@ def _managed(repo, now, uuid="u-1", name=NAME):
 
 def _unmanaged(repo, now, uuid="u-1", name=NAME):
     table = _managed(repo, now, uuid, name)
-    table.unmanage(UNMANAGED.match, now)
+    table.unmanage(UNMANAGED.decided_by, now)
     return table
 
 
@@ -96,7 +96,7 @@ def test_list_tables_unknown_status_is_invalid(tables_repo):
 
 
 def test_get_table_includes_status_rule_and_operation_states(tables_repo, now):
-    """Getting a table returns its name, status, deciding rule and operation states."""
+    """Getting a table returns its name, status, what decided it and its operation states."""
     table = _managed(tables_repo, now)
     table.record_operation_result(MaintenanceOperation.EXPIRE_SNAPSHOTS, False, now)
     out = GetTableService(
@@ -104,7 +104,7 @@ def test_get_table_includes_status_rule_and_operation_states(tables_repo, now):
     ).execute(GetTableUseCaseInput(uuid="u-1"))
     assert (out.catalog, out.namespace, out.table) == ("iceberg", "sales", "orders")
     assert out.status == "managed"
-    assert out.matched_rule_id == RULE_1
+    assert out.decided_by == {"policy_id": SAMPLE_POLICY_ID.value, "policy_version": 1, "rule_position": 1}
     assert out.operation_states["expire_snapshots"] == {
         "last_attempt_at": now,
         "consecutive_failures": 1,
@@ -371,3 +371,13 @@ def test_attention_mark_under_a_live_policy_shows_its_current_name(tables_repo, 
     )
     attention = out.operation_states["rewrite_data_files"]["needs_attention"]
     assert (attention["policy_name"], attention["policy_deleted"]) == ("nightly-v2", False)
+
+
+def test_get_table_no_policy_decided_answers_no_decider(tables_repo, now):
+    """A table no discovery policy decided answers ``decided_by`` None."""
+    table = Table.register(TableId("u-1"), NAME, ManagementDecision.nothing_attached(), now)
+    tables_repo.create(table)
+    out = GetTableService(
+        tables_repo, InMemoryCatalogDiscoveriesRepo(), InMemoryTableMaintenancePoliciesRepo()
+    ).execute(GetTableUseCaseInput(uuid="u-1"))
+    assert out.decided_by is None

@@ -8,16 +8,12 @@ import pytest
 
 from context.table_maintenance.application.domain.model.shared import PolicyTarget, PolicyTargetType, TableId
 from context.table_maintenance.application.domain.model.table import Table, TableName
-from context.table_maintenance.application.domain.model.table_discovery_policy import (
-    DEFAULT_DISCOVERY_POLICY_ID,
-    TableDiscoveryPolicyName,
-)
+from context.table_maintenance.application.domain.model.table_discovery_policy import TableDiscoveryPolicyName
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_policy import (
     CreateTableDiscoveryPolicyUseCaseInput,
-    EnsureDefaultTableDiscoveryPolicyUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_policy_attachment import (
     SyncDiscoverySchedulesUseCaseInput,
@@ -29,7 +25,6 @@ from context.table_maintenance.application.port.outbound.table_discovery_policy_
 )
 from context.table_maintenance.application.service.table_discovery_policy import (
     CreateTableDiscoveryPolicyService,
-    EnsureDefaultTableDiscoveryPolicyService,
 )
 from context.table_maintenance.application.service.table_discovery_policy_attachment import (
     SyncDiscoverySchedulesService,
@@ -55,7 +50,7 @@ NOW = datetime(2026, 11, 1, tzinfo=UTC)
 
 
 class _World:
-    """Hold ``manage-all`` attached to the catalog ``iceberg`` and the default attached to ``lake``.
+    """Hold ``manage-all`` attached to the catalog ``iceberg``; nothing is attached in ``lake``.
 
     The schedules start as ``scheduled``: ``iceberg`` is scanned, ``lake`` is not.
     """
@@ -66,24 +61,20 @@ class _World:
         self.tables = InMemoryTablesRepo()
         self.requests = RecordingSendDiscoveryRequestGateway()
         self.schedules = RecordingSyncDiscoverySchedulesGateway(scheduled)
-        EnsureDefaultTableDiscoveryPolicyService(self.policies, clock=lambda: NOW).execute(
-            EnsureDefaultTableDiscoveryPolicyUseCaseInput()
-        )
         CreateTableDiscoveryPolicyService(self.policies, clock=lambda: NOW).execute(
             CreateTableDiscoveryPolicyUseCaseInput(
-                name="manage-all", content={"description": "", "no_match_outcome": "manage", "rules": []}
+                name="manage-all", description="", rules=({"action": "include", "table_name_pattern": "*"},)
             )
         )
         manage_all = self.policies.get_by_name(TableDiscoveryPolicyName(value="manage-all"))
         assert manage_all is not None
-        for catalog, policy_id in (("iceberg", manage_all.id), ("lake", DEFAULT_DISCOVERY_POLICY_ID)):
-            target = PolicyTarget(type=PolicyTargetType.CATALOG, path=(catalog,))
-            self.attachments.create(TableDiscoveryPolicyAttachment.attach(target, policy_id, NOW))
+        target = PolicyTarget(type=PolicyTargetType.CATALOG, path=("iceberg",))
+        self.attachments.create(TableDiscoveryPolicyAttachment.attach(target, manage_all.id, NOW))
 
     def manage(self, uuid: str, catalog: str) -> None:
         """Store a table of ``catalog`` as managed."""
         name = TableName(catalog=catalog, namespace="sales", table=uuid)
-        self.tables.create(Table.register(TableId(uuid), name, MANAGE_ALL_SAMPLE.decide(name), NOW))
+        self.tables.create(Table.register(TableId(uuid), name, MANAGE_ALL_SAMPLE.should_manage(name), NOW))
 
     def sync(self) -> SyncDiscoverySchedulesUseCaseOutput:
         return SyncDiscoverySchedulesService(

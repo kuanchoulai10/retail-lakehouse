@@ -12,7 +12,6 @@ from context.table_maintenance.application.domain.model.table_discovery_policy i
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table_discovery_policy import (
     CreateTableDiscoveryPolicyUseCaseInput,
-    EnsureDefaultTableDiscoveryPolicyUseCaseInput,
     UpdateTableDiscoveryPolicyUseCaseInput,
     UpdateTableDiscoveryPolicyUseCaseOutput,
 )
@@ -27,7 +26,6 @@ from context.table_maintenance.application.port.outbound.table_discovery_policy_
 )
 from context.table_maintenance.application.service.table_discovery_policy import (
     CreateTableDiscoveryPolicyService,
-    EnsureDefaultTableDiscoveryPolicyService,
     UpdateTableDiscoveryPolicyService,
 )
 from context.table_maintenance.application.service.table_discovery_policy_attachment import (
@@ -50,8 +48,8 @@ from tests.context.table_maintenance.fakes.recording_sync_discovery_schedules_ga
 )
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
-MANAGE_ALL = {"description": "", "no_match_outcome": "manage", "rules": []}
-UNMANAGE_ALL = {"description": "", "no_match_outcome": "unmanage", "rules": []}
+MANAGE_ALL = ({"action": "include", "table_name_pattern": "*"},)
+UNMANAGE_ALL = ({"action": "exclude", "table_name_pattern": "*"},)
 
 
 def _scan(catalog: str, change_id: str) -> SendDiscoveryRequestGatewayInput:
@@ -65,9 +63,9 @@ def _synced(catalogs: tuple[str, ...], removed: tuple[str, ...] = ()) -> SyncDis
 class _World:
     """Run the update, attach and detach services on fakes, recording the schedule syncs and the scans.
 
-    Policies ``manage-all`` (manages every table) and ``unmanage-all`` exist; the catalogs ``iceberg``,
-    ``lake`` and ``other`` exist, ``iceberg`` holding the namespace ``sales``. Each change takes the next
-    change id, ``c1``, ``c2`` and so on.
+    Policies ``manage-all`` (includes every table) and ``unmanage-all`` (excludes every table) exist; the
+    catalogs ``iceberg``, ``lake`` and ``other`` exist, ``iceberg`` holding the namespace ``sales``.
+    Each change takes the next change id, ``c1``, ``c2`` and so on.
     """
 
     def __init__(self) -> None:
@@ -80,12 +78,9 @@ class _World:
         for catalog in ("iceberg", "lake", "other"):
             self.catalog.add_catalog(catalog)
         self.catalog.add_namespace("iceberg", "sales")
-        EnsureDefaultTableDiscoveryPolicyService(self.policies, clock=lambda: NOW).execute(
-            EnsureDefaultTableDiscoveryPolicyUseCaseInput()
-        )
-        for name, content in (("manage-all", MANAGE_ALL), ("unmanage-all", UNMANAGE_ALL)):
+        for name, rules in (("manage-all", MANAGE_ALL), ("unmanage-all", UNMANAGE_ALL)):
             CreateTableDiscoveryPolicyService(self.policies, clock=lambda: NOW).execute(
-                CreateTableDiscoveryPolicyUseCaseInput(name=name, content=content)
+                CreateTableDiscoveryPolicyUseCaseInput(name=name, description="", rules=rules)
             )
 
     @property
@@ -118,7 +113,7 @@ class _World:
             self.policies, self.attachments, self.requests, self.schedules, new_change_id=self._new_change_id
         ).execute(DetachTableDiscoveryPolicyUseCaseInput(policy_name=policy, attachment_id=attachment_id))
 
-    def update(self, name: str, content: dict[str, Any]) -> UpdateTableDiscoveryPolicyUseCaseOutput:
+    def update(self, name: str, rules: tuple[dict[str, Any], ...]) -> UpdateTableDiscoveryPolicyUseCaseOutput:
         policy = self.policies.get_by_name(TableDiscoveryPolicyName(value=name))
         assert policy is not None
         return UpdateTableDiscoveryPolicyService(
@@ -128,7 +123,9 @@ class _World:
             self.schedules,
             clock=lambda: NOW,
             new_change_id=self._new_change_id,
-        ).execute(UpdateTableDiscoveryPolicyUseCaseInput(name=name, version=policy.version, content=content))
+        ).execute(
+            UpdateTableDiscoveryPolicyUseCaseInput(name=name, version=policy.version, description="", rules=rules)
+        )
 
 
 @pytest.fixture
@@ -185,20 +182,20 @@ def test_a_change_deletes_no_schedule_it_did_not_remove(world: _World) -> None:
     assert world.schedules.scheduled == {"iceberg", "stray"}
 
 
-def test_attaching_an_unmanage_policy_in_an_unscanned_catalog_scans_nothing(world: _World) -> None:
-    """A policy that manages nothing, attached where nothing is scanned, scans nothing and schedules nothing."""
+def test_attaching_an_exclude_only_policy_schedules_and_scans_the_catalog(world: _World) -> None:
+    """A policy that excludes every table still decides the catalog's tables, so its catalog is scanned."""
     world.attach("unmanage-all", "catalog", ("iceberg",))
 
-    assert world.schedules.synced == [_synced(())]
-    assert world.requests.calls == []
+    assert world.schedules.synced == [_synced(("iceberg",))]
+    assert world.requests.calls == [_scan("iceberg", world.change_id)]
 
 
 def test_opting_a_namespace_out_rescans_its_still_scanned_catalog(world: _World) -> None:
-    """The default on a namespace under a managing catalog keeps the catalog scanned and rescans it."""
+    """An excluding policy on a namespace under a managing catalog keeps the catalog scanned and rescans it."""
     world.attach("manage-all", "catalog", ("iceberg",))
     world.forget()
 
-    world.attach("default", "namespace", ("iceberg", "sales"))
+    world.attach("unmanage-all", "namespace", ("iceberg", "sales"))
 
     assert world.schedules.synced == [_synced(("iceberg",))]
     assert world.requests.calls == [_scan("iceberg", world.change_id)]
@@ -229,8 +226,8 @@ def test_update_rescans_every_catalog_the_policy_is_attached_in(world: _World) -
     assert world.schedules.synced == [_synced(("iceberg", "lake", "other"))]
 
 
-def test_an_update_that_stops_managing_gives_each_catalog_its_final_scan(world: _World) -> None:
-    """A policy that stops managing takes its catalogs out of the scanned set, each after its final scan."""
+def test_an_update_that_stops_managing_rescans_its_catalogs_and_keeps_them_scanned(world: _World) -> None:
+    """A policy that now excludes every table still decides its catalogs: each is rescanned, none is removed."""
     world.attach("manage-all", "catalog", ("iceberg",))
     world.attach("manage-all", "catalog", ("lake",))
     world.forget()
@@ -238,8 +235,8 @@ def test_an_update_that_stops_managing_gives_each_catalog_its_final_scan(world: 
     world.update("manage-all", UNMANAGE_ALL)
 
     assert world.requests.calls == [_scan("iceberg", world.change_id), _scan("lake", world.change_id)]
-    assert world.schedules.synced == [_synced((), removed=("iceberg", "lake"))]
-    assert world.schedules.scheduled == set()
+    assert world.schedules.synced == [_synced(("iceberg", "lake"))]
+    assert world.schedules.scheduled == {"iceberg", "lake"}
 
 
 def test_a_failed_schedule_sync_still_saves_and_rescans(world: _World, caplog: pytest.LogCaptureFixture) -> None:
@@ -271,23 +268,12 @@ def test_a_failed_rescan_is_logged_and_the_change_answers(world: _World, caplog:
 
 
 def test_a_refused_update_neither_syncs_nor_rescans(world: _World) -> None:
-    """An update naming a rule id the policy does not hold saves nothing, syncs nothing and scans nothing."""
+    """An update with no rule saves nothing, syncs nothing and scans nothing."""
     world.attach("manage-all", "catalog", ("iceberg",))
     world.forget()
-    unknown = {
-        "description": "",
-        "no_match_outcome": "manage",
-        "rules": [
-            {
-                "id": "dr-00000000000000000000000000",
-                "outcome": "unmanage",
-                "conditions": [{"attribute": "table_name", "operator": "glob", "values": ["x"]}],
-            }
-        ],
-    }
 
-    with pytest.raises(ValidationError, match="unknown discovery rule id"):
-        world.update("manage-all", unknown)
+    with pytest.raises(ValidationError, match="at least one rule"):
+        world.update("manage-all", ())
 
     assert world.schedules.synced == []
     assert world.requests.calls == []
@@ -305,7 +291,7 @@ def test_a_refused_attach_neither_syncs_nor_rescans(world: _World) -> None:
 def test_each_change_has_its_own_change_id(world: _World) -> None:
     """Two changes in a row start scans under two change ids, so the later never joins the earlier's run."""
     world.attach("manage-all", "catalog", ("iceberg",))
-    world.attach("default", "namespace", ("iceberg", "sales"))
+    world.attach("unmanage-all", "namespace", ("iceberg", "sales"))
 
     assert world.requests.calls == [_scan("iceberg", "c1"), _scan("iceberg", "c2")]
 

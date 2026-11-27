@@ -72,8 +72,6 @@ def test_create_schema_creates_the_table_metrics_table(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("table", "column"),
     [
-        ("tables", "matched_policy_id"),
-        ("tables", "matched_policy_version"),
         ("tables", "priority"),
         ("tables", "over_target_partitions_json"),
         ("table_maintenance_runs", "priority"),

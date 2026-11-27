@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.table_discovery_policy import DEFAULT_DISCOVERY_POLICY_ID
 from context.table_maintenance.application.domain.model.table_maintenance_policy import DEFAULT_POLICY_ID
 from context.table_maintenance.application.domain.service.shared import nearest_attached
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
@@ -39,8 +38,9 @@ class GetEffectivePoliciesService(GetEffectivePoliciesUseCase):
     """Answer, for each kind of policy, which one applies to a place, from which level and through which attachment.
 
     Every kind walks the same candidates (``policy_candidates``) and takes its own nearest attachment, so a
-    table attachment of one kind leaves the other kind at its own level. With nothing attached a kind's
-    platform default applies, read from its repo. By location a catalog, namespace or table the catalog does
+    table attachment of one kind leaves the other kind at its own level. With nothing attached the
+    maintenance platform default applies, read from its repo, and no discovery policy applies (every
+    discovery field is None). By location a catalog, namespace or table the catalog does
     not hold is NotFoundError, and a catalog the platform cannot read raises CatalogAccessDeniedError, as
     attaching there does; by uuid a table table maintenance has no record of is NotFoundError. A place is
     named by uuid or by location, never both (ValidationError).
@@ -121,16 +121,19 @@ class GetEffectivePoliciesService(GetEffectivePoliciesUseCase):
     def _discovery_entry(self, candidates: Sequence[PolicyTarget]) -> GetEffectivePoliciesUseCaseOutput.DiscoveryEntry:
         attached = {a.target.key(): a for a in self._discovery_attachments_repo.get_many_by_targets(candidates)}
         nearest = nearest_attached(candidates, attached)
-        policy_id = DEFAULT_DISCOVERY_POLICY_ID if nearest is None else nearest[1].policy_id
-        policy = self._discovery_policies_repo.get(policy_id)
+        if nearest is None:
+            return GetEffectivePoliciesUseCaseOutput.DiscoveryEntry(
+                policy_id=None, policy_name=None, version=None, description=None, target=None, attachment_id=None
+            )
+        target, attachment = nearest
+        policy = self._discovery_policies_repo.get(attachment.policy_id)
         if policy is None:
-            raise NotFoundError(f"table discovery policy {policy_id.value} not found")
+            raise NotFoundError(f"table discovery policy {attachment.policy_id.value} not found")
         return GetEffectivePoliciesUseCaseOutput.DiscoveryEntry(
             policy_id=policy.id.value,
             policy_name=policy.name.value,
             version=policy.version,
-            description=policy.content.description,
-            no_match_outcome=policy.content.no_match_outcome.value,
-            target=None if nearest is None else policy_target_fields(nearest[0]),
-            attachment_id=None if nearest is None else nearest[1].id.value,
+            description=policy.description,
+            target=policy_target_fields(target),
+            attachment_id=attachment.id.value,
         )

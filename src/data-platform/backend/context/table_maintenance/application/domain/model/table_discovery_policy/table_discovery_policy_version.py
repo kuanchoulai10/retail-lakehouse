@@ -8,15 +8,16 @@ from pydantic import PositiveInt
 
 from base import ValueObject
 from context.table_maintenance.application.domain.model.shared import TableDiscoveryPolicyId
-from context.table_maintenance.application.domain.model.table_discovery_policy.discovery_policy_content import (
-    DiscoveryPolicyContent,
+from context.table_maintenance.application.domain.model.table_discovery_policy.rule.discovery_rules import (
+    DiscoveryRules,
 )
 
 
 class TableDiscoveryPolicyVersion(ValueObject):
-    """One immutable version of a discovery policy's content, belonging to its policy by id."""
+    """One immutable version of a discovery policy's description and rules, belonging to its policy by id."""
 
     policy_id: TableDiscoveryPolicyId
     version: PositiveInt
-    content: DiscoveryPolicyContent
+    description: str
+    rules: DiscoveryRules
     created_at: datetime

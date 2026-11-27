@@ -10,17 +10,15 @@ from context.table_maintenance.application.domain.model.table import Table, Tabl
 from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePolicyContent
 from context.table_maintenance.application.port.inbound.table_discovery_policy import (
     CreateTableDiscoveryPolicyUseCaseInput,
-    EnsureDefaultTableDiscoveryPolicyUseCaseInput,
     UpdateTableDiscoveryPolicyUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     CreateTableMaintenancePolicyUseCaseInput,
     EnsureDefaultTableMaintenancePolicyUseCaseInput,
 )
-from context.table_maintenance.application.service.table import GetEffectivePoliciesService
+from context.table_maintenance.application.service.table import GetEffectivePoliciesService, GetTableService
 from context.table_maintenance.application.service.table_discovery_policy import (
     CreateTableDiscoveryPolicyService,
-    EnsureDefaultTableDiscoveryPolicyService,
     UpdateTableDiscoveryPolicyService,
 )
 from context.table_maintenance.application.service.table_discovery_policy_attachment import (
@@ -36,6 +34,7 @@ from context.table_maintenance.application.service.table_maintenance_policy_atta
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import build_client
 from tests.context.table_maintenance.discovery_decision_samples import MANAGED
 from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import FakeReadTableMetadataGateway
+from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import InMemoryCatalogDiscoveriesRepo
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_policies_repo import (
     InMemoryTableDiscoveryPoliciesRepo,
 )
@@ -63,7 +62,7 @@ if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
-SALES_TABLES_CONTENT = {"description": "Sales tables", "no_match_outcome": "manage", "rules": []}
+SALES_TABLES_RULES = ({"action": "include", "table_name_pattern": "*"},)
 
 
 class EffectivePoliciesWebWorld:
@@ -71,11 +70,11 @@ class EffectivePoliciesWebWorld:
 
     Catalog ``prod`` holds ``sales.eu.orders`` (uuid ``u-1``, recorded by table maintenance) and
     ``sales.eu.returns`` (uuid ``u-2``, not recorded). Maintenance policy ``gold`` and discovery policy
-    ``sales-tables`` exist beside the two platform defaults.
+    ``sales-tables`` exist beside the platform's maintenance default; there is no discovery default.
     """
 
     def __init__(self) -> None:
-        """Seed both defaults, one policy of each kind and the catalog, then build the client."""
+        """Seed the maintenance default, one policy of each kind and the catalog, then build the client."""
         self.maintenance_policies = InMemoryTableMaintenancePoliciesRepo()
         self.maintenance_attachments = InMemoryTableMaintenancePolicyAttachmentsRepo()
         self.discovery_attachments = InMemoryTableDiscoveryPolicyAttachmentsRepo()
@@ -85,16 +84,15 @@ class EffectivePoliciesWebWorld:
         EnsureDefaultTableMaintenancePolicyService(self.maintenance_policies, clock=lambda: NOW).execute(
             EnsureDefaultTableMaintenancePolicyUseCaseInput()
         )
-        EnsureDefaultTableDiscoveryPolicyService(self.discovery_policies, clock=lambda: NOW).execute(
-            EnsureDefaultTableDiscoveryPolicyUseCaseInput()
-        )
         CreateTableMaintenancePolicyService(self.maintenance_policies, clock=lambda: NOW).execute(
             CreateTableMaintenancePolicyUseCaseInput(
                 name="gold", content={**MaintenancePolicyContent.platform_default().to_primitives(), "dry_run": True}
             )
         )
         CreateTableDiscoveryPolicyService(self.discovery_policies, clock=lambda: NOW).execute(
-            CreateTableDiscoveryPolicyUseCaseInput(name="sales-tables", content=SALES_TABLES_CONTENT)
+            CreateTableDiscoveryPolicyUseCaseInput(
+                name="sales-tables", description="Sales tables", rules=SALES_TABLES_RULES
+            )
         )
         self.catalog.add_table("prod", "sales.eu", "orders", "u-1")
         self.catalog.add_table("prod", "sales.eu", "returns", "u-2")
@@ -120,6 +118,7 @@ class EffectivePoliciesWebWorld:
                 RecordingSyncDiscoverySchedulesGateway(),
                 clock=lambda: NOW,
             ),
+            get_table=GetTableService(self.tables, InMemoryCatalogDiscoveriesRepo(), self.maintenance_policies),
             get_effective_policies=GetEffectivePoliciesService(
                 self.maintenance_policies,
                 self.maintenance_attachments,
@@ -146,8 +145,8 @@ class EffectivePoliciesWebWorld:
         assert response.status_code == 200, response.text
         return response.json()
 
-    def update_discovery(self, name: str, version: int, **changes: Any) -> None:  # noqa: ANN401
-        """Replace a discovery policy's content as its next version, with ``changes`` on top of no rules."""
+    def update_discovery(self, name: str, version: int, description: str) -> None:
+        """Revise a discovery policy as its next version with a new description and the same rules."""
         UpdateTableDiscoveryPolicyService(
             self.discovery_policies,
             self.discovery_attachments,
@@ -156,6 +155,6 @@ class EffectivePoliciesWebWorld:
             clock=lambda: NOW,
         ).execute(
             UpdateTableDiscoveryPolicyUseCaseInput(
-                name=name, content={**SALES_TABLES_CONTENT, **changes}, version=version
+                name=name, description=description, rules=SALES_TABLES_RULES, version=version
             )
         )

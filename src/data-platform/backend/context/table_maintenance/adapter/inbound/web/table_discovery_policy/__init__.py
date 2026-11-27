@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from context.table_maintenance.adapter.inbound.web.table_discovery_policy.dto import (
     CreateTableDiscoveryPolicyApiRequest,
-    DiscoveryConditionApiRequest,
-    DiscoveryConditionApiResponse,
     DiscoveryRuleApiRequest,
     DiscoveryRuleApiResponse,
     ListedTableDiscoveryPolicyApiResponse,
@@ -20,8 +18,6 @@ from context.table_maintenance.adapter.inbound.web.table_discovery_policy.router
 
 __all__ = [
     "CreateTableDiscoveryPolicyApiRequest",
-    "DiscoveryConditionApiRequest",
-    "DiscoveryConditionApiResponse",
     "DiscoveryRuleApiRequest",
     "DiscoveryRuleApiResponse",
     "ListedTableDiscoveryPolicyApiResponse",

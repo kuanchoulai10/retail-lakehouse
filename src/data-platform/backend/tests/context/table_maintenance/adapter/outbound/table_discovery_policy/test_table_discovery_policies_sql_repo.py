@@ -12,6 +12,7 @@ from sqlalchemy.pool import StaticPool
 from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from context.table_maintenance.adapter.outbound.table_discovery_policy.sql import (
     TableDiscoveryPoliciesSqlRepo,
+    table_discovery_policy_versions_table,
 )
 from context.table_maintenance.adapter.outbound.table_discovery_policy_attachment.sql import (
     TableDiscoveryPolicyAttachmentsSqlRepo,
@@ -20,13 +21,15 @@ from context.table_maintenance.application.domain.model.shared import (
     PolicyTarget,
     PolicyTargetType,
     TableDiscoveryPolicyId,
-    TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
-    DiscoveryPolicyContent,
+    DiscoveryRule,
+    DiscoveryRules,
+    RuleAction,
     StaleDiscoveryPolicyVersion,
     TableDiscoveryPolicy,
     TableDiscoveryPolicyName,
+    TableNamePattern,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,
@@ -50,24 +53,19 @@ if TYPE_CHECKING:
     )
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
-RULE = TableDiscoveryRuleId("dr-00000000000000000000000001")
-MANAGE_SALES = DiscoveryPolicyContent.from_primitives(
-    {
-        "description": "sales tables",
-        "no_match_outcome": "unmanage",
-        "rules": [
-            {
-                "id": RULE.value,
-                "outcome": "manage",
-                "conditions": [
-                    {"attribute": "namespace", "operator": "glob", "values": ["sales", "sales.*"]},
-                    {"attribute": "table_name", "operator": "glob", "values": ["orders_*"]},
-                ],
-            }
-        ],
-    }
-)
-MANAGE_EVERYTHING = DiscoveryPolicyContent.from_primitives({"no_match_outcome": "manage", "rules": []})
+
+
+def _rules(*specs: tuple[RuleAction, str]) -> DiscoveryRules:
+    return DiscoveryRules(
+        rules=tuple(
+            DiscoveryRule(action=action, table_name_pattern=TableNamePattern(value=pattern))
+            for action, pattern in specs
+        )
+    )
+
+
+SALES_ORDERS = _rules((RuleAction.INCLUDE, "orders_*"), (RuleAction.EXCLUDE, "orders_tmp*"))
+EVERYTHING = _rules((RuleAction.INCLUDE, "*"))
 
 
 def _engine_enforcing_foreign_keys() -> Engine:
@@ -95,14 +93,12 @@ def repos(request: pytest.FixtureRequest) -> tuple[TableDiscoveryPoliciesRepo, T
     return InMemoryTableDiscoveryPoliciesRepo(attachments=attachments), attachments
 
 
-def _policy(name: str = "sales", content: DiscoveryPolicyContent = MANAGE_SALES) -> TableDiscoveryPolicy:
-    return TableDiscoveryPolicy.create(
-        TableDiscoveryPolicyName(value=name), content, NOW, new_rule_ids=content.rule_ids()
-    )
+def _policy(name: str = "sales", rules: DiscoveryRules = SALES_ORDERS) -> TableDiscoveryPolicy:
+    return TableDiscoveryPolicy.create(TableDiscoveryPolicyName(value=name), "sales tables", rules, NOW)
 
 
 def test_a_created_policy_loads_back_equal_by_id_and_by_name(repo: TableDiscoveryPoliciesRepo):
-    """Every field of a created policy, its rules and conditions included, reads back by its id and its name."""
+    """Every field of a created policy, its description and its rules in order included, reads back by id and name."""
     policy = _policy()
     repo.create(policy)
 
@@ -117,7 +113,7 @@ def test_a_created_policy_loads_back_equal_by_id_and_by_name(repo: TableDiscover
 
 
 def test_create_writes_the_first_version(repo: TableDiscoveryPoliciesRepo):
-    """A created policy has its version 1 readable, holding its content."""
+    """A created policy has its version 1 readable, holding its description and rules."""
     policy = _policy()
     repo.create(policy)
 
@@ -125,54 +121,54 @@ def test_create_writes_the_first_version(repo: TableDiscoveryPoliciesRepo):
 
     assert first is not None
     assert first.policy_id == policy.id
-    assert first.content == MANAGE_SALES
+    assert (first.description, first.rules) == ("sales tables", SALES_ORDERS)
     assert first.created_at == NOW
 
 
 def test_update_writes_a_version_and_keeps_the_old_one(repo: TableDiscoveryPoliciesRepo):
-    """A replace stored by ``update`` is the current version, and v1 and v2 are both readable."""
+    """A revision stored by ``update`` is the current version, and v1 and v2 are both readable."""
     policy = _policy()
     repo.create(policy)
-    policy.replace(MANAGE_EVERYTHING, expected_version=1, now=NOW + timedelta(hours=1))
+    policy.revise("everything", EVERYTHING, expected_version=1, now=NOW + timedelta(hours=1))
 
     repo.update(policy)
 
     loaded = repo.get(policy.id)
     assert loaded is not None
-    assert (loaded.version, loaded.content, loaded.updated_at) == (2, MANAGE_EVERYTHING, NOW + timedelta(hours=1))
-    assert loaded.created_at == NOW
+    assert (loaded.version, loaded.description, loaded.rules) == (2, "everything", EVERYTHING)
+    assert (loaded.created_at, loaded.updated_at) == (NOW, NOW + timedelta(hours=1))
     v1, v2 = repo.get_version(policy.id, 1), repo.get_version(policy.id, 2)
     assert v1 is not None
-    assert v1.content == MANAGE_SALES
+    assert (v1.description, v1.rules) == ("sales tables", SALES_ORDERS)
     assert v2 is not None
-    assert (v2.content, v2.created_at) == (MANAGE_EVERYTHING, NOW + timedelta(hours=1))
+    assert (v2.description, v2.rules, v2.created_at) == ("everything", EVERYTHING, NOW + timedelta(hours=1))
     assert repo.get_version(policy.id, 3) is None
 
 
 def test_update_from_a_stale_copy_is_refused(repo: TableDiscoveryPoliciesRepo):
-    """Two copies replaced from version 1: the second ``update`` is refused and the first one's content stays."""
+    """Two copies revised from version 1: the second ``update`` is refused and the first one's rules stay."""
     policy = _policy()
     repo.create(policy)
     first, second = repo.get(policy.id), repo.get(policy.id)
     assert first is not None
     assert second is not None
-    first.replace(MANAGE_EVERYTHING, expected_version=1, now=NOW)
+    first.revise("", EVERYTHING, expected_version=1, now=NOW)
     repo.update(first)
-    second.replace(MANAGE_SALES, expected_version=1, now=NOW)
+    second.revise("", SALES_ORDERS, expected_version=1, now=NOW)
 
     with pytest.raises(StaleDiscoveryPolicyVersion):
         repo.update(second)
 
     loaded = repo.get(policy.id)
     assert loaded is not None
-    assert (loaded.version, loaded.content) == (2, MANAGE_EVERYTHING)
+    assert (loaded.version, loaded.rules) == (2, EVERYTHING)
     assert repo.get_version(policy.id, 3) is None
 
 
 def test_update_of_an_unknown_policy_raises_lookup_error(repo: TableDiscoveryPoliciesRepo):
     """Updating a policy that was never stored is a LookupError, not a stale version."""
     policy = _policy()
-    policy.replace(MANAGE_EVERYTHING, expected_version=1, now=NOW)
+    policy.revise("", EVERYTHING, expected_version=1, now=NOW)
 
     with pytest.raises(LookupError):
         repo.update(policy)
@@ -191,7 +187,7 @@ def test_a_taken_name_conflicts(repo: TableDiscoveryPoliciesRepo):
 
 def test_get_many_returns_the_existing_ones(repo: TableDiscoveryPoliciesRepo):
     """``get_many`` returns the policies that exist among the ids, skipping unknown ones."""
-    sales, everything = _policy("sales"), _policy("everything", MANAGE_EVERYTHING)
+    sales, everything = _policy("sales"), _policy("everything", EVERYTHING)
     repo.create(sales)
     repo.create(everything)
 
@@ -213,7 +209,7 @@ def test_delete_removes_the_versions_too(repo: TableDiscoveryPoliciesRepo):
     """Deleting a policy deletes it and every one of its versions."""
     policy = _policy()
     repo.create(policy)
-    policy.replace(MANAGE_EVERYTHING, expected_version=1, now=NOW)
+    policy.revise("", EVERYTHING, expected_version=1, now=NOW)
     repo.update(policy)
 
     repo.delete(policy.id)
@@ -238,3 +234,20 @@ def test_delete_while_attached_conflicts(
 
     assert policies.get(policy.id) is not None
     assert policies.get_version(policy.id, 1) is not None
+
+
+def test_a_version_is_stored_as_its_description_and_rules(engine: Engine):
+    """A version row holds ``{"description", "rules": [{"action", "table_name_pattern"}]}``, in rule order."""
+    policy = _policy()
+    TableDiscoveryPoliciesSqlRepo(engine).create(policy)
+
+    with engine.connect() as connection:
+        row = connection.execute(table_discovery_policy_versions_table.select()).mappings().one()
+
+    assert row["content_json"] == {
+        "description": "sales tables",
+        "rules": [
+            {"action": "include", "table_name_pattern": "orders_*"},
+            {"action": "exclude", "table_name_pattern": "orders_tmp*"},
+        ],
+    }

@@ -27,24 +27,30 @@ def _iso(at):
 
 @pytest.fixture
 def client() -> DiscoveryPolicyWebWorld:
-    """Provide a client over the default and a managing ``sales`` policy, and catalogs ``a``, ``b`` and ``c``."""
+    """Provide a client over a managing ``sales`` and an excluding ``nothing`` policy, and catalogs a, b and c."""
     world = DiscoveryPolicyWebWorld()
     world.create("sales", discovery_rule())
+    world.create("nothing", discovery_rule("*", action="exclude"))
     world.catalog.add_catalog("a")
     world.catalog.add_namespace("b", "ns")
     world.catalog.add_catalog("c")
     return world
 
 
-def test_scanned_catalogs_list_only_catalogs_a_policy_can_manage(client: DiscoveryPolicyWebWorld) -> None:
-    """A catalog holding only the default is not scanned; one whose namespace holds a managing policy is."""
-    assert client.attach("default", "catalog", ["a"]).status_code == 200
+def test_scanned_catalogs_list_every_catalog_a_policy_is_attached_in(client: DiscoveryPolicyWebWorld) -> None:
+    """A catalog holding an exclude-only policy is scanned, as is one whose namespace holds a policy; ``c`` is not."""
+    assert client.attach("nothing", "catalog", ["a"]).status_code == 200
     assert client.attach("sales", "namespace", ["b", "ns"]).status_code == 200
 
     response = client.client.get("/v1/scanned-catalogs")
 
     assert response.status_code == 200, response.text
-    assert response.json() == {"catalogs": [{"catalog": "b", "last_discovered_at": None, "failure": None}]}
+    assert response.json() == {
+        "catalogs": [
+            {"catalog": "a", "last_discovered_at": None, "failure": None},
+            {"catalog": "b", "last_discovered_at": None, "failure": None},
+        ]
+    }
 
 
 def test_scanned_catalogs_are_sorted_by_name(client: DiscoveryPolicyWebWorld) -> None:

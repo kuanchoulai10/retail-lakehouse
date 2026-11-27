@@ -36,8 +36,8 @@ class ListTableDiscoveryPoliciesService(ListTableDiscoveryPoliciesUseCase):
         self,
         request: ListTableDiscoveryPoliciesUseCaseInput,  # noqa: ARG002
     ) -> ListTableDiscoveryPoliciesUseCaseOutput:
-        """Return every policy at its current version with its attachment count, the default first, then by name."""
-        policies = sorted(self._policies_repo.list_all(), key=lambda p: (not p.is_default, p.name.value))
+        """Return every policy at its current version with its attachment count, by name."""
+        policies = sorted(self._policies_repo.list_all(), key=lambda p: p.name.value)
         return ListTableDiscoveryPoliciesUseCaseOutput(
             items=tuple(
                 ListTableDiscoveryPoliciesUseCaseOutput.TableDiscoveryPolicy(

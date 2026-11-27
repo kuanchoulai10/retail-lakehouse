@@ -459,7 +459,7 @@ def test_failure_backoff_stops_at_the_given_cap():
 def test_assessment_ignores_status():
     """The assessment does not depend on the table status; the planner skips an unmanaged table before it."""
     t = table()
-    t.unmanage(UNMANAGED.match, NOW)
+    t.unmanage(UNMANAGED.decided_by, NOW)
     o = obs(partitions=(part(10),))
     assert assess(t, o, Op.REWRITE_DATA_FILES).verdict == OperationVerdict.DUE
 

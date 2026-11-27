@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from context.table_maintenance.application.domain.model.table_discovery_policy import (
-        DiscoveryDecision,
+        ManagementDecision,
     )
     from context.table_maintenance.application.port.outbound.table import (
         SendTableChangeGateway,
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 def register_discovered_table(
     found: TableMetadata,
-    decision: DiscoveryDecision,
+    decision: ManagementDecision,
     tables_repo: TablesRepo,
     table_change_gateway: SendTableChangeGateway,
     now: datetime,

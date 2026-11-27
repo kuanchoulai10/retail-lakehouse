@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.application.service.table_discovery_policy.content_with_issued_rule_ids import (
-    content_with_issued_rule_ids,
-)
 from context.table_maintenance.application.service.table_discovery_policy.create_table_discovery_policy import (
     CreateTableDiscoveryPolicyService,
 )
 from context.table_maintenance.application.service.table_discovery_policy.delete_table_discovery_policy import (
     DeleteTableDiscoveryPolicyService,
 )
-from context.table_maintenance.application.service.table_discovery_policy.ensure_default_table_discovery_policy import (  # noqa: E501
-    EnsureDefaultTableDiscoveryPolicyService,
+from context.table_maintenance.application.service.table_discovery_policy.discovery_rule_fields import (
+    discovery_rule_fields,
+)
+from context.table_maintenance.application.service.table_discovery_policy.discovery_rules_of import (
+    discovery_rules_of,
 )
 from context.table_maintenance.application.service.table_discovery_policy.get_table_discovery_policy import (
     GetTableDiscoveryPolicyService,
@@ -33,11 +33,11 @@ from context.table_maintenance.application.service.table_discovery_policy.update
 __all__ = [
     "CreateTableDiscoveryPolicyService",
     "DeleteTableDiscoveryPolicyService",
-    "EnsureDefaultTableDiscoveryPolicyService",
     "GetTableDiscoveryPolicyService",
     "GetTableDiscoveryPolicyVersionService",
     "ListTableDiscoveryPoliciesService",
     "UpdateTableDiscoveryPolicyService",
-    "content_with_issued_rule_ids",
+    "discovery_rule_fields",
+    "discovery_rules_of",
     "table_discovery_policy_output_fields",
 ]

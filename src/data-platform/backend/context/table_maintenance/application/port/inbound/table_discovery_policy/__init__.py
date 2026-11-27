@@ -12,11 +12,6 @@ from context.table_maintenance.application.port.inbound.table_discovery_policy.d
     DeleteTableDiscoveryPolicyUseCaseInput,
     DeleteTableDiscoveryPolicyUseCaseOutput,
 )
-from context.table_maintenance.application.port.inbound.table_discovery_policy.ensure_default_table_discovery_policy import (  # noqa: E501
-    EnsureDefaultTableDiscoveryPolicyUseCase,
-    EnsureDefaultTableDiscoveryPolicyUseCaseInput,
-    EnsureDefaultTableDiscoveryPolicyUseCaseOutput,
-)
 from context.table_maintenance.application.port.inbound.table_discovery_policy.get_table_discovery_policy import (  # noqa: E501
     GetTableDiscoveryPolicyUseCase,
     GetTableDiscoveryPolicyUseCaseInput,
@@ -45,9 +40,6 @@ __all__ = [
     "DeleteTableDiscoveryPolicyUseCase",
     "DeleteTableDiscoveryPolicyUseCaseInput",
     "DeleteTableDiscoveryPolicyUseCaseOutput",
-    "EnsureDefaultTableDiscoveryPolicyUseCase",
-    "EnsureDefaultTableDiscoveryPolicyUseCaseInput",
-    "EnsureDefaultTableDiscoveryPolicyUseCaseOutput",
     "GetTableDiscoveryPolicyUseCase",
     "GetTableDiscoveryPolicyUseCaseInput",
     "GetTableDiscoveryPolicyUseCaseOutput",

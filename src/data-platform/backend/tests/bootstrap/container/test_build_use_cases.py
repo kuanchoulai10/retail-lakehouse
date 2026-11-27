@@ -54,9 +54,6 @@ from context.table_maintenance.application.port.inbound.table_discovery_policy i
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import GetPlatformSettingsUseCaseInput
 from context.table_maintenance.application.service.table import PlanTableMaintenanceService
-from context.table_maintenance.application.service.table_discovery_policy import (
-    EnsureDefaultTableDiscoveryPolicyService,
-)
 from context.table_maintenance.application.service.table_maintenance_policy import (
     EnsureDefaultTableMaintenancePolicyService,
 )
@@ -74,7 +71,6 @@ if TYPE_CHECKING:
 
 MIGRATION_ONLY_SERVICES: set[type] = {
     EnsureDefaultTableMaintenancePolicyService,
-    EnsureDefaultTableDiscoveryPolicyService,
 }
 """Services the migrate component builds itself (`run_migrations`); no API, worker or consumer calls them."""
 

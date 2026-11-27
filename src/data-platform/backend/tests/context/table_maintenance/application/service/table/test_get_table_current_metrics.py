@@ -64,7 +64,7 @@ def test_a_managed_table_with_no_row_returns_nothing(tables_repo, metrics_store,
 
 def test_an_unmanaged_table_with_a_stale_row_returns_nothing(tables_repo, metrics_store, now):
     """A row left behind by a table that left maintenance is not shown."""
-    _register(tables_repo, now, "u-1").unmanage(UNMANAGED.match, now)
+    _register(tables_repo, now, "u-1").unmanage(UNMANAGED.decided_by, now)
     metrics_store.save(_metrics("u-1", now, data_files=12))
 
     output = _service(tables_repo, metrics_store).execute(GetTableCurrentMetricsUseCaseInput(uuid="u-1"))

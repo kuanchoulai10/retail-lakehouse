@@ -8,12 +8,14 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.application.domain.model.shared import (
     PolicyTarget,
     PolicyTargetType,
-    TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
-    DiscoveryPolicyContent,
+    DiscoveryRule,
+    DiscoveryRules,
+    RuleAction,
     TableDiscoveryPolicy,
     TableDiscoveryPolicyName,
+    TableNamePattern,
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,
@@ -23,36 +25,26 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table import TableName
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
-MANAGE_RULE = TableDiscoveryRuleId("dr-00000000000000000000000001")
-MANAGE_ALL = TableDiscoveryPolicy.create(
-    TableDiscoveryPolicyName(value="manage-all"),
-    DiscoveryPolicyContent.from_primitives(
-        {
-            "no_match_outcome": "unmanage",
-            "rules": [
-                {
-                    "id": MANAGE_RULE.value,
-                    "outcome": "manage",
-                    "conditions": [{"attribute": "table_name", "operator": "glob", "values": ["*"]}],
-                }
-            ],
-        }
-    ),
-    NOW,
-    new_rule_ids=[MANAGE_RULE],
-)
+
+
+def rules(*specs: tuple[str, str]) -> DiscoveryRules:
+    """Return discovery rules from ``(action, table name pattern)`` pairs, in order."""
+    return DiscoveryRules(
+        rules=tuple(
+            DiscoveryRule(action=RuleAction(action), table_name_pattern=TableNamePattern(value=pattern))
+            for action, pattern in specs
+        )
+    )
+
+
+MANAGE_ALL = TableDiscoveryPolicy.create(TableDiscoveryPolicyName(value="manage-all"), "", rules(("include", "*")), NOW)
 UNMANAGE_ALL = TableDiscoveryPolicy.create(
-    TableDiscoveryPolicyName(value="unmanage-all"),
-    DiscoveryPolicyContent.from_primitives({"no_match_outcome": "unmanage", "rules": []}),
-    NOW,
+    TableDiscoveryPolicyName(value="unmanage-all"), "", rules(("exclude", "*")), NOW
 )
-MANAGE_BY_DEFAULT = TableDiscoveryPolicy.create(
-    TableDiscoveryPolicyName(value="manage-by-default"),
-    DiscoveryPolicyContent.from_primitives({"no_match_outcome": "manage", "rules": []}),
-    NOW,
+MANAGE_ORDERS = TableDiscoveryPolicy.create(
+    TableDiscoveryPolicyName(value="manage-orders"), "", rules(("include", "orders")), NOW
 )
-DEFAULT = TableDiscoveryPolicy.create_default(NOW)
-POLICIES = {policy.id: policy for policy in (MANAGE_ALL, UNMANAGE_ALL, MANAGE_BY_DEFAULT, DEFAULT)}
+POLICIES = {policy.id: policy for policy in (MANAGE_ALL, UNMANAGE_ALL, MANAGE_ORDERS)}
 
 
 def catalog_target(catalog: str) -> PolicyTarget:

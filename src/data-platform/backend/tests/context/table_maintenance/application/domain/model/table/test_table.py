@@ -12,7 +12,6 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     OverTargetPartition,
     PolicyTarget,
-    TableDiscoveryRuleId,
     TableId,
     TableMaintenanceRunId,
     TablePriority,
@@ -27,7 +26,7 @@ from context.table_maintenance.application.domain.model.table import (
     TableName,
     TableStatus,
 )
-from context.table_maintenance.application.domain.model.table_discovery_policy import DiscoveryMatch
+from context.table_maintenance.application.domain.model.table_discovery_policy import DecidedBy, ManagementDecision
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_ID,
     TableMaintenancePolicyName,
@@ -35,7 +34,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from tests.context.table_maintenance.discovery_decision_samples import (
     MANAGED,
     SAMPLE_POLICY_ID,
-    SAMPLE_RULE_ID,
     UNMANAGED,
 )
 
@@ -46,11 +44,9 @@ RUN_2 = "mr-00000000000000000000000002"
 T0 = datetime(2026, 1, 1, tzinfo=UTC)
 T1 = T0 + timedelta(hours=1)
 NAME = TableName(catalog="iceberg", namespace="inventory", table="orders")
-RULE = SAMPLE_RULE_ID
-RULE_2 = TableDiscoveryRuleId("dr-00000000000000000000000002")
-MATCH = MANAGED.match
-OTHER_RULE_MATCH = DiscoveryMatch(policy_id=SAMPLE_POLICY_ID, policy_version=1, rule_id=RULE_2)
-NEXT_VERSION_MATCH = DiscoveryMatch(policy_id=SAMPLE_POLICY_ID, policy_version=2, rule_id=RULE)
+DECIDED_BY = DecidedBy(policy_id=SAMPLE_POLICY_ID, policy_version=1, rule_position=1)
+OTHER_RULE = DecidedBy(policy_id=SAMPLE_POLICY_ID, policy_version=1, rule_position=2)
+NEXT_VERSION = DecidedBy(policy_id=SAMPLE_POLICY_ID, policy_version=2, rule_position=1)
 OP = MaintenanceOperation.REWRITE_DATA_FILES
 
 
@@ -59,13 +55,12 @@ def managed() -> Table:
     return Table.register(TableId("u1"), NAME, MANAGED, T0)
 
 
-def test_register_makes_a_managed_table_linked_to_its_rule():
-    """A table a managing decision registers is managed and records the policy, version and rule."""
+def test_register_makes_a_managed_table_recording_what_decided_it():
+    """A table a managing decision registers is managed and records the policy, version and rule position."""
     t = managed()
     assert t.status == TableStatus.MANAGED
     assert t.is_managed
-    assert t.discovered_by == MATCH
-    assert t.matched_rule_id == RULE
+    assert t.decided_by == DECIDED_BY
     assert t.registered_at == t.updated_at == T0
 
 
@@ -74,9 +69,15 @@ def test_register_by_an_unmanaging_decision_makes_an_unmanaged_table():
     t = Table.register(TableId("u1"), NAME, UNMANAGED, T0)
     assert t.status == TableStatus.UNMANAGED
     assert not t.is_managed
-    assert t.discovered_by == UNMANAGED.match
-    assert t.matched_rule_id is None
+    assert t.decided_by == UNMANAGED.decided_by
     assert t.registered_at == t.updated_at == T0
+
+
+def test_register_with_nothing_attached_makes_an_unmanaged_table_decided_by_nothing():
+    """A table no discovery policy applies to is registered unmanaged, naming no policy."""
+    t = Table.register(TableId("u1"), NAME, ManagementDecision.nothing_attached(), T0)
+    assert t.status == TableStatus.UNMANAGED
+    assert t.decided_by is None
 
 
 def test_table_statuses_are_managed_unmanaged_and_dropped():
@@ -84,67 +85,73 @@ def test_table_statuses_are_managed_unmanaged_and_dropped():
     assert [s.value for s in TableStatus] == ["managed", "unmanaged", "dropped"]
 
 
-def test_unmanage_keeps_the_row_and_records_the_unmanaging_match():
-    """Unmanaging keeps the table and its state, and records the match that unmanaged it."""
+def test_unmanage_keeps_the_row_and_records_what_unmanaged_it():
+    """Unmanaging keeps the table and its state, and records what unmanaged it."""
     t = managed()
     t.record_operation_result(OP, True, T0, size=ComputeSize.S)
-    t.unmanage(UNMANAGED.match, T1)
+    t.unmanage(UNMANAGED.decided_by, T1)
     assert t.status == TableStatus.UNMANAGED
     assert not t.is_managed
-    assert t.discovered_by == UNMANAGED.match
-    assert t.matched_rule_id is None
+    assert t.decided_by == UNMANAGED.decided_by
     assert t.updated_at == T1
     assert t.operation_state(OP).last_attempt_at == T0
 
 
-def test_unmanage_an_unmanaged_table_by_the_same_match_changes_nothing():
-    """Unmanaging twice by one match is idempotent."""
+def test_unmanage_with_no_policy_unmanages_a_managed_table():
+    """A managed table no policy applies to any more is unmanaged, decided by nothing."""
     t = managed()
-    t.unmanage(UNMANAGED.match, T1)
-    t.unmanage(UNMANAGED.match, T1 + timedelta(hours=1))
+    t.unmanage(None, T1)
+    assert (t.status, t.decided_by, t.updated_at) == (TableStatus.UNMANAGED, None, T1)
+
+
+def test_unmanage_an_unmanaged_table_by_the_same_decider_changes_nothing():
+    """Unmanaging twice by one decider is idempotent."""
+    t = managed()
+    t.unmanage(UNMANAGED.decided_by, T1)
+    t.unmanage(UNMANAGED.decided_by, T1 + timedelta(hours=1))
     assert t.updated_at == T1
 
 
-def test_unmanage_an_unmanaged_table_by_another_match_records_it():
-    """An unmanaged table another rule now unmanages records that rule, and stays unmanaged."""
+def test_unmanage_an_unmanaged_table_by_another_decider_records_it():
+    """An unmanaged table another rule now leaves unmanaged records that rule, and stays unmanaged."""
     t = managed()
-    t.unmanage(UNMANAGED.match, T1)
-    t.unmanage(OTHER_RULE_MATCH, T1 + timedelta(hours=1))
-    assert (t.status, t.discovered_by) == (TableStatus.UNMANAGED, OTHER_RULE_MATCH)
+    t.unmanage(UNMANAGED.decided_by, T1)
+    t.unmanage(OTHER_RULE, T1 + timedelta(hours=1))
+    assert (t.status, t.decided_by) == (TableStatus.UNMANAGED, OTHER_RULE)
     assert t.updated_at == T1 + timedelta(hours=1)
 
 
 def test_manage_an_unmanaged_table_again():
-    """Managing an unmanaged table makes it managed under the deciding match."""
+    """Managing an unmanaged table makes it managed under what decides it."""
     t = managed()
-    t.unmanage(UNMANAGED.match, T1)
-    t.manage(OTHER_RULE_MATCH, T1 + timedelta(hours=1))
+    t.unmanage(UNMANAGED.decided_by, T1)
+    t.manage(OTHER_RULE, T1 + timedelta(hours=1))
     assert t.status == TableStatus.MANAGED
-    assert t.matched_rule_id == RULE_2
+    assert t.decided_by == OTHER_RULE
     assert t.updated_at == T1 + timedelta(hours=1)
 
 
-def test_manage_a_managed_table_by_the_same_match_changes_nothing():
-    """Managing a table already managed by an equal match is idempotent."""
+def test_manage_a_managed_table_by_the_same_decider_changes_nothing():
+    """Managing a table already managed by an equal decider is idempotent."""
     t = managed()
-    t.manage(DiscoveryMatch(policy_id=SAMPLE_POLICY_ID, policy_version=1, rule_id=RULE), T1)
+    t.manage(DecidedBy(policy_id=SAMPLE_POLICY_ID, policy_version=1, rule_position=1), T1)
     assert t.updated_at == T0
 
 
 def test_manage_a_managed_table_by_another_rule_records_the_rule():
-    """A managed table now decided by another managing rule records that rule."""
+    """A managed table now decided by another including rule records that rule."""
     t = managed()
-    t.manage(OTHER_RULE_MATCH, T1)
+    t.manage(OTHER_RULE, T1)
     assert t.status == TableStatus.MANAGED
-    assert t.discovered_by == OTHER_RULE_MATCH
+    assert t.decided_by == OTHER_RULE
     assert t.updated_at == T1
 
 
-def test_manage_a_managed_table_by_a_new_version_of_its_rule_records_the_version():
-    """The same rule in a new version of the policy is another match: the table records the version."""
+def test_manage_a_managed_table_by_a_new_version_records_the_version():
+    """The same rule in a new version of the policy is another decider: the table records the version."""
     t = managed()
-    t.manage(NEXT_VERSION_MATCH, T1)
-    assert t.discovered_by.policy_version == 2
+    t.manage(NEXT_VERSION, T1)
+    assert t.decided_by == NEXT_VERSION
     assert t.updated_at == T1
 
 
@@ -156,8 +163,8 @@ def test_dropped_is_terminal():
     assert t.status == TableStatus.DROPPED
     assert not t.is_managed
     commands = [
-        lambda: t.manage(MATCH, T1),
-        lambda: t.unmanage(UNMANAGED.match, T1),
+        lambda: t.manage(DECIDED_BY, T1),
+        lambda: t.unmanage(UNMANAGED.decided_by, T1),
         lambda: t.rename(NAME, T1),
         lambda: t.record_operation_result(OP, True, T1, size=ComputeSize.S),
     ]
@@ -185,7 +192,7 @@ def test_record_operation_result():
     assert t.operation_state(OP) == OperationState()
     t.record_operation_result(OP, False, T1)
     assert t.operation_state(OP).consecutive_failures == 1
-    t.unmanage(UNMANAGED.match, T1)
+    t.unmanage(UNMANAGED.decided_by, T1)
     t.record_operation_result(OP, True, T1, size=ComputeSize.S)
     assert t.operation_state(OP).consecutive_failures == 0
     assert t.updated_at == T1
@@ -224,7 +231,7 @@ def test_operation_state_is_immutable():
 def test_table_equality_follows_identity():
     """Two tables with one id are equal even when their state differs."""
     a, b = managed(), managed()
-    b.unmanage(UNMANAGED.match, T1)
+    b.unmanage(UNMANAGED.decided_by, T1)
     assert a == b and hash(a) == hash(b)
 
 

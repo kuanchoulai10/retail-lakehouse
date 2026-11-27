@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from context.table_maintenance.adapter.inbound.web.table.dto import (
+    DecidedByApiResponse,
     SetTablePriorityApiRequest,
     TableApiResponse,
     TableCommitApiResponse,
@@ -32,6 +33,7 @@ from context.table_maintenance.adapter.inbound.web.table.table_metrics_router im
 )
 
 __all__ = [
+    "DecidedByApiResponse",
     "DiscoveryEffectivePolicyApiResponse",
     "EffectivePoliciesApiResponse",
     "MaintenanceEffectivePolicyApiResponse",

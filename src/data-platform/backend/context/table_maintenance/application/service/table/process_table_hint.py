@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from context.table_maintenance.application.domain.model.table_discovery_policy import (
-        DiscoveryDecision,
+        ManagementDecision,
     )
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
@@ -84,9 +84,10 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         A hint naming one table applies the same steps as a discovery pass to that
         table: an unknown one is registered (managed or unmanaged), a known one is
         renamed and decided again, by its nearest discovery policy, read from the attachments
-        on that one table's walk. A table in a catalog nothing manages is registered as the
-        default decides, unmanaged, and sent nothing. A table that ends up newly managed is
-        notified ``managed``, and one already managed ``updated``.
+        on that one table's walk. A table nothing on its walk is attached to is registered
+        unmanaged, with nothing deciding it, and sent nothing. A table that ends up newly managed is
+        notified ``managed``, and one already managed ``updated``; one whose only change is what
+        decided it (``DECISION_CHANGED``) is saved and sent nothing new.
         Either way the table's newest commit is read from the catalog, so a
         commit event moves its last commit.
         """
@@ -140,7 +141,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         return TableHintAction.NOTIFIED if outcome.notified else TableHintAction.IGNORED
 
     def _register(
-        self, found: TableMetadata, name: TableName, decision: DiscoveryDecision, now: datetime
+        self, found: TableMetadata, name: TableName, decision: ManagementDecision, now: datetime
     ) -> TableHintAction:
         stale = self._tables_repo.find_by_name(name)
         register_discovered_table(found, decision, self._tables_repo, self._table_change_gateway, now)

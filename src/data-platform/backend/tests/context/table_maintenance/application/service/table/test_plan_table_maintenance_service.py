@@ -232,7 +232,7 @@ def test_skipped_plans_carry_a_priority_too(planner, tables_repo, catalog, now):
     """A skip plan names the table's priority, and P3 when the table is unknown."""
     unmanaged = _table(tables_repo, now, uuid="u-u", name=TableName(catalog="c", namespace="n", table="u"))
     unmanaged.set_priority(TablePriority.P2, now)
-    unmanaged.unmanage(UNMANAGED.match, now)
+    unmanaged.unmanage(UNMANAGED.decided_by, now)
     tables_repo.update(unmanaged)
     assert _plan(planner, now, uuid="u-u").priority == "P2"
     assert _plan(planner, now, uuid="missing").priority == "P3"
@@ -244,7 +244,7 @@ def test_plan_skip_reasons(planner, tables_repo, catalog, now):
     dropped = _table(tables_repo, now, uuid="u-d", name=TableName(catalog="c", namespace="n", table="d"))
     dropped.mark_dropped(now)
     unmanaged = _table(tables_repo, now, uuid="u-u", name=TableName(catalog="c", namespace="n", table="u"))
-    unmanaged.unmanage(UNMANAGED.match, now)
+    unmanaged.unmanage(UNMANAGED.decided_by, now)
     gone = _table(tables_repo, now)
     results = {uuid: _plan(planner, now, uuid=uuid) for uuid in ("u-d", "u-u", gone.id.value)}
     assert {k: (v.status, v.reason) for k, v in results.items()} == {
@@ -266,7 +266,7 @@ def test_plan_carries_the_fully_qualified_table_name(planner, tables_repo, catal
 def test_plan_skip_carries_the_table_name_when_the_table_is_known(planner, tables_repo, catalog, now):
     """A skipped plan carries the table name when the table is known and None otherwise."""
     unmanaged = _table(tables_repo, now, uuid="u-u", name=TableName(catalog="c", namespace="n", table="u"))
-    unmanaged.unmanage(UNMANAGED.match, now)
+    unmanaged.unmanage(UNMANAGED.decided_by, now)
     assert _plan(planner, now, uuid="u-u").table_name == "c.n.u"
     assert _plan(planner, now, uuid="missing").table_name is None
 
@@ -496,7 +496,7 @@ def test_a_skipped_plan_leaves_them(planner, tables_repo, catalog, skip, now):
     if skip == "dropped":
         stored.mark_dropped(now)
     else:
-        stored.unmanage(UNMANAGED.match, now)
+        stored.unmanage(UNMANAGED.decided_by, now)
     tables_repo.update(stored)
     assert _plan(planner, now).status == "skip"
     assert tables_repo.get(table.id).over_target_partitions == stored.over_target_partitions
@@ -721,7 +721,7 @@ def test_plan_without_attachment_names_the_default_policy(planner, tables_repo, 
 def test_skipped_plan_names_the_policy_for_its_interval(planner, tables_repo, policies, now):
     """A skipped plan of a known table takes its interval from the applicable policy."""
     _use_policy(policies, now, _every(DEFAULT, timedelta(minutes=2)))
-    _table(tables_repo, now).unmanage(UNMANAGED.match, now)
+    _table(tables_repo, now).unmanage(UNMANAGED.decided_by, now)
     plan = _plan(planner, now)
     assert (plan.reason, plan.schedule_interval_seconds, plan.policy_id, plan.policy_name, plan.policy_version) == (
         "unmanaged",
@@ -760,7 +760,7 @@ def test_the_plan_carries_the_schedule_and_the_debounce(planner, tables_repo, ca
 
 def test_a_skipped_plan_carries_the_debounce(planner, tables_repo, policies, now):
     """A skipped plan carries the applicable policy's debounce; an unknown table answers the platform default's."""
-    _table(tables_repo, now).unmanage(UNMANAGED.match, now)
+    _table(tables_repo, now).unmanage(UNMANAGED.decided_by, now)
     assert _plan(planner, now).catalog_commit_debounce_seconds == 300
     unknown = _plan(planner, now, uuid="missing")
     assert (unknown.schedule_interval_seconds, unknown.catalog_commit_debounce_seconds) == (3600, 300)
@@ -844,7 +844,7 @@ def test_missing_table_is_not_found_in_maintenance(planner, now):
 
 def test_unmanaged_table_skips_with_table_found(planner, tables_repo, now):
     """An unmanaged table is skipped but the table is found."""
-    _table(tables_repo, now).unmanage(UNMANAGED.match, now)
+    _table(tables_repo, now).unmanage(UNMANAGED.decided_by, now)
     plan = _plan(planner, now)
     assert (plan.status, plan.reason, plan.table_found, plan.checks) == ("skip", "unmanaged", True, ())
 
@@ -949,7 +949,7 @@ def test_a_metrics_failure_leaves_the_plan_alone(
 
 def test_unmanaged_table_loses_its_metrics(planner, tables_repo, metrics_store, now):
     """A plan of an unmanaged table forgets its metrics."""
-    _table(tables_repo, now).unmanage(UNMANAGED.match, now)
+    _table(tables_repo, now).unmanage(UNMANAGED.decided_by, now)
     _hold_metrics(metrics_store, now)
     _plan(planner, now)
     assert _saved_metrics(metrics_store) is None
@@ -1005,7 +1005,7 @@ def test_a_metrics_delete_failure_leaves_the_skip_alone(
 ):
     """A metrics store that fails to forget a skipped table costs only a warning; the skip is returned as is."""
     if setup == "unmanaged":
-        _table(tables_repo, now).unmanage(UNMANAGED.match, now)
+        _table(tables_repo, now).unmanage(UNMANAGED.decided_by, now)
     elif setup == "dropped":
         _table(tables_repo, now).mark_dropped(now)
     elif setup == "gone_from_catalog":
@@ -1147,7 +1147,7 @@ def test_lifting_a_mark_keeps_a_change_made_while_the_catalog_was_read(planner, 
     def observe_while_the_table_changes(ref):
         concurrent = tables_repo.get(TableId("u-1"))
         concurrent.rename(renamed, now)
-        concurrent.unmanage(UNMANAGED.match, now)
+        concurrent.unmanage(UNMANAGED.decided_by, now)
         tables_repo.update(concurrent)
         return observe(ref)
 

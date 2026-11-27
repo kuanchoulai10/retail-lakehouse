@@ -20,16 +20,8 @@ def scanned_catalogs(
 ) -> tuple[str, ...]:
     """Return the catalogs discovery scans, sorted and each once.
 
-    A catalog is scanned when an attachment in it (on the catalog, a namespace or a table) points at a
-    policy that could resolve some table to ``manage``. An attachment whose policy is not in
-    ``policies`` is skipped, as ``decide_table_discovery`` skips it.
+    A catalog is scanned when a discovery policy is attached in it (on the catalog, a namespace or a
+    table), whatever its rules hold: a policy of exclude rules only still decides the tables it excludes.
+    An attachment whose policy is not in ``policies`` is skipped, as ``decide_table_discovery`` skips it.
     """
-    return tuple(
-        sorted(
-            {
-                attachment.catalog
-                for attachment in attachments
-                if (policy := policies.get(attachment.policy_id)) is not None and policy.can_manage()
-            }
-        )
-    )
+    return tuple(sorted({attachment.catalog for attachment in attachments if attachment.policy_id in policies}))

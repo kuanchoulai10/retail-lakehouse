@@ -5,14 +5,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from context.table_maintenance.application.port.inbound.table_discovery_policy import (
-    EnsureDefaultTableDiscoveryPolicyUseCaseInput,
-)
 from context.table_maintenance.application.service.catalog_discovery import ListScannedCatalogsService
 from context.table_maintenance.application.service.table_discovery_policy import (
     CreateTableDiscoveryPolicyService,
     DeleteTableDiscoveryPolicyService,
-    EnsureDefaultTableDiscoveryPolicyService,
     GetTableDiscoveryPolicyService,
     GetTableDiscoveryPolicyVersionService,
     ListTableDiscoveryPoliciesService,
@@ -46,28 +42,24 @@ if TYPE_CHECKING:
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
 
 
-def discovery_rule(*globs: str, outcome: str = "manage", **extra: Any) -> dict[str, Any]:  # noqa: ANN401
-    """Return a rule body matching the table names ``globs`` (``orders_*`` when none is given)."""
-    return {
-        "outcome": outcome,
-        "conditions": [{"attribute": "table_name", "operator": "glob", "values": list(globs or ("orders_*",))}],
-        **extra,
-    }
+def discovery_rule(pattern: str = "orders_*", action: str = "include", **extra: Any) -> dict[str, Any]:  # noqa: ANN401
+    """Return a rule body that includes (or ``action``) the tables whose name matches ``pattern``."""
+    return {"action": action, "table_name_pattern": pattern, **extra}
 
 
 def discovery_policy_body(*rules: dict[str, Any], **changes: Any) -> dict[str, Any]:  # noqa: ANN401
-    """Return a content body holding ``rules``, unmanaging what no rule matches, with ``changes`` on top."""
-    return {"description": "", "no_match_outcome": "unmanage", "rules": list(rules), **changes}
+    """Return a body holding ``rules`` (one include of ``orders_*`` when none is given), with ``changes`` on top."""
+    return {"description": "", "rules": list(rules or (discovery_rule(),)), **changes}
 
 
 class DiscoveryPolicyWebWorld:
-    """Hold the fakes behind a client and the client itself; only the default policy is stored at first.
+    """Hold the fakes behind a client and the client itself; no policy is stored at first.
 
     The catalog gateway starts empty: a test adds the catalogs, namespaces and tables it attaches to.
     """
 
     def __init__(self) -> None:
-        """Seed the default discovery policy, then build the client."""
+        """Build the fakes, then the client."""
         self.attachments = InMemoryTableDiscoveryPolicyAttachmentsRepo()
         self.policies = InMemoryTableDiscoveryPoliciesRepo(attachments=self.attachments)
         self.catalog = FakeReadTableMetadataGateway()
@@ -75,9 +67,6 @@ class DiscoveryPolicyWebWorld:
         self.discoveries = InMemoryCatalogDiscoveriesRepo()
         self.requests = RecordingSendDiscoveryRequestGateway()
         self.schedules = RecordingSyncDiscoverySchedulesGateway()
-        EnsureDefaultTableDiscoveryPolicyService(self.policies, clock=lambda: NOW).execute(
-            EnsureDefaultTableDiscoveryPolicyUseCaseInput()
-        )
         policies, attachments, requests, schedules = self.policies, self.attachments, self.requests, self.schedules
         self.client: TestClient = build_client(
             list_table_discovery_policies=ListTableDiscoveryPoliciesService(policies, attachments),
@@ -107,7 +96,7 @@ class DiscoveryPolicyWebWorld:
         return response.json()
 
     def update(self, name: str, version: int, *rules: dict[str, Any], **changes: Any) -> Any:  # noqa: ANN401
-        """Replace a policy's content through the API and return the response."""
+        """Revise a policy's description and rules through the API and return the response."""
         return self.client.put(
             f"/v1/discovery-policies/{name}", json={"version": version, **discovery_policy_body(*rules, **changes)}
         )

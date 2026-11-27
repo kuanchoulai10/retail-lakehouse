@@ -1,4 +1,4 @@
-"""Test the startup migration that seeds the default maintenance and discovery policies."""
+"""Test the startup migration that seeds the default maintenance policy, and no discovery policy."""
 
 from __future__ import annotations
 
@@ -18,10 +18,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     ListTableMaintenancePoliciesUseCaseInput,
-)
-from context.table_maintenance.application.port.outbound.table_discovery_policy import (
-    DEFAULT_DISCOVERY_POLICY_ID,
-    DiscoveryPolicyContent,
 )
 from tests.bootstrap.container.container_support import (
     NOW,
@@ -72,25 +68,18 @@ def test_run_migrations_seeds_the_default_policy_under_its_fixed_id():
     assert [(p.id, p.name) for p in items] == [("mp-00000000000000000000000000", "default")]
 
 
-def test_migrate_seeds_the_default_discovery_policy():
-    """Migrating twice leaves one discovery policy: the default, at version 1 with the platform content."""
+def test_migrate_seeds_no_discovery_policy():
+    """Migrating twice leaves no discovery policy: there is no discovery default."""
     engine = build_engine(sqlite_settings().database)
 
     run_migrations(engine)
     run_migrations(engine)
 
-    policies = build_repositories(engine).table_discovery_policies
-    default = policies.get(DEFAULT_DISCOVERY_POLICY_ID)
-    assert default is not None
-    assert default.is_default
-    assert (default.name.value, default.version) == ("default", 1)
-    assert default.content == DiscoveryPolicyContent.platform_default()
-    assert [p.id for p in policies.list_all()] == [DEFAULT_DISCOVERY_POLICY_ID]
-    assert policies.get_version(DEFAULT_DISCOVERY_POLICY_ID, 1) is not None
+    assert build_repositories(engine).table_discovery_policies.list_all() == []
 
 
-def test_migrate_again_keeps_the_schema_and_the_defaults():
-    """A second migrate of a migrated database changes nothing: every table and both defaults stay as they were."""
+def test_migrate_again_keeps_the_schema_and_the_default():
+    """A second migrate of a migrated database changes nothing: every table and the default stay as they were."""
     engine = build_engine(sqlite_settings().database)
     run_migrations(engine)
     tables = set(inspect(engine).get_table_names())
@@ -98,15 +87,12 @@ def test_migrate_again_keeps_the_schema_and_the_defaults():
     run_migrations(engine)
 
     assert set(inspect(engine).get_table_names()) == tables
-    repositories = build_repositories(engine)
-    assert [p.id for p in repositories.table_discovery_policies.list_all()] == [DEFAULT_DISCOVERY_POLICY_ID]
-    default = repositories.table_discovery_policies.get(DEFAULT_DISCOVERY_POLICY_ID)
-    assert default is not None
-    assert default.version == 1
+    items = _use_cases(engine).list_table_maintenance_policies.execute(ListTableMaintenancePoliciesUseCaseInput()).items
+    assert [(p.name, p.version) for p in items] == [("default", 1)]
 
 
-def test_migrate_logs_what_happened_to_both_defaults(caplog: pytest.LogCaptureFixture):
-    """The log says whether each default policy was created or kept."""
+def test_migrate_logs_what_happened_to_the_default(caplog: pytest.LogCaptureFixture):
+    """The log says whether the default maintenance policy was created or kept."""
     engine = build_engine(sqlite_settings().database)
 
     with caplog.at_level(logging.INFO, logger="bootstrap.container.run_migrations"):
@@ -114,6 +100,6 @@ def test_migrate_logs_what_happened_to_both_defaults(caplog: pytest.LogCaptureFi
         run_migrations(engine)
 
     assert [r.getMessage() for r in caplog.records if r.name == "bootstrap.container.run_migrations"] == [
-        "schema ready; default maintenance policy created; default discovery policy created",
-        "schema ready; default maintenance policy kept; default discovery policy kept",
+        "schema ready; default maintenance policy created",
+        "schema ready; default maintenance policy kept",
     ]

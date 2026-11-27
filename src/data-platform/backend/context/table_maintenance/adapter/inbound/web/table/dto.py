@@ -8,6 +8,21 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+class DecidedByApiResponse(BaseModel):
+    """Describe what decided whether a table is managed: a discovery policy version and its deciding rule."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    policy_id: str = Field(description="The `dp-` id of the discovery policy of the table's nearest attachment.")
+    policy_version: int = Field(description="The version of that discovery policy that decided the table.")
+    rule_position: int | None = Field(
+        description=(
+            "The position, counted from 1, of the last rule whose pattern matched the table, which decided it; "
+            "null when no rule matched and the table is therefore not managed."
+        )
+    )
+
+
 class TableApiResponse(BaseModel):
     """Describe a table."""
 
@@ -19,19 +34,13 @@ class TableApiResponse(BaseModel):
     table: str
     status: str
     priority: str = Field(description="The table's maintenance priority, `P0` (urgent) to `P3` (the default).")
-    matched_rule_id: str | None = Field(
+    decided_by: DecidedByApiResponse | None = Field(
         description=(
-            "The `dr-` id of the rule that decided the table, in the version `matched_policy_version` of the "
-            "discovery policy `matched_policy_id`; null when the policy's no-match outcome decided it."
+            "What decided whether the table is managed: the discovery policy of its nearest attachment, its "
+            "version and the deciding rule's position; null when nothing on the table's walk is attached, so "
+            "no policy applies and the table is not managed."
         )
     )
-    matched_policy_id: str = Field(
-        description=(
-            "The `dp-` id of the discovery policy that decided whether the table is managed: the policy of its "
-            "nearest attachment, or the default when nothing on its walk is attached."
-        )
-    )
-    matched_policy_version: int = Field(description="The version of that discovery policy that decided the table.")
     operation_states: dict[str, dict[str, Any]]
     registered_at: datetime
     updated_at: datetime

@@ -26,7 +26,7 @@ if TYPE_CHECKING:
         TableName,
     )
     from context.table_maintenance.application.domain.model.table_discovery_policy import (
-        DiscoveryDecision,
+        ManagementDecision,
     )
     from context.table_maintenance.application.port.outbound.table import (
         SendTableChangeGateway,
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 def apply_discovery_to_known_table(  # noqa: PLR0913
     table: Table,
     name: TableName,
-    decision: DiscoveryDecision,
+    decision: ManagementDecision,
     tables_repo: TablesRepo,
     table_change_gateway: SendTableChangeGateway,
     seen_change: TableChange | None,
@@ -49,13 +49,13 @@ def apply_discovery_to_known_table(  # noqa: PLR0913
 
     The table is renamed when its name changed and decided again by ``decision``, which
     the caller made with the table's current name and its uuid, and its last commit moves
-    to ``last_committed_at`` when that is newer. A rename, a management change or a moved
-    match is stored in one full update (with the new match and the last commit); a table
+    to ``last_committed_at`` when that is newer. A rename, a management change or a change of
+    only what decided it is stored in one full update (with what decided it and the last commit); a table
     whose only change is a newer commit gets just that written, so this copy of the table,
     read before any other writer's change, never puts the rest of it back. A table the
     decision unmanages is sent ``stopped``; one it manages again is sent ``managed`` as a
     managed table, so its workflow starts again under the same ID and checks it at once.
-    A table whose management did not change (a match-only change included) is sent
+    A table whose management did not change (a ``DECISION_CHANGED`` included) is sent
     ``seen_change`` only when it is managed and ``seen_change`` is given.
     """
     renamed = table.name != name

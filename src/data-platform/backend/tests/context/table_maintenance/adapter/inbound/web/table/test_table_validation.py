@@ -100,7 +100,7 @@ def test_trigger_signals_the_workflow(client, signals) -> None:
 
 def test_trigger_unmanaged_table_returns_409(client, repo, signals) -> None:
     """Triggering maintenance on an unmanaged table returns 409 and sends nothing."""
-    repo.items["u-1"].unmanage(UNMANAGED.match, NOW)
+    repo.items["u-1"].unmanage(UNMANAGED.decided_by, NOW)
 
     response = client.post("/v1/tables/u-1/maintenance", json={"operations": ["rewrite_data_files"]})
 
@@ -110,7 +110,7 @@ def test_trigger_unmanaged_table_returns_409(client, repo, signals) -> None:
 
 def test_status_filter_lists_unmanaged_tables(client, repo) -> None:
     """The status filter takes the managed, unmanaged and dropped statuses."""
-    repo.items["u-1"].unmanage(UNMANAGED.match, NOW)
+    repo.items["u-1"].unmanage(UNMANAGED.decided_by, NOW)
 
     assert [t["uuid"] for t in client.get("/v1/tables", params={"status": "unmanaged"}).json()] == ["u-1"]
     assert client.get("/v1/tables", params={"status": "managed"}).json() == []

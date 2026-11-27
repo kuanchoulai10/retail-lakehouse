@@ -105,7 +105,8 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         the catalog's attachments read once for the whole scan: an unknown one is registered,
         as managed or unmanaged as the decision says, a known one is managed or unmanaged as
         it now says (counted in ``managed`` / ``unmanaged``), and each records the policy,
-        version and rule that decided it; with nothing attached the default unmanages. Only a
+        version and rule position that decided it; with nothing attached it is not managed and
+        nothing decided it. Only a
         catalog-wide sync (no namespace) marks missing tables dropped, since a namespace scan
         cannot tell a drop from a move, and a table it does not list is never decided. A table that fails is counted in
         ``skipped``, a table another writer saved while the scan decided or dropped it included (logged and left as
@@ -131,18 +132,18 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         and that scan drops no table, since a table that cannot be read must never read
         as dropped.
 
-        A catalog-wide scan of a catalog that is no longer scanned (no attachment in it can manage)
+        A catalog-wide scan of a catalog that is no longer scanned (nothing is attached in it)
         also unmanages, from its stored row, each managed table it could not read: all of them when the
         catalog cannot be read, the ones it could not load otherwise (the drop pass handles the rest).
-        Each is sent ``stopped``. Every table there decides ``unmanage``, so no catalog read is needed,
-        and no table is left managed under no policy that could manage it.
+        Each is sent ``stopped``. Every table there is not managed, so no catalog read is needed,
+        and no table is left managed under no policy.
         """
         now = self._clock()
         decider = DiscoveryDecider.for_catalog(
             request.catalog, self._discovery_attachments_repo, self._discovery_policies_repo
         )
         seen_change = TableChange.SEEN if request.namespace is None else None
-        retires = request.namespace is None and not decider.can_manage_any()
+        retires = request.namespace is None and not decider.has_any_policy()
         try:
             refs = self._catalog_gateway.list_tables(
                 ReadTableMetadataGatewayListInput(request.catalog, request.namespace)
@@ -239,7 +240,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
     ) -> tuple[int, int]:
         """Unmanage the catalog's stored managed tables not in ``seen``, by stored name; return (unmanaged, skipped).
 
-        Only for a catalog no attachment can manage, where every table decides ``unmanage``: no catalog
+        Only for a catalog nothing is attached in, where every table is not managed: no catalog
         read is needed, so even a catalog the credential cannot read, or that is gone, has its managed
         tables unmanaged and each sent ``stopped``. A table the scan read was decided already.
         """

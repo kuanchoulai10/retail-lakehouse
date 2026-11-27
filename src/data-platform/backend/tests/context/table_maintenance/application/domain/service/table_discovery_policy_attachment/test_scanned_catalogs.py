@@ -1,4 +1,4 @@
-"""Test scanned_catalogs: a catalog is scanned when one of its attachments points at a policy that can manage."""
+"""Test scanned_catalogs: a catalog is scanned when a discovery policy is attached in it."""
 
 from __future__ import annotations
 
@@ -7,10 +7,10 @@ from context.table_maintenance.application.domain.service.table_discovery_policy
     scanned_catalogs,
 )
 from tests.context.table_maintenance.application.domain.service.table_discovery_policy_attachment.discovery_policy_samples import (  # noqa: E501
-    DEFAULT,
     MANAGE_ALL,
-    MANAGE_BY_DEFAULT,
+    MANAGE_ORDERS,
     POLICIES,
+    UNMANAGE_ALL,
     attached,
     catalog_target,
     namespace_target,
@@ -18,44 +18,53 @@ from tests.context.table_maintenance.application.domain.service.table_discovery_
 )
 
 
-def test_a_catalog_is_scanned_when_a_policy_in_it_can_manage():
-    """A namespace attachment of a managing rule scans its catalog; a catalog holding only the default is not."""
+def test_every_catalog_with_an_attachment_is_scanned_whatever_the_policy_holds():
+    """An include policy and an exclude-only policy both scan their catalog."""
     assert scanned_catalogs(
-        [attached(namespace_target("iceberg", "sales"), MANAGE_ALL), attached(catalog_target("other"), DEFAULT)],
-        {MANAGE_ALL.id: MANAGE_ALL, DEFAULT.id: DEFAULT},
-    ) == ("iceberg",)
+        [attached(namespace_target("iceberg", "sales"), MANAGE_ALL), attached(catalog_target("other"), UNMANAGE_ALL)],
+        POLICIES,
+    ) == ("iceberg", "other")
 
 
-def test_a_no_match_outcome_of_manage_scans_the_catalog():
-    """A policy with no rule that manages everything it does not match can manage."""
-    assert scanned_catalogs([attached(catalog_target("iceberg"), MANAGE_BY_DEFAULT)], POLICIES) == ("iceberg",)
+def test_an_exclude_only_policy_scans_its_catalog():
+    """A policy that can only exclude still scans, so the tables it now excludes are unmanaged."""
+    assert scanned_catalogs([attached(catalog_target("iceberg"), UNMANAGE_ALL)], POLICIES) == ("iceberg",)
 
 
 def test_a_table_attachment_scans_its_catalog():
     """A table attachment's catalog is the first element of its path."""
     attachment = attached(
-        table_target(TableName(catalog="iceberg", namespace="sales", table="orders"), "u1"), MANAGE_ALL
+        table_target(TableName(catalog="iceberg", namespace="sales", table="orders"), "u1"), MANAGE_ORDERS
     )
 
     assert scanned_catalogs([attachment], POLICIES) == ("iceberg",)
 
 
 def test_scanned_catalogs_are_sorted_and_unique():
-    """Each catalog is listed once, by name, however many managing attachments it holds and in whatever order."""
+    """Each catalog is listed once, by name, however many attachments it holds and in whatever order."""
     attachments = [
         attached(catalog_target("zeta"), MANAGE_ALL),
-        attached(namespace_target("theta", "sales"), MANAGE_BY_DEFAULT),
-        attached(catalog_target("mid"), DEFAULT),
+        attached(namespace_target("theta", "sales"), MANAGE_ORDERS),
+        attached(catalog_target("mid"), UNMANAGE_ALL),
         attached(catalog_target("kappa"), MANAGE_ALL),
-        attached(namespace_target("zeta", "hr"), MANAGE_BY_DEFAULT),
+        attached(namespace_target("zeta", "hr"), MANAGE_ORDERS),
         attached(catalog_target("gamma"), MANAGE_ALL),
         attached(namespace_target("delta", "sales.eu"), MANAGE_ALL),
-        attached(catalog_target("beta"), MANAGE_BY_DEFAULT),
+        attached(catalog_target("beta"), MANAGE_ORDERS),
         attached(namespace_target("alpha", "sales"), MANAGE_ALL),
-        attached(catalog_target("alpha"), MANAGE_BY_DEFAULT),
+        attached(catalog_target("alpha"), MANAGE_ORDERS),
     ]
 
-    assert scanned_catalogs(attachments, POLICIES) == ("alpha", "beta", "delta", "gamma", "kappa", "theta", "zeta")
+    assert scanned_catalogs(attachments, POLICIES) == (
+        "alpha",
+        "beta",
+        "delta",
+        "gamma",
+        "kappa",
+        "mid",
+        "theta",
+        "zeta",
+    )
 
 
 def test_an_attachment_without_its_policy_scans_nothing():

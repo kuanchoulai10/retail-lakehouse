@@ -13,7 +13,6 @@ from context.table_maintenance.application.domain.model.catalog_discovery import
 )
 from context.table_maintenance.application.domain.model.shared import CatalogDiscoveryId, TableId
 from context.table_maintenance.application.domain.model.table import Table, TableName
-from context.table_maintenance.application.domain.model.table_discovery_policy import DiscoveryMatch
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,
 )
@@ -51,7 +50,7 @@ def _manage_all_in_catalog(discovery_policies, discovery_attachments):
 
 
 def _row(repo, at, uuid="u-1", name=NAME):
-    table = Table.register(TableId(uuid), name, MANAGE_ALL.decide(name), at)
+    table = Table.register(TableId(uuid), name, MANAGE_ALL.should_manage(name), at)
     repo.create(table)
     return table
 
@@ -205,7 +204,7 @@ def test_a_catalog_event_saves_the_newer_commit_of_a_known_table(
 def test_a_catalog_event_saves_the_newer_commit_of_an_unmanaged_table(hint, tables_repo, catalog, log):
     """An unmanaged table, which is never reconciled, still gets its last commit from events."""
     table = _row(tables_repo, EARLIER)
-    table.unmanage(DiscoveryMatch.platform_default(), EARLIER)
+    table.unmanage(None, EARLIER)
     catalog.add_table("iceberg", "sales", "orders", "u-1", last_committed_at=COMMIT.isoformat())
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     hint.execute(
