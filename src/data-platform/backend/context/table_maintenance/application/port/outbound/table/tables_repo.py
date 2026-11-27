@@ -60,6 +60,14 @@ class TablesRepo(Repository[Table]):
         """Return the non-dropped table with this name (latest updated), or None."""
 
     @abstractmethod
+    def list_by_name(self, name: TableName) -> list[Table]:
+        """Return every non-dropped table with this name, latest updated first.
+
+        Two live tables share a name while a table recreated in the catalog waits for a scan to drop its
+        old row.
+        """
+
+    @abstractmethod
     def list_by_statuses(self, statuses: Sequence[TableStatus]) -> list[Table]:
         """Return the tables whose status is one of ``statuses``."""
 

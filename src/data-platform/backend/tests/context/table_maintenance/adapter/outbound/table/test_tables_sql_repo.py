@@ -357,6 +357,18 @@ def test_find_by_name_prefers_most_recently_updated(repo: TablesSqlRepo):
     assert found.id == TableId("b")
 
 
+def test_either_repo_lists_the_live_tables_of_a_name_latest_updated_first(either_repo: TablesRepo):
+    """Every non-dropped table of the name is listed, the most recently updated first; others are left out."""
+    name = TableName(catalog="iceberg", namespace="inventory", table="orders")
+    either_repo.create(_table("a", name, updated_at=NOW))
+    either_repo.create(_table("b", name, updated_at=NOW + timedelta(minutes=1)))
+    either_repo.create(_table("gone", name, TableStatus.DROPPED, updated_at=NOW + timedelta(minutes=2)))
+    either_repo.create(_table("other", TableName(catalog="iceberg", namespace="inventory", table="orders2")))
+
+    assert [t.id.value for t in either_repo.list_by_name(name)] == ["b", "a"]
+    assert either_repo.list_by_name(TableName(catalog="other", namespace="inventory", table="orders")) == []
+
+
 def test_list_by_statuses(repo: TablesSqlRepo):
     """Listing by statuses returns the tables in those statuses and none for an empty list."""
     repo.create(_table("a", TableName(catalog="c", namespace="n", table="a"), TableStatus.MANAGED))

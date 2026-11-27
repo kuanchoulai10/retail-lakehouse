@@ -312,6 +312,35 @@ def test_detach_lets_go_of_the_policy_and_scans_again(world: _World, type_: str,
     assert world.requests.calls[-1] == SendDiscoveryRequestGatewayInput("iceberg", scope, change_id="c2")
 
 
+def test_detach_from_a_table_lets_go_of_the_row_of_that_name_holding_the_policy(world: _World) -> None:
+    """A table recreated under the same name leaves two live rows until a scan; the one holding the policy is detached.
+
+    ``u-1`` holds the policy; ``u-2``, recorded later under the same name, holds none and is the latest updated.
+    """
+    world.attach("mine", "table", ORDERS)
+    world.tables.create(Table.register(TableId("u-2"), ORDERS_NAME, MANAGED, LATER))
+
+    world.detach("mine", "table", ORDERS)
+
+    assert (world.stored_table("u-1").discovery_policy_id, world.stored_table("u-2").discovery_policy_id) == (
+        None,
+        None,
+    )
+    assert world.stored_table("u-2").version == 1
+    assert world.requests.calls[-1] == SendDiscoveryRequestGatewayInput("iceberg", "sales.eu", change_id="c2")
+
+
+def test_detach_from_a_table_whose_live_rows_hold_another_policy_is_not_found(world: _World) -> None:
+    """When no live row of the name holds the policy, the latest updated one answers that it is not attached."""
+    world.attach("other", "table", ORDERS)
+    world.tables.create(Table.register(TableId("u-2"), ORDERS_NAME, MANAGED, LATER))
+
+    with pytest.raises(NotFoundError, match=r"discovery policy dp-\w+ is not attached to table"):
+        world.detach("mine", "table", ORDERS)
+
+    assert world.stored_table("u-1").discovery_policy_id is not None
+
+
 def test_detach_of_another_policy_is_not_found(world: _World) -> None:
     """A place holding another policy is not this policy's to detach; it keeps what it holds."""
     world.attach("other", "catalog", ("iceberg",))

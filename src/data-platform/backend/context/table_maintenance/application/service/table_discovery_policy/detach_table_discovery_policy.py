@@ -73,21 +73,20 @@ class DetachTableDiscoveryPolicyService(DetachTableDiscoveryPolicyUseCase):
         with translate_domain_errors():
             policy_name = TableDiscoveryPolicyName(value=request.policy_name)
             kind = PolicyTargetType(request.target_type)
-            if kind == PolicyTargetType.TABLE and len(request.path) < 3:  # noqa: PLR2004
+            place = None if kind == PolicyTargetType.TABLE else PolicyTarget(type=kind, path=request.path)
+            if place is None and len(request.path) < 3:  # noqa: PLR2004
                 raise ValueError("a table target path is catalog, namespace levels and table name")
-            if kind != PolicyTargetType.TABLE:
-                target = PolicyTarget(type=kind, path=request.path)
         policy = self._policies_repo.get_by_name(policy_name)
         if policy is None:
             raise NotFoundError(f"discovery policy {request.policy_name} not found")
-        if kind == PolicyTargetType.TABLE:
+        if place is None:
             target = self._detach_table(request.path, policy.id)
         else:
-            self._detach_place(target, policy.id)
+            target = self._detach_place(place, policy.id)
         request_discovery_scan(self._discovery_requests, target, change_id=self._new_change_id())
         return DetachTableDiscoveryPolicyUseCaseOutput()
 
-    def _detach_place(self, target: PolicyTarget, policy_id: TableDiscoveryPolicyId) -> None:
+    def _detach_place(self, target: PolicyTarget, policy_id: TableDiscoveryPolicyId) -> PolicyTarget:
         now = self._clock()
         described = f"{target.type} {'.'.join(target.path)}"
         if target.type == PolicyTargetType.CATALOG:
@@ -97,20 +96,27 @@ class DetachTableDiscoveryPolicyService(DetachTableDiscoveryPolicyUseCase):
             _detach(lambda: catalog.detach_discovery_policy(policy_id, now))
             with translate_domain_errors():
                 self._catalogs_repo.update(catalog)
-            return
+            return target
         namespace = self._namespaces_repo.get(NamespaceId.of(target.path[0], target.path[1:]))
         if namespace is None:
             raise NotFoundError(f"{described} not found")
         _detach(lambda: namespace.detach_discovery_policy(policy_id, now))
         with translate_domain_errors():
             self._namespaces_repo.update(namespace)
+        return target
 
     def _detach_table(self, path: tuple[str, ...], policy_id: TableDiscoveryPolicyId) -> PolicyTarget:
+        """Detach from the live row of the name holding the policy, else from the latest updated one.
+
+        A table recreated in the catalog under the same name has two live rows until a scan drops the
+        old one; the attachment may sit on either.
+        """
         with translate_domain_errors():
             name = TableName(catalog=path[0], namespace=".".join(path[1:-1]), table=path[-1])
-        table = self._tables_repo.find_by_name(name)
-        if table is None:
+        rows = self._tables_repo.list_by_name(name)
+        if not rows:
             raise NotFoundError(f"table {'.'.join(path)} not found")
+        table = next((row for row in rows if row.discovery_policy_id == policy_id), rows[0])
         _detach(lambda: table.detach_discovery_policy(policy_id, self._clock()))
         with translate_domain_errors():
             self._tables_repo.update(table)

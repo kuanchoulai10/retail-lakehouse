@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import pytest
 
+from context.table_maintenance.application.port.inbound.table_discovery_policy import (
+    CreateTableDiscoveryPolicyUseCaseInput,
+)
+from context.table_maintenance.application.service.table_discovery_policy import CreateTableDiscoveryPolicyService
 from tests.context.table_maintenance.adapter.inbound.web.effective_policies_web_world import (
+    NOW,
+    SALES_TABLES_RULES,
     EffectivePoliciesWebWorld,
 )
 from tests.context.table_maintenance.discovery_decision_samples import SAMPLE_POLICY_ID
@@ -116,6 +122,35 @@ def test_by_location_answers_a_namespace_and_a_catalog(world: EffectivePoliciesW
         ("gold", {"type": "catalog", "path": ["prod"], "table_uuid": None}),
         (None, None),
     ]
+
+
+@pytest.mark.parametrize(
+    ("path", "params"),
+    [
+        ("/v1/tables/u-1/effective-policies", None),
+        ("/v1/effective-policies", {"catalog": "prod", "namespace": "sales.eu", "table": "returns"}),
+        ("/v1/effective-policies", {"catalog": "prod", "namespace": "sales.eu"}),
+    ],
+)
+def test_the_discovery_entry_is_the_deepest_namespace_over_the_catalog(
+    world: EffectivePoliciesWebWorld, path: str, params: dict[str, str] | None
+) -> None:
+    """When ``prod.sales.eu`` and ``prod`` both hold a discovery policy, the namespace's answers."""
+    CreateTableDiscoveryPolicyService(world.discovery_policies, clock=lambda: NOW).execute(
+        CreateTableDiscoveryPolicyUseCaseInput(name="eu-tables", description="EU tables", rules=SALES_TABLES_RULES)
+    )
+    world.attach_discovery("sales-tables", "catalog", ["prod"])
+    world.attach_discovery("eu-tables", "namespace", ["prod", "sales", "eu"])
+
+    response = world.client.get(path, params=params)
+
+    assert response.status_code == 200, response.text
+    discovery = response.json()["policies"][1]
+    assert (discovery["policy_name"], discovery["description"], discovery["target"]) == (
+        "eu-tables",
+        "EU tables",
+        {"type": "namespace", "path": ["prod", "sales", "eu"], "table_uuid": None},
+    )
 
 
 @pytest.mark.parametrize(

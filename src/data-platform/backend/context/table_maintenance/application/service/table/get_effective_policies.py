@@ -10,8 +10,9 @@ from context.table_maintenance.application.domain.model.shared import (
     PolicyTargetType,
     TableId,
 )
+from context.table_maintenance.application.domain.model.table import TableName
 from context.table_maintenance.application.domain.model.table_maintenance_policy import DEFAULT_POLICY_ID
-from context.table_maintenance.application.domain.service.shared import nearest_attached
+from context.table_maintenance.application.domain.service.shared import nearest_attached, nearest_discovery_policy
 from context.table_maintenance.application.exceptions import NotFoundError, ValidationError
 from context.table_maintenance.application.port.inbound.table import (
     GetEffectivePoliciesUseCase,
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from context.table_maintenance.application.domain.model.shared import PolicyTarget, TableDiscoveryPolicyId
+    from context.table_maintenance.application.domain.service.shared import NearestPolicy
     from context.table_maintenance.application.port.outbound.catalog import CatalogsRepo
     from context.table_maintenance.application.port.outbound.namespace import NamespacesRepo
     from context.table_maintenance.application.port.outbound.table import ReadTableMetadataGateway, TablesRepo
@@ -127,32 +129,36 @@ class GetEffectivePoliciesService(GetEffectivePoliciesUseCase):
         )
 
     def _discovery_entry(self, candidates: Sequence[PolicyTarget]) -> GetEffectivePoliciesUseCaseOutput.DiscoveryEntry:
-        nearest = next(
-            ((target, policy_id) for target in candidates if (policy_id := self._held_discovery_policy(target))),
-            None,
-        )
+        """Answer the discovery policy ``nearest_discovery_policy`` finds for the place, as discovery decides it.
+
+        The place is the first candidate. Its holders are read as a scan reads them: the table by uuid
+        (one table maintenance does not record holds nothing), the namespaces enclosing it in one read,
+        and its catalog.
+        """
+        nearest = self._nearest_discovery_policy(candidates[0])
         if nearest is None:
             return GetEffectivePoliciesUseCaseOutput.DiscoveryEntry(
                 policy_id=None, policy_name=None, version=None, description=None, target=None
             )
-        target, policy_id = nearest
-        policy = self._discovery_policies_repo.get(policy_id)
+        policy = self._discovery_policies_repo.get(nearest.policy_id)
         if policy is None:
-            raise NotFoundError(f"table discovery policy {policy_id.value} not found")
+            raise NotFoundError(f"table discovery policy {nearest.policy_id.value} not found")
         return GetEffectivePoliciesUseCaseOutput.DiscoveryEntry(
             policy_id=policy.id.value,
             policy_name=policy.name.value,
             version=policy.version,
             description=policy.description,
-            target=policy_target_fields(target),
+            target=policy_target_fields(nearest.target),
         )
 
-    def _held_discovery_policy(self, target: PolicyTarget) -> TableDiscoveryPolicyId | None:
-        """Return the discovery policy the place holds, None when it holds none or has no record."""
-        if target.type == PolicyTargetType.TABLE:
-            holder = self._tables_repo.get(TableId(target.table_uuid or ""))
-        elif target.type == PolicyTargetType.NAMESPACE:
-            holder = self._namespaces_repo.get(NamespaceId.of(target.path[0], target.path[1:]))
-        else:
-            holder = self._catalogs_repo.get(CatalogId(target.path[0]))
-        return None if holder is None else holder.discovery_policy_id
+    def _nearest_discovery_policy(self, place: PolicyTarget) -> NearestPolicy[TableDiscoveryPolicyId] | None:
+        catalog, levels = place.path[0], place.path[1:]
+        table = name = None
+        if place.type == PolicyTargetType.TABLE:
+            levels = place.path[1:-1]
+            name = TableName(catalog=catalog, namespace=".".join(levels), table=place.path[-1])
+            table = self._tables_repo.get(TableId(place.table_uuid or ""))
+        enclosing = NamespaceId.enclosing(catalog, ".".join(levels))
+        namespaces = self._namespaces_repo.get_many(enclosing) if enclosing else ()
+        holder = self._catalogs_repo.get(CatalogId(catalog))
+        return nearest_discovery_policy(table, namespaces, holder, name=name)

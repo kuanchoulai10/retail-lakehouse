@@ -66,6 +66,7 @@ from tests.context.table_maintenance.fakes.recording_send_discovery_request_gate
 from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
     RecordingSendTableChangeGateway,
 )
+from tests.context.table_maintenance.fakes.track_calls import track_calls
 from tests.context.table_maintenance.id_shape import IdShape
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
@@ -367,3 +368,50 @@ def test_neither_a_catalog_nor_a_uuid_is_refused(world: _World) -> None:
     """A request naming no place is refused."""
     with pytest.raises(ValidationError):
         world.service.execute(GetEffectivePoliciesUseCaseInput())
+
+
+def _create_discovery_policy(world: _World, name: str) -> None:
+    CreateTableDiscoveryPolicyService(world.discovery_policies, clock=lambda: NOW).execute(
+        CreateTableDiscoveryPolicyUseCaseInput(name=name, description="", rules=DISCOVERY_RULES)
+    )
+
+
+@pytest.mark.parametrize("place", ["uuid", "table", "namespace"])
+def test_the_deepest_namespace_holding_a_discovery_policy_wins_over_its_parent_and_the_catalog(
+    world: _World, place: str
+) -> None:
+    """The discovery entry is the nearest holder: ``prod.sales.eu`` beats ``prod.sales`` and ``prod``."""
+    world.record_orders()
+    _create_discovery_policy(world, "eu-tables")
+    _create_discovery_policy(world, "all-sales")
+    world.gateway.add_namespace("prod", "sales")
+    world.attach_discovery("sales-tables", "catalog", ("prod",))
+    world.attach_discovery("all-sales", "namespace", ("prod", "sales"))
+    world.attach_discovery("eu-tables", "namespace", ("prod", "sales", "eu"))
+
+    out = {
+        "uuid": lambda: world.by_uuid("u-1"),
+        "table": lambda: world.by_location("prod", "sales.eu", "orders"),
+        "namespace": lambda: world.by_location("prod", "sales.eu"),
+    }[place]()
+
+    assert (out.discovery.policy_name, out.discovery.target) == (
+        "eu-tables",
+        {"type": "namespace", "path": ["prod", "sales", "eu"]},
+    )
+
+
+def test_the_discovery_entry_reads_the_enclosing_namespaces_in_one_read(world: _World) -> None:
+    """The holders are read as discovery reads them: the table, the enclosing namespaces at once, the catalog."""
+    world.record_orders()
+    log: list[tuple[str, str]] = []
+    track_calls(world.namespaces, "get_many", "namespaces.get_many", log, _levels)
+    track_calls(world.namespaces, "get", "namespaces.get", log, str)
+
+    world.by_uuid("u-1")
+
+    assert log == [("namespaces.get_many", "sales,sales.eu")]
+
+
+def _levels(namespace_ids) -> str:  # noqa: ANN001
+    return ",".join(sorted(".".join(namespace_id.levels) for namespace_id in namespace_ids))

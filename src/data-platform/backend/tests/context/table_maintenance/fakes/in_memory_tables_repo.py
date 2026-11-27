@@ -86,6 +86,11 @@ class InMemoryTablesRepo(TablesRepo):
         matches = [t for t in self.items.values() if t.name == name and t.status != TableStatus.DROPPED]
         return max(matches, key=lambda t: t.updated_at, default=None)
 
+    def list_by_name(self, name: TableName) -> list[Table]:
+        """Return every non-dropped table with this name, latest updated first."""
+        matches = [t for t in self.items.values() if t.name == name and t.status != TableStatus.DROPPED]
+        return sorted(matches, key=lambda t: (-t.updated_at.timestamp(), t.id.value))
+
     def list_by_statuses(self, statuses: Sequence[TableStatus]) -> list[Table]:
         """Return tables whose status is in ``statuses``."""
         return [t for t in self.list_all() if t.status in statuses]

@@ -134,6 +134,22 @@ class TablesSqlRepo(TablesRepo):
             row = conn.execute(stmt).first()
         return None if row is None else TableRowMapper.to_aggregate(row._mapping)
 
+    def list_by_name(self, name: TableName) -> list[Table]:
+        """Return every non-dropped table with this name, latest updated first."""
+        stmt = (
+            select(t)
+            .where(
+                t.c.catalog == name.catalog,
+                t.c.namespace == name.namespace,
+                t.c.table_name == name.table,
+                t.c.status != TableStatus.DROPPED.value,
+            )
+            .order_by(t.c.updated_at.desc(), t.c.uuid)
+        )
+        with self._engine.connect() as conn:
+            rows = conn.execute(stmt).all()
+        return [TableRowMapper.to_aggregate(row._mapping) for row in rows]
+
     def list_by_statuses(self, statuses: Sequence[TableStatus]) -> list[Table]:
         """Return the tables with one of the statuses."""
         if not statuses:
