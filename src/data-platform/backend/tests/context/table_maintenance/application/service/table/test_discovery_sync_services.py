@@ -922,6 +922,33 @@ def test_sync_namespace_scope_never_drops(sync, tables_repo, signals, now):
     assert signals.calls == []
 
 
+def test_a_namespace_scan_decides_the_tables_of_the_namespaces_under_it(sync, world, signals):
+    """A policy attached to a parent namespace reaches its nested tables in the scan the attach asked for."""
+    world.attach(namespace_target("iceberg", "sales"), MANAGE_ALL)
+    world.catalog.add_table("iceberg", "sales", "orders", "u-1")
+    world.catalog.add_table("iceberg", "sales.eu", "orders", "u-2")
+    world.catalog.add_table("iceberg", "sales.eu.north", "orders", "u-3")
+    world.catalog.add_table("iceberg", "salesx", "orders", "u-4")
+
+    out = sync.execute(_namespace("sales"))
+
+    assert (out.registered, out.dropped) == (3, 0)
+    assert all(world.tables.get(TableId(uuid)).is_managed for uuid in ("u-1", "u-2", "u-3"))
+    assert world.tables.get(TableId("u-4")) is None
+    assert sorted(_calls(signals)) == [("u-1", "managed", True), ("u-2", "managed", True), ("u-3", "managed", True)]
+
+
+def test_a_namespace_scan_never_drops_a_nested_table_it_does_not_list(sync, world, now):
+    """A namespace scan cannot tell a drop from a move, under its children as much as in itself."""
+    world.attach(namespace_target("iceberg", "sales"), MANAGE_ALL)
+    _row(world.tables, now, "u-gone", _name("gone", namespace="sales.eu"))
+
+    out = sync.execute(_namespace("sales"))
+
+    assert out.dropped == 0
+    assert world.tables.get(TableId("u-gone")).status == TableStatus.MANAGED
+
+
 def test_namespace_pass_never_unmanages_missing_tables(sync, tables_repo, world, catalog, signals, now):
     """A namespace pass decides only the tables it lists; a known table it does not see keeps its status."""
     world.attach_to_catalog(UNMANAGE_ALL)

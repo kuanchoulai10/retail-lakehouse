@@ -342,7 +342,7 @@ def test_missing_table_returns_none(catalog: SqlCatalog, gateway: ReadTableMetad
 def test_list_tables_with_and_without_namespace(
     catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
 ) -> None:
-    """Listing tables covers the whole catalog, or only the given namespace."""
+    """Listing tables covers the whole catalog, or the given namespace and the namespaces under it."""
     catalog.create_namespace("db")
     catalog.create_namespace(("db", "inner"))
     catalog.create_namespace("other")
@@ -360,6 +360,52 @@ def test_list_tables_with_and_without_namespace(
     ]
     assert {r.catalog for r in everything} == {CATALOG}
     assert [(r.namespace, r.table) for r in scoped] == [("db.inner", "deep")]
+
+
+def test_a_namespace_listing_walks_every_namespace_under_it(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    """A namespace listing reaches the tables of its child namespaces at any depth, and no sibling's."""
+    for namespace in (("db",), ("db", "inner"), ("db", "inner", "deeper"), ("dbx",), ("other",)):
+        catalog.create_namespace(namespace)
+    catalog.create_table("db.events", SCHEMA)
+    catalog.create_table("db.inner.deep", SCHEMA)
+    catalog.create_table("db.inner.deeper.t", SCHEMA)
+    catalog.create_table("dbx.sibling", SCHEMA)
+    catalog.create_table("other.x", SCHEMA)
+
+    scoped = gateway.list_tables(ReadTableMetadataGatewayListInput(CATALOG, "db"))
+
+    assert [(r.catalog, r.namespace, r.table) for r in scoped] == [
+        (CATALOG, "db", "events"),
+        (CATALOG, "db.inner", "deep"),
+        (CATALOG, "db.inner.deeper", "t"),
+    ]
+
+
+def test_a_namespace_listing_skips_a_child_namespace_dropped_while_it_walks() -> None:
+    """A child namespace gone between being listed and being read lists no tables; the walk goes on."""
+
+    def list_namespaces(namespace: tuple[str, ...] = ()) -> list[tuple[str, ...]]:
+        if namespace == ("db",):
+            return [("db", "gone"), ("db", "kept")]
+        if namespace == ("db", "gone"):
+            raise NoSuchNamespaceError("gone")
+        return []
+
+    def list_tables(namespace: tuple[str, ...]) -> list[tuple[str, ...]]:
+        if namespace == ("db", "gone"):
+            raise NoSuchNamespaceError("gone")
+        return [(*namespace, "t")]
+
+    stub = MagicMock(spec=Catalog)
+    stub.list_namespaces.side_effect = list_namespaces
+    stub.list_tables.side_effect = list_tables
+    gateway = ReadTableMetadataPyIcebergGateway(lambda name: stub)
+
+    scoped = gateway.list_tables(ReadTableMetadataGatewayListInput(CATALOG, "db"))
+
+    assert [(r.namespace, r.table) for r in scoped] == [("db", "t"), ("db.kept", "t")]
 
 
 def test_list_tables_of_missing_namespace_is_empty(

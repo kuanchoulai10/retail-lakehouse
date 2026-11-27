@@ -136,13 +136,13 @@ class FakeReadTableMetadataGateway(ReadTableMetadataGateway):
         self,
         input: ReadTableMetadataGatewayListInput,  # noqa: A002
     ) -> list[TableMetadataRef]:
-        """List registered tables of the catalog."""
+        """List registered tables of the catalog, or of a namespace and the namespaces under it."""
         self.calls.append(("list_tables", input))
         self._check_readable(input.catalog)
         return [
             TableMetadataRef(c, n, t)
             for (c, n, t) in sorted(self.tables)
-            if c == input.catalog and input.namespace in (None, n)
+            if c == input.catalog and (input.namespace is None or _within(n, input.namespace))
         ]
 
     def load_table(self, ref: TableMetadataRef) -> TableMetadata | None:

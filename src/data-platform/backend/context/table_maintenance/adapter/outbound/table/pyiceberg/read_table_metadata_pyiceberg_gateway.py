@@ -82,16 +82,23 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
         self,
         input: ReadTableMetadataGatewayListInput,  # noqa: A002
     ) -> list[TableMetadataRef]:
-        """List the tables of one namespace, or walk every namespace when none is given, sorted by name."""
+        """List the tables of a namespace and every namespace under it, or of every namespace when none is given.
+
+        The walk is breadth first and the result sorted by name. A namespace that does not exist, or one
+        dropped while the walk reads it, lists no tables; a catalog whose top-level listing finds no
+        namespace tree raises CatalogNotFoundError.
+        """
         catalog = self._open(input.catalog)
         with _refusal_is_access_denied(input.catalog):
+            pending: list[tuple[str, ...]]
             if input.namespace is not None:
-                return self._tables_of(catalog, input.catalog, tuple(input.namespace.split(".")))
+                pending = [tuple(input.namespace.split("."))]
+            else:
+                try:
+                    pending = [tuple(n) for n in catalog.list_namespaces()]
+                except NoSuchNamespaceError as exc:
+                    raise CatalogNotFoundError(input.catalog) from exc
             refs: list[TableMetadataRef] = []
-            try:
-                pending: list[tuple[str, ...]] = [tuple(n) for n in catalog.list_namespaces()]
-            except NoSuchNamespaceError as exc:
-                raise CatalogNotFoundError(input.catalog) from exc
             while pending:
                 namespace = pending.pop(0)
                 refs.extend(self._tables_of(catalog, input.catalog, namespace))

@@ -107,6 +107,9 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
     def execute(self, request: SyncDiscoveredTablesUseCaseInput) -> SyncDiscoveredTablesUseCaseOutput:
         """Register, rename, decide and drop tables within the catalog or namespace scope.
 
+        A namespace scope is the namespace and every namespace under it, so a policy attached to a
+        parent namespace reaches its nested tables in the scan the attach asks for.
+
         Every table listed is decided by its nearest discovery policy (docs/adr/0012): the one
         it holds itself, else its namespaces' and its catalog's, read once for the whole scan. An
         unknown one is registered, as managed or unmanaged as the decision says, a known one
@@ -319,7 +322,9 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         seen: set[str],
         now: datetime,
     ) -> tuple[int, int]:
-        """Mark dropped each stored live table of the scope the scan did not see; return (dropped, skipped).
+        """Mark dropped each stored live table of the catalog the scan did not see; return (dropped, skipped).
+
+        Only a catalog-wide scan runs it.
 
         A table another writer saved since it was listed is skipped and left as stored: the next scan drops it.
         A table registered since the scan started (by an attach or a catalog event) is not missing, only
@@ -329,7 +334,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         previous = self._discoveries_repo.get(CatalogDiscoveryId(request.catalog))
         last_seen = None if previous is None else previous.last_discovered_at
         for table in self._tables_repo.list_by_statuses(_DROP_SCAN_STATUSES):
-            if table.id.value in seen or not _in_scope(table.name, request) or _registered_since(table, now):
+            if table.id.value in seen or table.name.catalog != request.catalog or _registered_since(table, now):
                 continue
             was_managed = table.is_managed
             table.mark_dropped(now, catalog_discovered_at=last_seen)
@@ -359,9 +364,3 @@ def _log_changed_meanwhile(error: ConcurrentUpdateError) -> None:
 def _registered_since(table: Table, started_at: datetime) -> bool:
     """Return whether the row was registered at or after the scan started, so the scan's listing may predate it."""
     return table.registered_at >= started_at
-
-
-def _in_scope(name: TableName, request: SyncDiscoveredTablesUseCaseInput) -> bool:
-    if name.catalog != request.catalog:
-        return False
-    return request.namespace is None or name.namespace == request.namespace

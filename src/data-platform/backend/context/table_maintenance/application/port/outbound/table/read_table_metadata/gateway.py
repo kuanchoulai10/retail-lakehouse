@@ -54,7 +54,7 @@ class ReadTableMetadataGateway(Gateway):
         self,
         input: ReadTableMetadataGatewayListInput,  # noqa: A002
     ) -> list[TableMetadataRef]:
-        """List the tables of a catalog, optionally within one namespace."""
+        """List the tables of a catalog, or of one namespace and every namespace under it."""
 
     @abstractmethod
     def load_table(self, ref: TableMetadataRef) -> TableMetadata | None:
