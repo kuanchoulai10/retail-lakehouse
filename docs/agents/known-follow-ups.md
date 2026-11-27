@@ -23,6 +23,7 @@ Open issues and deferred work. Not loaded automatically; read the entries for th
 - Deploy note: a change to `TableReconciliationWorkflow` state ships with a cluster rebuild, never a redeploy onto running reconciliation workflows (see the KCL-110 rule below).
 - Header banners can stack (several failed actions), and the success banner stays until the next click.
 - The reconciliations cursor is strict on `reconciled_at` alone, so two records with the same timestamp across a page boundary can lose one.
+- A maintenance attach to a table discovery never saw registers it `undecided`, and in a catalog that holds no discovery policy nothing decides it until a catalog event (a commit) for that table arrives: no scan runs there, and a maintenance attach asks for none. Meanwhile the Tables list shows it undecided and the table page reads "catalog not scanned" (ledger ruling 2026-11-28: documented, not changed).
 - Catalog-wide sync re-ensures every live table's reconciliation workflow each run: one Temporal error aborts the rest of the sync (catch per table), and each wake costs a metadata scan (add start-without-signal).
 - On-hold waves still reference pre-rename names (`minio-api.minio.svc`, `kafka-cdc`, `polaris`, `platform/20-minio`): `30-thanos`, `24-e2e-validation`, `charts/app-of-apps`. Fix when those are re-opened.
 - Iceberg sink (Kafka 4.0 + sink 1.10) may commit "0 table(s)" for several minutes after a Connect pod start under low traffic; keep inserting and poll ~5–10 min when verifying snapshots.

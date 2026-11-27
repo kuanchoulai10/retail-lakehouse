@@ -4,6 +4,14 @@ Date: 2026-11-19
 
 Status: Accepted. The `shared_kernel` paragraph is superseded by ADR 0015 (2026-11-24): the format now lives in `base.EntityId` and workflows take their ids from the application.
 
+2026-11-28 note (KCL-116, KCL-117): ADR 0018 supersedes these points of this record:
+
+- the `dr-` (TableDiscoveryRuleId), `da-` (TableDiscoveryPolicyAttachmentId) and `pa-` (TableMaintenancePolicyAttachmentId) prefixes: rules have no ids, and a catalog, namespace or table holds its policy with no attachment aggregate. The prefixes are retired and must not be reused;
+- the fixed id of the default discovery policy, `dp-00000000000000000000000000`: there is no default discovery policy. The default maintenance policy keeps `mp-00000000000000000000000000`;
+- the attachment ids that random ids replaced (`pa-` under "Consequences"): one place holds at most one policy of each kind, as a column on its row.
+
+The other prefixes (`dp-`, `mp-`, `mr-`, `rc-`) stand. The body below is kept as written.
+
 ## Context
 
 The table maintenance context mints most of its ids as bare UUIDs or as strings built from other values (a run id, a reconciliation id, a round id, a candidate id, an attachment id, a rule set id). A bare UUID in a log line, a URL or a database row does not say what it identifies, and nothing refuses a run id passed where a round id belongs. A maintenance policy has no id of its own: other aggregates point at it by name, so a rename would break every link to it, and the name has to serve as both display text and key. Linear KCL-73 asks for ids that say what they are, checked for that shape wherever they enter, and for a policy id so that a name is only for display and URLs.
