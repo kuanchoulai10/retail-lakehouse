@@ -16,7 +16,7 @@ Everything below, except `base/` and `bootstrap/`, lives inside one bounded cont
 
 ### Backend Structure
 
-Backend code is grouped by **bounded context** first. Inside a context, one **aggregate axis** runs through every layer: each layer directory is split into the same aggregate directories plus `shared` for what spans aggregates. For `table_maintenance` the aggregates are `catalog_discovery`, `table`, `table_discovery_policy`, `table_discovery_policy_attachment`, `table_maintenance_policy`, `table_maintenance_policy_attachment`, `table_maintenance_run`, `table_reconciliation`; for `catalog` they are `catalog`, `namespace`, `table`, `generic_table`, `view`.
+Backend code is grouped by **bounded context** first. Inside a context, one **aggregate axis** runs through every layer: each layer directory is split into the same aggregate directories plus `shared` for what spans aggregates. For `table_maintenance` the aggregates are `catalog`, `namespace` (the places a policy is attached; their use cases are the policy ones, so their `port/inbound` and `service` groups are empty packages), `catalog_discovery`, `table`, `table_discovery_policy`, `table_discovery_policy_attachment`, `table_maintenance_policy`, `table_maintenance_policy_attachment`, `table_maintenance_run`, `table_reconciliation`; for `catalog` they are `catalog`, `namespace`, `table`, `generic_table`, `view`.
 
 ```
 backend/

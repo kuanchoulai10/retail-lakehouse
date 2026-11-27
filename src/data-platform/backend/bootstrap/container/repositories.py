@@ -6,9 +6,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from context.table_maintenance.application.port.outbound.catalog import CatalogsRepo
     from context.table_maintenance.application.port.outbound.catalog_discovery import (
         CatalogDiscoveriesRepo,
     )
+    from context.table_maintenance.application.port.outbound.namespace import NamespacesRepo
     from context.table_maintenance.application.port.outbound.table import TableMetricsStore, TablesRepo
     from context.table_maintenance.application.port.outbound.table_discovery_policy import (
         TableDiscoveryPoliciesRepo,
@@ -42,4 +44,6 @@ class Repositories:
     table_maintenance_policy_attachments: TableMaintenancePolicyAttachmentsRepo
     table_reconciliations: TableReconciliationsRepo
     catalog_discoveries: CatalogDiscoveriesRepo
+    catalogs: CatalogsRepo
+    namespaces: NamespacesRepo
     table_metrics: TableMetricsStore

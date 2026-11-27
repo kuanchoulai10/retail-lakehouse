@@ -80,9 +80,9 @@ def test_register_with_nothing_attached_makes_an_unmanaged_table_decided_by_noth
     assert t.decided_by is None
 
 
-def test_table_statuses_are_managed_unmanaged_and_dropped():
-    """A table is managed, unmanaged or dropped; nothing else."""
-    assert [s.value for s in TableStatus] == ["managed", "unmanaged", "dropped"]
+def test_table_statuses_are_managed_unmanaged_undecided_and_dropped():
+    """A table is managed, unmanaged, undecided or dropped; nothing else."""
+    assert [s.value for s in TableStatus] == ["managed", "unmanaged", "undecided", "dropped"]
 
 
 def test_unmanage_keeps_the_row_and_records_what_unmanaged_it():

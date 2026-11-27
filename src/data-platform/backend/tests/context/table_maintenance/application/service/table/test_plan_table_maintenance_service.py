@@ -955,6 +955,17 @@ def test_unmanaged_table_loses_its_metrics(planner, tables_repo, metrics_store, 
     assert _saved_metrics(metrics_store) is None
 
 
+def test_an_undecided_table_is_skipped_as_unmanaged(planner, tables_repo, catalog, metrics_store, now):
+    """An undecided table is not managed, so its plan is a skip with the unmanaged reason and no metrics are kept."""
+    tables_repo.create(Table.register_undecided(TableId("u-1"), NAME, now))
+    _observe(catalog, now)
+    _hold_metrics(metrics_store, now)
+    result = _plan(planner, now)
+    assert (result.status, result.reason) == ("skip", "unmanaged")
+    assert result.operations == ()
+    assert _saved_metrics(metrics_store) is None
+
+
 def test_dropped_table_loses_its_metrics(planner, tables_repo, metrics_store, now):
     """A plan of a dropped table forgets its metrics."""
     _table(tables_repo, now).mark_dropped(now)

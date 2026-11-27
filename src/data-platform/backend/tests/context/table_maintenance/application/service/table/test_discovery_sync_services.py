@@ -888,6 +888,19 @@ def test_sync_drops_unmanaged_without_stop_signal_and_ignores_dropped(sync, tabl
     assert signals.calls == []
 
 
+def test_sync_drops_an_undecided_table_missing_from_the_catalog_without_a_stop_signal(sync, tables_repo, signals, now):
+    """An undecided table the catalog no longer has is dropped, letting go of its policies; no workflow is stopped."""
+    undecided = Table.register_undecided(TableId("u-1"), _name("x"), now)
+    undecided.attach_discovery_policy(MANAGE_ALL.id, now)
+    tables_repo.create(undecided)
+    out = sync.execute(_catalog_wide())
+    assert out.dropped == 1
+    stored = tables_repo.get(TableId("u-1"))
+    assert stored.status == TableStatus.DROPPED
+    assert stored.discovery_policy_id is None
+    assert signals.calls == []
+
+
 # --- sync: reconciliation workflow is (re-)ensured ---
 
 

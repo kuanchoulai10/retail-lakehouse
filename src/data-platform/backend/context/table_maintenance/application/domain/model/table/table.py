@@ -5,14 +5,17 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from pydantic import Field, PositiveInt
+from pydantic import Field, PositiveInt, model_validator
 
 from base import AggregateRoot, ReadOnlyMapping
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
     OverTargetPartition,
+    PolicyNotAttached,
+    TableDiscoveryPolicyId,
     TableId,
+    TableMaintenancePolicyId,
     TablePriority,
 )
 from context.table_maintenance.application.domain.model.table.invalid_table_transition import (
@@ -70,6 +73,11 @@ class Table(AggregateRoot[TableId]):
     ``version`` is the stored version the table was read at, 1 for a table never saved
     since its registration. Only the repository moves it: a save made from a copy read at an
     older version is refused, so no writer silently puts back what another one stored since.
+
+    ``discovery_policy_id`` and ``maintenance_policy_id`` are the policies attached to this
+    table itself, at most one of each kind; they are nearer than any namespace or catalog
+    policy. A table given one before discovery saw it is registered ``undecided``: it names no
+    decider and is not managed until a discovery decides it. A dropped table holds none.
     """
 
     id: TableId
@@ -84,6 +92,22 @@ class Table(AggregateRoot[TableId]):
     priority: TablePriority = TablePriority.P3
     over_target_partitions: tuple[OverTargetPartition, ...] = ()
     version: PositiveInt = 1
+    discovery_policy_id: TableDiscoveryPolicyId | None = None
+    maintenance_policy_id: TableMaintenancePolicyId | None = None
+
+    @model_validator(mode="after")
+    def _undecided_names_no_decider(self) -> Table:
+        if self.status == TableStatus.UNDECIDED and self.decided_by is not None:
+            raise ValueError("an undecided table is decided by nothing")
+        return self
+
+    @model_validator(mode="after")
+    def _dropped_holds_no_policy(self) -> Table:
+        if self.status == TableStatus.DROPPED and (
+            self.discovery_policy_id is not None or self.maintenance_policy_id is not None
+        ):
+            raise ValueError("a dropped table holds no policy")
+        return self
 
     @classmethod
     def register(
@@ -99,6 +123,18 @@ class Table(AggregateRoot[TableId]):
             name=name,
             status=TableStatus.MANAGED if decision.manage else TableStatus.UNMANAGED,
             decided_by=decision.decided_by,
+            registered_at=now,
+            updated_at=now,
+        )
+
+    @classmethod
+    def register_undecided(cls, id: TableId, name: TableName, now: datetime) -> Table:  # noqa: A002
+        """Register a table discovery has not seen yet, so a policy can be attached to it; it is undecided."""
+        return cls(
+            id=id,
+            name=name,
+            status=TableStatus.UNDECIDED,
+            decided_by=None,
             registered_at=now,
             updated_at=now,
         )
@@ -140,11 +176,43 @@ class Table(AggregateRoot[TableId]):
             return
         self._assign_together(priority=priority, updated_at=now)
 
+    def attach_discovery_policy(self, policy_id: TableDiscoveryPolicyId, now: datetime) -> None:
+        """Attach the discovery policy to this table, replacing the one attached; idempotent for the attached one."""
+        self._ensure_not_dropped()
+        if self.discovery_policy_id == policy_id:
+            return
+        self._assign_together(discovery_policy_id=policy_id, updated_at=now)
+
+    def detach_discovery_policy(self, policy_id: TableDiscoveryPolicyId, now: datetime) -> None:
+        """Detach the discovery policy; raise ``PolicyNotAttached`` unless it is the one attached."""
+        if self.discovery_policy_id != policy_id:
+            raise PolicyNotAttached(
+                f"discovery policy {policy_id} is not attached to table {self.name.fully_qualified()}"
+            )
+        self._assign_together(discovery_policy_id=None, updated_at=now)
+
+    def attach_maintenance_policy(self, policy_id: TableMaintenancePolicyId, now: datetime) -> None:
+        """Attach the maintenance policy to this table, replacing the one attached; idempotent for the attached one."""
+        self._ensure_not_dropped()
+        if self.maintenance_policy_id == policy_id:
+            return
+        self._assign_together(maintenance_policy_id=policy_id, updated_at=now)
+
+    def detach_maintenance_policy(self, policy_id: TableMaintenancePolicyId, now: datetime) -> None:
+        """Detach the maintenance policy; raise ``PolicyNotAttached`` unless it is the one attached."""
+        if self.maintenance_policy_id != policy_id:
+            raise PolicyNotAttached(
+                f"maintenance policy {policy_id} is not attached to table {self.name.fully_qualified()}"
+            )
+        self._assign_together(maintenance_policy_id=None, updated_at=now)
+
     def mark_dropped(self, now: datetime, *, catalog_discovered_at: datetime | None = None) -> None:
-        """Mark the table dropped; terminal and idempotent.
+        """Mark the table dropped, letting go of its policies; terminal and idempotent.
 
         ``catalog_discovered_at`` is the last discovery of its catalog before the one
-        that missed the table; the table keeps the last time discovery saw it.
+        that missed the table; the table keeps the last time discovery saw it. An Iceberg
+        table uuid never comes back, so the policies attached to the table are detached:
+        keeping them would only stop those policies from ever being deleted.
         """
         if self.status == TableStatus.DROPPED:
             return
@@ -152,6 +220,8 @@ class Table(AggregateRoot[TableId]):
             status=TableStatus.DROPPED,
             updated_at=now,
             last_discovered_at=self.last_discovered(catalog_discovered_at),
+            discovery_policy_id=None,
+            maintenance_policy_id=None,
         )
 
     def last_discovered(self, catalog_discovered_at: datetime | None) -> datetime | None:

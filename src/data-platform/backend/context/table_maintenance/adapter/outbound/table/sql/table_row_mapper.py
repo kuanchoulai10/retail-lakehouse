@@ -143,6 +143,14 @@ def _decode_over_target_partitions(data: list[dict[str, Any]]) -> tuple[OverTarg
     return tuple(decoded)
 
 
+def _optional_discovery_policy_id(value: str | None) -> TableDiscoveryPolicyId | None:
+    return None if value is None else TableDiscoveryPolicyId(value)
+
+
+def _optional_maintenance_policy_id(value: str | None) -> TableMaintenancePolicyId | None:
+    return None if value is None else TableMaintenancePolicyId(value)
+
+
 class TableRowMapper:
     """Convert between Table aggregates and table rows."""
 
@@ -163,6 +171,8 @@ class TableRowMapper:
             "last_discovered_at": table.last_discovered_at,
             "priority": table.priority.value,
             "version": table.version,
+            "discovery_policy_id": None if table.discovery_policy_id is None else table.discovery_policy_id.value,
+            "maintenance_policy_id": None if table.maintenance_policy_id is None else table.maintenance_policy_id.value,
         }
 
     @staticmethod
@@ -187,4 +197,6 @@ class TableRowMapper:
             priority=TablePriority(row["priority"]),
             over_target_partitions=_decode_over_target_partitions(row["over_target_partitions_json"]),
             version=row["version"],
+            discovery_policy_id=_optional_discovery_policy_id(row["discovery_policy_id"]),
+            maintenance_policy_id=_optional_maintenance_policy_id(row["maintenance_policy_id"]),
         )

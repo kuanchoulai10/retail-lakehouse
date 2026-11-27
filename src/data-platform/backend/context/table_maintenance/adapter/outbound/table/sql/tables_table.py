@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import JSON, Column, Index, Integer, String, Table
+from sqlalchemy import JSON, Column, ForeignKey, Index, Integer, String, Table
 
 from context.table_maintenance.adapter.outbound.shared.sql import UtcDateTime, metadata
 
@@ -25,5 +25,9 @@ tables_table = Table(
     Column("priority", String, nullable=False),
     Column("over_target_partitions_json", JSON, nullable=False),
     Column("version", Integer, nullable=False, server_default="1"),
+    Column("discovery_policy_id", String, ForeignKey("table_discovery_policies.id"), nullable=True),
+    Column("maintenance_policy_id", String, ForeignKey("table_maintenance_policies.id"), nullable=True),
     Index("ix_tables_name", "catalog", "namespace", "table_name"),
+    Index("ix_tables_discovery_policy_id", "discovery_policy_id"),
+    Index("ix_tables_maintenance_policy_id", "maintenance_policy_id"),
 )

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from context.table_maintenance.application.domain.model.shared.catalog_discovery_id import CatalogDiscoveryId
+from context.table_maintenance.application.domain.model.shared.catalog_id import CatalogId
 from context.table_maintenance.application.domain.model.shared.checked_policy_name import (
     checked_policy_name,
 )
@@ -36,6 +37,7 @@ from context.table_maintenance.application.domain.model.shared.measurement_compa
 from context.table_maintenance.application.domain.model.shared.measurement_unit import (
     MeasurementUnit,
 )
+from context.table_maintenance.application.domain.model.shared.namespace_id import NamespaceId
 from context.table_maintenance.application.domain.model.shared.non_negative_duration import (
     NonNegativeDuration,
 )
@@ -69,6 +71,7 @@ from context.table_maintenance.application.domain.model.shared.platform_compute_
 from context.table_maintenance.application.domain.model.shared.platform_settings import (
     PlatformSettings,
 )
+from context.table_maintenance.application.domain.model.shared.policy_not_attached import PolicyNotAttached
 from context.table_maintenance.application.domain.model.shared.policy_target import (
     PolicyTarget,
 )
@@ -118,6 +121,7 @@ from context.table_maintenance.application.domain.model.shared.whole_seconds imp
 
 __all__ = [
     "CatalogDiscoveryId",
+    "CatalogId",
     "ComputeSize",
     "MAX_AGE",
     "MAX_SNAPSHOTS_TO_KEEP",
@@ -128,6 +132,7 @@ __all__ = [
     "Measurement",
     "MeasurementComparison",
     "MeasurementUnit",
+    "NamespaceId",
     "NonNegativeDuration",
     "OperationAssessment",
     "OperationVerdict",
@@ -139,6 +144,7 @@ __all__ = [
     "PlannedOperation",
     "PlatformComputeSize",
     "PlatformSettings",
+    "PolicyNotAttached",
     "PolicyTarget",
     "PolicyTargetType",
     "PositiveDuration",

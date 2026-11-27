@@ -72,7 +72,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_DROP_SCAN_STATUSES = (TableStatus.MANAGED, TableStatus.UNMANAGED)
+_DROP_SCAN_STATUSES = (TableStatus.MANAGED, TableStatus.UNMANAGED, TableStatus.UNDECIDED)
 
 
 class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):

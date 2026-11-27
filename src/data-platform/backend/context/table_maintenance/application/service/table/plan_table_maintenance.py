@@ -67,6 +67,7 @@ logger = logging.getLogger(__name__)
 _SKIP_REASONS = {
     TableStatus.DROPPED: "dropped",
     TableStatus.UNMANAGED: "unmanaged",
+    TableStatus.UNDECIDED: "unmanaged",
 }
 
 
@@ -101,7 +102,8 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
 
         ``now`` comes from the caller so that a workflow can supply a deterministic
         time. The result is a skip with a reason when the table is dropped, unmanaged
-        or gone from the catalog; otherwise it is planned, possibly empty.
+        (an undecided table is skipped as unmanaged too) or gone from the catalog;
+        otherwise it is planned, possibly empty.
         Every plan of a known table resolves the policy that applies to it, whose
         schedule interval, dry run and operation blocks it follows. A plan of a
         managed table first lifts the needs-attention marks set under an earlier

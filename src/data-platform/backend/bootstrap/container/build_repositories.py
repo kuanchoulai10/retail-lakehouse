@@ -5,9 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from bootstrap.container.repositories import Repositories
+from context.table_maintenance.adapter.outbound.catalog.sql import CatalogsSqlRepo
 from context.table_maintenance.adapter.outbound.catalog_discovery.sql import (
     CatalogDiscoveriesSqlRepo,
 )
+from context.table_maintenance.adapter.outbound.namespace.sql import NamespacesSqlRepo
 from context.table_maintenance.adapter.outbound.table.sql import TableMetricsSqlStore, TablesSqlRepo
 from context.table_maintenance.adapter.outbound.table_discovery_policy.sql import (
     TableDiscoveryPoliciesSqlRepo,
@@ -43,5 +45,7 @@ def build_repositories(engine: Engine) -> Repositories:
         table_maintenance_policy_attachments=TableMaintenancePolicyAttachmentsSqlRepo(engine),
         table_reconciliations=TableReconciliationsSqlRepo(engine),
         catalog_discoveries=CatalogDiscoveriesSqlRepo(engine),
+        catalogs=CatalogsSqlRepo(engine),
+        namespaces=NamespacesSqlRepo(engine),
         table_metrics=TableMetricsSqlStore(engine),
     )

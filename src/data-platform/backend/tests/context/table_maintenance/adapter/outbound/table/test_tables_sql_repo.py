@@ -6,9 +6,13 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
-from sqlalchemy import inspect
+from sqlalchemy import create_engine, event, inspect
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.pool import StaticPool
 
+from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo, tables_table
+from context.table_maintenance.adapter.outbound.table_discovery_policy.sql import TableDiscoveryPoliciesSqlRepo
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
@@ -32,7 +36,13 @@ from context.table_maintenance.application.domain.model.table import (
 )
 from context.table_maintenance.application.domain.model.table_discovery_policy import (
     DecidedBy,
+    DiscoveryRule,
+    DiscoveryRules,
     ManagementDecision,
+    RuleAction,
+    TableDiscoveryPolicy,
+    TableDiscoveryPolicyName,
+    TableNamePattern,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyName
 from context.table_maintenance.application.exceptions import ConcurrentUpdateError, ConflictError
@@ -53,6 +63,7 @@ NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
 SALES_POLICY = TableDiscoveryPolicyId("dp-00000000000000000000000004")
 DECIDED_BY = DecidedBy(policy_id=SALES_POLICY, policy_version=3, rule_position=2)
 NO_RULE = DecidedBy(policy_id=SALES_POLICY, policy_version=3, rule_position=None)
+_NO_POLICY = ManagementDecision.nothing_attached()
 
 
 def _table(
@@ -760,3 +771,92 @@ def test_over_target_partitions_of_a_dropped_or_unknown_table_are_not_written(ei
     loaded = either_repo.get(TableId("u1"))
     assert loaded is not None
     assert loaded.over_target_partitions == ()
+
+
+def test_the_policies_attached_to_a_table_read_back(either_repo: TablesRepo):
+    """The discovery and maintenance policy attached to a table itself are stored and read back."""
+    table = _table()
+    table.attach_discovery_policy(SALES_POLICY, NOW)
+    table.attach_maintenance_policy(NIGHTLY, NOW)
+    either_repo.create(table)
+    loaded = either_repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.discovery_policy_id == SALES_POLICY
+    assert loaded.maintenance_policy_id == NIGHTLY
+
+
+def test_a_detached_policy_is_saved_as_none(either_repo: TablesRepo):
+    """Detaching a table's policy and saving it stores the table without that policy."""
+    table = _table()
+    table.attach_discovery_policy(SALES_POLICY, NOW)
+    either_repo.create(table)
+    stored = either_repo.get(TableId("u1"))
+    assert stored is not None
+    stored.detach_discovery_policy(SALES_POLICY, NOW + timedelta(minutes=1))
+    either_repo.update(stored)
+    loaded = either_repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.discovery_policy_id is None
+
+
+def test_an_undecided_table_reads_back_undecided(either_repo: TablesRepo):
+    """A table registered undecided is stored with that status and no decider."""
+    either_repo.create(
+        Table.register_undecided(TableId("u1"), TableName(catalog="iceberg", namespace="s", table="t"), NOW)
+    )
+    loaded = either_repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.status is TableStatus.UNDECIDED
+    assert loaded.decided_by is None
+    assert [t.id.value for t in either_repo.list_by_statuses([TableStatus.UNDECIDED])] == ["u1"]
+
+
+def test_the_policy_columns_reference_the_policies_and_are_indexed():
+    """Each policy column of a table row references its policy table and has an index for "where is it attached"."""
+    discovery = tables_table.c.discovery_policy_id
+    maintenance = tables_table.c.maintenance_policy_id
+    assert {fk.target_fullname for fk in discovery.foreign_keys} == {"table_discovery_policies.id"}
+    assert {fk.target_fullname for fk in maintenance.foreign_keys} == {"table_maintenance_policies.id"}
+    assert discovery.nullable
+    assert maintenance.nullable
+    indexed = {tuple(c.name for c in index.columns) for index in tables_table.indexes}
+    assert ("discovery_policy_id",) in indexed
+    assert ("maintenance_policy_id",) in indexed
+
+
+def test_a_discovery_policy_attached_to_a_table_cannot_be_deleted():
+    """With foreign keys enforced, a discovery policy a table holds is refused deletion and stays."""
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    event.listen(engine, "connect", lambda dbapi_connection, _: dbapi_connection.execute("PRAGMA foreign_keys=ON"))
+    create_schema(engine)
+    policies = TableDiscoveryPoliciesSqlRepo(engine)
+    rules = DiscoveryRules(
+        rules=(DiscoveryRule(action=RuleAction.INCLUDE, table_name_pattern=TableNamePattern(value="*")),)
+    )
+    policy = TableDiscoveryPolicy.create(TableDiscoveryPolicyName(value="all"), "every table", rules, NOW)
+    policies.create(policy)
+    table = Table.register(TableId("u1"), TableName(catalog="iceberg", namespace="s", table="t"), _NO_POLICY, NOW)
+    table.attach_discovery_policy(policy.id, NOW)
+    TablesSqlRepo(engine).create(table)
+    with pytest.raises(ConflictError) as refused:
+        policies.delete(policy.id)
+    assert isinstance(refused.value.__cause__, IntegrityError)
+    assert policies.get(policy.id) is not None
+
+
+def test_a_save_naming_a_policy_that_does_not_exist_is_a_conflict():
+    """With foreign keys enforced, saving a table that holds an unknown policy is refused and changes nothing."""
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    event.listen(engine, "connect", lambda dbapi_connection, _: dbapi_connection.execute("PRAGMA foreign_keys=ON"))
+    create_schema(engine)
+    repo = TablesSqlRepo(engine)
+    repo.create(_table())
+    stored = repo.get(TableId("u1"))
+    assert stored is not None
+    stored.attach_maintenance_policy(NIGHTLY, NOW)
+    with pytest.raises(ConflictError):
+        repo.update(stored)
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.maintenance_policy_id is None
+    assert loaded.version == 1

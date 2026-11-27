@@ -48,9 +48,11 @@ def test_create_schema_includes_the_reconciliations_package():
     assert "context.table_maintenance.adapter.outbound.table_reconciliation.sql" in AGGREGATE_SQL_PACKAGES
 
 
-def test_create_schema_creates_the_tables_of_the_eight_aggregates():
-    """The schema holds the tables of the eight aggregates, the discovery policies and their attachments included."""
+def test_create_schema_creates_the_tables_of_the_ten_aggregates():
+    """The schema holds the tables of the ten aggregates, the catalogs and namespaces policies attach to included."""
     assert {package.split(".")[-2] for package in AGGREGATE_SQL_PACKAGES} == {
+        "catalog",
+        "namespace",
         "catalog_discovery",
         "table",
         "table_discovery_policy",
@@ -69,9 +71,36 @@ def test_create_schema_creates_the_table_metrics_table(tmp_path: Path) -> None:
     assert "table_metrics" in inspect(engine).get_table_names()
 
 
+def test_create_schema_creates_the_catalogs_and_namespaces_tables(tmp_path: Path) -> None:
+    """The policies attached to catalogs and namespaces are kept in the catalogs and namespaces tables."""
+    engine = create_engine(f"sqlite:///{tmp_path / 'db.sqlite'}")
+    create_schema(engine)
+    names = inspect(engine).get_table_names()
+    assert "catalogs" in names
+    assert "namespaces" in names
+
+
+def test_every_policy_column_references_its_policy_table() -> None:
+    """Each place a policy is attached references the policy, so a policy in use cannot be deleted."""
+    for package in AGGREGATE_SQL_PACKAGES:
+        importlib.import_module(package)
+    for table in ("catalogs", "namespaces", "tables"):
+        columns = metadata.tables[table].columns
+        assert {fk.target_fullname for fk in columns["discovery_policy_id"].foreign_keys} == {
+            "table_discovery_policies.id"
+        }, table
+        assert {fk.target_fullname for fk in columns["maintenance_policy_id"].foreign_keys} == {
+            "table_maintenance_policies.id"
+        }, table
+
+
 @pytest.mark.parametrize(
     ("table", "column"),
     [
+        ("catalogs", "version"),
+        ("namespaces", "version"),
+        ("namespaces", "catalog"),
+        ("namespaces", "path_json"),
         ("tables", "priority"),
         ("tables", "over_target_partitions_json"),
         ("table_maintenance_runs", "priority"),

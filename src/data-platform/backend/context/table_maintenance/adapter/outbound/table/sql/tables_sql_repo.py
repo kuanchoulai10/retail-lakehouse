@@ -71,8 +71,9 @@ class TablesSqlRepo(TablesRepo):
 
         The write matches the uuid and the version the table was read at, and moves the version
         on by one, so a copy read before another save is refused (``ConcurrentUpdateError``)
-        instead of putting that save back. A uuid with no row raises ``LookupError``. The stored
-        last commit is kept when the table's is older or unknown.
+        instead of putting that save back. A uuid with no row raises ``LookupError``, and a policy
+        the table holds that does not exist raises ``ConflictError``. The stored last commit is
+        kept when the table's is older or unknown.
         """
         values = TableRowMapper.to_values(table)
         values["version"] = table.version + 1
@@ -85,12 +86,15 @@ class TablesSqlRepo(TablesRepo):
         stmt = (
             update(t).where(t.c.uuid == table.id.value, t.c.version == table.version).values(**values).returning(*t.c)
         )
-        with self._engine.begin() as conn:
-            row = conn.execute(stmt).first()
-            if row is None:
-                if conn.execute(select(t.c.uuid).where(t.c.uuid == table.id.value)).first() is None:
-                    raise LookupError(f"table {table.id.value} does not exist")
-                raise ConcurrentUpdateError(f"table {table.id.value} was changed by someone else")
+        try:
+            with self._engine.begin() as conn:
+                row = conn.execute(stmt).first()
+                if row is None:
+                    if conn.execute(select(t.c.uuid).where(t.c.uuid == table.id.value)).first() is None:
+                        raise LookupError(f"table {table.id.value} does not exist")
+                    raise ConcurrentUpdateError(f"table {table.id.value} was changed by someone else")
+        except IntegrityError as exc:
+            raise ConflictError(str(exc.orig)) from exc
         return TableRowMapper.to_aggregate(row._mapping)
 
     def record_last_commit(self, table_id: TableId, at: datetime) -> bool:
