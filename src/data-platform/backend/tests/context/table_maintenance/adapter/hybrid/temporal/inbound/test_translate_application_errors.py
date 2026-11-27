@@ -10,6 +10,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import
     translate_application_errors,
 )
 from context.table_maintenance.application.exceptions import (
+    ConcurrentUpdateError,
     ConflictError,
     NotFoundError,
     ValidationError,
@@ -33,6 +34,15 @@ def test_other_errors_stay_retryable_and_untouched():
     with pytest.raises(RuntimeError, match="transient"):
         with translate_application_errors():
             raise RuntimeError("transient")
+
+
+def test_concurrent_update_is_retryable():
+    """A save refused because another writer saved first passes through unchanged, so Temporal retries it."""
+    error = ConcurrentUpdateError("table u1 was changed by someone else")
+    with pytest.raises(ConcurrentUpdateError) as caught:
+        with translate_application_errors():
+            raise error
+    assert caught.value is error
 
 
 def test_no_error_passes_through():

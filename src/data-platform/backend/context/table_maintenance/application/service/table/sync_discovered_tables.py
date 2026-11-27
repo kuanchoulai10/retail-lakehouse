@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -18,6 +19,7 @@ from context.table_maintenance.application.domain.model.table import (
     TableStatus,
 )
 from context.table_maintenance.application.exceptions import (
+    ConcurrentUpdateError,
     ConflictError,
     NotFoundError,
     ValidationError,
@@ -68,6 +70,8 @@ if TYPE_CHECKING:
         KnownTableOutcome,
     )
 
+logger = logging.getLogger(__name__)
+
 _DROP_SCAN_STATUSES = (TableStatus.MANAGED, TableStatus.UNMANAGED)
 
 
@@ -104,7 +108,8 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         version and rule that decided it; with nothing attached the default unmanages. Only a
         catalog-wide sync (no namespace) marks missing tables dropped, since a namespace scan
         cannot tell a drop from a move, and a table it does not list is never decided. A table that fails is counted in
-        ``skipped``. A catalog-wide sync also signal-with-starts the
+        ``skipped``, a table another writer saved while the scan decided or dropped it included (logged and left as
+        that writer stored it; the next scan decides it). A catalog-wide sync also signal-with-starts the
         reconciliation workflow of every known managed table (counted in
         ``ensured``), so a table whose workflow was never started, or was lost,
         is picked up again. A table that ends up newly managed (registered or
@@ -172,6 +177,10 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
             try:
                 with translate_domain_errors():
                     outcome = self._sync_table(found, decider, seen_change, now)
+            except ConcurrentUpdateError as exc:
+                _log_changed_meanwhile(exc)
+                skipped += 1
+                continue
             except ConflictError, ValidationError, NotFoundError:
                 skipped += 1
                 continue
@@ -186,7 +195,8 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
                 skipped += retired_skipped
             with translate_domain_errors():
                 if read_every_table:
-                    dropped = self._drop_missing(request, seen, now)
+                    dropped, drop_skipped = self._drop_missing(request, seen, now)
+                    skipped += drop_skipped
                 self._record_discovery(request.catalog, now)
         return SyncDiscoveredTablesUseCaseOutput(
             registered=registered,
@@ -248,6 +258,10 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
                         None,
                         now,
                     )
+            except ConcurrentUpdateError as exc:
+                _log_changed_meanwhile(exc)
+                skipped += 1
+                continue
             except ConflictError, ValidationError, NotFoundError:
                 skipped += 1
                 continue
@@ -284,8 +298,12 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         request: SyncDiscoveredTablesUseCaseInput,
         seen: set[str],
         now: datetime,
-    ) -> int:
-        dropped = 0
+    ) -> tuple[int, int]:
+        """Mark dropped each stored live table of the scope the scan did not see; return (dropped, skipped).
+
+        A table another writer saved since it was listed is skipped and left as stored: the next scan drops it.
+        """
+        dropped = skipped = 0
         previous = self._discoveries_repo.get(CatalogDiscoveryId(request.catalog))
         last_seen = None if previous is None else previous.last_discovered_at
         for table in self._tables_repo.list_by_statuses(_DROP_SCAN_STATUSES):
@@ -293,7 +311,12 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
                 continue
             was_managed = table.is_managed
             table.mark_dropped(now, catalog_discovered_at=last_seen)
-            self._tables_repo.update(table)
+            try:
+                self._tables_repo.update(table)
+            except ConcurrentUpdateError as exc:
+                _log_changed_meanwhile(exc)
+                skipped += 1
+                continue
             dropped += 1
             if was_managed:
                 self._table_change_gateway.send(
@@ -304,7 +327,11 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
                         is_managed=table.is_managed,
                     )
                 )
-        return dropped
+        return dropped, skipped
+
+
+def _log_changed_meanwhile(error: ConcurrentUpdateError) -> None:
+    logger.warning("skipping a table the scan could not save: %s; the next scan decides it", error)
 
 
 def _in_scope(name: TableName, request: SyncDiscoveredTablesUseCaseInput) -> bool:

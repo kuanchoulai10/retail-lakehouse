@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 
 from base import InvariantViolation
 from context.table_maintenance.application.exceptions import (
+    ConcurrentUpdateError,
     ConflictError,
     NotFoundError,
     ValidationError,
@@ -27,6 +28,7 @@ _STATUS_BY_ERROR: dict[type[Exception], int] = {
     CatalogNotFoundError: status.HTTP_404_NOT_FOUND,
     CatalogAccessDeniedError: status.HTTP_403_FORBIDDEN,
     ConflictError: status.HTTP_409_CONFLICT,
+    ConcurrentUpdateError: status.HTTP_409_CONFLICT,
     MetricHistoryUnavailableError: status.HTTP_502_BAD_GATEWAY,
     ValidationError: status.HTTP_422_UNPROCESSABLE_CONTENT,
     InvariantViolation: status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -37,6 +39,8 @@ def register_error_handlers(app: FastAPI) -> None:
     """Map the application exceptions to HTTP errors with a detail body.
 
     A port input the router cannot build (``InvariantViolation``) is a client error, answered like ``ValidationError``.
+    A save refused because someone else changed the record since it was read (``ConcurrentUpdateError``) is a 409:
+    the client may read it again and retry.
     """
     for error_type, status_code in _STATUS_BY_ERROR.items():
 

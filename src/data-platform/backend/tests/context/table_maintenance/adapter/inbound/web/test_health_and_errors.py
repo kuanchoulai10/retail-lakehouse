@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from context.table_maintenance.application.exceptions import (
+    ConcurrentUpdateError,
     ConflictError,
     NotFoundError,
     ValidationError,
@@ -21,6 +22,7 @@ from tests.context.table_maintenance.adapter.inbound.web.web_test_support import
     [
         (NotFoundError("gone"), 404),
         (ConflictError("clash"), 409),
+        (ConcurrentUpdateError("table u1 was changed by someone else"), 409),
         (ValidationError("bad"), 422),
     ],
 )

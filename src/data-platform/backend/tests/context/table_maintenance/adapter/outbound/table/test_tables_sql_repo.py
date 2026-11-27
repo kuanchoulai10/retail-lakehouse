@@ -37,7 +37,7 @@ from context.table_maintenance.application.domain.model.table_discovery_policy i
     DiscoveryOutcome,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyName
-from context.table_maintenance.application.exceptions import ConflictError
+from context.table_maintenance.application.exceptions import ConcurrentUpdateError, ConflictError
 from context.table_maintenance.application.service.table import apply_discovery_to_known_table
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
@@ -187,6 +187,117 @@ def test_update_missing_raises(repo: TablesSqlRepo):
     """Updating a table that does not exist raises LookupError."""
     with pytest.raises(LookupError):
         repo.update(_table("ghost"))
+
+
+def test_update_moves_the_version_on(repo: TablesSqlRepo):
+    """A save of the stored version returns the table at the next version, which is what is stored."""
+    table = _table()
+    repo.create(table)
+    saved = repo.update(table)
+    assert saved.version == 2
+    loaded = repo.get(table.id)
+    assert loaded is not None
+    assert loaded.version == 2
+
+
+def test_update_from_a_stale_copy_is_refused(repo: TablesSqlRepo):
+    """Of two copies read at one version, the second save is refused and the first one's change stays stored."""
+    repo.create(_table())
+    a = repo.get(TableId("u1"))
+    b = repo.get(TableId("u1"))
+    assert a is not None
+    assert b is not None
+    a.set_priority(TablePriority.P0, NOW)
+    saved = repo.update(a)
+    b.set_priority(TablePriority.P2, NOW)
+    with pytest.raises(ConcurrentUpdateError, match="table u1 was changed by someone else"):
+        repo.update(b)
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.priority is TablePriority.P0
+    assert loaded.version == saved.version == 2
+
+
+def test_the_saved_table_is_read_back_from_its_row(repo: TablesSqlRepo):
+    """The table a save returns is a new object built from the stored row, so it carries what others wrote too."""
+    repo.create(_table())
+    table = repo.get(TableId("u1"))
+    assert table is not None
+    entries = (OverTargetPartition(spec_id=0, values=("eu",), since=NOW),)
+    repo.record_over_target_partitions(TableId("u1"), entries)
+    table.set_priority(TablePriority.P1, NOW)
+    saved = repo.update(table)
+    assert saved is not table
+    assert table.version == 1
+    assert saved.priority is TablePriority.P1
+    assert saved.over_target_partitions == entries
+    assert repo.update(saved).version == 3
+
+
+def test_record_last_commit_leaves_the_version(repo: TablesSqlRepo):
+    """The narrow last-commit write neither checks nor moves the version, so a copy read before it still saves."""
+    repo.create(_table())
+    earlier = repo.get(TableId("u1"))
+    assert earlier is not None
+    assert repo.record_last_commit(TableId("u1"), NOW) is True
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.version == 1
+    assert repo.update(earlier).version == 2
+
+
+def test_record_over_target_partitions_leaves_the_version(repo: TablesSqlRepo):
+    """The narrow over-target write neither checks nor moves the version either."""
+    repo.create(_table())
+    earlier = repo.get(TableId("u1"))
+    assert earlier is not None
+    entries = (OverTargetPartition(spec_id=0, values=("eu",), since=NOW),)
+    assert repo.record_over_target_partitions(TableId("u1"), entries) is True
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.version == 1
+    assert repo.update(earlier).version == 2
+
+
+def test_a_registered_table_starts_at_version_1() -> None:
+    """A table registered from a discovery is at version 1."""
+    name = TableName(catalog="iceberg", namespace="inventory", table="orders")
+    decision = DiscoveryDecision(outcome=DiscoveryOutcome.MANAGE, match=MATCH)
+    assert Table.register(TableId("u1"), name, decision, NOW).version == 1
+
+
+def test_the_version_is_stored_in_its_column(repo: TablesSqlRepo, engine: Engine):
+    """The version is a column of the row, written 1 on create and moved by each save."""
+    table = _table()
+    repo.create(table)
+    repo.update(table)
+    with engine.connect() as connection:
+        row = connection.execute(tables_table.select()).mappings().one()
+    assert row["version"] == 2
+
+
+def test_either_repo_refuses_a_stale_copy(either_repo: TablesRepo):
+    """Both repositories refuse a save from a copy read before another save, and keep the other save."""
+    either_repo.create(_table())
+    first_read = either_repo.get(TableId("u1"))
+    assert first_read is not None
+    stale = first_read.model_copy(deep=True)
+    first_read.set_priority(TablePriority.P0, NOW)
+    saved = either_repo.update(first_read)
+    assert saved.version == 2
+    stale.set_priority(TablePriority.P2, NOW)
+    with pytest.raises(ConcurrentUpdateError):
+        either_repo.update(stale)
+    loaded = either_repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.priority is TablePriority.P0
+    assert loaded.version == 2
+
+
+def test_either_repo_raises_lookup_error_for_a_missing_table(either_repo: TablesRepo):
+    """Both repositories answer a save of a table they never stored with LookupError, not a conflict."""
+    with pytest.raises(LookupError, match="table ghost does not exist"):
+        either_repo.update(_table("ghost"))
 
 
 def test_find_by_name_exact_match(repo: TablesSqlRepo):

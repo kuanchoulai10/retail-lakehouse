@@ -152,6 +152,7 @@ class TableRowMapper:
             "last_committed_at": table.last_committed_at,
             "last_discovered_at": table.last_discovered_at,
             "priority": table.priority.value,
+            "version": table.version,
         }
 
     @staticmethod
@@ -175,4 +176,5 @@ class TableRowMapper:
             last_discovered_at=row["last_discovered_at"],
             priority=TablePriority(row["priority"]),
             over_target_partitions=_decode_over_target_partitions(row["over_target_partitions_json"]),
+            version=row["version"],
         )

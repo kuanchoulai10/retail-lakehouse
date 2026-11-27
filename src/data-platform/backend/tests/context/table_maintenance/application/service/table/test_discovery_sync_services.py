@@ -29,7 +29,7 @@ from context.table_maintenance.application.domain.model.table_discovery_policy i
 from context.table_maintenance.application.domain.model.table_discovery_policy_attachment import (
     TableDiscoveryPolicyAttachment,
 )
-from context.table_maintenance.application.exceptions import ConflictError
+from context.table_maintenance.application.exceptions import ConcurrentUpdateError, ConflictError
 from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCaseInput,
     ProcessTableHintUseCaseInput,
@@ -597,6 +597,65 @@ def test_sync_one_bad_table_is_skipped_not_fatal(sync, tables_repo, world, catal
     out = sync.execute(_catalog_wide())
     assert (out.registered, out.skipped) == (1, 1)
     assert tables_repo.get(TableId("u-ok")) is not None
+
+
+def _race_updates_of(tables_repo, monkeypatch, uuid):
+    """Make every save of the table ``uuid`` find that another writer saved it first."""
+    original = tables_repo.update
+
+    def update(table):
+        if table.id.value == uuid:
+            raise ConcurrentUpdateError(f"table {uuid} was changed by someone else")
+        return original(table)
+
+    monkeypatch.setattr(tables_repo, "update", update)
+
+
+def test_a_table_changed_during_the_scan_is_skipped(
+    sync, tables_repo, world, catalog, signals, monkeypatch, caplog, now
+):
+    """A table another writer saved while the scan decided it is skipped and logged; the others are still synced."""
+    world.attach_to_catalog(MANAGE_ALL)
+    _row(tables_repo, now, "u-raced", _name("old_raced"))
+    _row(tables_repo, now, "u-ok", _name("old_ok"))
+    catalog.add_table("iceberg", "sales", "raced", "u-raced")
+    catalog.add_table("iceberg", "sales", "ok", "u-ok")
+    _race_updates_of(tables_repo, monkeypatch, "u-raced")
+
+    out = sync.execute(_catalog_wide())
+
+    assert (out.registered, out.renamed, out.skipped, out.dropped, out.ensured) == (0, 1, 1, 0, 1)
+    assert tables_repo.get(TableId("u-ok")).name.table == "ok"
+    assert _calls(signals) == [("u-ok", "seen", True)]
+    assert "table u-raced was changed by someone else" in caplog.text
+    assert world.discoveries.get(CatalogDiscoveryId("iceberg")) is not None
+
+
+def test_a_table_changed_while_the_scan_drops_it_is_skipped(sync, tables_repo, monkeypatch, signals, now):
+    """A missing table another writer saved meanwhile is skipped, not dropped; the other missing table is dropped."""
+    _row(tables_repo, now, "u-raced", _name("raced"))
+    _row(tables_repo, now, "u-gone", _name("gone"))
+    _race_updates_of(tables_repo, monkeypatch, "u-raced")
+
+    out = sync.execute(_catalog_wide())
+
+    assert (out.dropped, out.skipped) == (1, 1)
+    assert _calls(signals) == [("u-gone", "stopped", False)]
+
+
+def test_a_table_changed_while_an_unread_catalog_unmanages_it_is_skipped(
+    sync, tables_repo, world, monkeypatch, signals, now
+):
+    """A catalog nothing can manage, which cannot be read, skips a managed table another writer saved meanwhile."""
+    world.catalog.deny("iceberg")
+    _row(tables_repo, now, "u-raced", _name("raced"))
+    _row(tables_repo, now, "u-ok", _name("ok"))
+    _race_updates_of(tables_repo, monkeypatch, "u-raced")
+
+    out = sync.execute(_catalog_wide())
+
+    assert (out.unmanaged, out.skipped) == (1, 1)
+    assert _calls(signals) == [("u-ok", "stopped", False)]
 
 
 # --- sync: known tables are decided again ---

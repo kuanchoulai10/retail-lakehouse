@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.table import TableStatus
-from context.table_maintenance.application.exceptions import ConflictError
+from context.table_maintenance.application.exceptions import ConcurrentUpdateError, ConflictError
 from context.table_maintenance.application.port.outbound.table import TablesRepo
 
 if TYPE_CHECKING:
@@ -44,13 +44,28 @@ class InMemoryTablesRepo(TablesRepo):
         )
 
     def update(self, table: Table) -> Table:
-        """Replace a stored table, keeping the stored over-target partitions as the SQL adapter does."""
+        """Store a new copy of the table at the next version and return it, as the SQL adapter does.
+
+        A table read at another version than the stored one raises ConcurrentUpdateError and changes
+        nothing. The copy keeps the stored over-target partitions and the later of the two last commits.
+        The caller's object is never changed, so a second save of it is refused like any stale copy.
+        """
         stored = self.items.get(table.id.value)
         if stored is None:
             raise LookupError(f"table {table.id.value} does not exist")
-        table.over_target_partitions = stored.over_target_partitions
-        self.items[table.id.value] = table
-        return table
+        if stored.version != table.version:
+            raise ConcurrentUpdateError(f"table {table.id.value} was changed by someone else")
+        commits = [at for at in (stored.last_committed_at, table.last_committed_at) if at is not None]
+        saved = table.model_copy(
+            deep=True,
+            update={
+                "version": table.version + 1,
+                "over_target_partitions": stored.over_target_partitions,
+                "last_committed_at": max(commits, default=None),
+            },
+        )
+        self.items[table.id.value] = saved
+        return saved
 
     def record_last_commit(self, table_id: TableId, at: datetime) -> bool:
         """Move the stored table's last commit by the aggregate's own rule."""

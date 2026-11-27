@@ -15,6 +15,7 @@ from context.table_maintenance.adapter.inbound.event_consumer import (
     run_consumer_loop,
 )
 from context.table_maintenance.application.exceptions import (
+    ConcurrentUpdateError,
     NotFoundError,
     ValidationError,
 )
@@ -149,6 +150,19 @@ def test_transient_use_case_error_is_retried_then_committed_once() -> None:
     record = _record(1)
     source = FakeEventSource([record])
     use_case = RecordingUseCase([RuntimeError("blip"), None])
+
+    sleeps = _run(source, use_case)
+
+    assert len(use_case.calls) == 2
+    assert source.committed == [record]
+    assert sleeps == [0.5]
+
+
+def test_a_concurrent_update_is_retried() -> None:
+    """A hint whose table another writer saved meanwhile is retried, so the retry reads the table again."""
+    record = _record(1)
+    source = FakeEventSource([record])
+    use_case = RecordingUseCase([ConcurrentUpdateError("table u1 was changed by someone else"), None])
 
     sleeps = _run(source, use_case)
 

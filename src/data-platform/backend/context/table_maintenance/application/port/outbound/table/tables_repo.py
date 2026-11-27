@@ -21,7 +21,14 @@ class TablesRepo(Repository[Table]):
 
     @abstractmethod
     def update(self, table: Table) -> Table:
-        """Persist the changed table and return it.
+        """Persist the changed table when the stored one is still at its version; return the table as now stored.
+
+        The save is a compare-and-set on ``table.version``: it writes only when the stored table is
+        at that version, and moves the stored version on by one. A table read before another save
+        raises ``ConcurrentUpdateError`` and changes nothing; a table never stored raises
+        ``LookupError``. The table returned is a new object read back from storage, at the new
+        version; the caller's object is left as it was, so a second save in one call uses the
+        returned table, never the one passed in.
 
         The stored last commit never moves back: an older one, or none, leaves it as stored.
         The stored over-target partitions are never written: only ``record_over_target_partitions`` does.
@@ -33,7 +40,8 @@ class TablesRepo(Repository[Table]):
 
         It moves under the rule of ``Table.record_last_commit``: only forward, and never
         once the table is dropped. Nothing else of the table is written, so a caller
-        holding an older copy of it cannot put back what another writer stored since.
+        holding an older copy of it cannot put back what another writer stored since. The
+        version is neither checked nor moved, so a copy read before this write still saves.
         """
 
     @abstractmethod
@@ -44,6 +52,7 @@ class TablesRepo(Repository[Table]):
         value changed, which a SQL write cannot tell: ``Table.record_over_target_partitions``
         holds that rule and the caller gates on it. Nothing else of the table is written, so a
         caller holding an older copy of it cannot put back what another writer stored since.
+        The version is neither checked nor moved, as for ``record_last_commit``.
         """
 
     @abstractmethod

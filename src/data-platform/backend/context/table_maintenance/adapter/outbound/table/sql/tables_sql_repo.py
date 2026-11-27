@@ -15,7 +15,7 @@ from context.table_maintenance.adapter.outbound.table.sql.table_row_mapper impor
 from context.table_maintenance.adapter.outbound.table.sql.tables_table import (
     tables_table as t,
 )
-from context.table_maintenance.application.exceptions import ConflictError
+from context.table_maintenance.application.exceptions import ConcurrentUpdateError, ConflictError
 from context.table_maintenance.application.port.outbound.table import (
     TablesRepo,
     TableStatus,
@@ -67,19 +67,31 @@ class TablesSqlRepo(TablesRepo):
         return [TableRowMapper.to_aggregate(r._mapping) for r in rows]
 
     def update(self, table: Table) -> Table:
-        """Persist the changed table; the stored last commit is kept when the table's is older or unknown."""
+        """Persist the changed table when the row is still at its version, and return the row read back.
+
+        The write matches the uuid and the version the table was read at, and moves the version
+        on by one, so a copy read before another save is refused (``ConcurrentUpdateError``)
+        instead of putting that save back. A uuid with no row raises ``LookupError``. The stored
+        last commit is kept when the table's is older or unknown.
+        """
         values = TableRowMapper.to_values(table)
+        values["version"] = table.version + 1
         committed = values.pop("last_committed_at")
         if committed is not None:
             values["last_committed_at"] = case(
                 (_commit_moves(committed), literal(committed, UtcDateTime())),
                 else_=t.c.last_committed_at,
             )
+        stmt = (
+            update(t).where(t.c.uuid == table.id.value, t.c.version == table.version).values(**values).returning(*t.c)
+        )
         with self._engine.begin() as conn:
-            result = conn.execute(update(t).where(t.c.uuid == table.id.value).values(**values))
-            if result.rowcount == 0:
-                raise LookupError(f"table {table.id.value} does not exist")
-        return table
+            row = conn.execute(stmt).first()
+            if row is None:
+                if conn.execute(select(t.c.uuid).where(t.c.uuid == table.id.value)).first() is None:
+                    raise LookupError(f"table {table.id.value} does not exist")
+                raise ConcurrentUpdateError(f"table {table.id.value} was changed by someone else")
+        return TableRowMapper.to_aggregate(row._mapping)
 
     def record_last_commit(self, table_id: TableId, at: datetime) -> bool:
         """Write only the last commit, when ``at`` is newer and the table is not dropped."""

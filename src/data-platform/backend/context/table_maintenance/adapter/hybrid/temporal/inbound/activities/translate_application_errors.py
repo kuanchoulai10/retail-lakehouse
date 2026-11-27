@@ -27,7 +27,9 @@ def translate_application_errors() -> Iterator[None]:
     A validation, not-found or conflict error cannot succeed on retry, so it fails
     the activity at once with the exception class name as the error type. A port
     input the activity cannot build (``InvariantViolation``) is a validation error
-    too. Any other exception propagates unchanged and stays retryable.
+    too. Any other exception propagates unchanged and stays retryable, a save refused
+    because someone else changed the record since it was read (``ConcurrentUpdateError``)
+    included: the retry reads the record again.
     """
     try:
         yield

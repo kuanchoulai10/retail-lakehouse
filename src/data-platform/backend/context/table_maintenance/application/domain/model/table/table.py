@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from pydantic import Field
+from pydantic import Field, PositiveInt
 
 from base import AggregateRoot, ReadOnlyMapping
 from context.table_maintenance.application.domain.model.shared import (
@@ -66,6 +66,10 @@ class Table(AggregateRoot[TableId]):
     ``over_target_partitions`` holds the partitions the last scheduled plan found over their
     compaction target, each with the time the first plan saw it over. It is replaced whole by
     ``record_over_target_partitions`` and does not move ``updated_at`` either.
+
+    ``version`` is the stored version the table was read at, 1 for a table never saved
+    since its registration. Only the repository moves it: a save made from a copy read at an
+    older version is refused, so no writer silently puts back what another one stored since.
     """
 
     id: TableId
@@ -79,6 +83,7 @@ class Table(AggregateRoot[TableId]):
     last_discovered_at: datetime | None = None
     priority: TablePriority = TablePriority.P3
     over_target_partitions: tuple[OverTargetPartition, ...] = ()
+    version: PositiveInt = 1
 
     @classmethod
     def register(
