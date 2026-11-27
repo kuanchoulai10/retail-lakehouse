@@ -29,7 +29,7 @@ Topic files load on demand: a nested `CLAUDE.md` is read when you work on files 
 | History of what landed and finished initiatives | `docs/agents/project-history.md` |
 | Known follow-ups and deferred work | `docs/agents/known-follow-ups.md` |
 | Writing Linear issues (six sections, labels, placement, updating by comment) | `docs/agents/linear-issues.md` |
-| Architecture decisions | `docs/adr/` (0005 bounded contexts, 0006 choosing an outbound port, 0007 one-time secrets, 0008 design system on Serendie tokens, 0009 pydantic in the domain, 0010 pydantic in inbound ports, 0011 prefixed resource ids, 0012 policies on the catalog hierarchy, 0013 table metrics in the database and Prometheus, 0014 long-lived table references use the UUID, 0015 ids issued only by the domain, 0016 the Spark adapter writes Iceberg procedure calls, 0017 one image, a subcommand and a settings file per role) |
+| Architecture decisions | `docs/adr/` (0005 bounded contexts, 0006 choosing an outbound port, 0007 one-time secrets, 0008 design system on Serendie tokens, 0009 pydantic in the domain, 0010 pydantic in inbound ports, 0011 prefixed resource ids, 0012 policies on the catalog hierarchy, 0013 table metrics in the database and Prometheus, 0014 long-lived table references use the UUID, 0015 ids issued only by the domain, 0016 the Spark adapter writes Iceberg procedure calls, 0017 one image, a subcommand and a settings file per role, 0018 discovery rules and policies held by places) |
 
 Keep this file to rules that apply everywhere; put topic rules in the topic file. When work lands, add a line to `docs/agents/project-history.md` and update the topic file it changes.
 
@@ -63,7 +63,7 @@ Do not touch unless the user re-opens them: `platform/30-thanos`, `platform/24-e
 
 ## Project Vision
 
-This is being built as one data platform; multi-tenancy is not a goal (dropped 2026-11-06). The bounded contexts are table maintenance (aggregates `CatalogDiscovery`, `Table`, `TableDiscoveryPolicy`, `TableDiscoveryPolicyAttachment`, `TableMaintenancePolicy`, `TableMaintenancePolicyAttachment`, `TableMaintenanceRun`, `TableReconciliation`) and catalog (aggregates `Catalog`, `Namespace`, `Table`, `GenericTable`, `View`, with Polaris as the source of truth); an access context (principals, principal roles, catalog roles and their grants) is planned next. Design decisions should consider future extensibility across bounded contexts.
+This is being built as one data platform; multi-tenancy is not a goal (dropped 2026-11-06). The bounded contexts are table maintenance (aggregates `Catalog`, `CatalogDiscovery`, `Namespace`, `Table`, `TableDiscoveryPolicy`, `TableMaintenancePolicy`, `TableMaintenanceRun`, `TableReconciliation`; its `Catalog` and `Namespace` hold policies and are not the catalog context's) and catalog (aggregates `Catalog`, `Namespace`, `Table`, `GenericTable`, `View`, with Polaris as the source of truth); an access context (principals, principal roles, catalog roles and their grants) is planned next. Design decisions should consider future extensibility across bounded contexts.
 
 ## Agent skills
 
