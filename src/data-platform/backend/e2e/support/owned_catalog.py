@@ -21,6 +21,8 @@ if TYPE_CHECKING:
     from e2e.support.polaris_client import PolarisClient
 
 _STORAGE_KEYS = ("storage_type", "endpoint", "sts_endpoint", "path_style_access")
+E2E_ROLE = "tm_e2e"
+_EXISTS = 409
 
 
 @dataclass(frozen=True)
@@ -69,6 +71,27 @@ class OwnedCatalog:
     def restore_reads(self, polaris: PolarisClient) -> None:
         """Give ``catalog_admin`` the content grants back, so the platform can read the catalog again."""
         self._change_reads(polaris, "PUT", "granting")
+
+    def keep_e2e_writes(self, polaris: PolarisClient) -> None:
+        """Give the e2e principal content grants of its own here, so ``revoke_reads`` blinds only the platform.
+
+        Both principals reach a catalog created through the API by ``catalog_admin`` (through
+        ``service_admin``). Catalog role ``tm_e2e`` gets ``CATALOG_MANAGE_CONTENT`` and goes to principal
+        role ``tm_e2e``, which only the e2e principal holds (``e2e.setup_principal``); one already there
+        is kept. ``drop_catalog`` removes the role with the catalog.
+        """
+        roles = f"/catalogs/{self.name}/catalog-roles"
+        content = {"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_CONTENT"}}
+        steps = (
+            ("POST", roles, {"catalogRole": {"name": E2E_ROLE}}),
+            ("PUT", f"{roles}/{E2E_ROLE}/grants", content),
+            ("PUT", f"/principal-roles/{E2E_ROLE}/catalog-roles/{self.name}", {"catalogRole": {"name": E2E_ROLE}}),
+        )
+        for method, path, body in steps:
+            reply = polaris.management(method, path, body)
+            if method == "POST" and reply.status_code == _EXISTS:
+                continue
+            assert reply.is_success, f"{method} {path} answered {reply.status_code}: {reply.text}"
 
     def _change_reads(self, polaris: PolarisClient, method: str, doing: str) -> None:
         for privilege in CONTENT_GRANTS:

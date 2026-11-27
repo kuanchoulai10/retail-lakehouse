@@ -3,7 +3,8 @@
 The schedule ``table-discovery`` is the cluster's own, shared by every catalog. The scenario deletes it
 behind the platform's back, restarts the worker Deployment (the only object the e2e's Role lets it
 change) and waits for the schedule to come back, as configured and not paused. Triggering it then
-starts a round, whose scan of a catalog of the module's own (it holds a discovery policy) completes.
+starts a new round (``table-discovery:round-<time>``), which completes and starts a scan of a catalog of
+the module's own (it holds a discovery policy) as its child; that scan completes.
 This is the only scenario that deletes the schedule; whatever happens, its undo leaves it recreated.
 Marked ``full``: a restart takes minutes.
 """
@@ -16,13 +17,21 @@ from typing import TYPE_CHECKING
 import pytest
 from temporalio.client import ScheduleActionStartWorkflow, ScheduleOverlapPolicy, WorkflowExecutionStatus
 
-from e2e.support import KubernetesApi, OwnedNames, latest_run, schedule_exists, trigger_schedule, wait_until
+from e2e.support import (
+    KubernetesApi,
+    OwnedNames,
+    latest_run,
+    schedule_exists,
+    scheduled_workflows,
+    trigger_schedule,
+    wait_until,
+)
 
 if TYPE_CHECKING:
     import httpx
     from temporalio.client import Client, ScheduleDescription
 
-    from e2e.support import CleanupStack, OwnedCatalog, PlatformApi, TemporalSession
+    from e2e.support import CleanupStack, OwnedCatalog, PlatformApi, TemporalSession, WorkflowRun
 
 pytestmark = pytest.mark.full
 
@@ -131,17 +140,40 @@ def test_a_restarted_worker_rebuilds_the_deleted_discovery_schedule_and_its_roun
 
     scan = f"table-discovery:catalog={catalog}"
     before = wait_until(
-        lambda: run if (run := latest_run(temporal, scan)) and run[1] == WorkflowExecutionStatus.COMPLETED else None,
+        lambda: (
+            run if (run := latest_run(temporal, scan)) and run.status == WorkflowExecutionStatus.COMPLETED else None
+        ),
         timeout=SCAN_SECONDS,
         interval=3,
-        what=f"{scan} asked for by the attach completed, so the round does not skip the catalog",
+        what=f"{scan} completed (the attach's, or a round's since), so the triggered round does not skip it",
     )
+    rounds_before = set(scheduled_workflows(temporal, SCHEDULE))
     trigger_schedule(temporal, SCHEDULE)
 
-    def scanned_by_the_round() -> tuple[str, WorkflowExecutionStatus]:
+    def new_round() -> str:
+        started = [w for w in scheduled_workflows(temporal, SCHEDULE) if w not in rounds_before]
+        if not started:
+            raise AssertionError(f"no round since {sorted(rounds_before)}")
+        assert all(w.startswith(f"{ROUND}-") for w in started), started
+        return started[-1]
+
+    round_id = wait_until(new_round, timeout=SCAN_SECONDS, interval=3, what=f"a {ROUND} started by the trigger")
+    wait_until(
+        lambda: (
+            run if (run := latest_run(temporal, round_id)) and run.status == WorkflowExecutionStatus.COMPLETED else None
+        ),
+        timeout=SCAN_SECONDS,
+        interval=3,
+        what=f"{round_id} completed",
+    )
+
+    def scanned_by_the_round() -> WorkflowRun:
         run = latest_run(temporal, scan)
-        if run is None or run[0] == before[0] or run[1] != WorkflowExecutionStatus.COMPLETED:
+        if run is None or run.run_id == before.run_id or run.status != WorkflowExecutionStatus.COMPLETED:
             raise AssertionError(run)
         return run
 
-    wait_until(scanned_by_the_round, timeout=SCAN_SECONDS, interval=3, what=f"a new {scan} run completed")
+    scanned = wait_until(scanned_by_the_round, timeout=SCAN_SECONDS, interval=3, what=f"a new {scan} run completed")
+    assert scanned.parent_id == round_id, (
+        f"{scan} run {scanned.run_id} was started by {scanned.parent_id}, not {round_id}"
+    )

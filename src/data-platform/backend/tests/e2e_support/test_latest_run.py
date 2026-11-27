@@ -1,4 +1,4 @@
-"""Test latest_run, which reads the id and status of a workflow's latest run."""
+"""Test latest_run, which reads the id, status and parent of a workflow's latest run."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import pytest
 from temporalio.client import Client, WorkflowExecutionStatus
 from temporalio.service import RPCError, RPCStatusCode
 
-from e2e.support import TemporalSession, latest_run
+from e2e.support import TemporalSession, WorkflowRun, latest_run
 
 
 class _Client:
@@ -28,7 +28,7 @@ class _Client:
         return SimpleNamespace(describe=describe)
 
 
-def _latest(answer: SimpleNamespace | RPCError) -> tuple[tuple[str, WorkflowExecutionStatus] | None, list[str]]:
+def _latest(answer: SimpleNamespace | RPCError) -> tuple[WorkflowRun | None, list[str]]:
     client = _Client(answer)
     session = TemporalSession(asyncio.new_event_loop(), cast(Client, client))
     try:
@@ -37,10 +37,21 @@ def _latest(answer: SimpleNamespace | RPCError) -> tuple[tuple[str, WorkflowExec
         session.close()
 
 
-def test_the_latest_run_is_its_run_id_and_status():
-    """The workflow asked for answers the run Temporal describes."""
-    described = SimpleNamespace(run_id="r-2", status=WorkflowExecutionStatus.COMPLETED)
-    assert _latest(described) == (("r-2", WorkflowExecutionStatus.COMPLETED), ["table-discovery:catalog=c"])
+def test_the_latest_run_is_its_run_id_status_and_parent():
+    """A child run names the workflow that started it; the workflow asked for is the one described."""
+    described = SimpleNamespace(
+        run_id="r-2", status=WorkflowExecutionStatus.COMPLETED, parent_id="table-discovery:round-2026-11-27T00:00:00Z"
+    )
+    assert _latest(described) == (
+        WorkflowRun("r-2", WorkflowExecutionStatus.COMPLETED, "table-discovery:round-2026-11-27T00:00:00Z"),
+        ["table-discovery:catalog=c"],
+    )
+
+
+def test_a_run_nothing_started_as_a_child_has_no_parent():
+    """A scan a policy change started (signal-with-start) has no parent workflow."""
+    described = SimpleNamespace(run_id="r-1", status=WorkflowExecutionStatus.RUNNING, parent_id=None)
+    assert _latest(described)[0] == WorkflowRun("r-1", WorkflowExecutionStatus.RUNNING, None)
 
 
 def test_a_workflow_temporal_does_not_know_has_no_run():

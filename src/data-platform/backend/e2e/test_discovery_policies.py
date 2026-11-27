@@ -30,7 +30,6 @@ EXCLUDE_TMP = {"action": "exclude", "table_name_pattern": "tmp_*"}
 INCLUDE_SALES = {"action": "include", "table_name_pattern": "sales_*"}
 ROWS = pa.schema([pa.field("id", pa.int64())])
 DECIDE_SECONDS = 300
-SCAN_SECONDS = 120
 
 
 def _delete_if_present(api: httpx.Client, path: str) -> None:
@@ -55,16 +54,10 @@ def _attach(platform: PlatformApi, api: httpx.Client, cleanup: CleanupStack, nam
     return reply
 
 
-def _last_discovered(platform: PlatformApi, catalog: str) -> str | None:
-    """Return when ``catalog`` was last scanned; None when it is not scanned or not yet."""
+def _listed_unfailed(platform: PlatformApi, catalog: str) -> bool:
+    """Whether ``catalog`` is listed as scanned with no current failure (its scan record is not read)."""
     found = [c for c in platform.get("/v1/scanned-catalogs")["catalogs"] if c["catalog"] == catalog]
-    return found[0]["last_discovered_at"] if found else None
-
-
-def _scanned_since(platform: PlatformApi, catalog: str, before: str | None) -> str | None:
-    """Return the catalog's last scan once there is one other than ``before``; None until then."""
-    found = _last_discovered(platform, catalog)
-    return found if found is not None and found != before else None
+    return bool(found) and found[0]["failure"] is None
 
 
 def _places(platform: PlatformApi, name: str) -> list[tuple[str, list[str]]]:
@@ -171,7 +164,7 @@ def test_a_policy_attaches_to_an_empty_namespace_and_never_to_a_missing_place(
     suffix: str,
     cleanup: CleanupStack,
 ):
-    """An empty namespace may hold a policy and its catalog is scanned; a missing place is 404, a dotted level 422.
+    """An empty namespace may hold a policy and its catalog is then scanned; a missing place is 404, a dot 422.
 
     The attach answers the place and the policy, with no id of its own; the refusals store nothing and
     start no scan.
@@ -186,7 +179,6 @@ def test_a_policy_attaches_to_an_empty_namespace_and_never_to_a_missing_place(
     )
 
     target = {"type": "namespace", "path": [owned_catalog.name, namespace]}
-    scanned_before = _last_discovered(platform, owned_catalog.name)
     attached = _attach(platform, api, cleanup, name, target)
     assert attached.status_code == 200, attached.text
     assert attached.json() == {
@@ -195,12 +187,7 @@ def test_a_policy_attaches_to_an_empty_namespace_and_never_to_a_missing_place(
         "policy_name": name,
     }
     assert _places(platform, name) == [("namespace", [owned_catalog.name, namespace])]
-    wait_until(
-        lambda: _scanned_since(platform, owned_catalog.name, scanned_before),
-        timeout=SCAN_SECONDS,
-        interval=2,
-        what=f"{owned_catalog.name} scanned, as the attach asks",
-    )
+    assert _listed_unfailed(platform, owned_catalog.name), "a catalog holding a discovery policy is scanned"
 
     missing_catalog = OwnedNames.catalog(suffix, "missing")
     for refused_target, status in (

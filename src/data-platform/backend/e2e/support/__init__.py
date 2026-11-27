@@ -29,6 +29,7 @@ from e2e.support.reconciliation_running import reconciliation_running
 from e2e.support.remove_prefix import remove_prefix
 from e2e.support.require_settings import require_settings
 from e2e.support.schedule_exists import schedule_exists
+from e2e.support.scheduled_workflows import scheduled_workflows
 from e2e.support.signals_received import signals_received
 from e2e.support.spark_job_watch import SparkJobWatch
 from e2e.support.sweep_leftovers import sweep_leftovers
@@ -38,9 +39,11 @@ from e2e.support.unique_suffix import unique_suffix
 from e2e.support.wait_until import wait_until
 from e2e.support.wait_until_unmanaged import wait_until_unmanaged
 from e2e.support.watch_expired import WatchExpired
+from e2e.support.workflow_run import WorkflowRun
 
 __all__ = [
     "WatchExpired",
+    "WorkflowRun",
     "SparkJobWatch",
     "require_settings",
     "QueueHolder",
@@ -70,6 +73,7 @@ __all__ = [
     "reconciliation_running",
     "remove_prefix",
     "schedule_exists",
+    "scheduled_workflows",
     "signals_received",
     "sweep_leftovers",
     "trigger_schedule",

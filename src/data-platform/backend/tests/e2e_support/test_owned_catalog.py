@@ -6,6 +6,7 @@ import json
 from typing import cast
 
 import httpx
+import pytest
 from pyarrow import fs
 from pyiceberg.catalog import Catalog
 
@@ -133,3 +134,52 @@ def test_restoring_reads_grants_back_what_revoking_took(tmp_path):
         ("PUT", grants, {"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_CONTENT"}}),
         ("PUT", grants, {"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_METADATA"}}),
     ]
+
+
+def _answering(events: list[tuple[str, str, object]], role_status: int) -> PolarisClient:
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/oauth/tokens"):
+            return httpx.Response(200, json={"access_token": "token"})
+        body = json.loads(request.content) if request.content else None
+        events.append((request.method, request.url.path, body))
+        if request.method == "POST" and request.url.path.endswith("/catalog-roles"):
+            return httpx.Response(role_status, json={"error": {"message": "role answer"}})
+        return httpx.Response(201, json={})
+
+    return PolarisClient(
+        httpx.Client(transport=httpx.MockTransport(handle)),
+        catalog_uri="http://polaris/api/catalog",
+        management_uri="http://polaris/api/management/v1",
+        credential="e2e-id:e2e-secret",
+        scope="PRINCIPAL_ROLE:ALL",
+    )
+
+
+def test_the_e2e_writer_gets_a_role_of_its_own_so_revoking_reads_leaves_it_writing(tmp_path):
+    """Catalog role ``tm_e2e`` (kept when it exists) holds the content grant and goes to principal role ``tm_e2e``.
+
+    Only the e2e principal holds that principal role, while the platform reaches the catalog through
+    ``catalog_admin``, so ``revoke_reads`` then blinds the platform alone.
+    """
+    management = "/api/management/v1"
+    expected = [
+        ("POST", f"{management}/catalogs/{NAME}/catalog-roles", {"catalogRole": {"name": "tm_e2e"}}),
+        (
+            "PUT",
+            f"{management}/catalogs/{NAME}/catalog-roles/tm_e2e/grants",
+            {"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_CONTENT"}},
+        ),
+        ("PUT", f"{management}/principal-roles/tm_e2e/catalog-roles/{NAME}", {"catalogRole": {"name": "tm_e2e"}}),
+    ]
+    for status in (201, 409):
+        events: list[tuple[str, str, object]] = []
+        owned = _create(tmp_path, [], CleanupStack())
+        owned.keep_e2e_writes(_answering(events, status))
+        assert events == expected, status
+
+
+def test_a_refused_writer_role_fails_naming_the_call(tmp_path):
+    """Anything but created or already there stops the scenario before it relies on the role."""
+    owned = _create(tmp_path, [], CleanupStack())
+    with pytest.raises(AssertionError, match=r"POST .*/catalog-roles answered 403: .*role answer"):
+        owned.keep_e2e_writes(_answering([], 403))

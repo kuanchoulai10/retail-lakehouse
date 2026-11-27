@@ -108,22 +108,21 @@ def test_a_reconciliation_records_why_it_ran_and_under_which_policy(
     assert managed["policy_target"] == {"type": "namespace", "path": [catalog, namespace]}
     assert_prefixed_ids({"rc": [managed["reconciliation_id"]]})
 
-    def last_scan() -> str:
+    def last_scan() -> str | None:
+        """The catalog's last catalog-wide scan; a namespace attach asks for a namespace scan only, so maybe none."""
         [found] = [c for c in platform.get("/v1/scanned-catalogs")["catalogs"] if c["catalog"] == catalog]
-        if found["last_discovered_at"] is None:
-            raise AssertionError(found)
         return found["last_discovered_at"]
 
-    before = wait_until(last_scan, timeout=RECORD_SECONDS, interval=3, what=f"{catalog} scanned")
+    before = last_scan()
     count = len(_records(platform, table_uuid))
     version = platform.get(f"{DISCOVERY}/{discovery}")["version"]
     rescan = {"version": version, "description": "e2e, rescanned", "rules": [INCLUDE]}
     platform.call("PUT", f"{DISCOVERY}/{discovery}", rescan)
     wait_until(
-        lambda: last_scan() if last_scan() != before else None,
+        lambda: found if (found := last_scan()) is not None and found != before else None,
         timeout=RECORD_SECONDS,
         interval=3,
-        what=f"{catalog} rescanned after the save",
+        what=f"{catalog} scanned catalog-wide, as the save asks",
     )
     time.sleep(QUIET_SECONDS)
     assert len(_records(platform, table_uuid)) == count, _records(platform, table_uuid)[:3]

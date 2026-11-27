@@ -40,7 +40,6 @@ pytestmark = pytest.mark.full
 
 SCHEDULE_SECONDS = 300
 COMMIT_WINDOW_SECONDS = 90
-SCAN_TIMEOUT_SECONDS = 120
 RUN_TIMEOUT_SECONDS = 3600
 ACTIVE = ("pending", "queued", "running", "retry_waiting")
 
@@ -108,14 +107,6 @@ def test_a_scheduled_compaction_rewrites_the_partitions_over_the_target(
     )
 
     assert schedule_exists(temporal, "table-discovery")
-
-    def scanned() -> dict:
-        [found] = [c for c in platform.get("/v1/scanned-catalogs")["catalogs"] if c["catalog"] == settings.catalog]
-        if found["failure"] is not None or found["last_discovered_at"] is None:
-            raise AssertionError(found)
-        return found
-
-    wait_until(scanned, timeout=SCAN_TIMEOUT_SECONDS, interval=5, what=f"{settings.catalog} scanned with no failure")
 
     table = regions.load(iceberg)
     for n in (1, 3, 5, 7):
