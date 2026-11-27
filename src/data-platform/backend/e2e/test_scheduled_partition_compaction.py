@@ -25,6 +25,7 @@ from e2e.support import (
     assert_prefixed_ids,
     assert_runs_succeeded,
     reconciliation_running,
+    schedule_exists,
     wait_until,
 )
 
@@ -39,7 +40,7 @@ pytestmark = pytest.mark.full
 
 SCHEDULE_SECONDS = 300
 COMMIT_WINDOW_SECONDS = 90
-SCHEDULE_TIMEOUT_SECONDS = 120
+SCAN_TIMEOUT_SECONDS = 120
 RUN_TIMEOUT_SECONDS = 3600
 ACTIVE = ("pending", "queued", "running", "retry_waiting")
 
@@ -106,18 +107,15 @@ def test_a_scheduled_compaction_rewrites_the_partitions_over_the_target(
         discovery_policy=OwnedNames.discovery_policy(suffix, "regions"),
     )
 
-    async def discovery_schedule(client: Client) -> bool:
-        await client.get_schedule_handle(f"table-discovery:catalog={settings.catalog}").describe()
-        return True
+    assert schedule_exists(temporal, "table-discovery")
 
-    wait_until(
-        lambda: temporal.run(discovery_schedule),
-        timeout=SCHEDULE_TIMEOUT_SECONDS,
-        interval=5,
-        what=f"the discovery schedule of {settings.catalog}",
-    )
-    scanned = platform.get("/v1/scanned-catalogs")["catalogs"]
-    assert any(c["catalog"] == settings.catalog and c["failure"] is None for c in scanned), scanned
+    def scanned() -> dict:
+        [found] = [c for c in platform.get("/v1/scanned-catalogs")["catalogs"] if c["catalog"] == settings.catalog]
+        if found["failure"] is not None or found["last_discovered_at"] is None:
+            raise AssertionError(found)
+        return found
+
+    wait_until(scanned, timeout=SCAN_TIMEOUT_SECONDS, interval=5, what=f"{settings.catalog} scanned with no failure")
 
     table = regions.load(iceberg)
     for n in (1, 3, 5, 7):
@@ -148,15 +146,13 @@ def test_a_scheduled_compaction_rewrites_the_partitions_over_the_target(
     assert [entry["kind"] for entry in effective] == ["maintenance", "discovery"]
     maintenance, discovery = effective
     assert maintenance["policy_name"] == regions.maintenance_policy
-    assert maintenance["attachment_id"] == regions.maintenance_attachment_id
     assert maintenance["target"] == {
         "type": "table",
         "path": [settings.catalog, regions.namespace, regions.name],
         "table_uuid": uuid,
     }
-    assert_prefixed_ids({"pa": [regions.maintenance_attachment_id], "da": [regions.discovery_attachment_id]})
+    assert_prefixed_ids({"mp": [maintenance["policy_id"]], "dp": [discovery["policy_id"]]})
     assert discovery["policy_name"] == regions.discovery_policy["name"]
-    assert discovery["attachment_id"] == regions.discovery_attachment_id
     assert discovery["target"] == {
         "type": "namespace",
         "path": [settings.catalog, regions.namespace],

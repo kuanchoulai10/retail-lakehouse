@@ -200,9 +200,9 @@ def test_a_manual_request_runs_the_four_operations_of_one_plan(
     before = {run["run_id"] for run in platform.runs(uuid)}
 
     effective = platform.get(f"/v1/tables/{uuid}/effective-policies")["policies"]
-    assert [(e["kind"], e["policy_name"], e["attachment_id"]) for e in effective] == [
-        ("maintenance", orders.maintenance_policy, orders.maintenance_attachment_id),
-        ("discovery", orders.discovery_policy["name"], orders.discovery_attachment_id),
+    assert [(e["kind"], e["policy_name"], e["target"]["type"]) for e in effective] == [
+        ("maintenance", orders.maintenance_policy, "table"),
+        ("discovery", orders.discovery_policy["name"], "namespace"),
     ]
 
     jobs = SparkJobWatch.start(kubernetes)
@@ -292,8 +292,6 @@ def test_a_manual_request_runs_the_four_operations_of_one_plan(
             "rc": [record["reconciliation_id"] for record in reconciliations],
             "mp": [platform.get(f"/v1/maintenance-policies/{orders.maintenance_policy}")["id"]],
             "dp": [orders.discovery_policy["id"]],
-            "da": [orders.discovery_attachment_id],
-            "pa": [orders.maintenance_attachment_id],
         }
     )
 

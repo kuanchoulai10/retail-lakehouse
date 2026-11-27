@@ -47,9 +47,7 @@ class ManagedTable:
     namespace: str
     name: str
     maintenance_policy: str
-    maintenance_attachment_id: str
     discovery_policy: dict[str, Any]
-    discovery_attachment_id: str
 
     @classmethod
     def create(
@@ -68,7 +66,11 @@ class ManagedTable:
         policy: tuple[str, str, Callable[[dict], dict]],
         discovery_policy: str,
     ) -> ManagedTable:
-        """Create the namespace, the table, both policies and their attachments, in that order."""
+        """Create the namespace, the table and both policies, and attach them, in that order.
+
+        The maintenance policy is attached to the table and the discovery policy to the namespace; each
+        undo detaches by that place.
+        """
         iceberg.create_namespace(namespace)
         cleanup.push(f"drop namespace {namespace}", lambda: _drop_namespace(iceberg, namespace))
         prefix = namespace_prefix(iceberg.load_namespace_properties(namespace)["location"], namespace)
@@ -81,15 +83,9 @@ class ManagedTable:
         cleanup.push(
             f"delete {policy_name}", lambda: platform.call("DELETE", f"/v1/maintenance-policies/{policy_name}")
         )
-        maintenance_attachment_id = platform.attach(
-            "maintenance-policies", policy_name, {"type": "table", "path": [catalog, namespace, name]}
-        )
-        cleanup.push(
-            f"detach {policy_name}",
-            lambda: platform.call(
-                "DELETE", f"/v1/maintenance-policies/{policy_name}/attachments/{maintenance_attachment_id}"
-            ),
-        )
+        on_table = {"type": "table", "path": [catalog, namespace, name]}
+        platform.attach("maintenance", policy_name, on_table)
+        cleanup.push(f"detach {policy_name}", lambda: platform.detach("maintenance", policy_name, on_table))
 
         cleanup.push(
             f"wait until {namespace}.{name} is unmanaged",
@@ -108,23 +104,15 @@ class ManagedTable:
             f"delete {discovery_policy}", lambda: platform.call("DELETE", f"/v1/discovery-policies/{discovery_policy}")
         )
         assert discovery["rules"] == [INCLUDE_E2E_TABLES], f"{discovery_policy} holds {discovery['rules']}"
-        discovery_attachment_id = platform.attach(
-            "discovery-policies", discovery_policy, {"type": "namespace", "path": [catalog, namespace]}
-        )
-        cleanup.push(
-            f"detach {discovery_policy}",
-            lambda: platform.call(
-                "DELETE", f"/v1/discovery-policies/{discovery_policy}/attachments/{discovery_attachment_id}"
-            ),
-        )
+        on_namespace = {"type": "namespace", "path": [catalog, namespace]}
+        platform.attach("discovery", discovery_policy, on_namespace)
+        cleanup.push(f"detach {discovery_policy}", lambda: platform.detach("discovery", discovery_policy, on_namespace))
         return cls(
             catalog=catalog,
             namespace=namespace,
             name=name,
             maintenance_policy=policy_name,
-            maintenance_attachment_id=maintenance_attachment_id,
             discovery_policy=discovery,
-            discovery_attachment_id=discovery_attachment_id,
         )
 
     @property

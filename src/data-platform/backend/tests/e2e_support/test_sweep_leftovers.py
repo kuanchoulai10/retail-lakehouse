@@ -57,20 +57,36 @@ class _Temporal:
         return SimpleNamespace(describe=describe)
 
 
+def _placed(policy: str, kind: str, path: list[str], *, table_uuid: str | None = None, orphaned: bool = False) -> dict:
+    return {
+        "target": {"type": kind, "path": path, "table_uuid": table_uuid},
+        "policy_id": f"id-of-{policy}",
+        "policy_name": policy,
+        "orphaned": orphaned,
+    }
+
+
 def _platform(events: list[str], *, leftovers: bool) -> PlatformApi:
     answers = {
         "/v1/discovery-policies": {"policies": [*([{"name": DISCOVERY}] if leftovers else [])]},
-        f"/v1/discovery-policies/{DISCOVERY}/attachments": {"attachments": [{"id": "da-1"}]},
+        f"/v1/discovery-policies/{DISCOVERY}/attachments": {
+            "attachments": [
+                _placed(DISCOVERY, "namespace", ["iceberg", NS]),
+                _placed(DISCOVERY, "table", [CATALOG, "a", "b", "t"], table_uuid="u2"),
+            ]
+        },
         "/v1/maintenance-policies/default/attachments": {
             "attachments": [
-                *([{"id": "pa-d1", "target": {"type": "namespace", "path": [CATALOG, "ns"]}}] if leftovers else []),
-                {"id": "pa-d2", "target": {"type": "namespace", "path": ["iceberg", "inventory"]}},
+                *([_placed("default", "namespace", [CATALOG, "ns"], orphaned=True)] if leftovers else []),
+                _placed("default", "namespace", ["iceberg", "inventory"]),
             ]
         },
         "/v1/maintenance-policies": {
             "policies": [{"name": "default"}, *([{"name": MAINTENANCE}] if leftovers else [])]
         },
-        f"/v1/maintenance-policies/{MAINTENANCE}/attachments": {"attachments": [{"id": "pa-1"}]},
+        f"/v1/maintenance-policies/{MAINTENANCE}/attachments": {
+            "attachments": [_placed(MAINTENANCE, "table", ["iceberg", NS, "tm_e2e_orders"], table_uuid="u1")]
+        },
         "/v1/tables": [
             {"catalog": "iceberg", "namespace": NS, "table": "tm_e2e_orders", "status": "unmanaged", "uuid": "u1"},
             {"catalog": CATALOG, "namespace": "lifecycle", "table": "t", "status": "unmanaged", "uuid": "u2"},
@@ -82,7 +98,7 @@ def _platform(events: list[str], *, leftovers: bool) -> PlatformApi:
     def handle(request: httpx.Request) -> httpx.Response:
         if request.method == "GET":
             return httpx.Response(200, json=answers[request.url.path])
-        events.append(f"{request.method} {request.url.path}")
+        events.append(f"{request.method} {request.url.raw_path.decode()}")
         return httpx.Response(204)
 
     return PlatformApi(httpx.Client(transport=httpx.MockTransport(handle), base_url="http://api"))
@@ -149,7 +165,11 @@ def _sweep(tmp_path, events: list[str], *, leftovers: bool, namespaces: list[str
 
 
 def test_what_a_cut_short_run_left_is_removed_in_the_order_its_cleanup_would_have(tmp_path):
-    """Discovery goes first and the table is unmanaged before its maintenance policy and the table go."""
+    """Discovery goes first and the table is unmanaged before its maintenance policy and the table go.
+
+    Each policy is detached from every place it is listed on, by the place's type and path (a nested
+    namespace is one path level per part), and the default maintenance policy only from places in an e2e catalog.
+    """
     events: list[str] = []
     removed = _sweep(
         tmp_path,
@@ -165,13 +185,15 @@ def test_what_a_cut_short_run_left_is_removed_in_the_order_its_cleanup_would_hav
     )
     assert events == [
         f"DELETE {PODGROUPS}/{HOLDER}",
-        f"DELETE /v1/discovery-policies/{DISCOVERY}/attachments/da-1",
+        f"DELETE /v1/discovery-policies/{DISCOVERY}/attachments?target_type=namespace&path=iceberg&path={NS}",
+        f"DELETE /v1/discovery-policies/{DISCOVERY}/attachments?target_type=table&path={CATALOG}&path=a&path=b&path=t",
         f"DELETE /v1/discovery-policies/{DISCOVERY}",
         "describe table-reconciliation:table-uuid=u1",
         "describe table-reconciliation:table-uuid=u2",
-        f"DELETE /v1/maintenance-policies/{MAINTENANCE}/attachments/pa-1",
+        f"DELETE /v1/maintenance-policies/{MAINTENANCE}/attachments"
+        f"?target_type=table&path=iceberg&path={NS}&path=tm_e2e_orders",
         f"DELETE /v1/maintenance-policies/{MAINTENANCE}",
-        "DELETE /v1/maintenance-policies/default/attachments/pa-d1",
+        f"DELETE /v1/maintenance-policies/default/attachments?target_type=namespace&path={CATALOG}&path=ns",
         f"drop table {NS}.tm_e2e_orders",
         f"drop namespace {NS}",
         f"polaris PUT /catalogs/{CATALOG}/catalog-roles/catalog_admin/grants",
@@ -182,7 +204,7 @@ def test_what_a_cut_short_run_left_is_removed_in_the_order_its_cleanup_would_hav
         f"queue holder {HOLDER}",
         f"discovery policy {DISCOVERY}",
         f"maintenance policy {MAINTENANCE}",
-        f"default maintenance policy's attachment pa-d1 on {CATALOG}.ns",
+        f"default maintenance policy on namespace:{CATALOG}.ns",
         f"namespace {NS}",
         f"catalog {CATALOG}",
         f"storage s3://tm-e2e-catalogs/{ORPHAN}/",

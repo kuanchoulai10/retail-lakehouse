@@ -14,6 +14,7 @@ from e2e.support.e2e_settings import E2eSettings
 from e2e.support.interrupt_on_sigterm import interrupt_on_sigterm
 from e2e.support.job_pod_group import job_pod_group
 from e2e.support.kubernetes_api import KubernetesApi
+from e2e.support.latest_run import latest_run
 from e2e.support.load_iceberg import load_iceberg
 from e2e.support.managed_table import ManagedTable
 from e2e.support.misfiled_scenarios import misfiled_scenarios
@@ -32,6 +33,7 @@ from e2e.support.signals_received import signals_received
 from e2e.support.spark_job_watch import SparkJobWatch
 from e2e.support.sweep_leftovers import sweep_leftovers
 from e2e.support.temporal_session import TemporalSession
+from e2e.support.trigger_schedule import trigger_schedule
 from e2e.support.unique_suffix import unique_suffix
 from e2e.support.wait_until import wait_until
 from e2e.support.wait_until_unmanaged import wait_until_unmanaged
@@ -60,6 +62,7 @@ __all__ = [
     "drop_table",
     "interrupt_on_sigterm",
     "job_pod_group",
+    "latest_run",
     "load_iceberg",
     "misfiled_scenarios",
     "namespace_prefix",
@@ -69,6 +72,7 @@ __all__ = [
     "schedule_exists",
     "signals_received",
     "sweep_leftovers",
+    "trigger_schedule",
     "unique_suffix",
     "wait_until",
     "wait_until_unmanaged",

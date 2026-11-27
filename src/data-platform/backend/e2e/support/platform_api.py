@@ -10,6 +10,8 @@ if TYPE_CHECKING:
     import httpx
 
 _DEFAULT_ONLY = ("id", "name", "is_default", "version", "created_at", "updated_at")
+_KINDS = ("maintenance", "discovery")
+_NOT_ATTACHED = 404
 
 
 class PlatformApi:
@@ -40,9 +42,22 @@ class PlatformApi:
             "POST", "/v1/maintenance-policies", change({**body, "description": description}) | {"name": name}
         )
 
-    def attach(self, kind: str, name: str, target: dict) -> str:
-        """Attach policy ``name`` of ``kind`` (``maintenance-policies`` or ``discovery-policies``) and return the id."""
-        return self.call("PUT", f"/v1/{kind}/{name}/attachments", {"target": target})["id"]
+    def attach(self, kind: str, name: str, target: dict) -> None:
+        """Attach policy ``name`` of ``kind`` (``maintenance`` or ``discovery``) to the place ``target`` names."""
+        self.call("PUT", _attachments(kind, name), {"target": {"type": target["type"], "path": target["path"]}})
+
+    def detach(self, kind: str, name: str, target: dict, *, missing_ok: bool = False) -> None:
+        """Detach policy ``name`` of ``kind`` from the place ``target`` names (its ``type`` and ``path``).
+
+        The API answers 404 when the policy is not attached there; ``missing_ok`` makes that fine, for a
+        cleanup undo that runs whether or not the scenario already detached it. Any other refusal fails.
+        """
+        path = _attachments(kind, name)
+        reply = self._http.request("DELETE", path, params={"target_type": target["type"], "path": target["path"]})
+        if missing_ok and reply.status_code == _NOT_ATTACHED:
+            return
+        called = reply.request.url.raw_path.decode()
+        assert reply.is_success, f"DELETE {called} answered {reply.status_code}: {reply.text}"
 
     def table(self, catalog: str, namespace: str, table: str) -> dict | None:
         """Return the table the platform keeps at this place in the catalog, or None."""
@@ -60,3 +75,9 @@ class PlatformApi:
         groups = self.get("/v1/platform-settings")["groups"]
         [value] = [item["value"] for group in groups for item in group["items"] if item["key"] == key]
         return value
+
+
+def _attachments(kind: str, name: str) -> str:
+    if kind not in _KINDS:
+        raise ValueError(f"a policy kind is maintenance or discovery, not {kind!r}")
+    return f"/v1/{kind}-policies/{name}/attachments"

@@ -1,7 +1,9 @@
 """Discovery policies answer through the API: at least one rule, attaching needs a real place, saving versions.
 
-All of it is API answers; what a scan then does with a policy is in the discovery lifecycle scenario.
-Each scenario attaches only in a catalog of the module's own, so ``iceberg``'s scans are not changed.
+A policy is attached to a place (a catalog, namespace or table) and detached from it by that place;
+it cannot be deleted while it is attached anywhere. All of it is API answers, besides the catalog
+scan an attach asks for; what a scan does with a policy is in the discovery lifecycle scenario. Each
+scenario attaches only in a catalog of the module's own, so ``iceberg``'s scans are not changed.
 """
 
 from __future__ import annotations
@@ -11,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 import pyarrow as pa
 import pytest
 
-from e2e.support import OwnedNames, assert_prefixed_ids, drop_table, schedule_exists, wait_until, wait_until_unmanaged
+from e2e.support import OwnedNames, assert_prefixed_ids, drop_table, latest_run, wait_until, wait_until_unmanaged
 
 if TYPE_CHECKING:
     import httpx
@@ -28,6 +30,7 @@ EXCLUDE_TMP = {"action": "exclude", "table_name_pattern": "tmp_*"}
 INCLUDE_SALES = {"action": "include", "table_name_pattern": "sales_*"}
 ROWS = pa.schema([pa.field("id", pa.int64())])
 DECIDE_SECONDS = 300
+SCAN_SECONDS = 120
 
 
 def _delete_if_present(api: httpx.Client, path: str) -> None:
@@ -41,16 +44,34 @@ def _create(platform: PlatformApi, api: httpx.Client, cleanup: CleanupStack, nam
     return created
 
 
-def _attach(api: httpx.Client, cleanup: CleanupStack, name: str, target: dict) -> httpx.Response:
+def _attach(platform: PlatformApi, api: httpx.Client, cleanup: CleanupStack, name: str, target: dict) -> httpx.Response:
+    """Attach through the API as it answers, pushing the detach (fine when already detached) when it took."""
     reply = api.put(f"{POLICIES}/{name}/attachments", json={"target": target})
     if reply.is_success:
-        path = f"{POLICIES}/{name}/attachments/{reply.json()['id']}"
-        cleanup.push(f"detach {name} from {target['path']}", lambda: _delete_if_present(api, path))
+        cleanup.push(
+            f"detach {name} from {target['type']}:{'.'.join(target['path'])}",
+            lambda: platform.detach("discovery", name, target, missing_ok=True),
+        )
     return reply
 
 
-def _attachment_ids(platform: PlatformApi, name: str) -> list[str]:
-    return [attachment["id"] for attachment in platform.get(f"{POLICIES}/{name}/attachments")["attachments"]]
+def _last_discovered(platform: PlatformApi, catalog: str) -> str | None:
+    """Return when ``catalog`` was last scanned; None when it is not scanned or not yet."""
+    found = [c for c in platform.get("/v1/scanned-catalogs")["catalogs"] if c["catalog"] == catalog]
+    return found[0]["last_discovered_at"] if found else None
+
+
+def _scanned_since(platform: PlatformApi, catalog: str, before: str | None) -> str | None:
+    """Return the catalog's last scan once there is one other than ``before``; None until then."""
+    found = _last_discovered(platform, catalog)
+    return found if found is not None and found != before else None
+
+
+def _places(platform: PlatformApi, name: str) -> list[tuple[str, list[str]]]:
+    return [
+        (found["target"]["type"], found["target"]["path"])
+        for found in platform.get(f"{POLICIES}/{name}/attachments")["attachments"]
+    ]
 
 
 def test_a_policy_without_rules_is_refused(
@@ -100,11 +121,9 @@ def test_the_last_matching_rule_decides(
     dry = OwnedNames.maintenance_policy(suffix, "lastrule")
     platform.create_maintenance_policy(dry, "e2e: dry run", lambda body: {**body, "dry_run": True})
     cleanup.push(f"delete {dry}", lambda: _delete_if_present(api, f"/v1/maintenance-policies/{dry}"))
-    dry_attachment = platform.attach("maintenance-policies", dry, {"type": "namespace", "path": [catalog, namespace]})
-    cleanup.push(
-        f"detach {dry}",
-        lambda: _delete_if_present(api, f"/v1/maintenance-policies/{dry}/attachments/{dry_attachment}"),
-    )
+    on_namespace = {"type": "namespace", "path": [catalog, namespace]}
+    platform.attach("maintenance", dry, on_namespace)
+    cleanup.push(f"detach {dry}", lambda: platform.detach("maintenance", dry, on_namespace, missing_ok=True))
     for table in ("a_tmp", "orders_tmp", "orders"):
         place = (namespace, table)
         owned_catalog.iceberg.create_table(place, ROWS)
@@ -121,8 +140,8 @@ def test_the_last_matching_rule_decides(
     ]
     policy = _create(platform, api, cleanup, name, rules)
     assert policy["rules"] == rules
-    attachment = platform.attach("discovery-policies", name, {"type": "namespace", "path": [catalog, namespace]})
-    cleanup.push(f"detach {name}", lambda: _delete_if_present(api, f"{POLICIES}/{name}/attachments/{attachment}"))
+    platform.attach("discovery", name, on_namespace)
+    cleanup.push(f"detach {name}", lambda: platform.detach("discovery", name, on_namespace, missing_ok=True))
 
     expected = {"a_tmp": ("unmanaged", 2), "orders_tmp": ("managed", 3), "orders": ("managed", 1)}
 
@@ -152,9 +171,13 @@ def test_a_policy_attaches_to_an_empty_namespace_and_never_to_a_missing_place(
     suffix: str,
     cleanup: CleanupStack,
 ):
-    """An empty namespace may hold an attachment; a missing namespace or catalog is 404 and stores nothing."""
+    """An empty namespace may hold a policy and its catalog is scanned; a missing place is 404, a dotted level 422.
+
+    The attach answers the place and the policy, with no id of its own; the refusals store nothing and
+    start no scan.
+    """
     name = OwnedNames.discovery_policy(suffix, "attach")
-    _create(platform, api, cleanup, name, [INCLUDE_ORDERS])
+    policy = _create(platform, api, cleanup, name, [INCLUDE_ORDERS])
     namespace = OwnedNames.namespace(suffix, "attach")
     platform.call("POST", f"/v1/catalogs/{owned_catalog.name}/namespaces", {"namespace": [namespace]})
     cleanup.push(
@@ -162,34 +185,43 @@ def test_a_policy_attaches_to_an_empty_namespace_and_never_to_a_missing_place(
         lambda: _delete_if_present(api, f"/v1/catalogs/{owned_catalog.name}/namespaces/{namespace}"),
     )
 
-    attached = _attach(api, cleanup, name, {"type": "namespace", "path": [owned_catalog.name, namespace]})
+    target = {"type": "namespace", "path": [owned_catalog.name, namespace]}
+    scanned_before = _last_discovered(platform, owned_catalog.name)
+    attached = _attach(platform, api, cleanup, name, target)
     assert attached.status_code == 200, attached.text
-    assert_prefixed_ids({"da": [attached.json()["id"]]})
-    assert _attachment_ids(platform, name) == [attached.json()["id"]]
-    owned_schedule = f"table-discovery:catalog={owned_catalog.name}"
+    assert attached.json() == {
+        "target": target | {"table_uuid": None},
+        "policy_id": policy["id"],
+        "policy_name": name,
+    }
+    assert _places(platform, name) == [("namespace", [owned_catalog.name, namespace])]
     wait_until(
-        lambda: schedule_exists(temporal, owned_schedule) or None,
-        timeout=60,
+        lambda: _scanned_since(platform, owned_catalog.name, scanned_before),
+        timeout=SCAN_SECONDS,
         interval=2,
-        what=f"{owned_schedule} created",
+        what=f"{owned_catalog.name} scanned, as the attach asks",
     )
 
     missing_catalog = OwnedNames.catalog(suffix, "missing")
-    for target in (
-        {"type": "namespace", "path": [owned_catalog.name, "no_such_ns"]},
-        {"type": "catalog", "path": [missing_catalog]},
+    for refused_target, status in (
+        ({"type": "namespace", "path": [owned_catalog.name, "no_such_ns"]}, 404),
+        ({"type": "catalog", "path": [missing_catalog]}, 404),
+        ({"type": "namespace", "path": [owned_catalog.name, f"{namespace}.child"]}, 422),
     ):
-        refused = _attach(api, cleanup, name, target)
-        assert refused.status_code == 404, f"{target}: {refused.status_code} {refused.text}"
+        refused = _attach(platform, api, cleanup, name, refused_target)
+        assert refused.status_code == status, f"{refused_target}: {refused.status_code} {refused.text}"
         assert refused.json()["detail"], refused.text
-    assert _attachment_ids(platform, name) == [attached.json()["id"]]
-    assert not schedule_exists(temporal, f"table-discovery:catalog={missing_catalog}")
+    assert _places(platform, name) == [("namespace", [owned_catalog.name, namespace])]
+    assert latest_run(temporal, f"table-discovery:catalog={missing_catalog}") is None
+
+    platform.detach("discovery", name, target)
+    assert _places(platform, name) == []
+    again = api.delete(f"{POLICIES}/{name}/attachments", params={"target_type": "namespace", "path": target["path"]})
+    assert again.status_code == 404, again.text
 
 
-def test_saving_a_policy_makes_a_version(
-    api: httpx.Client, platform: PlatformApi, owned_catalog: OwnedCatalog, suffix: str, cleanup: CleanupStack
-):
-    """A save makes version 2 and keeps version 1 readable; a stale save and deleting an attached policy are 409."""
+def test_saving_a_policy_makes_a_version(api: httpx.Client, platform: PlatformApi, suffix: str, cleanup: CleanupStack):
+    """A save makes version 2 and keeps version 1 readable; a stale save is 409 and changes nothing."""
     name = OwnedNames.discovery_policy(suffix, "versions")
     first = _create(platform, api, cleanup, name, [INCLUDE_ORDERS, EXCLUDE_TMP])
     assert first["version"] == 1
@@ -211,11 +243,36 @@ def test_saving_a_policy_makes_a_version(
     assert stale.status_code == 409, stale.text
     assert platform.get(f"{POLICIES}/{name}")["version"] == 2
 
-    attached = _attach(api, cleanup, name, {"type": "catalog", "path": [owned_catalog.name]})
-    assert attached.status_code == 200, attached.text
+
+def test_a_policy_in_use_cannot_be_deleted(
+    api: httpx.Client, platform: PlatformApi, owned_catalog: OwnedCatalog, suffix: str, cleanup: CleanupStack
+):
+    """Deleting a policy still attached is 409 naming each place it is on; once detached from all, it deletes."""
+    name = OwnedNames.discovery_policy(suffix, "inuse")
+    _create(platform, api, cleanup, name, [INCLUDE_ORDERS])
+    namespace = OwnedNames.namespace(suffix, "inuse")
+    owned_catalog.iceberg.create_namespace((namespace,))
+    cleanup.push(f"drop {namespace}", lambda: owned_catalog.iceberg.drop_namespace((namespace,)))
+    on_catalog = {"type": "catalog", "path": [owned_catalog.name]}
+    on_namespace = {"type": "namespace", "path": [owned_catalog.name, namespace]}
+    for target in (on_catalog, on_namespace):
+        attached = _attach(platform, api, cleanup, name, target)
+        assert attached.status_code == 200, attached.text
+
     refused = api.delete(f"{POLICIES}/{name}")
     assert refused.status_code == 409, refused.text
-    platform.call("DELETE", f"{POLICIES}/{name}/attachments/{attached.json()['id']}")
+    detail = refused.json()["detail"]
+    assert detail.startswith(f"discovery policy {name} is still attached to "), detail
+    named = sorted(detail.removeprefix(f"discovery policy {name} is still attached to ").split(", "))
+    assert named == [f"catalog:{owned_catalog.name}", f"namespace:{owned_catalog.name}.{namespace}"], detail
+
+    platform.detach("discovery", name, on_catalog)
+    still = api.delete(f"{POLICIES}/{name}")
+    assert still.status_code == 409, still.text
+    assert still.json()["detail"] == (
+        f"discovery policy {name} is still attached to namespace:{owned_catalog.name}.{namespace}"
+    )
+    platform.detach("discovery", name, on_namespace)
     deleted = api.delete(f"{POLICIES}/{name}")
     assert deleted.status_code == 204, deleted.text
     assert api.get(f"{POLICIES}/{name}").status_code == 404

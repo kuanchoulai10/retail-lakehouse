@@ -42,8 +42,9 @@ def sweep_leftovers(
     go next (there is no default discovery policy to detach), and each leftover table (of an e2e
     namespace or an e2e catalog) is waited on until it is unmanaged, so the platform
     plans nothing on a table being removed; then the maintenance policies and the default
-    maintenance policy's attachments in e2e catalogs, the tables, the namespaces with their storage,
-    the e2e catalogs and any catalog storage left without one. Only one e2e run uses a cluster at a time (``run.sh``
+    maintenance policy's places in e2e catalogs, the tables, the namespaces with their storage,
+    the e2e catalogs and any catalog storage left without one. A policy is detached from each place its
+    attachments list names, by the place's type and path. Only one e2e run uses a cluster at a time (``run.sh``
     refuses a second), so nothing swept is in use.
     """
     removed: list[str] = []
@@ -52,8 +53,8 @@ def sweep_leftovers(
         if OwnedNames.QUEUE_HOLDER.match(name):
             kubernetes.delete(f"{PODGROUPS}/{name}")
             removed.append(f"queue holder {name}")
-    for policy in _owned_policies(platform, "discovery-policies", OwnedNames.DISCOVERY_POLICY):
-        _detach_and_delete(platform, "discovery-policies", policy)
+    for policy in _owned_policies(platform, "discovery", OwnedNames.DISCOVERY_POLICY):
+        _detach_and_delete(platform, "discovery", policy)
         removed.append(f"discovery policy {policy}")
     namespaces = [
         found[0] for found in iceberg.list_namespaces() if len(found) == 1 and OwnedNames.NAMESPACE.match(found[0])
@@ -66,10 +67,10 @@ def sweep_leftovers(
     for found in platform.get("/v1/tables"):
         if found["catalog"] in catalogs:
             wait_until_unmanaged(platform, temporal, (found["catalog"], found["namespace"], found["table"]))
-    for policy in _owned_policies(platform, "maintenance-policies", OwnedNames.MAINTENANCE_POLICY):
-        _detach_and_delete(platform, "maintenance-policies", policy)
+    for policy in _owned_policies(platform, "maintenance", OwnedNames.MAINTENANCE_POLICY):
+        _detach_and_delete(platform, "maintenance", policy)
         removed.append(f"maintenance policy {policy}")
-    removed += _detach_from_default(platform, "maintenance")
+    removed += _detach_default_maintenance(platform)
     for namespace, identifiers in tables.items():
         prefix = namespace_prefix(iceberg.load_namespace_properties(namespace)["location"], namespace)
         for _, table in identifiers:
@@ -90,22 +91,25 @@ def sweep_leftovers(
 
 
 def _owned_policies(platform: PlatformApi, kind: str, pattern: re.Pattern[str]) -> list[str]:
-    names = [policy["name"] for policy in platform.get(f"/v1/{kind}")["policies"]]
+    names = [policy["name"] for policy in platform.get(f"/v1/{kind}-policies")["policies"]]
     return [name for name in names if pattern.match(name)]
 
 
-def _detach_from_default(platform: PlatformApi, kind: str) -> list[str]:
-    """Detach the default policy of ``kind`` (only maintenance has one) from every target in an e2e catalog."""
+def _places(platform: PlatformApi, kind: str, policy: str) -> list[dict]:
+    return [found["target"] for found in platform.get(f"/v1/{kind}-policies/{policy}/attachments")["attachments"]]
+
+
+def _detach_default_maintenance(platform: PlatformApi) -> list[str]:
+    """Detach the default maintenance policy (only maintenance has one) from every place in an e2e catalog."""
     gone: list[str] = []
-    for attachment in platform.get(f"/v1/{kind}-policies/default/attachments")["attachments"]:
-        path = attachment["target"]["path"]
-        if OwnedNames.CATALOG.match(path[0]):
-            platform.call("DELETE", f"/v1/{kind}-policies/default/attachments/{attachment['id']}")
-            gone.append(f"default {kind} policy's attachment {attachment['id']} on {'.'.join(path)}")
+    for target in _places(platform, "maintenance", "default"):
+        if OwnedNames.CATALOG.match(target["path"][0]):
+            platform.detach("maintenance", "default", target)
+            gone.append(f"default maintenance policy on {target['type']}:{'.'.join(target['path'])}")
     return gone
 
 
 def _detach_and_delete(platform: PlatformApi, kind: str, policy: str) -> None:
-    for attachment in platform.get(f"/v1/{kind}/{policy}/attachments")["attachments"]:
-        platform.call("DELETE", f"/v1/{kind}/{policy}/attachments/{attachment['id']}")
-    platform.call("DELETE", f"/v1/{kind}/{policy}")
+    for target in _places(platform, kind, policy):
+        platform.detach(kind, policy, target)
+    platform.call("DELETE", f"/v1/{kind}-policies/{policy}")

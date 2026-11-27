@@ -78,12 +78,11 @@ def test_a_reconciliation_records_why_it_ran_and_under_which_policy(
     on_namespace = OwnedNames.maintenance_policy(suffix, "records")
     platform.create_maintenance_policy(on_namespace, "e2e", lambda body: {**body, "dry_run": True})
     cleanup.push(f"delete {on_namespace}", lambda: _delete_if_present(api, f"{MAINTENANCE}/{on_namespace}"))
-    namespace_attachment = platform.attach(
-        "maintenance-policies", on_namespace, {"type": "namespace", "path": [catalog, namespace]}
-    )
+    namespace_target = {"type": "namespace", "path": [catalog, namespace]}
+    platform.attach("maintenance", on_namespace, namespace_target)
     cleanup.push(
         f"detach {on_namespace}",
-        lambda: _delete_if_present(api, f"{MAINTENANCE}/{on_namespace}/attachments/{namespace_attachment}"),
+        lambda: platform.detach("maintenance", on_namespace, namespace_target, missing_ok=True),
     )
     cleanup.push(
         f"wait until {namespace}.t is unmanaged",
@@ -92,12 +91,9 @@ def test_a_reconciliation_records_why_it_ran_and_under_which_policy(
     discovery = OwnedNames.discovery_policy(suffix, "records")
     platform.call("POST", DISCOVERY, {"name": discovery, "description": "e2e", "rules": [INCLUDE]})
     cleanup.push(f"delete {discovery}", lambda: _delete_if_present(api, f"{DISCOVERY}/{discovery}"))
-    discovery_attachment = platform.attach(
-        "discovery-policies", discovery, {"type": "namespace", "path": [catalog, namespace]}
-    )
+    platform.attach("discovery", discovery, namespace_target)
     cleanup.push(
-        f"detach {discovery}",
-        lambda: _delete_if_present(api, f"{DISCOVERY}/{discovery}/attachments/{discovery_attachment}"),
+        f"detach {discovery}", lambda: platform.detach("discovery", discovery, namespace_target, missing_ok=True)
     )
 
     def managed_uuid() -> str | None:
@@ -146,12 +142,9 @@ def test_a_reconciliation_records_why_it_ran_and_under_which_policy(
         },
     )
     cleanup.push(f"delete {nearer}", lambda: _delete_if_present(api, f"{MAINTENANCE}/{nearer}"))
-    table_attachment = platform.attach(
-        "maintenance-policies", nearer, {"type": "table", "path": [catalog, namespace, "t"]}
-    )
-    cleanup.push(
-        f"detach {nearer}", lambda: _delete_if_present(api, f"{MAINTENANCE}/{nearer}/attachments/{table_attachment}")
-    )
+    table_target = {"type": "table", "path": [catalog, namespace, "t"]}
+    platform.attach("maintenance", nearer, table_target)
+    cleanup.push(f"detach {nearer}", lambda: platform.detach("maintenance", nearer, table_target, missing_ok=True))
 
     def changed_to(version: int) -> Callable[[dict], bool]:
         return lambda r: (

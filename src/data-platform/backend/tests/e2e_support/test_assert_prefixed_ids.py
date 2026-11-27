@@ -11,7 +11,7 @@ ID = "01m85cfr46e2psvhsgrbwtw7kv"
 
 def test_ids_with_their_kinds_prefix_pass():
     """``<prefix>-<26 base32 characters>`` is the shape of every id."""
-    assert_prefixed_ids({"mr": [f"mr-{ID}"], "pa": [f"pa-{ID}", f"pa-{ID}"]})
+    assert_prefixed_ids({"mr": [f"mr-{ID}"], "dp": [f"dp-{ID}", f"dp-{ID}"]})
 
 
 @pytest.mark.parametrize("value", [f"rc-{ID}", ID, f"mr-{ID[:-1]}", f"mr-{ID.upper()}"])
@@ -23,5 +23,5 @@ def test_an_id_of_another_shape_fails(value):
 
 def test_a_kind_with_no_ids_fails():
     """An empty list proves nothing."""
-    with pytest.raises(AssertionError, match="no pa id to check"):
-        assert_prefixed_ids({"pa": []})
+    with pytest.raises(AssertionError, match="no dp id to check"):
+        assert_prefixed_ids({"dp": []})

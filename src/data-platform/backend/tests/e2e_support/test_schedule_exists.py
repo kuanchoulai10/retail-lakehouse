@@ -32,14 +32,14 @@ def _exists(error: RPCError | None) -> tuple[bool, list[str]]:
     client = _Client(error)
     session = TemporalSession(asyncio.new_event_loop(), cast(Client, client))
     try:
-        return schedule_exists(session, "table-discovery:catalog=c"), client.asked
+        return schedule_exists(session, "table-discovery"), client.asked
     finally:
         session.close()
 
 
 def test_a_schedule_temporal_describes_exists():
     """The schedule asked for is described."""
-    assert _exists(None) == (True, ["table-discovery:catalog=c"])
+    assert _exists(None) == (True, ["table-discovery"])
 
 
 def test_a_schedule_temporal_does_not_know_does_not_exist():
